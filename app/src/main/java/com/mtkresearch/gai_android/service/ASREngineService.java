@@ -15,6 +15,8 @@ import android.util.Log;
 
 import androidx.core.content.ContextCompat;
 
+import com.k2fsa.sherpa.onnx.SherpaASR;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -26,12 +28,19 @@ import java.util.function.Consumer;
 
 public class ASREngineService extends BaseEngineService {
     private static final String TAG = "ASREngineService";
-    private static final String TEST_PHRASE = "test";
+    private static final String TEST_PHRASE = "with";
+    private static final String TEST_AUDIO_PATH = "test_wavs/test_wavs_8k.wav";
     private static final int RECOGNITION_TIMEOUT = 10000; // 10 seconds
     
+    // Default ASR components
     private SpeechRecognizer speechRecognizer;
+    
+    // Local ASR components
+    private SherpaASR sherpaASR;
+    
+    // Shared state
+    private String backend = "none";
     private boolean isListening = false;
-    private String backend = "default";
     private Consumer<String> currentCallback;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
@@ -86,22 +95,32 @@ public class ASREngineService extends BaseEngineService {
         if (!validateListeningPrerequisites(callback)) return;
         
         try {
-            setupSpeechRecognizer();
-            startRecognition();
-            currentCallback = callback;
-        } catch (Exception e) {
-            Log.e(TAG, "Error starting speech recognition", e);
-            if (callback != null) {
-                callback.accept("Error: Failed to start speech recognition");
+            switch (backend) {
+                case "local":
+                    startLocalListening(callback);
+                    break;
+                case "default":
+                    startDefaultListening(callback);
+                    break;
+                default:
+                    notifyError(callback, "No ASR backend available");
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting ASR", e);
+            notifyError(callback, "Failed to start ASR");
         }
     }
 
     public void stopListening() {
-        if (speechRecognizer != null && isListening) {
-            speechRecognizer.stopListening();
-            isListening = false;
+        switch (backend) {
+            case "local":
+                stopLocalListening();
+                break;
+            case "default":
+                stopDefaultListening();
+                break;
         }
+        isListening = false;
     }
 
     private boolean validateListeningPrerequisites(Consumer<String> callback) {
@@ -109,8 +128,8 @@ public class ASREngineService extends BaseEngineService {
             notifyError(callback, "ASR not initialized");
             return false;
         }
-        if (!checkPermission()) {
-            notifyError(callback, "Missing audio permission");
+        if (isListening) {
+            notifyError(callback, "Already listening");
             return false;
         }
         return true;
@@ -203,39 +222,139 @@ public class ASREngineService extends BaseEngineService {
 
     private CompletableFuture<Boolean> testASREngine(String engineType) {
         Log.d(TAG, "Testing " + engineType + " ASR engine...");
+        CompletableFuture<String> resultFuture;
         
         try {
-            File testFile = prepareTestFile();
-            return convertSpeechToText(testFile)
-                .thenApply(result -> validateTestResult(result, engineType));
+            if (engineType.equalsIgnoreCase("local")) {
+                // Use direct file transcription for local ASR testing
+                resultFuture = new CompletableFuture<>();
+                sherpaASR.transcribeAsset(TEST_AUDIO_PATH, new SherpaASR.ASRListener() {
+                    @Override
+                    public void onPartialResult(String text) {
+                        Log.d(TAG, "Test partial result: " + text);
+                    }
+
+                    @Override
+                    public void onFinalResult(String text) {
+                        Log.d(TAG, "Test final result: " + text);
+                        resultFuture.complete(text);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e(TAG, "Test transcription error: " + error);
+                        resultFuture.complete(null);
+                    }
+                });
+            } else {
+                // Use MediaPlayer + SpeechRecognizer for default ASR testing
+                resultFuture = convertSpeechToText();
+            }
+
+            return resultFuture.thenApply(result -> {
+                boolean matches = result != null && result.toLowerCase().contains(TEST_PHRASE);
+                Log.d(TAG, String.format("%s %s ASR Test! %s",
+                    matches ? "✅" : "❌",
+                    engineType,
+                    matches ? "Found \"test\" in: \"" + result + "\"" 
+                           : "Could not find \"test\" in: \"" + result + "\""));
+                return matches;
+            });
+
         } catch (Exception e) {
             Log.e(TAG, "❌ Error running " + engineType + " ASR test", e);
             return CompletableFuture.completedFuture(false);
         }
     }
 
-    private File prepareTestFile() throws IOException {
-        File testDir = new File(getApplicationContext().getFilesDir(), "test_audio");
-        if (!testDir.exists()) {
-            testDir.mkdirs();
+    private CompletableFuture<String> convertSpeechToText() {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        MediaPlayer mediaPlayer = new MediaPlayer();
+        
+        try {
+            mediaPlayer.setDataSource(getAssets().openFd(TEST_AUDIO_PATH));
+            mediaPlayer.prepare();
+            
+            final boolean[] isReleased = {false};
+            
+            mediaPlayer.setOnCompletionListener(mp -> {
+                if (!isReleased[0]) {
+                    mp.release();
+                    isReleased[0] = true;
+                }
+            });
+            
+            setupSpeechRecognizer();
+            speechRecognizer.setRecognitionListener(createTestRecognitionListener(future, mediaPlayer, isReleased));
+            startRecognition();
+
+            // Set timeout
+            mainHandler.postDelayed(() -> {
+                if (!future.isDone()) {
+                    Log.d(TAG, "Recognition test timed out");
+                    future.complete(null);
+                    if (!isReleased[0]) {
+                        mediaPlayer.release();
+                        isReleased[0] = true;
+                    }
+                }
+            }, RECOGNITION_TIMEOUT);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Error during speech to text conversion", e);
+            future.complete(null);
+            mediaPlayer.release();
         }
         
-        File testFile = new File(testDir, "test_asr.m4a");
-        if (testFile.exists()) {
-            testFile.delete();
-        }
-        copyAssetFile("test_audio/test_asr.m4a", testFile);
-        return testFile;
+        return future;
     }
 
-    private boolean validateTestResult(String result, String engineType) {
-        boolean matches = result != null && result.toLowerCase().contains(TEST_PHRASE);
-        Log.d(TAG, String.format("%s %s ASR Test! %s",
-            matches ? "✅" : "❌",
-            engineType,
-            matches ? "Found \"test\" in: \"" + result + "\"" 
-                   : "Could not find \"test\" in: \"" + result + "\""));
-        return matches;
+    private RecognitionListener createTestRecognitionListener(
+            CompletableFuture<String> future, 
+            MediaPlayer mediaPlayer, 
+            boolean[] isReleased) {
+        return new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+                if (!isReleased[0]) {
+                    mediaPlayer.start();
+                }
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches != null && !matches.isEmpty()) {
+                    future.complete(matches.get(0));
+                } else {
+                    future.complete(null);
+                }
+                
+                if (!isReleased[0]) {
+                    mediaPlayer.release();
+                    isReleased[0] = true;
+                }
+            }
+
+            @Override
+            public void onError(int error) {
+                Log.e(TAG, "Recognition error during test: " + getErrorMessage(error));
+                future.complete(null);
+                
+                if (!isReleased[0]) {
+                    mediaPlayer.release();
+                    isReleased[0] = true;
+                }
+            }
+
+            // Other required methods
+            @Override public void onBeginningOfSpeech() {}
+            @Override public void onEndOfSpeech() {}
+            @Override public void onPartialResults(Bundle partialResults) {}
+            @Override public void onBufferReceived(byte[] buffer) {}
+            @Override public void onRmsChanged(float rmsdB) {}
+            @Override public void onEvent(int eventType, Bundle params) {}
+        };
     }
 
     private String getErrorMessage(int errorCode) {
@@ -285,7 +404,55 @@ public class ASREngineService extends BaseEngineService {
     }
 
     private CompletableFuture<Boolean> initializeLocalASR() {
-        return CompletableFuture.completedFuture(false);
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        try {
+            sherpaASR = new SherpaASR(getApplicationContext());
+            sherpaASR.initialize(); // Initialize the model and check permissions
+            future.complete(true);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to initialize Local ASR", e);
+            future.complete(false);
+        }
+        
+        return future;
+    }
+
+    private void startLocalListening(Consumer<String> callback) {
+        if (!validateListeningPrerequisites(callback)) return;
+        
+        try {
+            sherpaASR.startRecognition(new SherpaASR.ASRListener() {
+                @Override
+                public void onPartialResult(String text) {
+                    callback.accept("Partial: " + text);
+                }
+
+                @Override
+                public void onFinalResult(String text) {
+                    callback.accept(text);
+                }
+
+                @Override
+                public void onError(String error) {
+                    notifyError(callback, error);
+                    isListening = false;
+                }
+            });
+            isListening = true;
+            currentCallback = callback;
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting local ASR", e);
+            notifyError(callback, "Failed to start local ASR");
+        }
+    }
+
+    private void stopLocalListening() {
+        if (sherpaASR != null) {
+            sherpaASR.stopRecognition();
+        }
+        isListening = false;
+        currentCallback = null;
     }
 
     private CompletableFuture<Boolean> initializeDefaultASR() {
@@ -313,114 +480,96 @@ public class ASREngineService extends BaseEngineService {
         return future;
     }
 
-    private CompletableFuture<String> convertSpeechToText(File audioFile) {
-        CompletableFuture<String> future = new CompletableFuture<>();
-        MediaPlayer mediaPlayer = new MediaPlayer();
+    private void startDefaultListening(Consumer<String> callback) {
+        if (!validateListeningPrerequisites(callback)) return;
         
         try {
-            mediaPlayer.setDataSource(audioFile.getPath());
-            mediaPlayer.prepare();
-            
-            // Keep track of MediaPlayer state
-            final boolean[] isReleased = {false};
-            
-            // Set up completion listener for MediaPlayer
-            mediaPlayer.setOnCompletionListener(mp -> {
-                Log.d(TAG, "Test audio playback completed");
-                if (!isReleased[0]) {
-                    mp.release();
-                    isReleased[0] = true;
-                }
-            });
-            
             setupSpeechRecognizer();
-            speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override
-                public void onReadyForSpeech(Bundle params) {
-                    Log.d(TAG, "Speech recognizer ready, starting playback");
-                    if (!isReleased[0]) {
-                        mediaPlayer.start();
-                    }
-                }
-
-                @Override
-                public void onResults(Bundle results) {
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (matches != null && !matches.isEmpty()) {
-                        Log.d(TAG, "Got test recognition result: " + matches.get(0));
-                        future.complete(matches.get(0));
-                    } else {
-                        Log.d(TAG, "No recognition results");
-                        future.complete(null);
-                    }
-                    
-                    // Clean up MediaPlayer if still active
-                    if (!isReleased[0]) {
-                        mediaPlayer.release();
-                        isReleased[0] = true;
-                    }
-                }
-
-                @Override
-                public void onError(int error) {
-                    Log.e(TAG, "Recognition error during test: " + getErrorMessage(error));
-                    future.complete(null);
-                    
-                    // Clean up MediaPlayer if still active
-                    if (!isReleased[0]) {
-                        mediaPlayer.release();
-                        isReleased[0] = true;
-                    }
-                }
-
-                @Override public void onBeginningOfSpeech() {
-                    Log.d(TAG, "Speech began");
-                }
-                @Override public void onEndOfSpeech() {
-                    Log.d(TAG, "Speech ended");
-                }
-                @Override public void onPartialResults(Bundle partialResults) {}
-                @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onRmsChanged(float rmsdB) {}
-                @Override public void onEvent(int eventType, Bundle params) {}
-            });
-
-            // Start recognition
-            startRecognition();
-
-            // Set a timeout
-            mainHandler.postDelayed(() -> {
-                if (!future.isDone()) {
-                    Log.d(TAG, "Recognition test timed out");
-                    future.complete(null);
-                }
-                // Clean up MediaPlayer if still active
-                if (!isReleased[0]) {
-                    try {
-                        if (mediaPlayer.isPlaying()) {
-                            mediaPlayer.stop();
-                        }
-                        mediaPlayer.release();
-                        isReleased[0] = true;
-                    } catch (IllegalStateException e) {
-                        Log.e(TAG, "Error stopping MediaPlayer", e);
-                    }
-                }
-            }, RECOGNITION_TIMEOUT);
-
+            speechRecognizer.setRecognitionListener(createRecognitionListener(callback));
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, 
+                    RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                .putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                .putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+            
+            speechRecognizer.startListening(intent);
+            isListening = true;
+            currentCallback = callback;
+            Log.d(TAG, "Started listening with default ASR");
         } catch (Exception e) {
-            Log.e(TAG, "Error during speech to text conversion", e);
-            if (!future.isDone()) {
-                future.complete(null);
-            }
-            mediaPlayer.release();
+            Log.e(TAG, "Error starting default ASR", e);
+            notifyError(callback, "Failed to start default ASR");
         }
-        
-        return future;
+    }
+
+    private void stopDefaultListening() {
+        if (speechRecognizer != null) {
+            speechRecognizer.stopListening();
+        }
+        isListening = false;
+        currentCallback = null;
+    }
+
+    private RecognitionListener createRecognitionListener(Consumer<String> callback) {
+        return new RecognitionListener() {
+            @Override
+            public void onReadyForSpeech(Bundle params) {
+                Log.d(TAG, "Ready for speech");
+                callback.accept("Ready for speech...");
+            }
+
+            @Override
+            public void onBeginningOfSpeech() {
+                Log.d(TAG, "Speech started");
+            }
+
+            @Override
+            public void onEndOfSpeech() {
+                Log.d(TAG, "Speech ended");
+                isListening = false;
+            }
+
+            @Override
+            public void onError(int error) {
+                String errorMessage = getErrorMessage(error);
+                Log.e(TAG, "Speech recognition error: " + errorMessage);
+                notifyError(callback, errorMessage);
+                isListening = false;
+            }
+
+            @Override
+            public void onResults(Bundle results) {
+                processResults(results, callback, false);
+                isListening = false;
+            }
+
+            @Override
+            public void onPartialResults(Bundle partialResults) {
+                processResults(partialResults, callback, true);
+            }
+
+            // Unused callbacks
+            @Override public void onRmsChanged(float rmsdB) {}
+            @Override public void onBufferReceived(byte[] buffer) {}
+            @Override public void onEvent(int eventType, Bundle params) {}
+        };
+    }
+
+    private void processResults(Bundle results, Consumer<String> callback, boolean isPartial) {
+        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+        if (matches != null && !matches.isEmpty()) {
+            String result = matches.get(0);
+            Log.d(TAG, (isPartial ? "Partial" : "Final") + " result: " + result);
+            callback.accept(isPartial ? "Partial: " + result : result);
+        }
     }
 
     @Override
     public void onDestroy() {
+        if (sherpaASR != null) {
+            sherpaASR.release();
+            sherpaASR = null;
+        }
         if (speechRecognizer != null) {
             speechRecognizer.destroy();
             speechRecognizer = null;
