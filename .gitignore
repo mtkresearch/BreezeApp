@@ -88,3 +88,4 @@ fastlane/screenshots
 # Android build caches
 .cache/
 
+.onnx
