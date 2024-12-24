@@ -97,7 +97,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             LLMEngineService.LocalBinder binder = (LLMEngineService.LocalBinder) service;
             llmService = (LLMEngineService) binder.getService();
-            checkServicesReady();
+            // checkServicesReady();
         }
 
         @Override
@@ -112,7 +112,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             VLMEngineService.LocalBinder binder = (VLMEngineService.LocalBinder) service;
             vlmService = (VLMEngineService) binder.getService();
-            checkServicesReady();
+            // checkServicesReady();
         }
 
         @Override
@@ -126,7 +126,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             ASREngineService.LocalBinder binder = (ASREngineService.LocalBinder) service;
             asrService = (ASREngineService) binder.getService();
-            checkServicesReady();
+            // checkServicesReady();
         }
 
         @Override
@@ -140,7 +140,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             TTSEngineService.LocalBinder binder = (TTSEngineService.LocalBinder) service;
             ttsService = (TTSEngineService) binder.getService();
-            checkServicesReady();
+            // checkServicesReady();
         }
 
         @Override
@@ -619,13 +619,42 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+
+        // Release LLM resources when app is suspended
+        if (llmService != null) {
+            llmService.releaseResources();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        // Reinitialize LLM if needed
+        if (llmService != null && !llmService.isReady()) {
+            llmService.initialize()
+                    .thenAccept(success -> {
+                        if (!success) {
+                            Log.e(TAG, "Failed to reinitialize LLM");
+                            runOnUiThread(() -> Toast.makeText(this, "Failed to reinitialize LLM", Toast.LENGTH_SHORT).show());
+                        }
+                    });
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        // Unbind all services
+        // Release LLM resources
         if (llmService != null) {
+            llmService.releaseResources();
             unbindService(llmConnection);
         }
+
+        // Unbind other services
         if (vlmService != null) {
             unbindService(vlmConnection);
         }
@@ -636,7 +665,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             unbindService(ttsConnection);
         }
 
-        // Cleanup resources
+        // Cleanup other resources
         if (currentMediaPlayer != null) {
             currentMediaPlayer.release();
             currentMediaPlayer = null;
