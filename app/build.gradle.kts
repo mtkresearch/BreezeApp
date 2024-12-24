@@ -18,6 +18,10 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a"))
+        }
     }
 
     buildTypes {
@@ -56,6 +60,14 @@ android {
             excludes += "META-INF/notice.txt"
             excludes += "META-INF/*.kotlin_module"
         }
+    }
+    externalNativeBuild {
+        cmake {
+            path = File("src/main/cpp/CMakeLists.txt")
+        }
+    }
+    sourceSets.getByName("main") {
+        jniLibs.setSrcDirs(listOf("src/main/libs"))
     }
 }
 
