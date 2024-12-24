@@ -17,6 +17,10 @@ public class LLMEngineService extends BaseEngineService {
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
 
+    public interface StreamingResponseCallback {
+        void onToken(String token);
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return new LocalBinder();
@@ -62,6 +66,23 @@ public class LLMEngineService extends BaseEngineService {
         }
     }
 
+    public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        if (!isInitialized) {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            future.completeExceptionally(new IllegalStateException("Engine not initialized"));
+            return future;
+        }
+
+        switch (backend) {
+            case "mtk":
+                return generateMTKStreamingResponse(prompt, callback);
+            case "openai":
+                return generateOpenAIResponse(prompt); // Implement streaming for OpenAI if needed
+            default:
+                return CompletableFuture.completedFuture("I'm currently unavailable.");
+        }
+    }
+
     private CompletableFuture<String> generateMTKResponse(String prompt) {
         return CompletableFuture.supplyAsync(() -> {
             String response = nativeInference(prompt, 128, false);
@@ -70,6 +91,21 @@ public class LLMEngineService extends BaseEngineService {
             return response;
         });
     }
+
+    private CompletableFuture<String> generateMTKStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        return CompletableFuture.supplyAsync(() -> {
+            String response = nativeStreamingInference(prompt, 128, false, new TokenCallback() {
+                @Override
+                public void onToken(String token) {
+                    callback.onToken(token);
+                }
+            });
+            nativeResetLlm();
+            nativeSwapModel(128);
+            return response;
+        });
+    }
+
     private CompletableFuture<String> generateOpenAIResponse(String prompt) {
         return CompletableFuture.completedFuture("OpenAI response");
     }

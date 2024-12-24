@@ -43,19 +43,16 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
 
     public void addMessage(ChatMessage message) {
         messages.add(message);
-        int position = messages.size() - 1;
-        notifyItemInserted(position);
-        
-        if (!message.isUser()) {
-            if (message.getText() != null && !message.getText().isEmpty()) {
-                Log.d(TAG, "Starting text streaming for position: " + position);
-                streamText(message.getText(), position);
-            } else {
-                Log.d(TAG, "No text to stream for position: " + position);
-                completedPositions.add(position);
-                notifyItemChanged(position);
-            }
-        }
+        notifyItemInserted(messages.size() - 1);
+    }
+
+    public void updateMessage(int position) {
+        notifyItemChanged(position);
+    }
+
+    public void markMessageComplete(int position) {
+        completedPositions.add(position);
+        notifyItemChanged(position);
     }
 
     private void streamText(String text, int position) {
@@ -72,7 +69,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             String partialText = fullText.substring(0, currentCharIndex);
             messages.get(streamingPosition).updateText(partialText);
             notifyItemChanged(streamingPosition);
-            
+
             currentCharIndex++;
             handler.postDelayed(this::streamNextCharacter, 50);
         } else {
@@ -99,39 +96,49 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         ChatMessage message = messages.get(position);
         holder.bind(message);
 
-        // Get the ConstraintLayout params for the message bubble
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageBubble.getLayoutParams();
 
         if (message.isUser()) {
-            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-            params.horizontalBias = 1f;
-            holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
-            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
-            holder.speakerButton.setVisibility(View.GONE);
+            setupUserMessage(holder, params);
         } else {
-            params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
-            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-            params.horizontalBias = 0f;
-            holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
-            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
-            
-            boolean isStreaming = (position == streamingPosition);
-            boolean isCompleted = completedPositions.contains(position);
-            boolean hasText = message.getText() != null && !message.getText().isEmpty();
-            boolean hasImage = message.getImageUri() != null;
-            
-            Log.d(TAG, String.format("Message at position %d: Streaming=%b, Completed=%b, HasText=%b, HasImage=%b", 
-                position, isStreaming, isCompleted, hasText, hasImage));
-            
-            boolean shouldShowSpeaker = !message.isUser() && (!isStreaming && (isCompleted || hasImage));
-            Log.d(TAG, "Speaker visibility decision for position " + position + ": " + shouldShowSpeaker);
-            
-            holder.speakerButton.setVisibility(shouldShowSpeaker ? View.VISIBLE : View.GONE);
+            setupAIMessage(holder, params, position, message);
         }
         holder.messageBubble.setLayoutParams(params);
 
-        // Handle image visibility and loading
+        setupImageView(holder, message, position);
+        setupSpeakerButton(holder, message);
+    }
+
+    private void setupUserMessage(MessageViewHolder holder, ConstraintLayout.LayoutParams params) {
+        params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.horizontalBias = 1f;
+        holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
+        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
+        holder.speakerButton.setVisibility(View.GONE);
+    }
+
+    private void setupAIMessage(MessageViewHolder holder, ConstraintLayout.LayoutParams params, int position, ChatMessage message) {
+        params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.horizontalBias = 0f;
+        holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
+        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
+
+        boolean isCompleted = completedPositions.contains(position);
+        boolean hasText = message.getText() != null && !message.getText().isEmpty();
+        boolean hasImage = message.getImageUri() != null;
+
+        Log.d(TAG, String.format("Message at position %d: Completed=%b, HasText=%b, HasImage=%b",
+                position, isCompleted, hasText, hasImage));
+
+        boolean shouldShowSpeaker = !message.isUser() && (isCompleted || hasImage);
+        Log.d(TAG, "Speaker visibility decision for position " + position + ": " + shouldShowSpeaker);
+
+        holder.speakerButton.setVisibility(shouldShowSpeaker ? View.VISIBLE : View.GONE);
+    }
+
+    private void setupImageView(MessageViewHolder holder, ChatMessage message, int position) {
         Uri imageUri = message.getImageUri();
         if (imageUri != null) {
             Log.d(TAG, "Loading image for position " + position + ": " + imageUri);
@@ -147,8 +154,9 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         } else {
             holder.messageImage.setVisibility(View.GONE);
         }
+    }
 
-        // Setup speaker button click listener
+    private void setupSpeakerButton(MessageViewHolder holder, ChatMessage message) {
         holder.speakerButton.setOnClickListener(v -> {
             if (speakerClickListener != null) {
                 speakerClickListener.onSpeakerClick(message.getText());
