@@ -8,14 +8,39 @@
         android:id="@+id/messageContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/message_background"
-        android:padding="12dp">
+        android:orientation="horizontal">
+
+        <!-- User speaker button (shown for user messages) -->
+        <ImageButton
+            android:id="@+id/userSpeakerButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom"
+            android:layout_marginEnd="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:rotation="180"
+            android:scaleX="-1"
+            android:src="@drawable/ic_speaker"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/messageText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:background="@drawable/message_background"
+            android:padding="12dp"
             android:textSize="16sp" />
+
+        <!-- Assistant speaker button (shown for assistant messages) -->
+        <ImageButton
+            android:id="@+id/speakerButton"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="bottom"
+            android:layout_marginStart="8dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_speaker"
+            android:visibility="gone" />
 
     </LinearLayout>
 
