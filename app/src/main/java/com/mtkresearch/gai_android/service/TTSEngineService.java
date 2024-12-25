@@ -89,7 +89,7 @@ public class TTSEngineService extends BaseEngineService {
         // First check if TTS engine is installed
         if (!isTTSEngineInstalled()) {
             Log.e(TAG, "No TTS engine installed");
-            promptInstallTTSEngine();
+//            promptInstallTTSEngine();
             future.complete(false);
             return future;
         }
