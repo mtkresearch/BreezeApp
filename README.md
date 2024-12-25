@@ -14,6 +14,11 @@
 ### TTS model download
 https://k2-fsa.github.io/sherpa/onnx/tts/pretrained_models/index.html
 
+```bash
+wget https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2
+tar xvf vits-melo-tts-zh_en.tar.bz2
+rm vits-melo-tts-zh_en.tar.bz2
+
 
 ### ASR model download
 https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/tree/main/test_wavs
