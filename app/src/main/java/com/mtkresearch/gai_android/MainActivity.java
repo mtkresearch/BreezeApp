@@ -11,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -152,17 +153,27 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void bindServices() {
-        // Start and bind all services
-        startAndBindService(LLMEngineService.class, llmConnection);
-        startAndBindService(VLMEngineService.class, vlmConnection);
-        startAndBindService(ASREngineService.class, asrConnection);
-        startAndBindService(TTSEngineService.class, ttsConnection);
+        // Bind services sequentially to avoid memory pressure
+        startAndBindService(LLMEngineService.class, llmConnection, () -> {
+            startAndBindService(VLMEngineService.class, vlmConnection, () -> {
+                startAndBindService(ASREngineService.class, asrConnection, () -> {
+                    startAndBindService(TTSEngineService.class, ttsConnection, null);
+                });
+            });
+        });
     }
 
-    private void startAndBindService(Class<? extends BaseEngineService> serviceClass, ServiceConnection connection) {
+    private void startAndBindService(
+            Class<? extends BaseEngineService> serviceClass, 
+            ServiceConnection connection,
+            Runnable onComplete) {
         Intent intent = new Intent(this, serviceClass);
-        startService(intent); // Ensure service stays alive
+        startService(intent);
         bindService(intent, connection, Context.BIND_AUTO_CREATE);
+        
+        if (onComplete != null) {
+            new Handler().postDelayed(onComplete, 500); // Give time for binding
+        }
     }
 
     private void initializeService(BaseEngineService service, ImageView statusIndicator) {
@@ -245,10 +256,27 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unbindService(llmConnection);
-        unbindService(vlmConnection);
-        unbindService(asrConnection);
-        unbindService(ttsConnection);
+        if (isFinishing()) {
+            // Only stop services if activity is actually finishing
+            stopService(new Intent(this, LLMEngineService.class));
+            stopService(new Intent(this, VLMEngineService.class));
+            stopService(new Intent(this, ASREngineService.class));
+            stopService(new Intent(this, TTSEngineService.class));
+        }
+        // Always unbind
+        safeUnbindService(llmConnection);
+        safeUnbindService(vlmConnection);
+        safeUnbindService(asrConnection);
+        safeUnbindService(ttsConnection);
+    }
+
+    private void safeUnbindService(ServiceConnection connection) {
+        try {
+            unbindService(connection);
+        } catch (IllegalArgumentException e) {
+            // Service might not be bound
+            Log.w(TAG, "Service was not bound", e);
+        }
     }
 
     private void checkAndRequestPermissions() {
