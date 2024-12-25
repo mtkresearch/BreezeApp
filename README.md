@@ -1,9 +1,9 @@
 | Model Type | Local CPU | MTK NPU | Default |
 |-----------|-----------|---------|----------|
-| LLM       | ❌         | ❌       | ❌       |
+| LLM       | ❌         | ✅       | ❌       |
 | VLM       | ❌         | ❌       | ❌       |
-| ASR       | ❌         | ❌       | ✅       |
-| TTS       | ❌         | ❌       | ✅       |
+| ASR       | ✅         | ❌       | ✅       |
+| TTS       | ✅         | ❌       | ✅       |
 
 
 ### Testing Prompt:
