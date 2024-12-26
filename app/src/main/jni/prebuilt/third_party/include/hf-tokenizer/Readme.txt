@@ -1,1 +1,0 @@
-This is taken from https://github.com/wangkuiyi/huggingface-tokenizer-in-cxx
