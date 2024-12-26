@@ -20,6 +20,10 @@ public class ChatMessage {
         this.text = newText;
     }
 
+    public void appendText(String newText) {
+        this.text += newText;
+    }
+
     public boolean isUser() {
         return isUser;
     }

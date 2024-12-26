@@ -120,7 +120,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupChatButton() {
-        binding.startChatButton.setEnabled(false);
+//        binding.startChatButton.setEnabled(false); // original
+        binding.startChatButton.setEnabled(true); // for developing LLM
         binding.startChatButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, ChatActivity.class);
             startActivity(intent);
@@ -227,22 +228,35 @@ public class MainActivity extends AppCompatActivity {
                           vlmService != null && vlmService.isReady() &&
                           asrService != null && asrService.isReady() &&
                           ttsService != null && ttsService.isReady();
-        
+
         runOnUiThread(() -> {
-            binding.startChatButton.setEnabled(allReady);
-            
-            if (allReady) {
-                // When all services are ready, use primary colors
-                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+            // original logic
+//            binding.startChatButton.setEnabled(allReady);
+//
+//            if (allReady) {
+//                // When all services are ready, use primary colors
+//                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+//                    getResources().getColor(R.color.primary, getTheme())));
+//                binding.startChatButton.setTextColor(
+//                    getResources().getColor(R.color.text_secondary, getTheme()));
+//            } else {
+//                // When services are not ready, use surface and secondary text colors
+//                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+//                    getResources().getColor(R.color.surface, getTheme())));
+//                binding.startChatButton.setTextColor(
+//                    getResources().getColor(R.color.text_secondary, getTheme()));
+//            }
+//        });
+
+            // for develop LLM
+            binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
                     getResources().getColor(R.color.primary, getTheme())));
-                binding.startChatButton.setTextColor(
+            binding.startChatButton.setTextColor(
                     getResources().getColor(R.color.text_secondary, getTheme()));
-            } else {
-                // When services are not ready, use surface and secondary text colors
-                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
-                    getResources().getColor(R.color.surface, getTheme())));
-                binding.startChatButton.setTextColor(
-                    getResources().getColor(R.color.text_secondary, getTheme()));
+
+            // Optionally, you can show a toast or a small indicator if not all services are ready
+            if (!allReady) {
+                Toast.makeText(this, "Some services are still initializing", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -301,8 +315,10 @@ public class MainActivity extends AppCompatActivity {
                 bindServices();
             } else {
                 Log.e(TAG, "RECORD_AUDIO permission denied");
-                Toast.makeText(this, "Speech recognition requires audio permission", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Speech recognition may not work without audio permission", Toast.LENGTH_LONG).show();
                 updateEngineStatus(binding.asrStatusIndicator, EngineStatus.ERROR);
+                // Still bind services even if permission is denied
+                bindServices();  // for testing LLM
             }
         }
     }

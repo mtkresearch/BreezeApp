@@ -42,7 +42,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         messages.add(message);
         int position = messages.size() - 1;
         notifyItemInserted(position);
-        
+
         if (!message.isUser()) {
             streamText(message.getText(), position);
         }
@@ -61,7 +61,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             String partialText = fullText.substring(0, currentCharIndex);
             messages.get(streamingPosition).updateText(partialText);
             notifyItemChanged(streamingPosition);
-            
+
             currentCharIndex++;
             handler.postDelayed(this::streamNextCharacter, 50);
         } else {
@@ -75,7 +75,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
     @Override
     public MessageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
-            .inflate(R.layout.item_chat_message, parent, false);
+                .inflate(R.layout.item_chat_message, parent, false);
         return new MessageViewHolder(view);
     }
 
@@ -85,7 +85,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             Log.e(TAG, "Speaker buttons not properly initialized");
             return;
         }
-        
+
         ChatMessage message = messages.get(position);
         holder.bind(message);
 
@@ -99,11 +99,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
             holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
             holder.speakerButton.setVisibility(View.GONE);
-            
+
             // Show user speaker button only when message is complete
             boolean hasText = message.getText() != null && !message.getText().isEmpty();
             holder.userSpeakerButton.setVisibility(hasText ? View.VISIBLE : View.GONE);
-            
+
         } else {
             params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
             params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
@@ -111,7 +111,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
             holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
             holder.userSpeakerButton.setVisibility(View.GONE);
-            
+
             boolean isStreaming = (position == streamingPosition);
             Log.d(TAG, "Position: " + position + ", Streaming: " + isStreaming);
             holder.speakerButton.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
@@ -142,7 +142,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
                 speakerClickListener.onSpeakerClick(message.getText());
             }
         });
-        
+
         holder.userSpeakerButton.setOnClickListener(v -> {
             if (speakerClickListener != null) {
                 speakerClickListener.onSpeakerClick(message.getText());
@@ -175,4 +175,4 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             messageText.setText(message.getText());
         }
     }
-} 
+}
