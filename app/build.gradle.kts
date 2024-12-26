@@ -12,9 +12,16 @@ android {
         minSdk = 31
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0_main_llm"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a"))
+        }
     }
 
     buildTypes {
@@ -47,6 +54,14 @@ android {
             }
             jniLibs.srcDirs("src/main/jniLibs")
         }
+    }
+    externalNativeBuild {
+        cmake {
+            path = File("src/main/cpp/CMakeLists.txt")
+        }
+    }
+    sourceSets.getByName("main") {
+        jniLibs.setSrcDirs(listOf("src/main/libs"))
     }
 }
 

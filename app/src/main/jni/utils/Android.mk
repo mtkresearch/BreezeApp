@@ -1,0 +1,13 @@
+LOCAL_PATH := $(call my-dir)
+USER_LOCAL_C_INCLUDES := $(LOCAL_C_INCLUDES)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := utils
+LOCAL_SRC_FILES := utils.cpp NPUWareUtilsLib.cpp
+LOCAL_SHARED_LIBRARIES += llm_prebuilt common yaml_cpp
+LOCAL_C_INCLUDES := $(USER_LOCAL_C_INCLUDES)
+LOCAL_CFLAGS += -fexceptions
+
+include $(BUILD_STATIC_LIBRARY)
+
+LOCAL_C_INCLUDES := $(USER_LOCAL_C_INCLUDES)
