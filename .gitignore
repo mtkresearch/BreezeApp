@@ -125,3 +125,6 @@ app/src/main/assets/vits-melo-tts-zh_en/dict/pos_dict/char_state_tab.utf8
 app/src/main/assets/vits-melo-tts-zh_en/dict/pos_dict/prob_emit.utf8
 app/src/main/assets/vits-melo-tts-zh_en/dict/pos_dict/prob_start.utf8
 app/src/main/assets/vits-melo-tts-zh_en/dict/pos_dict/prob_trans.utf8
+
+# MTK relatated
+jni/*
