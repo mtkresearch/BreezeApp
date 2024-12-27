@@ -35,27 +35,20 @@ public class LLMEngineService extends BaseEngineService {
 
     @Override
     public CompletableFuture<Boolean> initialize() {
-        if (isInitialized) {
-            return CompletableFuture.completedFuture(true);
-        }
-
         return CompletableFuture.supplyAsync(() -> {
             try {
                 if (initializeMTKBackend()) {
                     backend = "mtk";
-                    isInitialized = true;
                     return true;
                 }
                 
                 if (initializeLocalBackend()) {
                     backend = "local";
-                    isInitialized = true;
                     return true;
                 }
                 
                 if (initializeLocalCPUBackend()) {
                     backend = "localCPU";
-                    isInitialized = true;
                     return true;
                 }
 
@@ -123,9 +116,7 @@ public class LLMEngineService extends BaseEngineService {
 
     public CompletableFuture<String> generateResponse(String prompt) {
         if (!isInitialized) {
-            CompletableFuture<String> future = new CompletableFuture<>();
-            future.completeExceptionally(new IllegalStateException("Engine not initialized"));
-            return future;
+            return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
         }
 
         return CompletableFuture.supplyAsync(() -> {
@@ -218,22 +209,17 @@ public class LLMEngineService extends BaseEngineService {
         }
     }
 
-    // ======================= MTK backend service =======================
-    // Existing native methods
-    public native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
-//    public native String nativeGenResponse(String inputString, int maxResponse, int firstInputToken);
-    public native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
-    public native void nativeReleaseLlm();
-
-    // New native methods for reset and model swap
-    public native boolean nativeResetLlm();
-    public native boolean nativeSwapModel(int tokenSize);
-
-    // New native method for streaming inference
-    public native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
-
     // Interface for token callback
     public interface TokenCallback {
         void onToken(String token);
     }
+
+    // ======================= MTK backend service =======================
+    private native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
+    private native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
+    private native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
+    private native void nativeReleaseLlm();
+    private native boolean nativeResetLlm();
+    private native boolean nativeSwapModel(int tokenSize);
+    
 } 
