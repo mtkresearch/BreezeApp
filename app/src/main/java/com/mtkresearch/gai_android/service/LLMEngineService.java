@@ -7,13 +7,20 @@ import android.os.IBinder;
 import android.util.Log;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+
+import javax.security.auth.callback.Callback;
 
 public class LLMEngineService extends BaseEngineService {
-    static {
-        System.loadLibrary("llm_jni");
-    }
+//    static {
+//        System.loadLibrary("llm_jni");
+//    }
 
     private static final String TAG = "LLMEngineService";
+    private static final long INIT_TIMEOUT_MS = 30000;
+    private static final boolean MTK_BACKEND_AVAILABLE = false;
+    private static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
+    private String backend = "none";
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
 
@@ -28,25 +35,90 @@ public class LLMEngineService extends BaseEngineService {
 
     @Override
     public CompletableFuture<Boolean> initialize() {
+        if (isInitialized) {
+            return CompletableFuture.completedFuture(true);
+        }
+
         return CompletableFuture.supplyAsync(() -> {
             try {
-                nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", false);
-                this.backend = "mtk";
-                Log.d(TAG, "Initializing LLM with backend: " + backend);
-                // Initialize LLM model and resources
-                isInitialized = true;
-                Log.d(TAG, "LLM initialization successful");
-                return true;
+                if (initializeMTKBackend()) {
+                    backend = "mtk";
+                    isInitialized = true;
+                    return true;
+                }
+                
+                if (initializeLocalBackend()) {
+                    backend = "local";
+                    isInitialized = true;
+                    return true;
+                }
+                
+                if (initializeLocalCPUBackend()) {
+                    backend = "localCPU";
+                    isInitialized = true;
+                    return true;
+                }
+
+                Log.e(TAG, "All backend initialization attempts failed");
+                return false;
             } catch (Exception e) {
-                Log.e(TAG, "Failed to initialize LLM", e);
+                Log.e(TAG, "Error during initialization", e);
                 return false;
             }
         });
     }
 
+    private boolean initializeMTKBackend() {
+        if (!MTK_BACKEND_AVAILABLE) {
+            Log.d(TAG, "MTK backend disabled, skipping");
+            return false;
+        }
+
+        try {
+            Log.d(TAG, "Attempting MTK backend initialization...");
+            return nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", false);
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing MTK backend", e);
+            return false;
+        }
+    }
+
+    private boolean initializeLocalBackend() {
+        try {
+            Log.d(TAG, "Attempting Local GPU backend initialization...");
+            // Add your local GPU initialization code here
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing Local GPU backend", e);
+            return false;
+        }
+    }
+
+    private boolean initializeLocalCPUBackend() {
+        try {
+            Log.d(TAG, "Attempting Local CPU backend initialization...");
+            // Add your local CPU initialization code here
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing Local CPU backend", e);
+            return false;
+        }
+    }
+
     @Override
     public boolean isReady() {
         return isInitialized;
+    }
+
+    protected void cleanupEngine() {
+        try {
+            if (backend.equals("mtk")) {
+                nativeReleaseLlm();
+            }
+            backend = "none";
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
     }
 
     public CompletableFuture<String> generateResponse(String prompt) {
@@ -56,30 +128,38 @@ public class LLMEngineService extends BaseEngineService {
             return future;
         }
 
-        switch (backend) {
-            case "mtk":
-                return generateMTKResponse(prompt);
-            case "openai":
-                return generateOpenAIResponse(prompt);
-            default:
-                return CompletableFuture.completedFuture("I'm currently unavailable.");
-        }
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                switch (backend) {
+                    case "mtk":
+                        return generateMTKResponse(prompt).get();
+                    case "localCPU":
+                        return generateLocalCPUResponse(prompt).get();
+                    default:
+                        return DEFAULT_ERROR_RESPONSE;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error generating response", e);
+                return DEFAULT_ERROR_RESPONSE;
+            }
+        });
     }
 
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
         if (!isInitialized) {
-            CompletableFuture<String> future = new CompletableFuture<>();
-            future.completeExceptionally(new IllegalStateException("Engine not initialized"));
-            return future;
+            // Even when not initialized, we should send the default error response
+            callback.onToken(DEFAULT_ERROR_RESPONSE);  // Send error message as a token
+            return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
         }
 
         switch (backend) {
             case "mtk":
                 return generateMTKStreamingResponse(prompt, callback);
-            case "openai":
-                return generateOpenAIResponse(prompt); // Implement streaming for OpenAI if needed
+            case "localCPU":
+                return generateLocalCPUStreamingResponse(prompt, callback);
             default:
-                return CompletableFuture.completedFuture("I'm currently unavailable.");
+                callback.onToken(DEFAULT_ERROR_RESPONSE);
+                return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
         }
     }
 
@@ -94,20 +174,31 @@ public class LLMEngineService extends BaseEngineService {
 
     private CompletableFuture<String> generateMTKStreamingResponse(String prompt, StreamingResponseCallback callback) {
         return CompletableFuture.supplyAsync(() -> {
-            String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                @Override
-                public void onToken(String token) {
-                    callback.onToken(token);
-                }
-            });
-            nativeResetLlm();
-            nativeSwapModel(128);
-            return response;
+            try {
+                String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                    @Override
+                    public void onToken(String token) {
+                        callback.onToken(token);
+                    }
+                });
+                nativeResetLlm();
+                nativeSwapModel(128);
+                return response;
+            } catch (Exception e) {
+                Log.e(TAG, "Error in streaming response", e);
+                return DEFAULT_ERROR_RESPONSE;
+            }
         });
     }
 
-    private CompletableFuture<String> generateOpenAIResponse(String prompt) {
-        return CompletableFuture.completedFuture("OpenAI response");
+    private CompletableFuture<String> generateLocalCPUResponse(String prompt) {
+        // Add local CPU inference implementation
+        return CompletableFuture.completedFuture("Local CPU not implemented");
+    }
+
+    private CompletableFuture<String> generateLocalCPUStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        // Add local CPU inference implementation
+        return CompletableFuture.completedFuture("Local CPU not implemented");
     }
 
     public void releaseResources() {
@@ -115,7 +206,9 @@ public class LLMEngineService extends BaseEngineService {
             switch (backend) {
                 case "mtk":
                     nativeReleaseLlm();
-                case "openai":
+                case "local":
+                    // TODO
+                case "localCPU":
                     // TODO
                 default:
                     // TODO
