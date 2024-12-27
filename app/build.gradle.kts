@@ -79,4 +79,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // Executorch
+    implementation("com.facebook.fbjni:fbjni:0.5.1")
+    implementation("com.google.code.gson:gson:2.8.6")
+    implementation("com.facebook.soloader:soloader:0.10.5")
+    implementation(files("libs/executorch-llama.aar"))
 }
