@@ -6,6 +6,8 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.executorch.Executorch;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -21,6 +23,8 @@ public class LLMEngineService extends BaseEngineService {
     private static final boolean MTK_BACKEND_AVAILABLE = false;
     private static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     private String backend = "none";
+
+    private Executorch executorch;
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
 
@@ -39,16 +43,13 @@ public class LLMEngineService extends BaseEngineService {
             try {
                 if (initializeMTKBackend()) {
                     backend = "mtk";
+                    isInitialized = true;
                     return true;
                 }
-                
-                if (initializeLocalBackend()) {
-                    backend = "local";
-                    return true;
-                }
-                
+
                 if (initializeLocalCPUBackend()) {
                     backend = "localCPU";
+                    isInitialized = true;
                     return true;
                 }
 
@@ -76,22 +77,11 @@ public class LLMEngineService extends BaseEngineService {
         }
     }
 
-    private boolean initializeLocalBackend() {
-        try {
-            Log.d(TAG, "Attempting Local GPU backend initialization...");
-            // Add your local GPU initialization code here
-            return false;
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing Local GPU backend", e);
-            return false;
-        }
-    }
-
     private boolean initializeLocalCPUBackend() {
         try {
             Log.d(TAG, "Attempting Local CPU backend initialization...");
-            // Add your local CPU initialization code here
-            return false;
+            executorch = new Executorch();
+            return executorch.initialize();
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Local CPU backend", e);
             return false;
@@ -105,8 +95,16 @@ public class LLMEngineService extends BaseEngineService {
 
     protected void cleanupEngine() {
         try {
-            if (backend.equals("mtk")) {
-                nativeReleaseLlm();
+            switch (backend) {
+                case "mtk":
+                    nativeReleaseLlm();
+                    break;
+                case "localCPU":
+                    if (executorch != null) {
+                        executorch.cleanup();
+                        executorch = null;
+                    }
+                    break;
             }
             backend = "none";
         } catch (Exception e) {
@@ -184,12 +182,12 @@ public class LLMEngineService extends BaseEngineService {
 
     private CompletableFuture<String> generateLocalCPUResponse(String prompt) {
         // Add local CPU inference implementation
-        return CompletableFuture.completedFuture("Local CPU not implemented");
+        return executorch.generateResponse(prompt);
     }
 
     private CompletableFuture<String> generateLocalCPUStreamingResponse(String prompt, StreamingResponseCallback callback) {
         // Add local CPU inference implementation
-        return CompletableFuture.completedFuture("Local CPU not implemented");
+        return executorch.generateStreamingResponse(prompt, token -> callback.onToken(token));
     }
 
     public void releaseResources() {
@@ -197,10 +195,11 @@ public class LLMEngineService extends BaseEngineService {
             switch (backend) {
                 case "mtk":
                     nativeReleaseLlm();
-                case "local":
-                    // TODO
                 case "localCPU":
-                    // TODO
+                    if (executorch != null) {
+                    executorch.cleanup();
+                    executorch = null;
+                }
                 default:
                     // TODO
             }
