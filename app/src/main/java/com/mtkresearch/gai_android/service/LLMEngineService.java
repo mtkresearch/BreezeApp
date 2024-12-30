@@ -1,17 +1,17 @@
 package com.mtkresearch.gai_android.service;
 
-import android.app.Service;
 import android.content.Intent;
-import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
 import com.executorch.Executorch;
+import com.executorch.PromptFormat;
+import com.executorch.SettingsFields;
+import com.executorch.ModelType;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 
-import javax.security.auth.callback.Callback;
 
 public class LLMEngineService extends BaseEngineService {
 //    static {
@@ -19,12 +19,21 @@ public class LLMEngineService extends BaseEngineService {
 //    }
 
     private static final String TAG = "LLMEngineService";
-    private static final long INIT_TIMEOUT_MS = 30000;
+    private static final long INIT_TIMEOUT_MS = 120000;
+    private static final long GENERATION_TIMEOUT_MS = 30000;
     private static final boolean MTK_BACKEND_AVAILABLE = false;
     private static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     private String backend = "none";
-
-    private Executorch executorch;
+    
+    // Local CPU backend (executorch)
+    private Executorch mExecutorch = null;
+    private static final String MODEL_PATH = "/data/local/tmp/llama/llama3_2.pte";
+    private static final String TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
+    private static final double TEMPERATURE = 0.8f;
+    private CompletableFuture<String> currentResponse = new CompletableFuture<>();
+    private StreamingResponseCallback currentCallback = null;
+    private StringBuilder currentStreamingResponse = new StringBuilder();
+    private boolean hasSeenAssistantMarker = false;
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
 
@@ -80,35 +89,97 @@ public class LLMEngineService extends BaseEngineService {
     private boolean initializeLocalCPUBackend() {
         try {
             Log.d(TAG, "Attempting Local CPU backend initialization...");
-            executorch = new Executorch();
-            return executorch.initialize();
+
+            if (mExecutorch != null) {
+                mExecutorch.release();
+            }
+
+            SettingsFields settings = new SettingsFields();
+            settings.saveModelPath(MODEL_PATH);
+            settings.saveTokenizerPath(TOKENIZER_PATH);
+            settings.saveModelType(ModelType.LLAMA_3);  // Using default model type
+            settings.saveParameters(TEMPERATURE);
+            settings.saveLoadModelAction(true);
+
+            CompletableFuture<Boolean> initFuture = new CompletableFuture<>();
+
+            mExecutorch = new Executorch(getApplicationContext(), settings, new Executorch.ExecutorCallback() {
+                @Override
+                public void onInitialized(boolean success) {
+                    initFuture.complete(success);
+                }
+
+                @Override
+                public void onGenerating(String token) {
+                    if (currentCallback != null) {
+                        // Skip stop tokens
+                        if (token.equals(PromptFormat.getStopToken(settings.getModelType()))) {
+                            return;
+                        }
+
+                        // Check for assistant marker based on model type
+                        if (!hasSeenAssistantMarker) {
+                            if (settings.getModelType() == ModelType.LLAMA_3 || 
+                                settings.getModelType() == ModelType.LLAMA_3_1 || 
+                                settings.getModelType() == ModelType.LLAMA_3_2 ||
+                                settings.getModelType() == ModelType.LLAMA_GUARD_3) {
+                                if (token.contains("<|start_header_id|>assistant<|end_header_id|>")) {
+                                    hasSeenAssistantMarker = true;
+                                }
+                                return; // Skip all tokens until we see assistant marker
+                            } else if (settings.getModelType() == ModelType.LLAVA_1_5) {
+                                if (token.contains("ASSISTANT:")) {
+                                    hasSeenAssistantMarker = true;
+                                }
+                                return; // Skip all tokens until we see ASSISTANT: marker
+                            }
+                        }
+                        
+                        // Only process tokens after we've seen the assistant marker
+                        if (hasSeenAssistantMarker) {
+                            if (token.equals("\n\n") || token.equals("\n")) {
+                                if (currentStreamingResponse.length() > 0) {
+                                    currentStreamingResponse.append(token);
+                                    currentCallback.onToken(token);
+                                }
+                            } else {
+                                currentStreamingResponse.append(token);
+                                currentCallback.onToken(token);
+                            }
+                        }
+                    }
+                }
+
+                @Override
+                public void onGenerationComplete() {
+                    if (currentResponse != null) {
+                        currentResponse.complete(currentStreamingResponse.toString());
+                        currentStreamingResponse.setLength(0);  // Reset for next use
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e(TAG, "Executorch error: " + error);
+                    if (currentResponse != null) {
+                        currentResponse.completeExceptionally(new RuntimeException(error));
+                    }
+                    currentStreamingResponse.setLength(0);  // Reset on error
+                }
+
+                @Override
+                public void onMetrics(float tokensPerSecond, long totalTime) {
+                    Log.d(TAG, String.format("Generation metrics: %.2f tokens/sec, %d ms total", 
+                        tokensPerSecond, totalTime));
+                }
+            });
+
+            mExecutorch.initialize();
+            return initFuture.get(INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Local CPU backend", e);
             return false;
-        }
-    }
-
-    @Override
-    public boolean isReady() {
-        return isInitialized;
-    }
-
-    protected void cleanupEngine() {
-        try {
-            switch (backend) {
-                case "mtk":
-                    nativeReleaseLlm();
-                    break;
-                case "localCPU":
-                    if (executorch != null) {
-                        executorch.cleanup();
-                        executorch = null;
-                    }
-                    break;
-            }
-            backend = "none";
-        } catch (Exception e) {
-            Log.e(TAG, "Error during cleanup", e);
         }
     }
 
@@ -121,9 +192,15 @@ public class LLMEngineService extends BaseEngineService {
             try {
                 switch (backend) {
                     case "mtk":
-                        return generateMTKResponse(prompt).get();
+                        String response = nativeInference(prompt, 256, false);
+                        nativeResetLlm();
+                        nativeSwapModel(128);
+                        return response;
                     case "localCPU":
-                        return generateLocalCPUResponse(prompt).get();
+                        CompletableFuture<String> future = new CompletableFuture<>();
+                        currentResponse = future;
+                        mExecutorch.generate(prompt);
+                        return future.get(INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                     default:
                         return DEFAULT_ERROR_RESPONSE;
                 }
@@ -135,90 +212,69 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
-        if (!isInitialized) {
-            // Even when not initialized, we should send the default error response
-            callback.onToken(DEFAULT_ERROR_RESPONSE);  // Send error message as a token
-            return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
-        }
-
-        switch (backend) {
-            case "mtk":
-                return generateMTKStreamingResponse(prompt, callback);
-            case "localCPU":
-                return generateLocalCPUStreamingResponse(prompt, callback);
-            default:
-                callback.onToken(DEFAULT_ERROR_RESPONSE);
-                return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
-        }
-    }
-
-    private CompletableFuture<String> generateMTKResponse(String prompt) {
-        return CompletableFuture.supplyAsync(() -> {
-            String response = nativeInference(prompt, 256, false);
-            nativeResetLlm();
-            nativeSwapModel(128);
-            return response;
-        });
-    }
-
-    private CompletableFuture<String> generateMTKStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        hasSeenAssistantMarker = false;
+        currentCallback = callback;
+        currentResponse = new CompletableFuture<>();
+        currentStreamingResponse.setLength(0);
+        
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                    @Override
-                    public void onToken(String token) {
-                        callback.onToken(token);
-                    }
-                });
-                nativeResetLlm();
-                nativeSwapModel(128);
-                return response;
+                switch (backend) {
+                    case "mtk":
+                        String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                            @Override
+                            public void onToken(String token) {
+                                callback.onToken(token);
+                            }
+                        });
+                        nativeResetLlm();
+                        nativeSwapModel(128);
+                        return response;
+                    case "localCPU":
+                        mExecutorch.generate(prompt);
+                        return currentResponse.get(INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    default:
+                        callback.onToken(DEFAULT_ERROR_RESPONSE);
+                        return DEFAULT_ERROR_RESPONSE;
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error in streaming response", e);
+                callback.onToken(DEFAULT_ERROR_RESPONSE);
                 return DEFAULT_ERROR_RESPONSE;
             }
         });
     }
 
-    private CompletableFuture<String> generateLocalCPUResponse(String prompt) {
-        // Add local CPU inference implementation
-        return executorch.generateResponse(prompt);
-    }
-
-    private CompletableFuture<String> generateLocalCPUStreamingResponse(String prompt, StreamingResponseCallback callback) {
-        // Add local CPU inference implementation
-        return executorch.generateStreamingResponse(prompt, token -> callback.onToken(token));
-    }
-
     public void releaseResources() {
-        if (isInitialized) {
-            switch (backend) {
-                case "mtk":
-                    nativeReleaseLlm();
-                case "localCPU":
-                    if (executorch != null) {
-                    executorch.cleanup();
-                    executorch = null;
-                }
-                default:
-                    // TODO
+        try {
+            if (backend.equals("mtk")) {
+                nativeReleaseLlm();
+            } else if (backend.equals("localCPU") && mExecutorch != null) {
+                mExecutorch.release();
+                mExecutorch = null;
             }
-
+            backend = "none";
             isInitialized = false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
         }
     }
 
-    // Interface for token callback
-    public interface TokenCallback {
-        void onToken(String token);
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        releaseResources();
     }
 
-    // ======================= MTK backend service =======================
+    // Native methods for MTK backend
     private native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
     private native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
     private native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
     private native void nativeReleaseLlm();
     private native boolean nativeResetLlm();
     private native boolean nativeSwapModel(int tokenSize);
-    
+
+    public interface TokenCallback {
+        void onToken(String token);
+    }
 } 
