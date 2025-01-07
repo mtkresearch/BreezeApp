@@ -467,23 +467,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.messageInput.setText("");
         binding.messageInputExpanded.setText("");
 
-        // Add an empty AI message to the chat
+        // Add an empty AI message that will be updated with streaming tokens
         ChatMessage aiMessage = new ChatMessage("", false);
         adapter.addMessage(aiMessage);
         scrollToLatestMessage(true);
 
-        // Process with LLM service using streaming
+        // Generate response with streaming
         llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
             @Override
             public void onToken(String token) {
                 runOnUiThread(() -> {
-                    updateStreamingResponse(aiMessage, token);
+                    aiMessage.appendText(token);
+                    adapter.notifyItemChanged(adapter.getItemCount() - 1);
+                    scrollToLatestMessage(false);
                 });
             }
         }).thenAccept(fullResponse -> {
-            // This is called when the full response is complete
             runOnUiThread(() -> {
-                // Ensure the full response is set (in case of any discrepancies)
+                // Ensure the complete response is set correctly
                 aiMessage.updateText(fullResponse);
                 adapter.notifyItemChanged(adapter.getItemCount() - 1);
                 scrollToLatestMessage(true);
@@ -491,7 +492,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }).exceptionally(throwable -> {
             Log.e(TAG, "Error processing message", throwable);
             runOnUiThread(() -> {
-                Toast.makeText(ChatActivity.this, "Error processing message", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this,
+                        "Error processing message", Toast.LENGTH_SHORT).show();
             });
             return null;
         });
