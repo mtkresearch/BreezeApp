@@ -12,7 +12,7 @@ android {
         minSdk = 31
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0_main_llm"
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -22,6 +22,9 @@ android {
         ndk {
             abiFilters.addAll(listOf("arm64-v8a"))
         }
+
+        // Set default app name in manifest placeholders
+        manifestPlaceholders["app_name"] = "GAI Android"
     }
 
     buildTypes {
@@ -35,7 +38,8 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true  // Enable view binding
+        buildConfig = true  // Enable BuildConfig generation
+        viewBinding = true  // Keep existing viewBinding
     }
 
     compileOptions {
@@ -55,11 +59,39 @@ android {
             jniLibs.srcDirs("src/main/jniLibs")
         }
     }
-//    externalNativeBuild {
-//        cmake {
-//            path = File("src/main/cpp/CMakeLists.txt")
-//        }
-//    }
+
+    // TODO: refactor this, currently used for MTK NPU support
+    // externalNativeBuild {
+    //     cmake {
+    //         path = File("src/main/cpp/CMakeLists.txt")
+    //     }
+    // }
+
+    flavorDimensions += "version"
+    productFlavors {
+        create("llm") {
+            dimension = "version"
+            applicationIdSuffix = ".llm"
+            versionNameSuffix = "-llm"
+            resValue("string", "app_name", "GAI-LLM")
+            buildConfigField("String", "GIT_BRANCH", "\"llm_cpu\"")
+        }
+        create("vlm") {
+            dimension = "version"
+            applicationIdSuffix = ".vlm"
+            versionNameSuffix = "-vlm"
+            resValue("string", "app_name", "GAI-VLM")
+            buildConfigField("String", "GIT_BRANCH", "\"vlm_cpu\"")
+        }
+        create("full") {
+            dimension = "version"
+            applicationIdSuffix = ".full"
+            versionNameSuffix = "-full"
+            resValue("string", "app_name", "GAI-Full")
+            buildConfigField("String", "GIT_BRANCH", "\"main\"")
+        }
+    }
+
 //    sourceSets.getByName("main") {
 //        jniLibs.setSrcDirs(listOf("src/main/libs"))
 //    }
@@ -84,5 +116,35 @@ dependencies {
     implementation("com.facebook.fbjni:fbjni:0.5.1")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.facebook.soloader:soloader:0.10.5")
-    implementation(files("libs/executorch-llama.aar"))
+    implementation(files("libs/executorch.aar"))
+}
+
+// Add task to switch git branch based on flavor
+tasks.register("switchGitBranch") {
+    doLast {
+        val selectedFlavor = project.gradle.startParameter.taskRequests
+            .flatMap { it.args }
+            .firstOrNull { it.contains("assemble") && (it.contains("Llm") || it.contains("Vlm") || it.contains("Full")) }
+            ?.let { task ->
+                when {
+                    task.contains("Llm") -> "llm_cpu"
+                    task.contains("Vlm") -> "vlm_cpu"
+                    task.contains("Full") -> "main"
+                    else -> null
+                }
+            }
+
+        if (selectedFlavor != null) {
+            exec {
+                commandLine("git", "checkout", selectedFlavor)
+            }
+        }
+    }
+}
+
+// Make all assemble tasks depend on switchGitBranch
+tasks.whenTaskAdded {
+    if (name.startsWith("assemble")) {
+        dependsOn("switchGitBranch")
+    }
 }
