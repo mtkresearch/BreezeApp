@@ -116,7 +116,7 @@ dependencies {
     implementation("com.facebook.fbjni:fbjni:0.5.1")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.facebook.soloader:soloader:0.10.5")
-    implementation(files("libs/executorch.aar"))
+    implementation(files("libs/executorch-llama.aar"))
 }
 
 // Add task to switch git branch based on flavor
