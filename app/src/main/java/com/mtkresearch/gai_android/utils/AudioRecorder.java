@@ -53,4 +53,15 @@ public class AudioRecorder {
         }
         return 0;
     }
+
+    public void release() {
+        if (mediaRecorder != null) {
+            try {
+                mediaRecorder.release();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            mediaRecorder = null;
+        }
+    }
 } 
