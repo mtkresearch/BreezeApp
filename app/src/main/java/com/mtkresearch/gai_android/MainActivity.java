@@ -28,6 +28,7 @@ import com.mtkresearch.gai_android.service.BaseEngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
+import com.mtkresearch.gai_android.utils.NativeLibraryLoader;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -109,9 +110,31 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        // Load native libraries first
+        try {
+            NativeLibraryLoader.loadLibraries();
+        } catch (UnsatisfiedLinkError e) {
+            Log.e(TAG, "Failed to load native libraries", e);
+            Toast.makeText(this, "Failed to initialize: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
+        // Setup UI before checking permissions
         setupUI();
         displayDeviceInfo();
-        checkAndRequestPermissions();
+        
+        // Check permissions before binding services
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            Log.d(TAG, "Requesting RECORD_AUDIO permission");
+            ActivityCompat.requestPermissions(this,
+                new String[]{android.Manifest.permission.RECORD_AUDIO},
+                PERMISSION_REQUEST_CODE);
+        } else {
+            Log.d(TAG, "RECORD_AUDIO permission already granted");
+            bindServices();
+        }
     }
 
     private void setupUI() {
@@ -154,14 +177,19 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void bindServices() {
-        // Bind services sequentially to avoid memory pressure
-        startAndBindService(LLMEngineService.class, llmConnection, () -> {
-            startAndBindService(VLMEngineService.class, vlmConnection, () -> {
-                startAndBindService(ASREngineService.class, asrConnection, () -> {
-                    startAndBindService(TTSEngineService.class, ttsConnection, null);
+        // Initialize status indicators first
+        initializeStatusIndicators();
+        
+        // Bind services with delays to avoid memory pressure
+        new Handler().postDelayed(() -> {
+            startAndBindService(LLMEngineService.class, llmConnection, () -> {
+                startAndBindService(VLMEngineService.class, vlmConnection, () -> {
+                    startAndBindService(ASREngineService.class, asrConnection, () -> {
+                        startAndBindService(TTSEngineService.class, ttsConnection, null);
+                    });
                 });
             });
-        });
+        }, 500);
     }
 
     private void startAndBindService(
@@ -282,19 +310,6 @@ public class MainActivity extends AppCompatActivity {
         } catch (IllegalArgumentException e) {
             // Service might not be bound
             Log.w(TAG, "Service was not bound", e);
-        }
-    }
-
-    private void checkAndRequestPermissions() {
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Requesting RECORD_AUDIO permission");
-            ActivityCompat.requestPermissions(this,
-                new String[]{android.Manifest.permission.RECORD_AUDIO},
-                PERMISSION_REQUEST_CODE);
-        } else {
-            Log.d(TAG, "RECORD_AUDIO permission already granted");
-            bindServices();
         }
     }
 
