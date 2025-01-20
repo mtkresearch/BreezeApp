@@ -56,7 +56,9 @@ android {
             java {
                 srcDirs("src/main/java")
             }
-            jniLibs.srcDirs("src/main/jniLibs")
+            jniLibs {
+                srcDirs("libs")
+            }
         }
     }
 
@@ -95,6 +97,20 @@ android {
 //    sourceSets.getByName("main") {
 //        jniLibs.setSrcDirs(listOf("src/main/libs"))
 //    }
+
+    dependencies {
+        implementation(fileTree(mapOf(
+            "dir" to "../libs",
+            "include" to listOf("*.jar", "*.aar")
+        )))
+    }
+
+    // Add this to ensure proper packaging of native libraries
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {
@@ -117,6 +133,16 @@ dependencies {
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.facebook.soloader:soloader:0.10.5")
     implementation(files("libs/executorch-llama.aar"))
+
+    // Add explicit dependency for Sherpa native libraries
+    implementation(fileTree(mapOf(
+        "dir" to "../libs",
+        "include" to listOf(
+            "*.jar",
+            "*.aar",
+            "*.so"
+        )
+    )))
 }
 
 // Add task to switch git branch based on flavor
