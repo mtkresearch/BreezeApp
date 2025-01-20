@@ -13,10 +13,10 @@ import java.util.Locale;
 public class AudioRecorder {
     private static final String TAG = "AudioRecorder";
     private MediaRecorder mediaRecorder;
-    private File outputFile;
     private final Context context;
     private String currentRecordingPath;
     private File recordingsDir;
+    private boolean isRecording = false;
 
     public AudioRecorder(Context context) {
         this.context = context;
@@ -27,6 +27,11 @@ public class AudioRecorder {
     }
     
     public void startRecording() throws IOException {
+        if (isRecording) {
+            stopRecording();
+            return;
+        }
+
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String fileName = "AUDIO_" + timeStamp + ".m4a";
         File outputFile = new File(recordingsDir, fileName);
@@ -44,6 +49,7 @@ public class AudioRecorder {
         try {
             mediaRecorder.prepare();
             mediaRecorder.start();
+            isRecording = true;
         } catch (IOException e) {
             Log.e(TAG, "Failed to start recording", e);
             releaseRecorder();
@@ -52,38 +58,40 @@ public class AudioRecorder {
     }
     
     public void stopRecording() {
-        if (mediaRecorder != null) {
-            try {
-                mediaRecorder.stop();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "Error stopping recorder", e);
-            } finally {
-                releaseRecorder();
-            }
+        if (!isRecording) return;
+        
+        try {
+            mediaRecorder.stop();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "Error stopping recorder", e);
+        } finally {
+            releaseRecorder();
+            isRecording = false;
         }
     }
     
     public void cancelRecording() {
-        if (mediaRecorder != null) {
-            try {
-                mediaRecorder.stop();
-            } catch (IllegalStateException e) {
-                Log.e(TAG, "Error stopping recorder", e);
-            } finally {
-                releaseRecorder();
-                // Delete the current recording file
-                if (currentRecordingPath != null) {
-                    File recordingFile = new File(currentRecordingPath);
-                    if (recordingFile.exists()) {
-                        recordingFile.delete();
-                    }
+        if (!isRecording) return;
+        
+        try {
+            mediaRecorder.stop();
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "Error stopping recorder", e);
+        } finally {
+            releaseRecorder();
+            isRecording = false;
+            // Delete the current recording file
+            if (currentRecordingPath != null) {
+                File recordingFile = new File(currentRecordingPath);
+                if (recordingFile.exists()) {
+                    recordingFile.delete();
                 }
             }
         }
     }
     
     public int getMaxAmplitude() {
-        if (mediaRecorder != null) {
+        if (mediaRecorder != null && isRecording) {
             try {
                 return mediaRecorder.getMaxAmplitude();
             } catch (IllegalStateException e) {
@@ -93,12 +101,16 @@ public class AudioRecorder {
         return 0;
     }
 
+    public boolean isRecording() {
+        return isRecording;
+    }
+
     private void releaseRecorder() {
         if (mediaRecorder != null) {
             try {
                 mediaRecorder.release();
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e(TAG, "Error releasing recorder", e);
             }
             mediaRecorder = null;
         }

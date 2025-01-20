@@ -8,8 +8,6 @@ import android.util.Log;
 import android.widget.Toast;
 import androidx.core.content.FileProvider;
 
-import com.mtkresearch.gai_android.utils.FileUtils;
-
 import java.io.File;
 import java.io.IOException;
 
@@ -87,6 +85,17 @@ public class ChatMediaHandler {
 
     public boolean isRecording() {
         return isRecording;
+    }
+
+    public ChatMessage handleSelectedFile(Uri fileUri) {
+        try {
+            String fileName = FileUtils.getFileName(context, fileUri);
+            return new ChatMessage("Attached file: " + fileName, true);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to process file", e);
+            Toast.makeText(context, "Failed to process file", Toast.LENGTH_SHORT).show();
+            return null;
+        }
     }
 
     public void release() {
