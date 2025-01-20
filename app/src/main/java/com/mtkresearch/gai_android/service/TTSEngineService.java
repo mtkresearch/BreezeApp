@@ -1,12 +1,6 @@
 package com.mtkresearch.gai_android.service;
 
-import static com.k2fsa.sherpa.onnx.TtsKt.getOfflineTtsConfig;
-
-import android.app.Service;
-import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.media.AudioAttributes;
 import android.media.AudioFormat;
 import android.media.AudioTrack;
@@ -16,10 +10,8 @@ import android.os.Looper;
 import android.speech.tts.TextToSpeech;
 import android.util.Log;
 
-import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 
-import com.k2fsa.sherpa.onnx.ModelConfig;
 import com.k2fsa.sherpa.onnx.SherpaTTS;
 
 import java.io.File;
@@ -27,7 +19,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
