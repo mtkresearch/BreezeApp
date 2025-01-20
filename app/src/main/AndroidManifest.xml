@@ -80,7 +80,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.mtkresearch.gai_android.fileprovider"
+            android:authorities="${file_provider_authority}"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

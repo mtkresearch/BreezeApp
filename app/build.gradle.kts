@@ -77,6 +77,7 @@ android {
             versionNameSuffix = "-llm"
             resValue("string", "app_name", "GAI-LLM")
             buildConfigField("String", "GIT_BRANCH", "\"llm_cpu\"")
+            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.llm.fileprovider"
         }
         create("vlm") {
             dimension = "version"
@@ -84,6 +85,7 @@ android {
             versionNameSuffix = "-vlm"
             resValue("string", "app_name", "GAI-VLM")
             buildConfigField("String", "GIT_BRANCH", "\"vlm_cpu\"")
+            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.vlm.fileprovider"
         }
         create("full") {
             dimension = "version"
@@ -91,6 +93,15 @@ android {
             versionNameSuffix = "-full"
             resValue("string", "app_name", "GAI-Full")
             buildConfigField("String", "GIT_BRANCH", "\"main\"")
+            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.full.fileprovider"
+        }
+        create("open_source") {
+            dimension = "version"
+            applicationIdSuffix = ".open_source"
+            versionNameSuffix = "-open_source"
+            resValue("string", "app_name", "GAI-open_source")
+            buildConfigField("String", "GIT_BRANCH", "\"main\"")
+            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.open_source.fileprovider"
         }
     }
 
