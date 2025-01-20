@@ -4,6 +4,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -138,11 +140,10 @@ public class UiUtils {
      */
     public static void scrollToLatestMessage(RecyclerView recyclerView, int itemCount, boolean smooth) {
         if (itemCount > 0) {
-            int targetPosition = itemCount - 1;
             if (smooth) {
-                recyclerView.smoothScrollToPosition(targetPosition);
+                recyclerView.smoothScrollToPosition(itemCount - 1);
             } else {
-                recyclerView.scrollToPosition(targetPosition);
+                recyclerView.scrollToPosition(itemCount - 1);
             }
         }
     }
@@ -151,19 +152,8 @@ public class UiUtils {
      * Sets up a RecyclerView with chat-style configuration
      */
     public static void setupChatRecyclerView(RecyclerView recyclerView, RecyclerView.Adapter adapter) {
-        LinearLayoutManager layoutManager = new LinearLayoutManager(recyclerView.getContext());
-        layoutManager.setStackFromEnd(true);
-        recyclerView.setLayoutManager(layoutManager);
+        recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
         recyclerView.setAdapter(adapter);
-
-        // Add padding to allow scrolling content up
-        recyclerView.setPadding(
-            recyclerView.getPaddingLeft(),
-            recyclerView.getHeight() / 2, // Half screen padding at top
-            recyclerView.getPaddingRight(),
-            recyclerView.getPaddingBottom()
-        );
-        recyclerView.setClipToPadding(false);
     }
 
     /**
@@ -251,5 +241,20 @@ public class UiUtils {
             storageDir.mkdirs();
         }
         return File.createTempFile(imageFileName, ".jpg", storageDir);
+    }
+
+    public static TextWatcher createTextWatcher(Runnable onTextChanged) {
+        return new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                onTextChanged.run();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        };
     }
 }
