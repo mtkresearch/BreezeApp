@@ -1,7 +1,6 @@
 package com.k2fsa.sherpa.onnx;
 
 import android.content.Context
-import android.content.res.AssetManager
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream

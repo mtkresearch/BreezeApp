@@ -123,7 +123,7 @@ android {
 
     dependencies {
         implementation(fileTree(mapOf(
-            "dir" to "../libs",
+            "dir" to "libs",
             "include" to listOf("*.jar", "*.aar")
         )))
     }
@@ -148,7 +148,7 @@ dependencies {
     implementation("com.facebook.fbjni:fbjni:0.5.1")
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.facebook.soloader:soloader:0.10.5")
-    implementation(files("libs/executorch-llama.aar"))
+    implementation(files("libs/executorch.aar"))
 
     // Add explicit dependency for Sherpa native libraries
     implementation(fileTree(mapOf(
