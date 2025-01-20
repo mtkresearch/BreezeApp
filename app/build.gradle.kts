@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.ProductFlavor
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -69,6 +71,12 @@ android {
     //     }
     // }
 
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     flavorDimensions += "version"
     productFlavors {
         create("llm") {
@@ -77,7 +85,8 @@ android {
             versionNameSuffix = "-llm"
             resValue("string", "app_name", "GAI-LLM")
             buildConfigField("String", "GIT_BRANCH", "\"llm_cpu\"")
-            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.llm.fileprovider"
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.llm.fileprovider"
         }
         create("vlm") {
             dimension = "version"
@@ -85,7 +94,8 @@ android {
             versionNameSuffix = "-vlm"
             resValue("string", "app_name", "GAI-VLM")
             buildConfigField("String", "GIT_BRANCH", "\"vlm_cpu\"")
-            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.vlm.fileprovider"
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.vlm.fileprovider"
         }
         create("full") {
             dimension = "version"
@@ -93,7 +103,8 @@ android {
             versionNameSuffix = "-full"
             resValue("string", "app_name", "GAI-Full")
             buildConfigField("String", "GIT_BRANCH", "\"main\"")
-            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.full.fileprovider"
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.full.fileprovider"
         }
         create("open_source") {
             dimension = "version"
@@ -101,7 +112,8 @@ android {
             versionNameSuffix = "-open_source"
             resValue("string", "app_name", "GAI-open_source")
             buildConfigField("String", "GIT_BRANCH", "\"main\"")
-            manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.gai_android.open_source.fileprovider"
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.open_source.fileprovider"
         }
     }
 
@@ -114,13 +126,6 @@ android {
             "dir" to "../libs",
             "include" to listOf("*.jar", "*.aar")
         )))
-    }
-
-    // Add this to ensure proper packaging of native libraries
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging = true
-        }
     }
 }
 
@@ -156,30 +161,33 @@ dependencies {
     )))
 }
 
-// Add task to switch git branch based on flavor
+// Git Branch Switch Task
 tasks.register("switchGitBranch") {
     doLast {
         val selectedFlavor = project.gradle.startParameter.taskRequests
             .flatMap { it.args }
-            .firstOrNull { it.contains("assemble") && (it.contains("Llm") || it.contains("Vlm") || it.contains("Full")) }
+            .firstOrNull { it.contains("assemble") && 
+                (it.contains("Llm") || it.contains("Vlm") || 
+                 it.contains("Full") || it.contains("OpenSource")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
+                    task.contains("OpenSource") -> "open_source"
                     else -> null
                 }
             }
 
-        if (selectedFlavor != null) {
+        selectedFlavor?.let {
             exec {
-                commandLine("git", "checkout", selectedFlavor)
+                commandLine("git", "checkout", it)
             }
         }
     }
 }
 
-// Make all assemble tasks depend on switchGitBranch
+// Make assemble tasks depend on switchGitBranch
 tasks.whenTaskAdded {
     if (name.startsWith("assemble")) {
         dependsOn("switchGitBranch")
