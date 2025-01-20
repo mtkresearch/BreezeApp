@@ -63,17 +63,43 @@ git clone https://github.com/muxi1998/GAI-android.git
 ## Project Structure
 
 ```
-app/src/main/
-├── java/com/
-│   ├── executorch/        # Executorch framework integration for LLM/VLM
-│   ├── k2fsa/            # Sherpa integration for ASR/TTS
-│   └── mtkresearch/      # Main application code
-│       ├── adapters/     # RecyclerView adapters
-│       ├── models/       # Data models
-│       └── service/      # AI engine services
-├── cpp/                  # Native code for MTK backend
-├── assets/              # Model files (to be downloaded separately)
-└── res/                 # Android resources
+app/src/main
+├── AndroidManifest.xml
+├── assets
+│   ├── sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20
+│   └── vits-melo-tts-zh_en
+├── cpp
+│   ├── CMakeLists.txt
+│   └── mtk_llm_jni.cpp
+├── java
+│   └── com
+│       ├── executorch
+│       ├── k2fsa
+│       │   └── sherpa
+│       │       └── onnx
+│       └── mtkresearch
+│           └── gai_android
+│               ├── AudioChatActivity.java
+│               ├── ChatActivity.java
+│               ├── MainActivity.java
+│               ├── service
+│               │   ├── ASREngineService.java
+│               │   ├── BaseEngineService.java
+│               │   ├── LLMEngineService.java
+│               │   ├── TTSEngineService.java
+│               │   └── VLMEngineService.java
+│               └── utils
+│                   ├── AudioListAdapter.java
+│                   ├── AudioRecorder.java
+│                   ├── AudioWaveView.java
+│                   ├── ChatMediaHandler.java
+│                   ├── ChatMessage.java
+│                   ├── ChatMessageAdapter.java
+│                   ├── ChatUIStateHandler.java
+│                   ├── FileUtils.java
+│                   ├── NativeLibraryLoader.java
+│                   └── UiUtils.java
+└── res
 ```
 
 ## Architecture
