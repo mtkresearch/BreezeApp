@@ -1,8 +1,8 @@
 package com.mtkresearch.gai_android;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.database.Cursor;
@@ -15,14 +15,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -30,28 +26,24 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.mtkresearch.gai_android.adapters.AudioListAdapter;
-import com.mtkresearch.gai_android.adapters.ChatMessageAdapter;
+import com.mtkresearch.gai_android.utils.AudioListAdapter;
+import com.mtkresearch.gai_android.utils.ChatMessageAdapter;
 import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
-import com.mtkresearch.gai_android.models.ChatMessage;
+import com.mtkresearch.gai_android.utils.ChatMessage;
 
 import java.io.File;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
+
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import androidx.constraintlayout.widget.ConstraintLayout;
+
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.mtkresearch.gai_android.audio.AudioRecorder;
+import com.mtkresearch.gai_android.utils.AudioRecorder;
 import com.mtkresearch.gai_android.service.ASREngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
@@ -174,10 +166,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void checkServicesReady() {
         if (llmService != null && vlmService != null &&
-            asrService != null && ttsService != null) {
+                asrService != null && ttsService != null) {
 
             if (!llmService.isReady() || !vlmService.isReady() ||
-                !asrService.isReady() || !ttsService.isReady()) {
+                    !asrService.isReady() || !ttsService.isReady()) {
                 Toast.makeText(this, "AI Services not ready", Toast.LENGTH_SHORT).show();
                 finish();
                 return;
@@ -221,10 +213,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Add padding to allow scrolling content up
         binding.recyclerView.setPadding(
-            binding.recyclerView.getPaddingLeft(),
-            binding.recyclerView.getHeight() / 2, // Half screen padding at top
-            binding.recyclerView.getPaddingRight(),
-            binding.recyclerView.getPaddingBottom()
+                binding.recyclerView.getPaddingLeft(),
+                binding.recyclerView.getHeight() / 2, // Half screen padding at top
+                binding.recyclerView.getPaddingRight(),
+                binding.recyclerView.getPaddingBottom()
         );
         binding.recyclerView.setClipToPadding(false);
     }
@@ -334,8 +326,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void updateSendButtonState() {
         String message = binding.expandedInput.getVisibility() == View.VISIBLE ?
-            binding.messageInputExpanded.getText().toString() :
-            binding.messageInput.getText().toString();
+                binding.messageInputExpanded.getText().toString() :
+                binding.messageInput.getText().toString();
 
         boolean shouldShowSend = !message.isEmpty() || pendingImageUri != null;
         updateSendButton(shouldShowSend);
@@ -349,7 +341,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Scroll RecyclerView to bottom when keyboard appears
         binding.recyclerView.postDelayed(() ->
-            binding.recyclerView.smoothScrollToPosition(adapter.getItemCount()), 100);
+                binding.recyclerView.smoothScrollToPosition(adapter.getItemCount()), 100);
     }
 
     private void collapseInputSection() {
@@ -365,8 +357,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void showAttachmentOptions() {
         PopupMenu popup = new PopupMenu(new ContextThemeWrapper(this, R.style.PopupMenuStyle),
-            binding.expandedInput.getVisibility() == View.VISIBLE ?
-            binding.attachButtonExpanded : binding.attachButton);
+                binding.expandedInput.getVisibility() == View.VISIBLE ?
+                        binding.attachButtonExpanded : binding.attachButton);
 
         popup.getMenu().add(0, 1, 0, "Attach Photos").setIcon(R.drawable.ic_gallery);
         popup.getMenu().add(0, 2, 0, "Take Photo").setIcon(R.drawable.ic_camera);
@@ -508,20 +500,20 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Process with VLM service
         vlmService.analyzeImage(imageUri, message)
-            .thenAccept(response -> {
-                runOnUiThread(() -> {
-                    ChatMessage aiMessage = new ChatMessage(response, false);
-                    adapter.addMessage(aiMessage);
-                    scrollToLatestMessage(true);
+                .thenAccept(response -> {
+                    runOnUiThread(() -> {
+                        ChatMessage aiMessage = new ChatMessage(response, false);
+                        adapter.addMessage(aiMessage);
+                        scrollToLatestMessage(true);
+                    });
+                })
+                .exceptionally(throwable -> {
+                    Log.e(TAG, "Error analyzing image", throwable);
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Error analyzing image", Toast.LENGTH_SHORT).show();
+                    });
+                    return null;
                 });
-            })
-            .exceptionally(throwable -> {
-                Log.e(TAG, "Error analyzing image", throwable);
-                runOnUiThread(() -> {
-                    Toast.makeText(this, "Error analyzing image", Toast.LENGTH_SHORT).show();
-                });
-                return null;
-            });
     }
 
     private void handleImageInput() {
@@ -619,8 +611,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     int maxAmplitude = audioRecorder.getMaxAmplitude();
                     // Convert to 0-1 range with log scale
                     float amplitude = maxAmplitude > 0
-                        ? (float) (1.0 / Math.log(32768) * Math.log(maxAmplitude))
-                        : 0f;
+                            ? (float) (1.0 / Math.log(32768) * Math.log(maxAmplitude))
+                            : 0f;
                     binding.recordingInput.audioWaveView.updateAmplitude(amplitude);
                     handler.postDelayed(this, 100);
                 }
@@ -749,12 +741,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     public void onSpeakerClick(String messageText) {
         if (ttsService != null && ttsService.isReady()) {
             ttsService.speak(messageText)
-                .exceptionally(throwable -> {
-                    Log.e(TAG, "Error converting text to speech", throwable);
-                    runOnUiThread(() ->
-                        Toast.makeText(this, "Error playing audio", Toast.LENGTH_SHORT).show());
-                    return null;
-                });
+                    .exceptionally(throwable -> {
+                        Log.e(TAG, "Error converting text to speech", throwable);
+                        runOnUiThread(() ->
+                                Toast.makeText(this, "Error playing audio", Toast.LENGTH_SHORT).show());
+                        return null;
+                    });
         } else {
             Toast.makeText(this, "TTS service not ready", Toast.LENGTH_SHORT).show();
         }
@@ -857,6 +849,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
     }
 
+    @SuppressLint("Range")
     private String getFileName(Uri uri) {
         String result = null;
         if (uri.getScheme().equals("content")) {
@@ -908,8 +901,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void setupAudioWaveButton() {
         View.OnClickListener audioWaveClickListener = v -> {
             String message = binding.expandedInput.getVisibility() == View.VISIBLE ?
-                binding.messageInputExpanded.getText().toString() :
-                binding.messageInput.getText().toString();
+                    binding.messageInputExpanded.getText().toString() :
+                    binding.messageInput.getText().toString();
 
             if (!message.isEmpty() || pendingImageUri != null) {
                 if (pendingImageUri != null) {
@@ -926,7 +919,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.messageInputExpanded.setText("");
                 if (pendingImageUri != null) {
                     binding.expandedInput.findViewById(R.id.imagePreviewContainer)
-                        .setVisibility(View.GONE);
+                            .setVisibility(View.GONE);
                     pendingImageUri = null;
                 }
                 collapseInputSection();
