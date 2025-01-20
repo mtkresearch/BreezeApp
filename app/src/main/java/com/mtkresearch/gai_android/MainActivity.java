@@ -230,33 +230,25 @@ public class MainActivity extends AppCompatActivity {
                           ttsService != null && ttsService.isReady();
 
         runOnUiThread(() -> {
-            // original logic
-//            binding.startChatButton.setEnabled(allReady);
-//
-//            if (allReady) {
-//                // When all services are ready, use primary colors
-//                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
-//                    getResources().getColor(R.color.primary, getTheme())));
-//                binding.startChatButton.setTextColor(
-//                    getResources().getColor(R.color.text_secondary, getTheme()));
-//            } else {
-//                // When services are not ready, use surface and secondary text colors
-//                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
-//                    getResources().getColor(R.color.surface, getTheme())));
-//                binding.startChatButton.setTextColor(
-//                    getResources().getColor(R.color.text_secondary, getTheme()));
-//            }
-//        });
+            // Production mode - button state depends on service readiness
+            binding.startChatButton.setEnabled(allReady);
 
-            // for develop LLM
-            binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+            if (allReady) {
+                // When all services are ready, use primary colors
+                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
                     getResources().getColor(R.color.primary, getTheme())));
-            binding.startChatButton.setTextColor(
+                binding.startChatButton.setTextColor(
+                    getResources().getColor(R.color.text_primary, getTheme()));
+            } else {
+                // When services are not ready, use surface and secondary text colors
+                binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+                    getResources().getColor(R.color.surface, getTheme())));
+                binding.startChatButton.setTextColor(
                     getResources().getColor(R.color.text_secondary, getTheme()));
-
-            // Optionally, you can show a toast or a small indicator if not all services are ready
-            if (!allReady) {
-                Toast.makeText(this, "Some services are still initializing", Toast.LENGTH_SHORT).show();
+                
+                // Show initialization status
+                Toast.makeText(this, "Some services are still initializing", 
+                    Toast.LENGTH_SHORT).show();
             }
         });
     }
