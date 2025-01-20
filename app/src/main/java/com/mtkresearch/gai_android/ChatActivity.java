@@ -1,58 +1,27 @@
 package com.mtkresearch.gai_android;
 
-import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
-import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.database.Cursor;
-import android.os.Environment;
 import android.os.IBinder;
-import android.provider.MediaStore;
-import android.provider.OpenableColumns;
-import android.view.ContextThemeWrapper;
 import android.net.Uri;
 import android.os.Bundle;
-import android.text.Editable;
 import android.text.TextWatcher;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.PopupMenu;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.FileProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.mtkresearch.gai_android.utils.AudioListAdapter;
+import com.mtkresearch.gai_android.utils.ChatMediaHandler;
 import com.mtkresearch.gai_android.utils.ChatMessageAdapter;
 import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
 import com.mtkresearch.gai_android.utils.ChatMessage;
 
 import java.io.File;
-import java.lang.reflect.Method;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
-import android.os.Handler;
-import android.os.Looper;
-import android.widget.EditText;
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.recyclerview.widget.RecyclerView;
 
-import com.mtkresearch.gai_android.utils.AudioRecorder;
 import com.mtkresearch.gai_android.service.ASREngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
@@ -61,14 +30,13 @@ import com.mtkresearch.gai_android.utils.UiUtils;
 
 import java.io.IOException;
 import android.content.pm.PackageManager;
-import android.media.MediaPlayer;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import android.util.Log;
 
 import com.mtkresearch.gai_android.utils.FileUtils;
-import com.mtkresearch.gai_android.utils.ChatMediaHandler;
 import com.mtkresearch.gai_android.utils.ChatUIStateHandler;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
@@ -177,13 +145,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void setupRecordingControls() {
         binding.recordingInput.cancelRecordingButton.setOnClickListener(v -> {
-            mediaHandler.stopRecording(false);
-            if (asrService != null) asrService.stopListening();
+            stopRecording(false);
         });
 
         binding.recordingInput.finishRecordingButton.setOnClickListener(v -> {
-            if (asrService != null) asrService.stopListening();
-            mediaHandler.stopRecording(true);
+            stopRecording(true);
         });
     }
 
@@ -293,11 +259,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
 
         if (mediaHandler.isRecording()) {
-            mediaHandler.stopRecording(true);
+            stopRecording(true);
         } else {
             startRecording();
         }
-        uiHandler.updateRecordingState(mediaHandler.isRecording());
     }
 
     private void startRecording() {
@@ -306,6 +271,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             return;
         }
 
+        // Start ASR service first
         asrService.startListening(result -> {
             runOnUiThread(() -> {
                 if (result.startsWith("Partial: ")) {
@@ -315,16 +281,25 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     binding.messageInput.setText(result);
                     binding.messageInputExpanded.setText(result);
                     uiHandler.updateSendButtonState();
-                    mediaHandler.stopRecording(false);
+                    stopRecording(false);
                 } else if (result.startsWith("Error: ")) {
                     Toast.makeText(this, result, Toast.LENGTH_SHORT).show();
-                    mediaHandler.stopRecording(false);
+                    stopRecording(false);
                 }
             });
         });
 
+        // Then start audio recording
         mediaHandler.startRecording();
         uiHandler.updateRecordingState(true);
+    }
+
+    private void stopRecording(boolean shouldSave) {
+        if (asrService != null) {
+            asrService.stopListening();
+        }
+        mediaHandler.stopRecording(shouldSave);
+        uiHandler.updateRecordingState(false);
     }
 
     private void showAttachmentOptions() {
@@ -426,20 +401,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 break;
             case PICK_FILE_REQUEST:
                 if (data != null && data.getData() != null) {
-                    handleSelectedFile(data.getData());
+                    ChatMessage fileMessage = mediaHandler.handleSelectedFile(data.getData());
+                    if (fileMessage != null) {
+                        chatAdapter.addMessage(fileMessage);
+                    }
                 }
                 break;
-        }
-    }
-
-    private void handleSelectedFile(Uri fileUri) {
-        try {
-            String fileName = FileUtils.getFileName(this, fileUri);
-            ChatMessage fileMessage = new ChatMessage("Attached file: " + fileName, true);
-            chatAdapter.addMessage(fileMessage);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to process file", e);
-            Toast.makeText(this, "Failed to process file", Toast.LENGTH_SHORT).show();
         }
     }
 
