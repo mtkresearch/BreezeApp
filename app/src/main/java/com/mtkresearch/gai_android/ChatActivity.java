@@ -70,28 +70,45 @@ import android.util.Log;
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
 
-    private ActivityChatBinding binding;
-    private ChatMessageAdapter adapter;
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private Runnable timerRunnable;
-    private Runnable visualizationRunnable;
-    private AudioRecorder audioRecorder;
-    private File recordingFile;
-    private boolean isRecording = false;
+    // Request codes
     private static final int PERMISSION_REQUEST_CODE = 123;
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int CAPTURE_IMAGE_REQUEST = 2;
     private static final int PICK_FILE_REQUEST = 3;
-    private MediaPlayer currentMediaPlayer;
-    private AudioListAdapter audioListAdapter;
-    private String currentPhotoPath;
-    private Uri pendingImageUri;
 
-    // Engine Services
+    // Enum definition for pending actions
+    private enum PendingAction {
+        PICK_IMAGE,
+        PICK_FILE,
+        SAVE_RECORDING
+    }
+
+    // View Binding
+    private ActivityChatBinding binding;
+
+    // Adapters
+    private ChatMessageAdapter adapter;
+    private AudioListAdapter audioListAdapter;
+
+    // Services
     private LLMEngineService llmService;
     private VLMEngineService vlmService;
     private ASREngineService asrService;
     private TTSEngineService ttsService;
+
+    // Audio Related
+    private AudioRecorder audioRecorder;
+    private MediaPlayer currentMediaPlayer;
+    private boolean isRecording = false;
+    private Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable timerRunnable;
+    private Runnable visualizationRunnable;
+
+    // File Related
+    private String currentPhotoPath;
+    private Uri pendingImageUri;
+    private String lastRequestedPermission;
+    private PendingAction pendingAction;
 
     // Service Connections
     private final ServiceConnection llmConnection = new ServiceConnection() {
@@ -157,14 +174,46 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        setupButtons();
-        audioRecorder = new AudioRecorder(this);
-        setupRecyclerView();
-        setupClickListeners();
-        setupInputMode();
-        setupAudioWaveButton();
-
+        initializeUI();
         bindServices();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        releaseLLMResources();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        reinitializeLLMIfNeeded();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        cleanup();
+    }
+
+    private void initializeUI() {
+        setupRecyclerView();
+        setupButtons();
+        setupInputMode();
+        setupAudioRecorder();
+    }
+
+    private void setupRecyclerView() {
+        adapter = new ChatMessageAdapter();
+        adapter.setSpeakerClickListener(this);
+        UiUtils.setupChatRecyclerView(binding.recyclerView, adapter);
+    }
+
+    private void setupButtons() {
+        setupNavigationButtons();
+        setupAttachmentButtons();
+        setupVoiceButtons();
+        setupSendButton();
     }
 
     private void bindServices() {
@@ -175,19 +224,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void checkServicesReady() {
-        if (llmService != null && vlmService != null &&
-            asrService != null && ttsService != null) {
+        boolean allServicesConnected = llmService != null && vlmService != null && 
+                                     asrService != null && ttsService != null;
+        if (!allServicesConnected) return;
 
-            if (!llmService.isReady() || !vlmService.isReady() ||
-                !asrService.isReady() || !ttsService.isReady()) {
-                Toast.makeText(this, "AI Services not ready", Toast.LENGTH_SHORT).show();
-                finish();
-                return;
-            }
-
-            // Enable UI when all services are ready
-            enableUI();
+        boolean allReady = llmService.isReady() && vlmService.isReady() && 
+                          asrService.isReady() && ttsService.isReady();
+        if (!allReady) {
+            Toast.makeText(this, "AI Services not ready", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
+        enableUI();
     }
 
     private void enableUI() {
@@ -201,47 +249,23 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.attachButtonExpanded.setEnabled(true);
     }
 
-    private void setupButtons() {
+    private void setupNavigationButtons() {
         binding.homeButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, MainActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             finish();
         });
-
-        // ... rest of your existing button setup code
     }
 
-    private void setupRecyclerView() {
-        adapter = new ChatMessageAdapter();
-        adapter.setSpeakerClickListener((ChatMessageAdapter.OnSpeakerClickListener) this);  // Explicit cast
-        binding.recyclerView.setAdapter(adapter);
-
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true);
-        binding.recyclerView.setLayoutManager(layoutManager);
-
-        // Add padding to allow scrolling content up
-        binding.recyclerView.setPadding(
-            binding.recyclerView.getPaddingLeft(),
-            binding.recyclerView.getHeight() / 2, // Half screen padding at top
-            binding.recyclerView.getPaddingRight(),
-            binding.recyclerView.getPaddingBottom()
-        );
-        binding.recyclerView.setClipToPadding(false);
-    }
-
-    private void setupClickListeners() {
-        // Prevent click events from propagating through the input container
-        binding.inputContainer.setOnClickListener(v -> {
-            // Consume the click event
-        });
-
+    private void setupAttachmentButtons() {
         // Attach button listeners
         View.OnClickListener attachClickListener = v -> showAttachmentOptions();
         binding.attachButton.setOnClickListener(attachClickListener);
         binding.attachButtonExpanded.setOnClickListener(attachClickListener);
+    }
 
+    private void setupVoiceButtons() {
         // Voice button listeners - update to toggle recording
         View.OnClickListener voiceClickListener = v -> {
             if (isRecording) {
@@ -276,47 +300,67 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.voiceButtonExpanded.setOnLongClickListener(voiceLongClickListener);
     }
 
-    private void setupInputMode() {
-        View.OnTouchListener outsideTouchListener = (v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                if (binding.expandedInput.getVisibility() == View.VISIBLE) {
-                    String currentText = binding.messageInputExpanded.getText().toString();
-                    if (currentText.isEmpty()) {
-                        binding.messageInputExpanded.clearFocus();
-                        collapseInputSection();
-                        updateSendButton(false);
-                    }
+    private void setupSendButton() {
+        View.OnClickListener audioWaveClickListener = v -> {
+            String message = binding.expandedInput.getVisibility() == View.VISIBLE ?
+                binding.messageInputExpanded.getText().toString() :
+                binding.messageInput.getText().toString();
+
+            if (!message.isEmpty() || pendingImageUri != null) {
+                if (pendingImageUri != null) {
+                    handleImageMessage(pendingImageUri, message);
+                } else {
+                    handleUserMessage(message);
                 }
+
+                // Scroll to the latest message
+                scrollToLatestMessage(true);
+
+                // Clear input
+                binding.messageInput.setText("");
+                binding.messageInputExpanded.setText("");
+                if (pendingImageUri != null) {
+                    binding.expandedInput.findViewById(R.id.imagePreviewContainer)
+                        .setVisibility(View.GONE);
+                    pendingImageUri = null;
+                }
+                collapseInputSection();
+                updateSendButton(false);
+            } else {
+                Intent intent = new Intent(this, AudioChatActivity.class);
+                startActivity(intent);
             }
-            return false;
         };
 
-        binding.getRoot().setOnTouchListener(outsideTouchListener);
-        binding.recyclerView.setOnTouchListener(outsideTouchListener);
+        binding.sendButton.setOnClickListener(audioWaveClickListener);
+        binding.sendButtonExpanded.setOnClickListener(audioWaveClickListener);
+    }
 
-        // Prevent touch events from being consumed by the input container
-        binding.inputContainer.setOnTouchListener((v, event) -> {
-            v.performClick();
-            return false;
-        });
-
-        binding.messageInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
-                expandInputSection();
+    private void setupInputMode() {
+        UiUtils.setupInputFieldFocus(
+            binding.collapsedInput,
+            binding.expandedInput,
+            binding.messageInput,
+            binding.messageInputExpanded,
+            this::expandInputSection,
+            () -> {
+                collapseInputSection();
+                updateSendButton(false);
             }
-        });
+        );
 
-        binding.messageInputExpanded.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                String currentText = binding.messageInputExpanded.getText().toString();
-                if (currentText.isEmpty()) {
-                    collapseInputSection();
-                    updateSendButton(false);
-                }
+        UiUtils.setupInputTouchListeners(
+            binding.getRoot(),
+            binding.recyclerView,
+            binding.expandedInput,
+            binding.messageInputExpanded,
+            () -> {
+                collapseInputSection();
+                updateSendButton(false);
             }
-        });
+        );
 
-        // Sync text between both input fields and update button states
+        // Add text watchers
         TextWatcher textWatcher = new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -359,10 +403,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.collapsedInput.setVisibility(View.VISIBLE);
     }
 
-    private void updateSendButton(boolean hasText) {
-        int icon = hasText ? R.drawable.ic_send : R.drawable.ic_audio_wave;
-        binding.sendButton.setImageResource(icon);
-        binding.sendButtonExpanded.setImageResource(icon);
+    private void updateSendButton(boolean hasContent) {
+        UiUtils.updateSendButtonIcon(binding.sendButton, binding.sendButtonExpanded, hasContent);
     }
 
     private void showAttachmentOptions() {
@@ -456,54 +498,48 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         scrollToLatestMessage(false);
     }
 
-    // Modified methods to use services
     private void handleUserMessage(String message) {
         if (message.trim().isEmpty()) return;
 
-        // Add user message to chat
+        sendUserMessage(message);
+        clearInputAndCollapse();
+        generateAIResponse(message);
+    }
+
+    private void sendUserMessage(String message) {
         ChatMessage userMessage = new ChatMessage(message, true);
         adapter.addMessage(userMessage);
         scrollToLatestMessage(true);
+    }
 
-        // Clear input
-        binding.messageInput.setText("");
-        binding.messageInputExpanded.setText("");
-
-        // Add an empty AI message that will be updated with streaming tokens
+    private void generateAIResponse(String message) {
         ChatMessage aiMessage = new ChatMessage("", false);
         adapter.addMessage(aiMessage);
         scrollToLatestMessage(true);
 
-        // Generate response with streaming
         llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
             @Override
             public void onToken(String token) {
-                runOnUiThread(() -> {
-                    aiMessage.appendText(token);
-                    adapter.notifyItemChanged(adapter.getItemCount() - 1);
-                    scrollToLatestMessage(false);
-                });
+                runOnUiThread(() -> updateStreamingResponse(aiMessage, token));
             }
         }).thenAccept(fullResponse -> {
-            runOnUiThread(() -> {
-                // Ensure the complete response is set correctly
-                aiMessage.updateText(fullResponse);
-                adapter.notifyItemChanged(adapter.getItemCount() - 1);
-                scrollToLatestMessage(true);
-            });
-        }).exceptionally(throwable -> {
-            Log.e(TAG, "Error processing message", throwable);
-            runOnUiThread(() -> {
-                Toast.makeText(ChatActivity.this,
-                        "Error processing message", Toast.LENGTH_SHORT).show();
-            });
-            return null;
-        });
+            runOnUiThread(() -> finalizeAIResponse(aiMessage, fullResponse));
+        }).exceptionally(this::handleAIError);
     }
 
-    /**
-     * Handles the selection of an image from gallery or camera
-     */
+    private Void handleAIError(Throwable throwable) {
+        Log.e(TAG, "Error processing message", throwable);
+        runOnUiThread(() -> 
+            Toast.makeText(this, "Error processing message", Toast.LENGTH_SHORT).show());
+        return null;
+    }
+
+    private void finalizeAIResponse(ChatMessage aiMessage, String fullResponse) {
+        aiMessage.updateText(fullResponse);
+        adapter.notifyItemChanged(adapter.getItemCount() - 1);
+        scrollToLatestMessage(true);
+    }
+
     private void handleSelectedImage(Uri imageUri) {
         if (imageUri == null) {
             Log.e(TAG, "Cannot handle selected image: imageUri is null");
@@ -517,9 +553,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         updateSendButtonState();
     }
 
-    /**
-     * Shows the image preview in the expanded input section
-     */
     private void showImagePreview(Uri imageUri) {
         if (imageUri == null) {
             Log.e(TAG, "Cannot show image preview: imageUri is null");
@@ -532,9 +565,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
     }
 
-    /**
-     * Processes an image message with text
-     */
     private void handleImageMessage(Uri imageUri, String message) {
         if (imageUri == null) {
             Log.e(TAG, "Cannot handle image message: imageUri is null");
@@ -551,9 +581,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         processImageWithVLM(imageUri, message);
     }
 
-    /**
-     * Processes an image with the VLM service
-     */
     private void processImageWithVLM(Uri imageUri, String message) {
         if (vlmService == null) {
             Log.e(TAG, "Cannot process image: VLM service is null");
@@ -652,65 +679,44 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         return null;
     }
 
-    private void startRecordingTimer() {
-        timerRunnable = new Runnable() {
-            int seconds = 0;
-            @Override
-            public void run() {
-                if (binding.recordingInput.getRoot().getVisibility() == View.VISIBLE) {
-                    int minutes = seconds / 60;
-                    int secs = seconds % 60;
-                    binding.recordingInput.recordingTimer.setText(String.format("%d:%02d", minutes, secs));
-                    seconds++;
-                    handler.postDelayed(this, 1000);
-                }
-            }
-        };
-        handler.postDelayed(timerRunnable, 1000);
-    }
-
-    private void startAudioVisualization() {
+    private void setupAudioRecorder() {
+        audioRecorder = new AudioRecorder(this);
+        
+        // Setup visualization runnable
         visualizationRunnable = new Runnable() {
             @Override
             public void run() {
-                if (binding.recordingInput.getRoot().getVisibility() == View.VISIBLE) {
-                    int maxAmplitude = audioRecorder.getMaxAmplitude();
-                    // Convert to 0-1 range with log scale
-                    float amplitude = maxAmplitude > 0
-                        ? (float) (1.0 / Math.log(32768) * Math.log(maxAmplitude))
-                        : 0f;
-                    binding.recordingInput.audioWaveView.updateAmplitude(amplitude);
+                if (isRecording && audioRecorder != null) {
+                    int amplitude = audioRecorder.getMaxAmplitude();
+                    // Update visualization if needed
                     handler.postDelayed(this, 100);
                 }
             }
         };
-        handler.postDelayed(visualizationRunnable, 100);
+
+        // Setup timer runnable
+        timerRunnable = new Runnable() {
+            private int seconds = 0;
+            @Override
+            public void run() {
+                if (isRecording) {
+                    seconds++;
+                    // Update timer UI if needed
+                    handler.postDelayed(this, 1000);
+                } else {
+                    seconds = 0;
+                }
+            }
+        };
     }
 
-    private void stopRecordingTimer() {
-        if (timerRunnable != null) {
-            handler.removeCallbacks(timerRunnable);
-        }
-        if (visualizationRunnable != null) {
-            handler.removeCallbacks(visualizationRunnable);
-        }
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        // Release LLM resources when app is suspended
+    private void releaseLLMResources() {
         if (llmService != null) {
             llmService.releaseResources();
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        // Reinitialize LLM if needed
+    private void reinitializeLLMIfNeeded() {
         if (llmService != null && !llmService.isReady()) {
             llmService.initialize()
                     .thenAccept(success -> {
@@ -722,35 +728,43 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
+    private void cleanup() {
+        unbindAllServices();
+        releaseMediaResources();
+        binding = null;
+    }
 
-        // Release LLM resources
+    private void unbindAllServices() {
         if (llmService != null) {
             llmService.releaseResources();
             unbindService(llmConnection);
         }
+        if (vlmService != null) unbindService(vlmConnection);
+        if (asrService != null) unbindService(asrConnection);
+        if (ttsService != null) unbindService(ttsConnection);
+    }
 
-        // Unbind other services
-        if (vlmService != null) {
-            unbindService(vlmConnection);
-        }
-        if (asrService != null) {
-            unbindService(asrConnection);
-        }
-        if (ttsService != null) {
-            unbindService(ttsConnection);
-        }
-
-        // Cleanup other resources
+    private void releaseMediaResources() {
         if (currentMediaPlayer != null) {
             currentMediaPlayer.release();
             currentMediaPlayer = null;
         }
-        audioRecorder.stopRecording();
+        if (audioRecorder != null) {
+            audioRecorder.stopRecording(); // Stop recording first
+            audioRecorder = null; // Just set to null since we don't need to release
+        }
         stopRecordingTimer();
-        binding = null;
+    }
+
+    private void stopRecordingTimer() {
+        if (handler != null) {
+            if (timerRunnable != null) {
+                handler.removeCallbacks(timerRunnable);
+            }
+            if (visualizationRunnable != null) {
+                handler.removeCallbacks(visualizationRunnable);
+            }
+        }
     }
 
     @Override
@@ -797,9 +811,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
     }
 
-    /**
-     * Handles the result from gallery image selection
-     */
     private void handleGalleryResult(Intent data) {
         if (data == null || data.getData() == null) {
             Log.e(TAG, "Gallery result has no data");
@@ -808,9 +819,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         handleSelectedImage(data.getData());
     }
 
-    /**
-     * Handles the result from camera capture
-     */
     private void handleCameraResult() {
         if (currentPhotoPath == null) {
             Log.e(TAG, "Camera result has no photo path");
@@ -823,9 +831,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         updateSendButtonState();
     }
 
-    /**
-     * Handles the result from file selection
-     */
     private void handleFileResult(Intent data) {
         if (data == null || data.getData() == null) {
             Log.e(TAG, "File result has no data");
@@ -865,12 +870,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         Arrays.sort(files, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
         List<File> audioFiles = new ArrayList<>(Arrays.asList(files));
 
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        View dialogView = getLayoutInflater().inflate(R.layout.dialog_audio_list, null);
-        RecyclerView recyclerView = dialogView.findViewById(R.id.audioListRecyclerView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
-
-        audioListAdapter = new AudioListAdapter(audioFiles, new AudioListAdapter.OnAudioActionListener() {
+        UiUtils.showAudioListDialog(this, audioFiles, new AudioListAdapter.OnAudioActionListener() {
             @Override
             public void onReplayClick(File file) {
                 playAudioFile(file);
@@ -883,15 +883,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
         });
-        recyclerView.setAdapter(audioListAdapter);
-
-        AlertDialog dialog = builder.setView(dialogView)
-                .setTitle("Recorded Audio Files")
-                .setNegativeButton("Close", null)
-                .create();
-
-        dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog);
-        dialog.show();
     }
 
     private void playAudioFile(File file) {
@@ -956,54 +947,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             if (cut != -1) {
                 result = result.substring(cut + 1);
             }
+
         }
         return result;
     }
 
     private void scrollToLatestMessage(boolean smooth) {
-        if (adapter.getItemCount() > 0) {
-            int targetPosition = adapter.getItemCount() - 1;
-            if (smooth) {
-                binding.recyclerView.smoothScrollToPosition(targetPosition);
-            } else {
-                binding.recyclerView.scrollToPosition(targetPosition);
-            }
-        }
+        UiUtils.scrollToLatestMessage(binding.recyclerView, adapter.getItemCount(), smooth);
     }
 
-    private void setupAudioWaveButton() {
-        View.OnClickListener audioWaveClickListener = v -> {
-            String message = binding.expandedInput.getVisibility() == View.VISIBLE ?
-                binding.messageInputExpanded.getText().toString() :
-                binding.messageInput.getText().toString();
-
-            if (!message.isEmpty() || pendingImageUri != null) {
-                if (pendingImageUri != null) {
-                    handleImageMessage(pendingImageUri, message);
-                } else {
-                    handleUserMessage(message);
-                }
-
-                // Scroll to the latest message
-                scrollToLatestMessage(true);
-
-                // Clear input
-                binding.messageInput.setText("");
-                binding.messageInputExpanded.setText("");
-                if (pendingImageUri != null) {
-                    binding.expandedInput.findViewById(R.id.imagePreviewContainer)
-                        .setVisibility(View.GONE);
-                    pendingImageUri = null;
-                }
-                collapseInputSection();
-                updateSendButton(false);
-            } else {
-                Intent intent = new Intent(this, AudioChatActivity.class);
-                startActivity(intent);
-            }
-        };
-
-        binding.sendButton.setOnClickListener(audioWaveClickListener);
-        binding.sendButtonExpanded.setOnClickListener(audioWaveClickListener);
+    private void clearInputAndCollapse() {
+        binding.messageInput.setText("");
+        binding.messageInputExpanded.setText("");
+        if (pendingImageUri != null) {
+            binding.expandedInput.findViewById(R.id.imagePreviewContainer)
+                .setVisibility(View.GONE);
+            pendingImageUri = null;
+        }
+        collapseInputSection();
+        updateSendButton(false);
     }
 }
