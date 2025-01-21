@@ -26,10 +26,10 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 
 ## Prerequisites
 
-- Android Studio Arctic Fox or newer
+- Android Studio Ladybug or newer
 - Android SDK 31 or higher
-- NDK 21.0 or higher
-- CMake 3.10.2 or higher
+- NDK 26.1.10909125 or higher
+- CMake 3.10.0 or higher
 
 ## Setup
 
@@ -43,7 +43,15 @@ git clone https://github.com/muxi1998/GAI-android.git
    - Due to size limitations, model files are not included in the repository
    - Download the following files from [MODEL_DOWNLOAD_LINK]:
      - LLM models (use adb to push into android phone and place under `/data/local/tmp/llama`)
-     - VLM models (use adb to push into android phone and place under `/data/local/tmp/llama`)
+        ```bash
+       adb push /path/to/llama3_2.pte /data/local/tmp/llama
+       adb push /path/to/tokenizer.bin /data/local/tmp/llama
+       ```
+     - VLM models (use adb to push into android phone and place under `/data/local/tmp/llava`)
+        ```bash
+        adb push /path/to/llava.pte /data/local/tmp/llava
+        adb push /path/to/tokenizer.bin /data/local/tmp/llava
+        ```
      - [ASR models](https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/tree/main/test_wavs) (place in `app/src/main/assets/`):
        ```bash
        wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
