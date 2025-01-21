@@ -111,8 +111,17 @@ android {
             applicationIdSuffix = ".open_source"
             versionNameSuffix = "-open_source"
             resValue("string", "app_name", "GAI-open_source")
-            buildConfigField("String", "GIT_BRANCH", "\"main\"")
+            buildConfigField("String", "GIT_BRANCH", "\"open_source\"")
             manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.open_source.fileprovider"
+        }
+        create("et_vlm") {
+            dimension = "version"
+            applicationIdSuffix = ".et_vlm"
+            versionNameSuffix = "-et_vlm"
+            resValue("string", "app_name", "GAI-et_vlm")
+            buildConfigField("String", "GIT_BRANCH", "\"et_vlm\"")
+            manifestPlaceholders["file_provider_authority"] =
                 "com.mtkresearch.gai_android.open_source.fileprovider"
         }
     }
