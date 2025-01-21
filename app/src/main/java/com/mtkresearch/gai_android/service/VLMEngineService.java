@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 import org.pytorch.executorch.LlamaCallback;
 import org.pytorch.executorch.LlamaModule;
 import com.executorch.ETImage;
+import com.executorch.PromptFormat;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.io.File;
@@ -110,27 +112,22 @@ public class VLMEngineService extends BaseEngineService {
         }
 
         try {
-            // Create a direct ByteBuffer for integers
-            ByteBuffer buffer = ByteBuffer.allocateDirect(imageData.length * 4); // 4 bytes per int
-            buffer.order(ByteOrder.nativeOrder());
-            
-            // Put the int array into the buffer
-            for (int value : imageData) {
-                buffer.putInt(value);
-            }
-            buffer.rewind();
+            Log.d(TAG, "Starting image prefill with dimensions: " + width + "x" + height);
+            Log.d(TAG, "Image data length: " + imageData.length);
 
-            // Get the int array back from the buffer
-            int[] contiguousData = new int[imageData.length];
-            for (int i = 0; i < imageData.length; i++) {
-                contiguousData[i] = buffer.getInt();
+            // For LLaVA, we need to prefill a preset prompt first
+            if (startPos == 0) {
+                Log.d(TAG, "Prefilling preset prompt for LLaVA");
+                startPos = mModule.prefillPrompt(PromptFormat.getLlavaPresetPrompt(), 0, 1, 0);
+                Log.d(TAG, "Preset prompt prefill completed, startPos: " + startPos);
             }
 
-            long result = mModule.prefillImages(contiguousData, width, height, IMAGE_CHANNELS, 0);
-            if (result < 0) {
-                throw new RuntimeException("Prefill failed with error code: " + result);
+            // Now prefill the image
+            startPos = mModule.prefillImages(imageData, width, height, IMAGE_CHANNELS, startPos);
+            if (startPos < 0) {
+                throw new RuntimeException("Prefill failed with error code: " + startPos);
             }
-            startPos = result;
+            Log.d(TAG, "Image prefill successful, new startPos: " + startPos);
             
         } catch (Exception e) {
             Log.e(TAG, "Error during image prefill", e);
@@ -152,18 +149,24 @@ public class VLMEngineService extends BaseEngineService {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
+                Log.d(TAG, "Processing image: " + imageUri);
                 ETImage processedImage = new ETImage(getContentResolver(), imageUri);
                 if (processedImage.getWidth() == 0 || processedImage.getHeight() == 0) {
                     throw new IllegalStateException("Failed to process image");
                 }
 
                 int[] imageData = processedImage.getInts();
+                Log.d(TAG, "Image processed, dimensions: " + processedImage.getWidth() + "x" + processedImage.getHeight());
                 prefillImage(imageData, processedImage.getWidth(), processedImage.getHeight());
 
                 CompletableFuture<String> resultFuture = new CompletableFuture<>();
                 StringBuilder result = new StringBuilder();
 
-                mModule.generateFromPos(userPrompt, SEQ_LEN, startPos, new LlamaCallback() {
+//                String formattedPrompt = PromptFormat.getFormattedSystemAndUserPrompt(userPrompt);
+                String formattedPrompt = PromptFormat.getLlavaPresetPrompt(); // TODO: Add the user custom prompt field in app
+                Log.d(TAG, "Using formatted prompt: " + formattedPrompt);
+
+                mModule.generateFromPos(formattedPrompt, SEQ_LEN, startPos, new LlamaCallback() {
                     public void onToken(String token) {
                         result.append(token);
                     }
@@ -180,7 +183,7 @@ public class VLMEngineService extends BaseEngineService {
                     }
                 }, false);
 
-                return resultFuture.get(); // Remove timeout
+                return resultFuture.get();
 
             } catch (Exception e) {
                 Log.e(TAG, "Error analyzing image", e);
