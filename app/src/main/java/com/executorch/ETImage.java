@@ -26,7 +26,7 @@ public class ETImage {
   private final Uri uri;
   private final ContentResolver contentResolver;
 
-  ETImage(ContentResolver contentResolver, Uri uri) {
+  public ETImage(ContentResolver contentResolver, Uri uri) {
     this.contentResolver = contentResolver;
     this.uri = uri;
     bytes = getBytesFromImageURI(uri);
