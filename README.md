@@ -34,32 +34,54 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 ## Setup
 
 1. Clone the repository:
-
-```bash
-git clone https://github.com/muxi1998/GAI-android.git
-```
+    ```bash
+    git clone https://github.com/muxi1998/GAI-android.git
+    ```
 
 2. Download required model files:
-   - Due to size limitations, model files are not included in the repository
-   - Download the following files from [MODEL_DOWNLOAD_LINK]:
-     - LLM models (use adb to push into android phone and place under `/data/local/tmp/llama`)
+    - LLM models: \
+        a. Llama3.2-3B-Instruct:
         ```bash
-       adb push /path/to/llama3_2.pte /data/local/tmp/llama
-       adb push /path/to/tokenizer.bin /data/local/tmp/llama
-       ```
-     - VLM models (use adb to push into android phone and place under `/data/local/tmp/llava`)
-        ```bash
-        adb push /path/to/llava.pte /data/local/tmp/llava
-        adb push /path/to/tokenizer.bin /data/local/tmp/llava
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
+        
+        # Push to Android device
+        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
+        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
-     - [ASR models](https://huggingface.co/csukuangfj/sherpa-onnx-whisper-tiny/tree/main/test_wavs) (place in `app/src/main/assets/`):
-       ```bash
-       wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
-       
-       tar xvf sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
-       rm sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
-       ```
-     - TTS models (place in `app/src/main/assets/`):
+        
+        b. BreezeTiny:
+        ```bash
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile
+        
+        # Push to Android device
+        adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
+        adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
+        ```
+
+    - VLM models:\
+        a. LLaVA-1.5-7B
+        ```bash
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/llava-1.5-7b-hf-mobile
+        
+        # Push to Android device
+        adb push llava-1.5-7b-hf-mobile/llava.pte /data/local/tmp/llava/
+        adb push llava-1.5-7b-hf-mobile/tokenizer.bin /data/local/tmp/llava/
+        ```
+    - ASR models (place in `app/src/main/assets/`):
+        ```bash
+        wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/
+        sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
+        
+        tar xvf sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
+        rm sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20.tar.bz2
+        ```
+    - TTS models (place in `app/src/main/assets/`):
         ```bash
         wget https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2
         tar xvf vits-melo-tts-zh_en.tar.bz2
