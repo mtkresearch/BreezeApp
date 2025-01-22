@@ -12,17 +12,17 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 - 🗣️ Voice input/output support
 - 📸 Image understanding capabilities
 - 🔄 Multiple backend support for each component:
-  - LLM/VLM: Executorch framework, MTK backend (Future)
-  - ASR: Sherpa-ONNX, Android default, MTK backend (Future)
-  - TTS: Sherpa-TTS, Android default, MTK backend (Future)
+  - LLM/VLM: Executorch framework, MediaTek backend (Future)
+  - ASR: Sherpa-ONNX, Android default, MediaTek backend (Future)
+  - TTS: Sherpa-TTS, Android default, MediaTek backend (Future)
 
-    | Model Type | Local CPU | MTK NPU | Default |
+    | Model Type | Local CPU | MediaTek NPU | Default |
     |:---------:|:---------:|:-------:|:--------:|
     | LLM       |     ✅     |    ✅    |    ❌    |
     | VLM       |     🚧     |    ❌    |    ❌    |
     | ASR       |     ✅     |    ❌    |    ✅    |
     | TTS       |     ✅     |    ❌    |    ✅    |
-🚨 Note: VLM is currently not supported due to the lack of support for image processing in Executorch.
+🚨 Note: VLM is currently not supported due to the lack of support for image processing in Executorch. 
 
 ## Prerequisites
 
@@ -137,7 +137,7 @@ app
 
 The application follows a service-based architecture where each AI capability (LLM, VLM, ASR, TTS) is implemented as an Android service. Each service supports multiple backends with graceful fallback:
 
-1. Primary MTK backend (🚧 Still in development...)
+1. Primary MediaTek backend (🚧 Still in development...)
 2. ⭐️ Open-source alternatives (Executorch/Sherpa)
 3. Android system defaults
 
