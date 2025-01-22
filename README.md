@@ -136,7 +136,7 @@ app/src/main
 
 The application follows a service-based architecture where each AI capability (LLM, VLM, ASR, TTS) is implemented as an Android service. Each service supports multiple backends with graceful fallback:
 
-1. Primary MTK backend (Currently not supported)
+1. Primary MTK backend (🚧 Still in development...)
 2. ⭐️ Open-source alternatives (Executorch/Sherpa)
 3. Android system defaults
 
