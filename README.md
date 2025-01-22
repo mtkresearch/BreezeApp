@@ -143,7 +143,7 @@ The application follows a service-based architecture where each AI capability (L
 
 Key components:
 - `ChatActivity`: Main UI for text/voice interaction
-- `AudioChatActivity`: Dedicated voice interface
+- `AudioChatActivity`: Dedicated voice interface (🚧 Still in development...)
 - `*EngineService`: Service implementations for each AI capability
 
 ## Contributing
