@@ -93,43 +93,44 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 ## Project Structure
 
 ```
-app/src/main
-├── AndroidManifest.xml
-├── assets
-│   ├── sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20
-│   └── vits-melo-tts-zh_en
-├── cpp
-│   ├── CMakeLists.txt
-│   └── mtk_llm_jni.cpp
-├── java
-│   └── com
-│       ├── executorch
-│       ├── k2fsa
-│       │   └── sherpa
-│       │       └── onnx
-│       └── mtkresearch
-│           └── gai_android
-│               ├── AudioChatActivity.java
-│               ├── ChatActivity.java
-│               ├── MainActivity.java
-│               ├── service
-│               │   ├── ASREngineService.java
-│               │   ├── BaseEngineService.java
-│               │   ├── LLMEngineService.java
-│               │   ├── TTSEngineService.java
-│               │   └── VLMEngineService.java
-│               └── utils
-│                   ├── AudioListAdapter.java
-│                   ├── AudioRecorder.java
-│                   ├── AudioWaveView.java
-│                   ├── ChatMediaHandler.java
-│                   ├── ChatMessage.java
-│                   ├── ChatMessageAdapter.java
-│                   ├── ChatUIStateHandler.java
-│                   ├── FileUtils.java
-│                   ├── NativeLibraryLoader.java
-│                   └── UiUtils.java
-└── res
+app
+├── build
+├── libs
+│   ├── arm64-v8a
+│   │   ├── libllava_runner.so
+│   │   ├── libonnxruntime.so
+│   │   └── libsherpa-onnx-jni.so
+│   └── executorch.aar
+└── src
+    └── main
+        ├── AndroidManifest.xml
+        ├── assets
+        │   ├── sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20
+        │   └── vits-melo-tts-zh_en
+        ├── cpp
+        │   ├── CMakeLists.txt
+        │   └── mtk_llm_jni.cpp
+        ├── java
+        │   └── com
+        │       ├── executorch
+        │       ├── k2fsa
+        │       │   └── sherpa
+        │       │       └── onnx
+        │       └── mtkresearch
+        │           └── gai_android
+        │               ├── AudioChatActivity.java
+        │               └── utils
+        │                   ├── AudioListAdapter.java
+        │                   ├── AudioRecorder.java
+        │                   ├── AudioWaveView.java
+        │                   ├── ChatMediaHandler.java
+        │                   ├── ChatMessage.java
+        │                   ├── ChatMessageAdapter.java
+        │                   ├── ChatUIStateHandler.java
+        │                   ├── FileUtils.java
+        │                   ├── NativeLibraryLoader.java
+        │                   └── UiUtils.java
+        └── res
 ```
 
 ## Architecture
