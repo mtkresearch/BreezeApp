@@ -154,6 +154,16 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 TBD
 <!-- This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details. -->
 
+## Known Issues
+
+1. **VLM Support (Executorch)**: VLM features are currently non-functional due to limitations in Executorch's image processing capabilities. See [executorch#6189](https://github.com/pytorch/executorch/issues/6189) for updates.
+
+2. **Audio Chat Interface**: The dedicated voice interface (`AudioChatActivity`) is still under development and may have limited functionality.
+
+3. **MediaTek NPU Backend**: Support for MediaTek NPU acceleration is currently in development. Only CPU inference is fully supported at this time.
+
+Please check our [Issues](https://github.com/muxi1998/GAI-android/issues) page for the most up-to-date status of these and other known issues.
+
 ## Acknowledgments
 
 - [Executorch](https://github.com/pytorch/executorch) for LLM/VLM framework
