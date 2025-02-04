@@ -73,40 +73,23 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="8dp">
-
+            android:layout_marginBottom="8dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="LLM Engine"/>
-
+                android:text="LLM Engine Status:" />
             <ImageView
-                android:id="@+id/llmStatusIndicator"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:src="@drawable/status_indicator_red"/>
-        </LinearLayout>
-
-        <!-- Repeat similar layout for VLM, ASR, and TTS engines -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="8dp">
-
-            <TextView
-                android:layout_width="0dp"
+                android:id="@+id/llm_status_indicator"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/status_indicator_red" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/llm_switch"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="VLM Engine"/>
-
-            <ImageView
-                android:id="@+id/vlmStatusIndicator"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:src="@drawable/status_indicator_red"/>
+                android:checked="false" />
         </LinearLayout>
 
         <LinearLayout
@@ -114,19 +97,23 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="8dp">
-
+            android:layout_marginBottom="8dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="ASR Engine"/>
-
+                android:text="VLM Engine Status:" />
             <ImageView
-                android:id="@+id/asrStatusIndicator"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:src="@drawable/status_indicator_red"/>
+                android:id="@+id/vlm_status_indicator"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/status_indicator_red" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/vlm_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false" />
         </LinearLayout>
 
         <LinearLayout
@@ -134,19 +121,47 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:padding="8dp">
-
+            android:layout_marginBottom="8dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="TTS Engine"/>
-
+                android:text="ASR Engine Status:" />
             <ImageView
-                android:id="@+id/ttsStatusIndicator"
-                android:layout_width="12dp"
-                android:layout_height="12dp"
-                android:src="@drawable/status_indicator_red"/>
+                android:id="@+id/asr_status_indicator"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/status_indicator_red" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/asr_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="TTS Engine Status:" />
+            <ImageView
+                android:id="@+id/tts_status_indicator"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/status_indicator_red" />
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/tts_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:checked="false" />
         </LinearLayout>
 
     </LinearLayout>
