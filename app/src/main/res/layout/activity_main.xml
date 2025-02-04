@@ -77,8 +77,14 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="LLM Engine Status:" />
+                android:layout_weight="0.3"
+                android:text="LLM Engine:" />
+            <Spinner
+                android:id="@+id/llm_model_spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:layout_marginEnd="8dp" />
             <ImageView
                 android:id="@+id/llm_status_indicator"
                 android:layout_width="16dp"
@@ -101,8 +107,14 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="VLM Engine Status:" />
+                android:layout_weight="0.3"
+                android:text="VLM Engine:" />
+            <Spinner
+                android:id="@+id/vlm_model_spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:layout_marginEnd="8dp" />
             <ImageView
                 android:id="@+id/vlm_status_indicator"
                 android:layout_width="16dp"
@@ -125,8 +137,14 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="ASR Engine Status:" />
+                android:layout_weight="0.3"
+                android:text="ASR Engine:" />
+            <Spinner
+                android:id="@+id/asr_model_spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:layout_marginEnd="8dp" />
             <ImageView
                 android:id="@+id/asr_status_indicator"
                 android:layout_width="16dp"
@@ -149,8 +167,14 @@
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="TTS Engine Status:" />
+                android:layout_weight="0.3"
+                android:text="TTS Engine:" />
+            <Spinner
+                android:id="@+id/tts_model_spinner"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.5"
+                android:layout_marginEnd="8dp" />
             <ImageView
                 android:id="@+id/tts_status_indicator"
                 android:layout_width="16dp"
