@@ -27,7 +27,8 @@ public class LLMEngineService extends BaseEngineService {
     
     // Local CPU backend (executorch)
     private Executorch mExecutorch = null;
-    private static final String MODEL_PATH = "/data/local/tmp/llama/llama3_2.pte";
+//    private static final String MODEL_PATH = "/data/local/tmp/llama/llama3_2.pte";
+    private static final String MODEL_PATH = "/data/local/tmp/llama/breeze-tiny-instruct.pte";
     private static final String TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
     private static final double TEMPERATURE = 0.8f;
     private CompletableFuture<String> currentResponse = new CompletableFuture<>();
