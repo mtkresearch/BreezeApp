@@ -18,17 +18,25 @@ class SherpaTTS private constructor(
 
     companion object {
         private const val TAG = "SherpaTTS"
-        private const val MODEL_DIR = "vits-melo-tts-zh_en"
-        private const val MODEL_NAME = "model.onnx"
-        private const val LEXICON = "lexicon.txt"
-        private const val DICT_DIR = "$MODEL_DIR/dict"
-        private const val RULE_FSTS = "$MODEL_DIR/date.fst,$MODEL_DIR/new_heteronym.fst,$MODEL_DIR/number.fst,$MODEL_DIR/phone.fst"
         
+        // Model configurations
+        private const val MR_TTS_DIR = "mr-tts"
+        private const val VITS_MELO_DIR = "vits-melo-tts-zh_en"
+        
+        private const val MR_TTS_MODEL = "vits-mr-run5.onnx"
+        private const val VITS_MELO_MODEL = "model.onnx"
+        
+        private const val MR_TTS_LEXICON = "lexicon.txt"
+        private const val VITS_MELO_LEXICON = "lexicon.txt"
+        
+        private const val VITS_MELO_DICT = "$VITS_MELO_DIR/dict"
+        private const val VITS_MELO_RULES = "$VITS_MELO_DIR/date.fst,$VITS_MELO_DIR/new_heteronym.fst,$VITS_MELO_DIR/number.fst,$VITS_MELO_DIR/phone.fst"
+
         @Volatile
         private var instance: SherpaTTS? = null
         private val instanceLock = Any()
 
-        fun getInstance(context: Context): SherpaTTS {
+        fun getInstance(context: Context, useVitsMelo: Boolean = false): SherpaTTS {
             val currentInstance = instance
             if (currentInstance != null && !currentInstance.isReleased.get()) {
                 return currentInstance
@@ -37,38 +45,53 @@ class SherpaTTS private constructor(
             synchronized(instanceLock) {
                 var localInstance = instance
                 if (localInstance == null || localInstance.isReleased.get()) {
-                    localInstance = createInstance(context)
+                    localInstance = createInstance(context, useVitsMelo)
                     instance = localInstance
                 }
                 return localInstance
             }
         }
 
-        private fun createInstance(context: Context): SherpaTTS {
+        private fun createInstance(context: Context, useVitsMelo: Boolean): SherpaTTS {
             try {
-                var modelDir = MODEL_DIR
-                var dictDir = DICT_DIR
-                var ruleFsts = RULE_FSTS
-                var assets = context.assets
+                val modelConfig = if (useVitsMelo) {
+                    ModelConfig(
+                        modelDir = VITS_MELO_DIR,
+                        modelName = VITS_MELO_MODEL,
+                        lexicon = VITS_MELO_LEXICON,
+                        dictDir = VITS_MELO_DICT,
+                        ruleFsts = VITS_MELO_RULES
+                    )
+                } else {
+                    // Default to MR TTS
+                    ModelConfig(
+                        modelDir = MR_TTS_DIR,
+                        modelName = MR_TTS_MODEL,
+                        lexicon = MR_TTS_LEXICON
+                    )
+                }
 
-                // If we need to use dict, copy files to external storage
-                if (dictDir.isNotEmpty()) {
-                    val newDir = copyDataDir(context, modelDir)
-                    modelDir = "$newDir/$modelDir"
-                    dictDir = "$modelDir/dict"
-                    ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
+                var assets = context.assets
+                var modelDir = modelConfig.modelDir
+
+                // If we need to use dict (only for VITS Melo), copy files to external storage
+                if (!modelConfig.dictDir.isNullOrEmpty()) {
+                    val newDir = copyDataDir(context, modelConfig.modelDir)
+                    modelDir = "$newDir/${modelConfig.modelDir}"
+                    modelConfig.dictDir = "$modelDir/dict"
+                    modelConfig.ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
                     assets = null
                 }
 
-                // Default model configuration with asset paths
+                // Create TTS config
                 val config = getOfflineTtsConfig(
                     modelDir = modelDir,
-                    modelName = MODEL_NAME,
-                    lexicon = LEXICON,
-                    dataDir = "",
-                    dictDir = dictDir,
-                    ruleFsts = ruleFsts,
-                    ruleFars = ""
+                    modelName = modelConfig.modelName,
+                    lexicon = modelConfig.lexicon ?: "",
+                    dataDir = modelConfig.dataDir ?: "",
+                    dictDir = modelConfig.dictDir ?: "",
+                    ruleFsts = modelConfig.ruleFsts ?: "",
+                    ruleFars = modelConfig.ruleFars ?: ""
                 )
 
                 Log.d(TAG, "Initializing TTS with config: $config")
@@ -201,7 +224,6 @@ class SherpaTTS private constructor(
         isStopped.set(true)
         currentCallback = null
     }
-
 }
 
 // Data class to hold model configuration
@@ -210,7 +232,7 @@ data class ModelConfig(
     val modelName: String,
     val lexicon: String? = null,
     val dataDir: String? = null,
-    val dictDir: String? = null,
+    var dictDir: String? = null,
     var ruleFsts: String? = null,
     val ruleFars: String? = null,
 ) 
