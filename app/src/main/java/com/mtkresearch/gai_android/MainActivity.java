@@ -19,6 +19,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.widget.Toast;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.view.View;
 
 import com.mtkresearch.gai_android.ChatActivity;
 import com.mtkresearch.gai_android.R;
@@ -32,6 +35,10 @@ import com.mtkresearch.gai_android.utils.NativeLibraryLoader;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -49,6 +56,16 @@ public class MainActivity extends AppCompatActivity {
     private boolean vlmEnabled = false;
     private boolean asrEnabled = false;
     private boolean ttsEnabled = false;
+
+    private static final String LLAMA_MODEL_PATH = "/data/local/tmp/llama/";
+    
+    // Model lists for each service
+    private String[] llmModels;
+    private String[] vlmModels;
+    
+    // Selected model for each service
+    private String selectedLlmModel = null;
+    private String selectedVlmModel = null;
 
     private final ServiceConnection llmConnection = new ServiceConnection() {
         @Override
@@ -126,13 +143,55 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        // Scan for available models
+        scanForModels();
+
         // Setup UI before checking permissions
         setupUI();
+        setupModelSpinners();
         setupServiceSwitches();
         displayDeviceInfo();
         
         // Initialize status indicators
         initializeStatusIndicators();
+    }
+
+    private void scanForModels() {
+        File modelDir = new File(LLAMA_MODEL_PATH);
+        if (!modelDir.exists() || !modelDir.isDirectory()) {
+            Log.e(TAG, "Model directory not found: " + LLAMA_MODEL_PATH);
+            Toast.makeText(this, "Model directory not found", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        // Get all .pte files
+        File[] modelFiles = modelDir.listFiles((dir, name) -> name.endsWith(".pte"));
+        if (modelFiles == null) {
+            Log.e(TAG, "Unable to list files in model directory");
+            return;
+        }
+
+        // Create lists to store models by type
+        List<String> llmList = new ArrayList<>();
+        List<String> vlmList = new ArrayList<>();
+
+        // Categorize models based on filename patterns
+        for (File file : modelFiles) {
+            String name = file.getName();
+            if (name.contains("llava")) {
+                vlmList.add(name);
+            } else if (name.contains("llama") || name.contains("breeze")) {
+                llmList.add(name);
+            }
+        }
+
+        // Convert lists to arrays
+        llmModels = llmList.toArray(new String[0]);
+        vlmModels = vlmList.toArray(new String[0]);
+
+        // Log found models
+        Log.d(TAG, "Found LLM models: " + Arrays.toString(llmModels));
+        Log.d(TAG, "Found VLM models: " + Arrays.toString(vlmModels));
     }
 
     private void setupUI() {
@@ -153,6 +212,61 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setupModelSpinners() {
+        // Setup LLM model spinner if models are available
+        if (llmModels != null && llmModels.length > 0) {
+            ArrayAdapter<String> llmAdapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_spinner_dropdown_item, llmModels);
+            binding.llmModelSpinner.setAdapter(llmAdapter);
+            binding.llmModelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    selectedLlmModel = llmModels[position];
+                    // If service is already running, restart it with new model
+                    if (llmEnabled && llmService != null) {
+                        restartService(LLMEngineService.class, llmConnection, binding.llmStatusIndicator);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                    selectedLlmModel = null;
+                }
+            });
+        } else {
+            binding.llmModelSpinner.setEnabled(false);
+            binding.llmSwitch.setEnabled(false);
+        }
+
+        // Setup VLM model spinner if models are available
+        if (vlmModels != null && vlmModels.length > 0) {
+            ArrayAdapter<String> vlmAdapter = new ArrayAdapter<>(this, 
+                android.R.layout.simple_spinner_dropdown_item, vlmModels);
+            binding.vlmModelSpinner.setAdapter(vlmAdapter);
+            binding.vlmModelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    selectedVlmModel = vlmModels[position];
+                    if (vlmEnabled && vlmService != null) {
+                        restartService(VLMEngineService.class, vlmConnection, binding.vlmStatusIndicator);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {
+                    selectedVlmModel = null;
+                }
+            });
+        } else {
+            binding.vlmModelSpinner.setEnabled(false);
+            binding.vlmSwitch.setEnabled(false);
+        }
+
+        // Disable model spinners for ASR and TTS as they don't use model selection
+        binding.asrModelSpinner.setEnabled(false);
+        binding.ttsModelSpinner.setEnabled(false);
+    }
+
     private void setupServiceSwitches() {
         binding.llmSwitch.setChecked(llmEnabled);
         binding.vlmSwitch.setChecked(vlmEnabled);
@@ -160,6 +274,12 @@ public class MainActivity extends AppCompatActivity {
         binding.ttsSwitch.setChecked(ttsEnabled);
 
         binding.llmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked && selectedLlmModel == null) {
+                Toast.makeText(this, "Please select a model first", Toast.LENGTH_SHORT).show();
+                buttonView.setChecked(false);
+                return;
+            }
+            
             llmEnabled = isChecked;
             if (isChecked) {
                 startAndBindService(LLMEngineService.class, llmConnection, null);
@@ -174,6 +294,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         binding.vlmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked && selectedVlmModel == null) {
+                Toast.makeText(this, "Please select a model first", Toast.LENGTH_SHORT).show();
+                buttonView.setChecked(false);
+                return;
+            }
+            
             vlmEnabled = isChecked;
             if (isChecked) {
                 startAndBindService(VLMEngineService.class, vlmConnection, null);
@@ -254,11 +380,19 @@ public class MainActivity extends AppCompatActivity {
             ServiceConnection connection,
             Runnable onComplete) {
         Intent intent = new Intent(this, serviceClass);
+        
+        // Add model path to intent only for LLM and VLM services
+        if (serviceClass == LLMEngineService.class && selectedLlmModel != null) {
+            intent.putExtra("model_path", LLAMA_MODEL_PATH + selectedLlmModel);
+        } else if (serviceClass == VLMEngineService.class && selectedVlmModel != null) {
+            intent.putExtra("model_path", LLAMA_MODEL_PATH + selectedVlmModel);
+        }
+        
         startService(intent);
         bindService(intent, connection, Context.BIND_AUTO_CREATE);
         
         if (onComplete != null) {
-            new Handler().postDelayed(onComplete, 500); // Give time for binding
+            new Handler().postDelayed(onComplete, 500);
         }
     }
 
@@ -350,6 +484,22 @@ public class MainActivity extends AppCompatActivity {
         INITIALIZING,
         READY,
         ERROR
+    }
+
+    private void restartService(Class<? extends BaseEngineService> serviceClass, 
+                              ServiceConnection connection,
+                              ImageView statusIndicator) {
+        // Unbind and stop current service
+        safeUnbindService(connection);
+        stopService(new Intent(this, serviceClass));
+        
+        // Update status to initializing
+        updateEngineStatus(statusIndicator, EngineStatus.INITIALIZING);
+        
+        // Start new service with delay
+        new Handler().postDelayed(() -> {
+            startAndBindService(serviceClass, connection, null);
+        }, 500);
     }
 
     @Override
