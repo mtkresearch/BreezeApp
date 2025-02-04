@@ -124,6 +124,15 @@ android {
             manifestPlaceholders["file_provider_authority"] =
                 "com.mtkresearch.gai_android.open_source.fileprovider"
         }
+        create("tts_mr") {
+            dimension = "version"
+            applicationIdSuffix = ".tts_mr"
+            versionNameSuffix = "-tts_mr"
+            resValue("string", "app_name", "GAI-tts_mr")
+            buildConfigField("String", "GIT_BRANCH", "\"tts_mr\"")
+            manifestPlaceholders["file_provider_authority"] =
+                "com.mtkresearch.gai_android.open_source.fileprovider"
+        }
     }
 
 //    sourceSets.getByName("main") {
@@ -168,13 +177,15 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("OpenSource")) }
+                 it.contains("Full") || it.contains("OpenSource") ||
+                 it.contains("TtsMr")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
                     task.contains("OpenSource") -> "open_source"
+                    task.contains("TtsMr") -> "tts_mr"
                     else -> null
                 }
             }
