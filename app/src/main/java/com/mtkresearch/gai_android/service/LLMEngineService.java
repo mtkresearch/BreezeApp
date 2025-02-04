@@ -27,10 +27,9 @@ public class LLMEngineService extends BaseEngineService {
     
     // Local CPU backend (executorch)
     private Executorch mExecutorch = null;
-//    private static final String MODEL_PATH = "/data/local/tmp/llama/llama3_2.pte";
-    private static final String MODEL_PATH = "/data/local/tmp/llama/breeze-tiny-instruct.pte";
     private static final String TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
     private static final double TEMPERATURE = 0.8f;
+    private String modelPath = null;  // Will be set from intent
     private CompletableFuture<String> currentResponse = new CompletableFuture<>();
     private StreamingResponseCallback currentCallback = null;
     private StringBuilder currentStreamingResponse = new StringBuilder();
@@ -45,6 +44,19 @@ public class LLMEngineService extends BaseEngineService {
     @Override
     public IBinder onBind(Intent intent) {
         return new LocalBinder();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && intent.hasExtra("model_path")) {
+            modelPath = intent.getStringExtra("model_path");
+            Log.d(TAG, "Using model path: " + modelPath);
+        } else {
+            Log.e(TAG, "No model path provided in intent");
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
@@ -95,10 +107,15 @@ public class LLMEngineService extends BaseEngineService {
                 mExecutorch.release();
             }
 
+            if (modelPath == null) {
+                Log.e(TAG, "Model path is null, cannot initialize");
+                return false;
+            }
+
             SettingsFields settings = new SettingsFields();
-            settings.saveModelPath(MODEL_PATH);
+            settings.saveModelPath(modelPath);
             settings.saveTokenizerPath(TOKENIZER_PATH);
-            settings.saveModelType(ModelType.LLAMA_3);  // Using default model type
+            settings.saveModelType(ModelType.LLAMA_3_2);  // Using default model type
             settings.saveParameters(TEMPERATURE);
             settings.saveLoadModelAction(true);
 
