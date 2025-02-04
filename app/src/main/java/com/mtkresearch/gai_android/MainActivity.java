@@ -44,6 +44,12 @@ public class MainActivity extends AppCompatActivity {
     private ASREngineService asrService;
     private TTSEngineService ttsService;
     
+    // Service enable flags
+    private boolean llmEnabled = false;
+    private boolean vlmEnabled = false;
+    private boolean asrEnabled = false;
+    private boolean ttsEnabled = false;
+
     private final ServiceConnection llmConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -122,19 +128,11 @@ public class MainActivity extends AppCompatActivity {
 
         // Setup UI before checking permissions
         setupUI();
+        setupServiceSwitches();
         displayDeviceInfo();
         
-        // Check permissions before binding services
-        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Requesting RECORD_AUDIO permission");
-            ActivityCompat.requestPermissions(this,
-                new String[]{android.Manifest.permission.RECORD_AUDIO},
-                PERMISSION_REQUEST_CODE);
-        } else {
-            Log.d(TAG, "RECORD_AUDIO permission already granted");
-            bindServices();
-        }
+        // Initialize status indicators
+        initializeStatusIndicators();
     }
 
     private void setupUI() {
@@ -143,11 +141,86 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupChatButton() {
-//        binding.startChatButton.setEnabled(false); // original
-        binding.startChatButton.setEnabled(true); // for developing LLM
+        binding.startChatButton.setEnabled(false);
+        binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
+            getResources().getColor(R.color.surface, getTheme())));
+        binding.startChatButton.setTextColor(
+            getResources().getColor(R.color.text_secondary, getTheme()));
+            
         binding.startChatButton.setOnClickListener(v -> {
             Intent intent = new Intent(this, ChatActivity.class);
             startActivity(intent);
+        });
+    }
+
+    private void setupServiceSwitches() {
+        binding.llmSwitch.setChecked(llmEnabled);
+        binding.vlmSwitch.setChecked(vlmEnabled);
+        binding.asrSwitch.setChecked(asrEnabled);
+        binding.ttsSwitch.setChecked(ttsEnabled);
+
+        binding.llmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            llmEnabled = isChecked;
+            if (isChecked) {
+                startAndBindService(LLMEngineService.class, llmConnection, null);
+                updateEngineStatus(binding.llmStatusIndicator, EngineStatus.INITIALIZING);
+            } else if (llmService != null) {
+                safeUnbindService(llmConnection);
+                stopService(new Intent(this, LLMEngineService.class));
+                llmService = null;
+                updateEngineStatus(binding.llmStatusIndicator, EngineStatus.ERROR);
+            }
+            checkAllServicesReady();
+        });
+
+        binding.vlmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            vlmEnabled = isChecked;
+            if (isChecked) {
+                startAndBindService(VLMEngineService.class, vlmConnection, null);
+                updateEngineStatus(binding.vlmStatusIndicator, EngineStatus.INITIALIZING);
+            } else if (vlmService != null) {
+                safeUnbindService(vlmConnection);
+                stopService(new Intent(this, VLMEngineService.class));
+                vlmService = null;
+                updateEngineStatus(binding.vlmStatusIndicator, EngineStatus.ERROR);
+            }
+            checkAllServicesReady();
+        });
+
+        binding.asrSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            asrEnabled = isChecked;
+            if (isChecked) {
+                if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.RECORD_AUDIO},
+                        PERMISSION_REQUEST_CODE);
+                    binding.asrSwitch.setChecked(false);
+                    return;
+                }
+                startAndBindService(ASREngineService.class, asrConnection, null);
+                updateEngineStatus(binding.asrStatusIndicator, EngineStatus.INITIALIZING);
+            } else if (asrService != null) {
+                safeUnbindService(asrConnection);
+                stopService(new Intent(this, ASREngineService.class));
+                asrService = null;
+                updateEngineStatus(binding.asrStatusIndicator, EngineStatus.ERROR);
+            }
+            checkAllServicesReady();
+        });
+
+        binding.ttsSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            ttsEnabled = isChecked;
+            if (isChecked) {
+                startAndBindService(TTSEngineService.class, ttsConnection, null);
+                updateEngineStatus(binding.ttsStatusIndicator, EngineStatus.INITIALIZING);
+            } else if (ttsService != null) {
+                safeUnbindService(ttsConnection);
+                stopService(new Intent(this, TTSEngineService.class));
+                ttsService = null;
+                updateEngineStatus(binding.ttsStatusIndicator, EngineStatus.ERROR);
+            }
+            checkAllServicesReady();
         });
     }
 
@@ -174,22 +247,6 @@ public class MainActivity extends AppCompatActivity {
         long availableMemory = memoryInfo.availMem / (1024 * 1024);
         
         return String.format(Locale.getDefault(), "%d MB / %d MB", availableMemory, totalMemory);
-    }
-
-    private void bindServices() {
-        // Initialize status indicators first
-        initializeStatusIndicators();
-        
-        // Bind services with delays to avoid memory pressure
-        new Handler().postDelayed(() -> {
-            startAndBindService(LLMEngineService.class, llmConnection, () -> {
-                startAndBindService(VLMEngineService.class, vlmConnection, () -> {
-                    startAndBindService(ASREngineService.class, asrConnection, () -> {
-                        startAndBindService(TTSEngineService.class, ttsConnection, null);
-                    });
-                });
-            });
-        }, 500);
     }
 
     private void startAndBindService(
@@ -252,31 +309,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void checkAllServicesReady() {
-        boolean allReady = llmService != null && llmService.isReady() &&
-                          vlmService != null && vlmService.isReady() &&
-                          asrService != null && asrService.isReady() &&
-                          ttsService != null && ttsService.isReady();
+        // Check if at least one service is enabled and ready
+        boolean atLeastOneServiceReady = 
+            (llmEnabled && llmService != null && llmService.isReady()) ||
+            (vlmEnabled && vlmService != null && vlmService.isReady()) ||
+            (asrEnabled && asrService != null && asrService.isReady()) ||
+            (ttsEnabled && ttsService != null && ttsService.isReady());
+
+        // Check if any service is enabled but not ready
+        boolean anyServiceInitializing = 
+            (llmEnabled && (llmService == null || !llmService.isReady())) ||
+            (vlmEnabled && (vlmService == null || !vlmService.isReady())) ||
+            (asrEnabled && (asrService == null || !asrService.isReady())) ||
+            (ttsEnabled && (ttsService == null || !ttsService.isReady()));
 
         runOnUiThread(() -> {
-            // Production mode - button state depends on service readiness
-            binding.startChatButton.setEnabled(allReady);
+            binding.startChatButton.setEnabled(atLeastOneServiceReady);
 
-            if (allReady) {
-                // When all services are ready, use primary colors
+            if (atLeastOneServiceReady) {
                 binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
                     getResources().getColor(R.color.primary, getTheme())));
                 binding.startChatButton.setTextColor(
                     getResources().getColor(R.color.text_primary, getTheme()));
             } else {
-                // When services are not ready, use surface and secondary text colors
                 binding.startChatButton.setBackgroundTintList(ColorStateList.valueOf(
                     getResources().getColor(R.color.surface, getTheme())));
                 binding.startChatButton.setTextColor(
                     getResources().getColor(R.color.text_secondary, getTheme()));
                 
-                // Show initialization status
-                Toast.makeText(this, "Some services are still initializing", 
-                    Toast.LENGTH_SHORT).show();
+                // Show initialization status only if any service is enabled and initializing
+                if (anyServiceInitializing) {
+                    Toast.makeText(this, "Waiting for services to initialize", 
+                        Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -319,13 +384,12 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "RECORD_AUDIO permission granted");
-                bindServices();
+                // Re-enable ASR switch if permission was granted
+                binding.asrSwitch.setChecked(true);
             } else {
                 Log.e(TAG, "RECORD_AUDIO permission denied");
-                Toast.makeText(this, "Speech recognition may not work without audio permission", Toast.LENGTH_LONG).show();
-                updateEngineStatus(binding.asrStatusIndicator, EngineStatus.ERROR);
-                // Still bind services even if permission is denied
-                bindServices();  // for testing LLM
+                Toast.makeText(this, "Speech recognition requires audio permission", Toast.LENGTH_LONG).show();
+                binding.asrSwitch.setChecked(false);
             }
         }
     }
