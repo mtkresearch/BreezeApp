@@ -108,7 +108,7 @@ public class TTSEngineService extends BaseEngineService {
         try {
             Log.d(TAG, "Initializing Local TTS...");
             localTTS = SherpaTTS.Companion.getInstance(
-                getApplicationContext()
+                getApplicationContext(), false
             );
             future.complete(true);
             Log.d(TAG, "Local TTS initialized with " + localTTS.getNumSpeakers() + " speakers");
