@@ -129,13 +129,6 @@ android {
 //    sourceSets.getByName("main") {
 //        jniLibs.setSrcDirs(listOf("src/main/libs"))
 //    }
-
-    dependencies {
-        implementation(fileTree(mapOf(
-            "dir" to "libs",
-            "include" to listOf("*.jar", "*.aar")
-        )))
-    }
 }
 
 dependencies {
@@ -160,14 +153,12 @@ dependencies {
     implementation(files("libs/executorch.aar"))
 
     // Add explicit dependency for Sherpa native libraries
-    implementation(fileTree(mapOf(
-        "dir" to "../libs",
-        "include" to listOf(
-            "*.jar",
-            "*.aar",
-            "*.so"
-        )
-    )))
+//    implementation(fileTree(mapOf(
+//        "dir" to "../libs",
+//        "include" to listOf(
+//            "*.so"
+//        )
+//    )))
 }
 
 // Git Branch Switch Task
