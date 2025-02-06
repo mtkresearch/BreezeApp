@@ -3,7 +3,34 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="8dp">
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp">
+
+    <!-- Assistant speaker button (left side) -->
+    <ImageButton
+        android:id="@+id/speakerButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
+        app:layout_constraintStart_toStartOf="parent"
+        app:tint="@color/primary" />
+
+    <!-- User speaker button (right side) -->
+    <ImageButton
+        android:id="@+id/userSpeakerButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/primary" />
 
     <LinearLayout
         android:id="@+id/messageBubble"
@@ -11,15 +38,19 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="12dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:maxWidth="260dp"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/speakerButton"
+        app:layout_constraintEnd_toStartOf="@id/userSpeakerButton"
         app:layout_constraintHorizontal_bias="0">
 
         <TextView
             android:id="@+id/messageText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:maxWidth="260dp"
             android:textSize="16sp" />
 
         <ImageView
@@ -30,33 +61,5 @@
             android:visibility="gone"
             android:scaleType="centerCrop"/>
     </LinearLayout>
-
-    <!-- Assistant speaker button (right side) -->
-    <ImageButton
-        android:id="@+id/speakerButton"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginStart="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_speaker"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
-        app:layout_constraintStart_toEndOf="@id/messageBubble"
-        app:tint="@color/primary" />
-
-    <!-- User speaker button (left side) -->
-    <ImageButton
-        android:id="@+id/userSpeakerButton"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginEnd="8dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_speaker"
-        android:rotation="180"
-        android:scaleX="-1"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
-        app:layout_constraintEnd_toStartOf="@id/messageBubble"
-        app:tint="@color/primary" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

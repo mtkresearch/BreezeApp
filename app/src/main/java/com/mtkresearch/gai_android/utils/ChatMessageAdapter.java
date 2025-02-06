@@ -96,23 +96,40 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             params.horizontalBias = 1f;
             holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
             holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
+            
+            // Hide assistant speaker button for user messages
             holder.speakerButton.setVisibility(View.GONE);
 
             // Show user speaker button only when message is complete
             boolean hasText = message.getText() != null && !message.getText().isEmpty();
             holder.userSpeakerButton.setVisibility(hasText ? View.VISIBLE : View.GONE);
 
+            // For user messages, constrain message bubble to end (right)
+            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+            params.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+            params.endToStart = holder.userSpeakerButton.getId();
+            params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+
         } else {
-            params.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+            // For AI messages
+            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
             params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
             params.horizontalBias = 0f;
             holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
             holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
+            
+            // Hide user speaker button for AI messages
             holder.userSpeakerButton.setVisibility(View.GONE);
 
+            // Show assistant speaker button only when not streaming and has text
             boolean isStreaming = (position == streamingPosition);
-            Log.d(TAG, "Position: " + position + ", Streaming: " + isStreaming);
-            holder.speakerButton.setVisibility(isStreaming ? View.GONE : View.VISIBLE);
+            boolean hasText = message.getText() != null && !message.getText().isEmpty();
+            holder.speakerButton.setVisibility((isStreaming || !hasText) ? View.GONE : View.VISIBLE);
+
+            // For assistant messages, constrain message bubble to start (left)
+            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+            params.startToEnd = holder.speakerButton.getId();
+            params.endToStart = ConstraintLayout.LayoutParams.UNSET;
         }
         holder.messageBubble.setLayoutParams(params);
 
