@@ -106,17 +106,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("open_source") {
+        create("UI") {
             dimension = "version"
-            applicationIdSuffix = ".open_source"
-            versionNameSuffix = "-open_source"
-            resValue("string", "app_name", "GAI-open_source")
-            buildConfigField("String", "GIT_BRANCH", "\"open_source\"")
+            applicationIdSuffix = ".UI"
+            versionNameSuffix = "-UI"
+            resValue("string", "app_name", "GAI-UI")
+            buildConfigField("String", "GIT_BRANCH", "\"UI\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.open_source.fileprovider"
-        }
-                    manifestPlaceholders["file_provider_authority"] =
-                "com.mtkresearch.gai_android.open_source.fileprovider"
+                "com.mtkresearch.gai_android.UI.fileprovider"
         }
     }
 
@@ -168,7 +165,7 @@ tasks.register("switchGitBranch") {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
-                    task.contains("OpenSource") -> "open_source"
+                    task.contains("OpenSource") -> "UI"
                     else -> null
                 }
             }
