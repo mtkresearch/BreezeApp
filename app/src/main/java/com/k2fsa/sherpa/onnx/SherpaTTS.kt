@@ -23,7 +23,7 @@ class SherpaTTS private constructor(
         private const val MR_TTS_DIR = "mr-tts"
         private const val VITS_MELO_DIR = "vits-melo-tts-zh_en"
         
-        private const val MR_TTS_MODEL = "vits-mr-run5.onnx"
+        private const val MR_TTS_MODEL = "vits-mr-run6.onnx"
         private const val VITS_MELO_MODEL = "model.onnx"
         
         private const val MR_TTS_LEXICON = "lexicon.txt"
