@@ -108,12 +108,12 @@ android {
         }
         create("UI") {
             dimension = "version"
-            applicationIdSuffix = ".UI"
-            versionNameSuffix = "-UI"
-            resValue("string", "app_name", "GAI-UI")
-            buildConfigField("String", "GIT_BRANCH", "\"UI\"")
+            applicationIdSuffix = ".executorch_llm"
+            versionNameSuffix = "-executorch_llm"
+            resValue("string", "app_name", "GAI-executorch_llm")
+            buildConfigField("String", "GIT_BRANCH", "\"executorch_llm\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.UI.fileprovider"
+                "com.mtkresearch.gai_android.executorch_llm.fileprovider"
         }
     }
 
@@ -165,7 +165,7 @@ tasks.register("switchGitBranch") {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
-                    task.contains("OpenSource") -> "UI"
+                    task.contains("executorch_llm") -> "executorch_llm"
                     else -> null
                 }
             }
