@@ -100,6 +100,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeChat();
         setupButtons();
         setupInputHandling();
+        
+        // Initialize model name as "Loading..."
+        binding.modelNameText.setText("Loading...");
     }
 
     private void initializeHandlers() {
@@ -112,6 +115,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         chatAdapter = new ChatMessageAdapter();
         chatAdapter.setSpeakerClickListener(this);
         UiUtils.setupChatRecyclerView(binding.recyclerView, chatAdapter);
+        
+        // Set initial watermark visibility
+        updateWatermarkVisibility();
+    }
+
+    private void updateWatermarkVisibility() {
+        if (binding.watermarkContainer != null) {
+            binding.watermarkContainer.setVisibility(
+                chatAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE
+            );
+        }
     }
 
     private void setupButtons() {
@@ -207,6 +221,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         ChatMessage userMessage = new ChatMessage(message, true);
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
+        
+        // Hide watermark when conversation starts
+        updateWatermarkVisibility();
         
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
@@ -559,11 +576,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             llmService = ((LLMEngineService.LocalBinder) service).getService();
+            // Update model name when service is connected
+            if (llmService != null) {
+                runOnUiThread(() -> {
+                    String modelName = llmService.getModelName();
+                    if (modelName != null && !modelName.isEmpty()) {
+                        binding.modelNameText.setText(modelName);
+                    } else {
+                        binding.modelNameText.setText("Unknown");
+                    }
+                });
+            }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             llmService = null;
+            // Update UI when service is disconnected
+            runOnUiThread(() -> binding.modelNameText.setText("Disconnected"));
         }
     };
 

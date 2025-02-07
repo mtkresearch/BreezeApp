@@ -115,15 +115,6 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.UI_enhance.fileprovider"
         }
-        create("fix_no_response") {
-            dimension = "version"
-            applicationIdSuffix = ".fix_no_response"
-            versionNameSuffix = "-fix_no_response"
-            resValue("string", "app_name", "GAI-fix_no_response")
-            buildConfigField("String", "GIT_BRANCH", "\"fix_no_response\"")
-            manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.UI_enhance.fileprovider"
-        }
     }
 
 //    sourceSets.getByName("main") {
@@ -168,14 +159,13 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("UI_enhance") || it.contains("fix_no_response")) }
+                 it.contains("Full") || it.contains("UI_enhance")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
                     task.contains("UI_enhance") -> "UI_enhance"
-                    task.contains("fix_no_response") -> "fix_no_response"
                     else -> null
                 }
             }
