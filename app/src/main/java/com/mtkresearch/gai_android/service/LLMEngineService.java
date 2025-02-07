@@ -44,6 +44,11 @@ public class LLMEngineService extends BaseEngineService {
     private AtomicBoolean isGenerating = new AtomicBoolean(false);
     private final ConversationManager conversationManager;
 
+    // Add method to get model name
+    public String getModelName() {
+        return com.mtkresearch.gai_android.utils.ModelUtils.getModelDisplayString(modelPath, backend);
+    }
+
     public LLMEngineService() {
         this.conversationManager = new ConversationManager();
     }
