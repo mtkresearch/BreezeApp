@@ -106,7 +106,7 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("UI") {
+        create("executorch_llm") {
             dimension = "version"
             applicationIdSuffix = ".executorch_llm"
             versionNameSuffix = "-executorch_llm"
@@ -159,7 +159,7 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("OpenSource")) }
+                 it.contains("Full") || it.contains("executorch_llm")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
