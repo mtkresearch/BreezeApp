@@ -106,14 +106,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("executorch_llm") {
+        create("fix_eos") {
             dimension = "version"
-            applicationIdSuffix = ".executorch_llm"
-            versionNameSuffix = "-executorch_llm"
-            resValue("string", "app_name", "GAI-executorch_llm")
-            buildConfigField("String", "GIT_BRANCH", "\"executorch_llm\"")
+            applicationIdSuffix = ".fix_eos"
+            versionNameSuffix = "-fix_eos"
+            resValue("string", "app_name", "GAI-fix_eos")
+            buildConfigField("String", "GIT_BRANCH", "\"fix_eos\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.executorch_llm.fileprovider"
+                "com.mtkresearch.gai_android.fix_eos.fileprovider"
         }
     }
 
@@ -159,13 +159,13 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("executorch_llm")) }
+                 it.contains("Full") || it.contains("fix_eos")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
-                    task.contains("executorch_llm") -> "executorch_llm"
+                    task.contains("fix_eos") -> "fix_eos"
                     else -> null
                 }
             }

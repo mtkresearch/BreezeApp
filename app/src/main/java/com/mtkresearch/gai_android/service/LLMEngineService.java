@@ -243,8 +243,10 @@ public class LLMEngineService extends BaseEngineService {
                                         return;
                                     }
 
-                                    // Handle stop token
-                                    if (token.equals(ConversationManager.getStopToken(ModelType.LLAMA_3_2))) {
+                                    // Handle both stop tokens - filter out both EOS tokens
+                                    if (token.equals(ConversationManager.getStopToken(ModelType.LLAMA_3_2)) || 
+                                        token.equals("<|end_of_text|>")) {
+                                        Log.d(TAG, "Stop token detected: " + token);
                                         completeGeneration();
                                         return;
                                     }
