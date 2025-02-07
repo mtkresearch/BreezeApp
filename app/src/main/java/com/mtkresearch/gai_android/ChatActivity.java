@@ -13,8 +13,14 @@ import android.widget.PopupMenu;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.RecyclerView.LayoutManager;
+import androidx.core.view.GravityCompat;
 
 import com.mtkresearch.gai_android.utils.AudioListAdapter;
+import com.mtkresearch.gai_android.utils.ChatHistory;
 import com.mtkresearch.gai_android.utils.ChatMediaHandler;
 import com.mtkresearch.gai_android.utils.ChatMessageAdapter;
 import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
@@ -39,6 +45,12 @@ import android.util.Log;
 import com.mtkresearch.gai_android.utils.FileUtils;
 import com.mtkresearch.gai_android.utils.ChatUIStateHandler;
 import com.mtkresearch.gai_android.utils.ConversationManager;
+import com.mtkresearch.gai_android.utils.ChatHistoryManager;
+import com.mtkresearch.gai_android.utils.ChatHistoryAdapter;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
@@ -56,10 +68,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private ChatMediaHandler mediaHandler;
     private ChatUIStateHandler uiHandler;
     private ConversationManager conversationManager;
+    private ChatHistoryManager historyManager;
 
     // Adapters
     private ChatMessageAdapter chatAdapter;
     private AudioListAdapter audioListAdapter;
+    private ChatHistoryAdapter historyAdapter;
 
     // Services
     private LLMEngineService llmService;
@@ -67,12 +81,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private ASREngineService asrService;
     private TTSEngineService ttsService;
 
+    private DrawerLayout drawerLayout;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
         initializeServices();
+        setupHistoryDrawer();
     }
 
     @Override
@@ -84,6 +101,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onPause() {
         super.onPause();
+        saveCurrentChat();
         releaseLLMResources();
     }
 
@@ -109,6 +127,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         mediaHandler = new ChatMediaHandler(this);
         uiHandler = new ChatUIStateHandler(binding);
         conversationManager = new ConversationManager();
+        historyManager = new ChatHistoryManager(this);
     }
 
     private void initializeChat() {
@@ -136,7 +155,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNavigationButton() {
-        binding.homeButton.setOnClickListener(v -> navigateToHome());
+        binding.homeButton.setOnClickListener(v -> {
+            if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                drawerLayout.closeDrawer(GravityCompat.START);
+            } else {
+                drawerLayout.openDrawer(GravityCompat.START);
+            }
+        });
     }
 
     private void setupAttachmentButton() {
@@ -225,6 +250,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Hide watermark when conversation starts
         updateWatermarkVisibility();
         
+        // Save chat after adding user message
+        saveCurrentChat();
+        
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
         conversationManager.addMessage(aiMessage);
@@ -232,10 +260,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Change send buttons to stop icons
         setSendButtonsAsStop(true);
-        
-        // Add timeout handler
-        final long startTime = System.currentTimeMillis();
-        final long RESPONSE_TIMEOUT = 30000; // 30 seconds timeout
         
         // Generate AI response
         if (llmService != null) {
@@ -260,7 +284,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }).thenAccept(finalResponse -> {
                 if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
                     runOnUiThread(() -> {
-                        // Check if response is empty or only contains whitespace
                         String response = finalResponse.trim();
                         if (response.isEmpty()) {
                             aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
@@ -270,6 +293,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
                         setSendButtonsAsStop(false);
+                        // Save chat after AI response
+                        saveCurrentChat();
+                        // Refresh history list to show new chat
+                        refreshHistoryList();
                     });
                 } else {
                     runOnUiThread(() -> {
@@ -541,6 +568,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         mediaHandler.release();
         binding = null;
         conversationManager = null;
+        historyManager = null;
+        historyAdapter = null;
+        drawerLayout = null;
     }
 
     private void unbindAllServices() {
@@ -640,6 +670,79 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
                     getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
+
+    private void setupHistoryDrawer() {
+        drawerLayout = binding.drawerLayout;
+        historyManager = new ChatHistoryManager(this);
+        historyAdapter = new ChatHistoryAdapter();
+        
+        RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+        historyRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        historyRecyclerView.setAdapter(historyAdapter);
+
+        // Add drawer listener for vibration feedback
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            private float lastOffset = 0f;
+            private static final float VIBRATION_THRESHOLD = 0.02f;
+
+            @Override
+            public void onDrawerSlide(View drawerView, float slideOffset) {
+                // Only vibrate when opening (slideOffset increasing)
+                if (slideOffset > lastOffset && slideOffset - lastOffset > VIBRATION_THRESHOLD) {
+                    android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                    if (vibrator != null && vibrator.hasVibrator()) {
+                        // Ensure amplitude is between 1 and 255
+                        int amplitude = Math.max(1, Math.min(255, (int)(50 + 100 * slideOffset)));
+                        vibrator.vibrate(android.os.VibrationEffect.createOneShot(3, amplitude));
+                    }
+                    lastOffset = slideOffset;
+                } else if (slideOffset < lastOffset) {
+                    lastOffset = slideOffset;
+                }
+            }
+
+            @Override
+            public void onDrawerClosed(View drawerView) {
+                lastOffset = 0f;
+            }
+        });
+
+        // Load and display chat histories
+        refreshHistoryList();
+
+        // Set click listener for history items
+        historyAdapter.setOnHistoryClickListener(history -> {
+            // Load the selected chat history
+            conversationManager.clearMessages();
+            for (ChatMessage message : history.getMessages()) {
+                conversationManager.addMessage(message);
+                chatAdapter.addMessage(message);
+            }
+            drawerLayout.closeDrawers();
+            updateWatermarkVisibility();
+        });
+    }
+
+    private void refreshHistoryList() {
+        List<ChatHistory> histories = historyManager.loadAllHistories();
+        historyAdapter.setHistories(histories);
+    }
+
+    private void saveCurrentChat() {
+        List<ChatMessage> messages = conversationManager.getMessages();
+        if (!messages.isEmpty()) {
+            // Use first message as title, or a default title if it's empty
+            String title = messages.get(0).getText();
+            if (title.isEmpty()) {
+                title = "Chat " + new SimpleDateFormat("yyyy-MM-dd HH:mm", 
+                    Locale.getDefault()).format(new Date());
+            }
+            historyManager.createNewHistory(title, messages);
+            
+            // Refresh history list
+            refreshHistoryList();
         }
     }
 }
