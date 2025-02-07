@@ -9,6 +9,7 @@ import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
 public class ChatUIStateHandler {
     private final ActivityChatBinding binding;
     private Uri pendingImageUri;
+    private boolean isGenerating = false;
 
     public ChatUIStateHandler(ActivityChatBinding binding) {
         this.binding = binding;
@@ -29,7 +30,8 @@ public class ChatUIStateHandler {
     }
 
     public void updateSendButton(boolean hasContent) {
-        int iconRes = hasContent ? R.drawable.ic_send : R.drawable.ic_audio_wave;
+        int iconRes = isGenerating ? R.drawable.ic_stop : 
+                     (hasContent ? R.drawable.ic_send : R.drawable.ic_audio_wave);
         binding.sendButton.setImageResource(iconRes);
         binding.sendButtonExpanded.setImageResource(iconRes);
     }
@@ -98,5 +100,10 @@ public class ChatUIStateHandler {
         binding.voiceButtonExpanded.setEnabled(true);
         binding.attachButton.setEnabled(true);
         binding.attachButtonExpanded.setEnabled(true);
+    }
+
+    public void setGeneratingState(boolean generating) {
+        this.isGenerating = generating;
+        updateSendButtonState();
     }
 } 
