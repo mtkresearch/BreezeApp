@@ -208,18 +208,23 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
         
-        // Create empty AI message
-        ChatMessage aiMessage = new ChatMessage("", false);
+        // Create empty AI message with loading indicator
+        ChatMessage aiMessage = new ChatMessage("Thinking...", false);
         conversationManager.addMessage(aiMessage);
         chatAdapter.addMessage(aiMessage);
         
         // Change send buttons to stop icons
         setSendButtonsAsStop(true);
         
+        // Add timeout handler
+        final long startTime = System.currentTimeMillis();
+        final long RESPONSE_TIMEOUT = 30000; // 30 seconds timeout
+        
         // Generate AI response
         if (llmService != null) {
             llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
+                private boolean hasReceivedResponse = false;
 
                 @Override
                 public void onToken(String token) {
@@ -227,6 +232,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         return;
                     }
 
+                    hasReceivedResponse = true;
                     runOnUiThread(() -> {
                         currentResponse.append(token);
                         aiMessage.updateText(currentResponse.toString());
@@ -237,24 +243,44 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }).thenAccept(finalResponse -> {
                 if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
                     runOnUiThread(() -> {
-                        aiMessage.updateText(finalResponse);
+                        // Check if response is empty or only contains whitespace
+                        String response = finalResponse.trim();
+                        if (response.isEmpty()) {
+                            aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
+                        } else {
+                            aiMessage.updateText(finalResponse);
+                        }
                         chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                        // Change stop buttons back to send icons
+                        setSendButtonsAsStop(false);
+                    });
+                } else {
+                    runOnUiThread(() -> {
+                        aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                         setSendButtonsAsStop(false);
                     });
                 }
             }).exceptionally(throwable -> {
                 Log.e(TAG, "Error generating response", throwable);
                 runOnUiThread(() -> {
-                    aiMessage.updateText("Error: " + throwable.getMessage());
+                    aiMessage.updateText("Error: Unable to generate response. Please try again later.");
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                     Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
-                    // Change stop buttons back to send icons
                     setSendButtonsAsStop(false);
                 });
                 return null;
             });
+
+            // Add timeout check
+            new android.os.Handler().postDelayed(() -> {
+                if (aiMessage.getText().equals("Thinking...")) {
+                    runOnUiThread(() -> {
+                        aiMessage.updateText("I apologize, but the response is taking longer than expected. You can try stopping and asking again.");
+                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    });
+                }
+            }, 10000); // Show timeout message after 10 seconds of no response
         }
     }
 
