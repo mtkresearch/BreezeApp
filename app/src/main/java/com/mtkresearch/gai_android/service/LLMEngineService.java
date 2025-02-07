@@ -307,7 +307,11 @@ public class LLMEngineService extends BaseEngineService {
             isGenerating.set(false);
             mModule.stop();
             if (currentResponse != null && !currentResponse.isDone()) {
-                currentResponse.complete(currentStreamingResponse.toString());
+                String finalResponse = currentStreamingResponse.toString();
+                if (finalResponse.isEmpty()) {
+                    finalResponse = "[Generation stopped by user]";
+                }
+                currentResponse.complete(finalResponse);
             }
         }
     }
