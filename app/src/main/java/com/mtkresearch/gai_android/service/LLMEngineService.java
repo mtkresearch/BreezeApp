@@ -9,12 +9,15 @@ import org.pytorch.executorch.LlamaCallback;
 import com.executorch.ModelUtils;
 import com.executorch.PromptFormat;
 import com.executorch.ModelType;
+import com.mtkresearch.gai_android.utils.ChatMessage;
+import com.mtkresearch.gai_android.utils.ConversationManager;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.List;
 
 public class LLMEngineService extends BaseEngineService {
 //    static {
@@ -25,7 +28,7 @@ public class LLMEngineService extends BaseEngineService {
     private static final long INIT_TIMEOUT_MS = 120000;
     private static final long GENERATION_TIMEOUT_MS = 60000;  // Increased timeout
     private static final boolean MTK_BACKEND_AVAILABLE = false;
-    private static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
+    public static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     private String backend = "none";
     
     // Local CPU backend (LlamaModule)
@@ -39,6 +42,11 @@ public class LLMEngineService extends BaseEngineService {
     private boolean hasSeenAssistantMarker = false;
     private Executor executor;
     private AtomicBoolean isGenerating = new AtomicBoolean(false);
+    private final ConversationManager conversationManager;
+
+    public LLMEngineService() {
+        this.conversationManager = new ConversationManager();
+    }
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
 
@@ -197,97 +205,99 @@ public class LLMEngineService extends BaseEngineService {
         currentStreamingResponse.setLength(0);
         isGenerating.set(true);
         
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                CompletableFuture<String> responseFuture = new CompletableFuture<>();
-                
-                switch (backend) {
-                    case "mtk":
-                        String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                            @Override
-                            public void onToken(String token) {
+        try {
+            switch (backend) {
+                case "mtk":
+                    // MTK backend uses raw prompt without formatting
+                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                        @Override
+                        public void onToken(String token) {
+                            if (callback != null) {
                                 callback.onToken(token);
                             }
-                        });
-                        nativeResetLlm();
-                        nativeSwapModel(128);
-                        responseFuture.complete(response);
-                        break;
-                        
-                    case "localCPU":
-                        // Calculate sequence length based on prompt length
-                        int seqLen = (int)(prompt.length() * 0.75) + 64;
-                        
-                        executor.execute(() -> {
-                            try {
-                                mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                    @Override
-                                    public void onResult(String token) {
-                                        if (!isGenerating.get()) {
-                                            return;
-                                        }
-
-                                        if (token == null || token.isEmpty()) {
-                                            return;
-                                        }
-
-                                        // Handle stop token
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                            completeGeneration(responseFuture);
-                                            return;
-                                        }
-
-                                        // Handle assistant marker
-                                        if (!hasSeenAssistantMarker) {
-                                            if (token.contains("<|start_header_id|>assistant<|end_header_id|>")) {
-                                                hasSeenAssistantMarker = true;
-                                                return;
-                                            }
-                                            return;
-                                        }
-
-                                        // Process token
-                                        currentStreamingResponse.append(token);
-                                        if (callback != null) {
-                                            callback.onToken(token);
-                                        }
+                        }
+                    });
+                    nativeResetLlm();
+                    nativeSwapModel(128);
+                    currentResponse.complete(response);
+                    break;
+                    
+                case "localCPU":
+                    // Only apply prompt formatting for local CPU backend
+                    String finalPrompt = conversationManager.getFormattedPrompt(prompt, ModelType.LLAMA_3_2);
+                    Log.d(TAG, "Formatted prompt for local CPU: " + finalPrompt);
+                    
+                    // Calculate sequence length based on prompt length
+                    int seqLen = (int)(finalPrompt.length() * 0.75) + 256;  // Increased for longer context
+                    
+                    executor.execute(() -> {
+                        try {
+                            mModule.generate(finalPrompt, seqLen, new LlamaCallback() {
+                                @Override
+                                public void onResult(String token) {
+                                    if (!isGenerating.get()) {
+                                        return;
                                     }
 
-                                    @Override
-                                    public void onStats(float tps) {
-                                        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                    if (token == null || token.isEmpty()) {
+                                        return;
                                     }
-                                }, false);
-                                
-                                // Complete generation if not already completed
-                                completeGeneration(responseFuture);
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error during generation", e);
-                                responseFuture.completeExceptionally(e);
+
+                                    // Handle stop token
+                                    if (token.equals(ConversationManager.getStopToken(ModelType.LLAMA_3_2))) {
+                                        completeGeneration();
+                                        return;
+                                    }
+
+                                    // Process token
+                                    if (callback != null) {
+                                        callback.onToken(token);
+                                    }
+                                    currentStreamingResponse.append(token);
+                                }
+
+                                @Override
+                                public void onStats(float tps) {
+                                    Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                }
+                            }, false);
+                            
+                            // Complete generation when finished
+                            completeGeneration();
+                            
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error during generation", e);
+                            if (!currentResponse.isDone()) {
+                                currentResponse.completeExceptionally(e);
                             }
-                        });
-                        break;
-                        
-                    default:
+                        }
+                    });
+                    break;
+                    
+                default:
+                    if (callback != null) {
                         callback.onToken(DEFAULT_ERROR_RESPONSE);
-                        responseFuture.complete(DEFAULT_ERROR_RESPONSE);
-                }
-                
-                return responseFuture.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error in streaming response", e);
-                callback.onToken(DEFAULT_ERROR_RESPONSE);
-                return DEFAULT_ERROR_RESPONSE;
+                    }
+                    currentResponse.complete(DEFAULT_ERROR_RESPONSE);
             }
-        });
+            
+            return currentResponse;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error in streaming response", e);
+            if (callback != null) {
+                callback.onToken(DEFAULT_ERROR_RESPONSE);
+            }
+            currentResponse.complete(DEFAULT_ERROR_RESPONSE);
+            return currentResponse;
+        }
     }
 
-    private void completeGeneration(CompletableFuture<String> responseFuture) {
+    private void completeGeneration() {
         if (isGenerating.compareAndSet(true, false)) {
             String finalResponse = currentStreamingResponse.toString();
-            if (!responseFuture.isDone()) {
-                responseFuture.complete(finalResponse);
+            if (currentResponse != null && !currentResponse.isDone()) {
+                currentResponse.complete(finalResponse);
             }
         }
     }
