@@ -38,6 +38,7 @@ import android.util.Log;
 
 import com.mtkresearch.gai_android.utils.FileUtils;
 import com.mtkresearch.gai_android.utils.ChatUIStateHandler;
+import com.mtkresearch.gai_android.utils.ConversationManager;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
@@ -54,6 +55,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     // Handlers
     private ChatMediaHandler mediaHandler;
     private ChatUIStateHandler uiHandler;
+    private ConversationManager conversationManager;
 
     // Adapters
     private ChatMessageAdapter chatAdapter;
@@ -103,6 +105,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void initializeHandlers() {
         mediaHandler = new ChatMediaHandler(this);
         uiHandler = new ChatUIStateHandler(binding);
+        conversationManager = new ConversationManager();
     }
 
     private void initializeChat() {
@@ -191,13 +194,58 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void handleTextMessage(String message) {
         if (message.trim().isEmpty()) return;
         
-        sendUserMessage(message);
-        generateAIResponse(message);
+        // Add user message to conversation
+        ChatMessage userMessage = new ChatMessage(message, true);
+        conversationManager.addMessage(userMessage);
+        chatAdapter.addMessage(userMessage);
+        
+        // Create empty AI message
+        ChatMessage aiMessage = new ChatMessage("", false);
+        conversationManager.addMessage(aiMessage);
+        chatAdapter.addMessage(aiMessage);
+        
+        // Generate AI response
+        if (llmService != null) {
+            llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
+                private final StringBuilder currentResponse = new StringBuilder();
+
+                @Override
+                public void onToken(String token) {
+                    if (token == null || token.isEmpty()) {
+                        return;
+                    }
+
+                    runOnUiThread(() -> {
+                        currentResponse.append(token);
+                        aiMessage.updateText(currentResponse.toString());
+                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), false);
+                    });
+                }
+            }).thenAccept(finalResponse -> {
+                if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
+                    runOnUiThread(() -> {
+                        aiMessage.updateText(finalResponse);
+                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                    });
+                }
+            }).exceptionally(throwable -> {
+                Log.e(TAG, "Error generating response", throwable);
+                runOnUiThread(() -> {
+                    aiMessage.updateText("Error: " + throwable.getMessage());
+                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
+                });
+                return null;
+            });
+        }
     }
 
     private void handleImageMessage(Uri imageUri, String message) {
         ChatMessage userMessage = new ChatMessage(message, true);
         userMessage.setImageUri(imageUri);
+        conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
         
         if (vlmService != null) {
@@ -205,6 +253,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 .thenAccept(response -> {
                     runOnUiThread(() -> {
                         ChatMessage aiMessage = new ChatMessage(response, false);
+                        conversationManager.addMessage(aiMessage);
                         chatAdapter.addMessage(aiMessage);
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
                     });
@@ -214,41 +263,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     runOnUiThread(() -> Toast.makeText(this, "Error analyzing image", Toast.LENGTH_SHORT).show());
                     return null;
                 });
-        }
-    }
-
-    private void sendUserMessage(String message) {
-        ChatMessage userMessage = new ChatMessage(message, true);
-        chatAdapter.addMessage(userMessage);
-        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-    }
-
-    private void generateAIResponse(String message) {
-        ChatMessage aiMessage = new ChatMessage("", false);
-        chatAdapter.addMessage(aiMessage);
-        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-
-        if (llmService != null) {
-            llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
-                @Override
-                public void onToken(String token) {
-                    runOnUiThread(() -> {
-                        aiMessage.appendText(token);
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), false);
-                    });
-                }
-            }).thenAccept(fullResponse -> {
-                runOnUiThread(() -> {
-                    aiMessage.updateText(fullResponse);
-                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                });
-            }).exceptionally(throwable -> {
-                Log.e(TAG, "Error generating response", throwable);
-                runOnUiThread(() -> Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show());
-                return null;
-            });
         }
     }
 
@@ -447,6 +461,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         unbindAllServices();
         mediaHandler.release();
         binding = null;
+        conversationManager = null;
     }
 
     private void unbindAllServices() {
