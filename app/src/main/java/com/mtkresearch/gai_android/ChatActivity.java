@@ -160,6 +160,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         View.OnClickListener sendClickListener = v -> handleSendAction();
         binding.sendButton.setOnClickListener(sendClickListener);
         binding.sendButtonExpanded.setOnClickListener(sendClickListener);
+
+        // Set initial send icon
+        binding.sendButton.setBackgroundResource(R.drawable.bg_send_button);
+        binding.sendButtonExpanded.setBackgroundResource(R.drawable.bg_send_button);
+        binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
+        binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
     }
 
     private void setupInputHandling() {
@@ -204,6 +210,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         conversationManager.addMessage(aiMessage);
         chatAdapter.addMessage(aiMessage);
         
+        // Change send buttons to stop icons
+        setSendButtonsAsStop(true);
+        
         // Generate AI response
         if (llmService != null) {
             llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
@@ -228,6 +237,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         aiMessage.updateText(finalResponse);
                         chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                        // Change stop buttons back to send icons
+                        setSendButtonsAsStop(false);
                     });
                 }
             }).exceptionally(throwable -> {
@@ -236,10 +247,32 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     aiMessage.updateText("Error: " + throwable.getMessage());
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                     Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    // Change stop buttons back to send icons
+                    setSendButtonsAsStop(false);
                 });
                 return null;
             });
         }
+    }
+
+    private void setSendButtonsAsStop(boolean isStop) {
+        runOnUiThread(() -> {
+            // Update UI state
+            uiHandler.setGeneratingState(isStop);
+            
+            // Update click listeners
+            View.OnClickListener listener = isStop ? 
+                v -> {
+                    if (llmService != null) {
+                        llmService.stopGeneration();
+                        setSendButtonsAsStop(false);
+                    }
+                } :
+                v -> handleSendAction();
+
+            binding.sendButton.setOnClickListener(listener);
+            binding.sendButtonExpanded.setOnClickListener(listener);
+        });
     }
 
     private void handleImageMessage(Uri imageUri, String message) {
