@@ -200,6 +200,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void handleTextMessage(String message) {
         if (message.trim().isEmpty()) return;
         
+        // Hide keyboard
+        hideKeyboard();
+        
         // Add user message to conversation
         ChatMessage userMessage = new ChatMessage(message, true);
         conversationManager.addMessage(userMessage);
@@ -573,4 +576,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             ttsService = null;
         }
     };
+
+    // Add this new method to handle keyboard hiding
+    private void hideKeyboard() {
+        View view = getCurrentFocus();
+        if (view != null) {
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                    getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+    }
 }
