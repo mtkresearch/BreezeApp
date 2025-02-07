@@ -106,14 +106,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("fix_eos") {
+        create("UI_enhance") {
             dimension = "version"
-            applicationIdSuffix = ".fix_eos"
-            versionNameSuffix = "-fix_eos"
-            resValue("string", "app_name", "GAI-fix_eos")
-            buildConfigField("String", "GIT_BRANCH", "\"fix_eos\"")
+            applicationIdSuffix = ".UI_enhance"
+            versionNameSuffix = "-UI_enhance"
+            resValue("string", "app_name", "GAI-UI_enhance")
+            buildConfigField("String", "GIT_BRANCH", "\"UI_enhance\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.fix_eos.fileprovider"
+                "com.mtkresearch.gai_android.UI_enhance.fileprovider"
         }
     }
 
@@ -159,13 +159,13 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("fix_eos")) }
+                 it.contains("Full") || it.contains("UI_enhance")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
-                    task.contains("fix_eos") -> "fix_eos"
+                    task.contains("UI_enhance") -> "UI_enhance"
                     else -> null
                 }
             }
