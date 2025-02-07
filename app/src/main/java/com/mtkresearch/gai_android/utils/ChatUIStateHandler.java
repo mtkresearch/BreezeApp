@@ -1,7 +1,9 @@
 package com.mtkresearch.gai_android.utils;
 
+import android.content.Context;
 import android.net.Uri;
 import android.view.View;
+import android.app.Activity;
 
 import com.mtkresearch.gai_android.R;
 import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
@@ -73,6 +75,18 @@ public class ChatUIStateHandler {
         clearImagePreview();
         collapseInputSection();
         updateSendButtonState();
+        
+        // Clear focus from EditText
+        binding.messageInput.clearFocus();
+        binding.messageInputExpanded.clearFocus();
+        
+        // Hide keyboard
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                binding.getRoot().getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        View currentFocus = ((Activity) binding.getRoot().getContext()).getCurrentFocus();
+        if (currentFocus != null) {
+            imm.hideSoftInputFromWindow(currentFocus.getWindowToken(), 0);
+        }
     }
 
     public void updateSendButtonState() {
