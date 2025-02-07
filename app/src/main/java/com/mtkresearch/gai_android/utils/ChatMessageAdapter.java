@@ -19,13 +19,14 @@ import com.mtkresearch.gai_android.R;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Adapter for displaying chat messages in a RecyclerView.
+ * Handles only UI representation of messages.
+ */
 public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder> {
     private static final String TAG = "ChatMessageAdapter";
-    private List<ChatMessage> messages = new ArrayList<>();
-    private Handler handler = new Handler(Looper.getMainLooper());
-    private int streamingPosition = -1;
-    private String fullText = "";
-    private int currentCharIndex = 0;
+    private final List<ChatMessage> messages = new ArrayList<>();
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private OnSpeakerClickListener speakerClickListener;
 
     public interface OnSpeakerClickListener {
@@ -36,37 +37,37 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         this.speakerClickListener = listener;
     }
 
+    public void setMessages(List<ChatMessage> newMessages) {
+        messages.clear();
+        messages.addAll(newMessages);
+        notifyDataSetChanged();
+    }
+
     public void addMessage(ChatMessage message) {
         messages.add(message);
-        int position = messages.size() - 1;
-        notifyItemInserted(position);
+        notifyItemInserted(messages.size() - 1);
+    }
 
-        if (!message.isUser()) {
-            streamText(message.getText(), position);
+    public void updateLastMessage(String newText) {
+        if (!messages.isEmpty()) {
+            int lastIndex = messages.size() - 1;
+            ChatMessage lastMessage = messages.get(lastIndex);
+            lastMessage.updateText(newText);
+            notifyItemChanged(lastIndex);
         }
     }
 
-    private void streamText(String text, int position) {
-        fullText = text;
-        currentCharIndex = 0;
-        streamingPosition = position;
-        notifyItemChanged(position);
-        streamNextCharacter();
+    public void removeLastMessage() {
+        if (!messages.isEmpty()) {
+            int lastIndex = messages.size() - 1;
+            messages.remove(lastIndex);
+            notifyItemRemoved(lastIndex);
+        }
     }
 
-    private void streamNextCharacter() {
-        if (currentCharIndex <= fullText.length()) {
-            String partialText = fullText.substring(0, currentCharIndex);
-            messages.get(streamingPosition).updateText(partialText);
-            notifyItemChanged(streamingPosition);
-
-            currentCharIndex++;
-            handler.postDelayed(this::streamNextCharacter, 50);
-        } else {
-            int completedPosition = streamingPosition;
-            streamingPosition = -1;
-            notifyItemChanged(completedPosition);
-        }
+    public void clearMessages() {
+        messages.clear();
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -79,11 +80,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
-        if (holder.speakerButton == null || holder.userSpeakerButton == null) {
-            Log.e(TAG, "Speaker buttons not properly initialized");
-            return;
-        }
-
         ChatMessage message = messages.get(position);
         holder.bind(message);
 
@@ -91,78 +87,74 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageBubble.getLayoutParams();
 
         if (message.isUser()) {
-            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-            params.horizontalBias = 1f;
-            holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
-            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
-            
-            // Hide assistant speaker button for user messages
-            holder.speakerButton.setVisibility(View.GONE);
-
-            // Show user speaker button only when message is complete
-            boolean hasText = message.getText() != null && !message.getText().isEmpty();
-            holder.userSpeakerButton.setVisibility(hasText ? View.VISIBLE : View.GONE);
-
-            // For user messages, constrain message bubble to end (right)
-            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-            params.startToEnd = ConstraintLayout.LayoutParams.UNSET;
-            params.endToStart = holder.userSpeakerButton.getId();
-            params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
-
+            setupUserMessage(holder, params, message);
         } else {
-            // For AI messages
-            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-            params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-            params.horizontalBias = 0f;
-            holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
-            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
-            
-            // Hide user speaker button for AI messages
-            holder.userSpeakerButton.setVisibility(View.GONE);
-
-            // Show assistant speaker button only when not streaming and has text
-            boolean isStreaming = (position == streamingPosition);
-            boolean hasText = message.getText() != null && !message.getText().isEmpty();
-            holder.speakerButton.setVisibility((isStreaming || !hasText) ? View.GONE : View.VISIBLE);
-
-            // For assistant messages, constrain message bubble to start (left)
-            params.startToStart = ConstraintLayout.LayoutParams.UNSET;
-            params.startToEnd = holder.speakerButton.getId();
-            params.endToStart = ConstraintLayout.LayoutParams.UNSET;
+            setupAssistantMessage(holder, params, message);
         }
-        holder.messageBubble.setLayoutParams(params);
 
-        // Handle image visibility and loading
+        holder.messageBubble.setLayoutParams(params);
+        setupImageAndSpeakerButtons(holder, message);
+    }
+
+    private void setupUserMessage(MessageViewHolder holder, ConstraintLayout.LayoutParams params, ChatMessage message) {
+        params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.horizontalBias = 1f;
+        holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
+        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
+        
+        holder.speakerButton.setVisibility(View.GONE);
+        holder.userSpeakerButton.setVisibility(message.hasText() ? View.VISIBLE : View.GONE);
+
+        params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        params.startToEnd = ConstraintLayout.LayoutParams.UNSET;
+        params.endToStart = holder.userSpeakerButton.getId();
+        params.endToEnd = ConstraintLayout.LayoutParams.UNSET;
+    }
+
+    private void setupAssistantMessage(MessageViewHolder holder, ConstraintLayout.LayoutParams params, ChatMessage message) {
+        params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        params.horizontalBias = 0f;
+        holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
+        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
+        
+        holder.userSpeakerButton.setVisibility(View.GONE);
+        holder.speakerButton.setVisibility(message.hasText() ? View.VISIBLE : View.GONE);
+
+        params.startToStart = ConstraintLayout.LayoutParams.UNSET;
+        params.startToEnd = holder.speakerButton.getId();
+        params.endToStart = ConstraintLayout.LayoutParams.UNSET;
+    }
+
+    private void setupImageAndSpeakerButtons(MessageViewHolder holder, ChatMessage message) {
         Uri imageUri = message.getImageUri();
         if (imageUri != null) {
-            Log.d(TAG, "Image URI present: " + imageUri.toString());
+            Log.d(TAG, "Image URI present: " + imageUri);
             holder.messageImage.setVisibility(View.VISIBLE);
             try {
                 holder.messageImage.setImageURI(null);
                 holder.messageImage.setImageURI(imageUri);
-                Log.d(TAG, "Image loaded successfully");
             } catch (Exception e) {
                 Log.e(TAG, "Error loading image", e);
                 holder.messageImage.setVisibility(View.GONE);
             }
         } else {
-            Log.d(TAG, "No image URI for this message");
             holder.messageImage.setVisibility(View.GONE);
         }
 
-        // Setup speaker button click listeners
-        holder.speakerButton.setOnClickListener(v -> {
-            if (speakerClickListener != null) {
-                speakerClickListener.onSpeakerClick(message.getText());
-            }
-        });
+        setupSpeakerClickListeners(holder, message);
+    }
 
-        holder.userSpeakerButton.setOnClickListener(v -> {
-            if (speakerClickListener != null) {
+    private void setupSpeakerClickListeners(MessageViewHolder holder, ChatMessage message) {
+        View.OnClickListener speakerListener = v -> {
+            if (speakerClickListener != null && message.hasText()) {
                 speakerClickListener.onSpeakerClick(message.getText());
             }
-        });
+        };
+        
+        holder.speakerButton.setOnClickListener(speakerListener);
+        holder.userSpeakerButton.setOnClickListener(speakerListener);
     }
 
     @Override
