@@ -11,6 +11,7 @@ import com.mtkresearch.gai_android.R;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,7 +33,9 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<ChatHistoryAdapter.
     }
 
     public void setHistories(List<ChatHistory> histories) {
-        this.histories = histories;
+        this.histories = new ArrayList<>(histories);
+        // Sort histories by date in descending order (latest first)
+        Collections.sort(this.histories, (h1, h2) -> h2.getDate().compareTo(h1.getDate()));
         notifyDataSetChanged();
     }
 
@@ -90,9 +93,15 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<ChatHistoryAdapter.
         holder.itemView.setOnClickListener(v -> {
             if (isSelectionMode) {
                 toggleSelection(history.getId());
+                holder.checkBox.setChecked(selectedHistories.contains(history.getId()));
             } else if (listener != null) {
                 listener.onHistoryClick(history);
             }
+        });
+
+        // Add checkbox click listener
+        holder.checkBox.setOnClickListener(v -> {
+            toggleSelection(history.getId());
         });
     }
 
