@@ -11,6 +11,9 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.Toast;
+import android.widget.ImageButton;
+import android.widget.CheckBox;
+import android.app.AlertDialog;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -51,6 +54,7 @@ import com.mtkresearch.gai_android.utils.ChatHistoryAdapter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Set;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
@@ -91,8 +95,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeServices();
         setupHistoryDrawer();
         
-        // Clear any previous active history when starting new chat
+        // Clear any previous active history and start fresh
         historyManager.clearCurrentActiveHistory();
+        clearCurrentConversation();
     }
 
     @Override
@@ -685,30 +690,33 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         historyRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         historyRecyclerView.setAdapter(historyAdapter);
 
-        // Add drawer listener for vibration feedback
-        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            private float lastOffset = 0f;
-            private static final float VIBRATION_THRESHOLD = 0.02f;
+        ImageButton deleteButton = findViewById(R.id.deleteHistoryButton);
+        CheckBox selectAllCheckbox = findViewById(R.id.selectAllCheckbox);
 
-            @Override
-            public void onDrawerSlide(View drawerView, float slideOffset) {
-                // Only vibrate when opening (slideOffset increasing)
-                if (slideOffset > lastOffset && slideOffset - lastOffset > VIBRATION_THRESHOLD) {
-                    android.os.Vibrator vibrator = (android.os.Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-                    if (vibrator != null && vibrator.hasVibrator()) {
-                        // Ensure amplitude is between 1 and 255
-                        int amplitude = Math.max(1, Math.min(255, (int)(50 + 100 * slideOffset)));
-                        vibrator.vibrate(android.os.VibrationEffect.createOneShot(3, amplitude));
-                    }
-                    lastOffset = slideOffset;
-                } else if (slideOffset < lastOffset) {
-                    lastOffset = slideOffset;
-                }
+        deleteButton.setOnClickListener(v -> {
+            if (historyAdapter.isSelectionMode()) {
+                // If in selection mode, show delete confirmation
+                showDeleteConfirmation();
+            } else {
+                // Enter selection mode
+                historyAdapter.setSelectionMode(true);
+                selectAllCheckbox.setVisibility(View.VISIBLE);
+                deleteButton.setImageResource(R.drawable.ic_delete);  // Use the same icon
+                deleteButton.setColorFilter(getResources().getColor(R.color.error, getTheme()));  // Add red tint
             }
+        });
 
+        selectAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            historyAdapter.selectAll(isChecked);
+        });
+
+        // Handle back press in selection mode
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
-            public void onDrawerClosed(View drawerView) {
-                lastOffset = 0f;
+            public void onDrawerStateChanged(int newState) {
+                if (newState == DrawerLayout.STATE_DRAGGING && historyAdapter.isSelectionMode()) {
+                    exitSelectionMode();
+                }
             }
         });
 
@@ -717,17 +725,62 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Set click listener for history items
         historyAdapter.setOnHistoryClickListener(history -> {
+            // First save the current conversation if it exists
+            saveCurrentChat();
+            
+            // Clear the current conversation display
+            clearCurrentConversation();
+            
             // Load the selected chat history
-            conversationManager.clearMessages();
             for (ChatMessage message : history.getMessages()) {
                 conversationManager.addMessage(message);
                 chatAdapter.addMessage(message);
             }
+            
             // Set this as the current active history
             historyManager.setCurrentActiveHistory(history);
             drawerLayout.closeDrawers();
             updateWatermarkVisibility();
         });
+    }
+
+    private void showDeleteConfirmation() {
+        Set<String> selectedIds = historyAdapter.getSelectedHistories();
+        if (selectedIds.isEmpty()) {
+            Toast.makeText(this, "No histories selected", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+            .setTitle("Delete Selected Histories")
+            .setMessage("Are you sure you want to delete " + selectedIds.size() + " selected histories?")
+            .setPositiveButton("Delete", (dialog, which) -> {
+                for (String id : selectedIds) {
+                    historyManager.deleteHistory(id);
+                }
+                exitSelectionMode();
+                refreshHistoryList();
+                Toast.makeText(this, "Selected histories deleted", Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void exitSelectionMode() {
+        historyAdapter.setSelectionMode(false);
+        findViewById(R.id.selectAllCheckbox).setVisibility(View.GONE);
+        ImageButton deleteButton = findViewById(R.id.deleteHistoryButton);
+        deleteButton.setImageResource(R.drawable.ic_delete);
+        deleteButton.clearColorFilter();  // Remove the tint
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START) && historyAdapter.isSelectionMode()) {
+            exitSelectionMode();
+            return;
+        }
+        super.onBackPressed();
     }
 
     private void refreshHistoryList() {
@@ -748,5 +801,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Create or update history
             historyManager.createNewHistory(title, messages);
         }
+    }
+
+    private void clearCurrentConversation() {
+        // Clear the conversation manager
+        conversationManager.clearMessages();
+        // Clear the chat adapter
+        chatAdapter.clearMessages();
+        // Update watermark visibility
+        updateWatermarkVisibility();
     }
 }

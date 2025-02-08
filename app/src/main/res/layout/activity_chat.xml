@@ -284,15 +284,36 @@
             android:layout_marginTop="24dp"
             android:layout_marginBottom="24dp">
 
-            <TextView
+            <LinearLayout
+                android:id="@+id/historyHeaderLayout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Today"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:paddingHorizontal="16dp"
-                android:paddingVertical="12dp"
-                android:textColor="@color/text_primary"/>
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Chat History"
+                    android:textStyle="bold"
+                    android:textSize="18sp"/>
+
+                <CheckBox
+                    android:id="@+id/selectAllCheckbox"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"/>
+
+                <ImageButton
+                    android:id="@+id/deleteHistoryButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:src="@drawable/ic_delete"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:padding="8dp"/>
+            </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
