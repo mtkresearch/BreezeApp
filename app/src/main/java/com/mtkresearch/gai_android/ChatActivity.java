@@ -55,6 +55,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Set;
+import android.graphics.Color;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
@@ -700,6 +701,39 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         historyManager = new ChatHistoryManager(this);
         historyAdapter = new ChatHistoryAdapter();
         
+        // Configure drawer to slide the main content
+        drawerLayout.setScrimColor(Color.TRANSPARENT);
+        drawerLayout.setDrawerElevation(0f);
+        
+        // Enable sliding content behavior
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED);
+        
+        // Set drawer listener for animation and dimming effect
+        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            private final View mainContent = binding.getRoot().findViewById(R.id.mainContent);
+            private final View contentOverlay = binding.getRoot().findViewById(R.id.contentOverlay);
+
+            @Override
+            public void onDrawerSlide(View drawerView, float slideOffset) {
+                // Move the main content with the drawer
+                mainContent.setTranslationX(drawerView.getWidth() * slideOffset);
+                
+                // Show and update overlay opacity
+                if (slideOffset > 0) {
+                    contentOverlay.setVisibility(View.VISIBLE);
+                    contentOverlay.setAlpha(0.6f * slideOffset);  // Adjusted for black background
+                } else {
+                    contentOverlay.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onDrawerClosed(View drawerView) {
+                contentOverlay.setVisibility(View.GONE);
+                contentOverlay.setAlpha(0f);
+            }
+        });
+        
         RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
         historyRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         historyRecyclerView.setAdapter(historyAdapter);
@@ -709,8 +743,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         deleteButton.setOnClickListener(v -> {
             if (historyAdapter.isSelectionMode()) {
-                // If in selection mode, show delete confirmation
-                showDeleteConfirmation();
+                // If in selection mode and has selections, show delete confirmation
+                Set<String> selectedIds = historyAdapter.getSelectedHistories();
+                if (!selectedIds.isEmpty()) {
+                    showDeleteConfirmation();
+                } else {
+                    // Exit selection mode if no histories are selected
+                    exitSelectionMode();
+                }
             } else {
                 // Enter selection mode
                 historyAdapter.setSelectionMode(true);
