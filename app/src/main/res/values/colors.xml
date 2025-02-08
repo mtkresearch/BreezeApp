@@ -15,5 +15,6 @@
     <color name="user_message_bg">#FFF3E0</color>  <!-- Light Orange Background -->
     <color name="user_message_text">#212121</color><!-- Dark text for user messages -->
     <color name="ai_message_bg">#FFFFFF</color>    <!-- No background (white) -->
-    <color name="ai_message_text">#757575</color>  <!-- Gray text for AI messages -->
+    <color name="ai_message_text">#757575</color>
+    <color name="error">#AF2316</color>  <!-- Gray text for AI messages -->
 </resources>
