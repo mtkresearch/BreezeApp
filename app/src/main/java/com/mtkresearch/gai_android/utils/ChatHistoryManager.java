@@ -12,6 +12,7 @@ public class ChatHistoryManager {
     private static final String TAG = "ChatHistoryManager";
     private static final String HISTORY_DIR = "chat_histories";
     private final Context context;
+    private ChatHistory currentActiveHistory;
 
     public ChatHistoryManager(Context context) {
         this.context = context;
@@ -26,8 +27,17 @@ public class ChatHistoryManager {
     }
 
     public ChatHistory createNewHistory(String title, List<ChatMessage> messages) {
+        if (currentActiveHistory != null) {
+            // Update existing history with new messages
+            currentActiveHistory.setTitle(title);
+            currentActiveHistory.updateMessages(messages);
+            saveHistory(currentActiveHistory);
+            return currentActiveHistory;
+        }
+
         String id = UUID.randomUUID().toString();
         ChatHistory history = new ChatHistory(id, title, new Date(), messages);
+        currentActiveHistory = history;
         saveHistory(history);
         return history;
     }
@@ -71,5 +81,22 @@ public class ChatHistoryManager {
         if (file.exists()) {
             file.delete();
         }
+    }
+
+    public void setCurrentActiveHistory(ChatHistory history) {
+        currentActiveHistory = history;
+    }
+
+    public ChatHistory getCurrentActiveHistory() {
+        return currentActiveHistory;
+    }
+
+    public void clearCurrentActiveHistory() {
+        currentActiveHistory = null;
+    }
+
+    public void updateHistory(ChatHistory history, List<ChatMessage> messages) {
+        history.updateMessages(messages);
+        saveHistory(history);
     }
 } 
