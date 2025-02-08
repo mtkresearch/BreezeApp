@@ -80,4 +80,8 @@ public class ChatHistory implements Serializable {
             messages.remove(messages.size() - 1);
         }
     }
+
+    public void updateMessages(List<ChatMessage> newMessages) {
+        this.messages = new ArrayList<>(newMessages);
+    }
 } 

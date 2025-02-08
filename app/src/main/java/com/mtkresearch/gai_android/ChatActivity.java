@@ -90,6 +90,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeHandlers();
         initializeServices();
         setupHistoryDrawer();
+        
+        // Clear any previous active history when starting new chat
+        historyManager.clearCurrentActiveHistory();
     }
 
     @Override
@@ -250,13 +253,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Hide watermark when conversation starts
         updateWatermarkVisibility();
         
-        // Save chat after adding user message
-        saveCurrentChat();
-        
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
         conversationManager.addMessage(aiMessage);
         chatAdapter.addMessage(aiMessage);
+        
+        // Save chat after adding both messages
+        saveCurrentChat();
         
         // Change send buttons to stop icons
         setSendButtonsAsStop(true);
@@ -293,9 +296,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
                         setSendButtonsAsStop(false);
-                        // Save chat after AI response
+                        
+                        // Only save and refresh after AI response is complete
                         saveCurrentChat();
-                        // Refresh history list to show new chat
                         refreshHistoryList();
                     });
                 } else {
@@ -720,6 +723,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 conversationManager.addMessage(message);
                 chatAdapter.addMessage(message);
             }
+            // Set this as the current active history
+            historyManager.setCurrentActiveHistory(history);
             drawerLayout.closeDrawers();
             updateWatermarkVisibility();
         });
@@ -735,14 +740,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         if (!messages.isEmpty()) {
             // Use first message as title, or a default title if it's empty
             String title = messages.get(0).getText();
-            if (title.isEmpty()) {
+            if (title.isEmpty() || title.length() > 50) {
                 title = "Chat " + new SimpleDateFormat("yyyy-MM-dd HH:mm", 
                     Locale.getDefault()).format(new Date());
             }
-            historyManager.createNewHistory(title, messages);
             
-            // Refresh history list
-            refreshHistoryList();
+            // Create or update history
+            historyManager.createNewHistory(title, messages);
         }
     }
 }
