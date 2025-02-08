@@ -19,7 +19,7 @@
             android:background="@color/background"
             android:elevation="4dp"
             android:paddingStart="0dp"
-            android:paddingEnd="16dp"
+            android:paddingEnd="0dp"
             app:contentInsetStart="0dp"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -50,6 +50,19 @@
                     android:ellipsize="end"
                     android:maxLines="1"
                     app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+                <ImageButton
+                    android:id="@+id/newConversationButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_add_conversation"
+                    android:contentDescription="New conversation"
+                    android:padding="12dp"
+                    android:layout_marginEnd="0dp"
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintBottom_toBottomOf="parent"/>

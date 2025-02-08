@@ -160,6 +160,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         setupAttachmentButton();
         setupVoiceButton();
         setupSendButton();
+        setupNewConversationButton();
     }
 
     private void setupNavigationButton() {
@@ -213,6 +214,19 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.sendButtonExpanded.setBackgroundResource(R.drawable.bg_send_button);
         binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
         binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
+    }
+
+    private void setupNewConversationButton() {
+        binding.newConversationButton.setOnClickListener(v -> {
+            // Save current chat if needed
+            saveCurrentChat();
+            // Clear current conversation
+            clearCurrentConversation();
+            // Clear active history
+            historyManager.clearCurrentActiveHistory();
+            // Refresh history list to show the newly saved chat
+            refreshHistoryList();
+        });
     }
 
     private void setupInputHandling() {
@@ -755,12 +769,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             .setTitle("Delete Selected Histories")
             .setMessage("Are you sure you want to delete " + selectedIds.size() + " selected histories?")
             .setPositiveButton("Delete", (dialog, which) -> {
+                // Delete selected histories
                 for (String id : selectedIds) {
                     historyManager.deleteHistory(id);
+                    // If the deleted history was the current active one, clear the conversation
+                    ChatHistory currentHistory = historyManager.getCurrentActiveHistory();
+                    if (currentHistory != null && currentHistory.getId().equals(id)) {
+                        historyManager.clearCurrentActiveHistory();
+                        clearCurrentConversation();
+                    }
                 }
+                
+                // Exit selection mode and refresh the list
                 exitSelectionMode();
                 refreshHistoryList();
-                Toast.makeText(this, "Selected histories deleted", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, selectedIds.size() > 1 ? 
+                    "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Cancel", null)
             .show();
