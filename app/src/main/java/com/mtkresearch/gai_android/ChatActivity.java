@@ -58,6 +58,7 @@ import android.graphics.Color;
 
 import com.executorch.ModelType;
 import com.executorch.PromptFormat;
+import com.mtkresearch.gai_android.utils.PromptManager;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
@@ -290,7 +291,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
         aiMessage.setPromptId(promptId);
-        conversationManager.addMessage(aiMessage);
+        // Don't add the "Thinking..." message to conversation history yet
         chatAdapter.addMessage(aiMessage);
         
         // Save chat after adding both messages
@@ -313,7 +314,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         return;
                     }
 
-                    hasReceivedResponse = true;
+                    if (!hasReceivedResponse) {
+                        // Add the AI message to conversation history only when we get the first real response
+                        hasReceivedResponse = true;
+                        conversationManager.addMessage(aiMessage);
+                    }
+
                     runOnUiThread(() -> {
                         currentResponse.append(token);
                         aiMessage.updateText(currentResponse.toString());
@@ -899,68 +905,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         updateWatermarkVisibility();
     }
 
-    private String getConversationHistory() {
-        String conversationHistory = "";
-        List<ChatMessage> conversations = new ArrayList<>();
-        
-        // Get recent messages based on lookback window
-        List<ChatMessage> allMessages = conversationManager.getMessages();
-        int startIndex = Math.max(0, allMessages.size() - (CONVERSATION_HISTORY_MESSAGE_LOOKBACK * 2));
-        for (int i = startIndex; i < allMessages.size(); i++) {
-            conversations.add(allMessages.get(i));
-        }
-        
-        if (conversations.isEmpty()) {
-            return conversationHistory;
-        }
-
-        int prevPromptId = conversations.get(0).getPromptId();
-        String conversationFormat = PromptFormat.getConversationFormat(ModelType.LLAMA_3_2);
-        String format = conversationFormat;
-        
-        for (int i = 0; i < conversations.size(); i++) {
-            ChatMessage conversation = conversations.get(i);
-            int currentPromptId = conversation.getPromptId();
-            
-            if (currentPromptId != prevPromptId) {
-                conversationHistory = conversationHistory + format;
-                format = conversationFormat;
-                prevPromptId = currentPromptId;
-            }
-            
-            if (conversation.isUser()) {
-                format = format.replace(PromptFormat.USER_PLACEHOLDER, conversation.getText());
-            } else {
-                format = format.replace(PromptFormat.ASSISTANT_PLACEHOLDER, conversation.getText());
-            }
-        }
-        conversationHistory = conversationHistory + format;
-        
-        return conversationHistory;
-    }
-
     private String getFormattedPrompt(String userMessage) {
-        String conversationHistory = getConversationHistory();
+        // Get messages excluding the current message
+        List<ChatMessage> allMessages = conversationManager.getMessages();
+        List<ChatMessage> historyMessages = new ArrayList<>();
         
-        if (conversationHistory.isEmpty()) {
-            // If no history, just format with system prompt and user message
-            String systemPrompt = PromptFormat.getSystemPromptTemplate(ModelType.LLAMA_3_2)
-                .replace(PromptFormat.SYSTEM_PLACEHOLDER, PromptFormat.DEFAULT_SYSTEM_PROMPT);
-                
-            String userPrompt = PromptFormat.getUserPromptTemplate(ModelType.LLAMA_3_2)
-                .replace(PromptFormat.USER_PLACEHOLDER, userMessage);
-                
-            return systemPrompt + userPrompt;
+        if (!allMessages.isEmpty()) {
+            // Get messages up to but not including the last one (which would be the current query)
+            int endIndex = allMessages.size() - 1;
+            int startIndex = Math.max(0, endIndex - (CONVERSATION_HISTORY_MESSAGE_LOOKBACK * 2));
+            for (int i = startIndex; i < endIndex; i++) {
+                historyMessages.add(allMessages.get(i));
+            }
         }
         
-        // If there is history, include it in the format
-        String systemPrompt = PromptFormat.getSystemPromptTemplate(ModelType.LLAMA_3_2)
-            .replace(PromptFormat.SYSTEM_PLACEHOLDER, PromptFormat.DEFAULT_SYSTEM_PROMPT);
-            
-        String userPrompt = PromptFormat.getUserPromptTemplate(ModelType.LLAMA_3_2)
-            .replace(PromptFormat.USER_PLACEHOLDER, userMessage);
-            
-        return systemPrompt + conversationHistory + userPrompt;
+        // Use PromptManager to format the complete prompt
+        return PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
     }
 
     private void setupTitleTapCounter() {
