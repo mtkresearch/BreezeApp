@@ -95,6 +95,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     // Add promptId field at the top of the class
     private int promptId = 0;
 
+    private int titleTapCount = 0;
+    private static final int TAPS_TO_SHOW_MAIN = 7;
+    private static final long TAP_TIMEOUT_MS = 3000; // Reset counter after 3 seconds
+    private long lastTapTime = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -134,6 +139,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeChat();
         setupButtons();
         setupInputHandling();
+        setupTitleTapCounter();
         
         // Initialize model name as "Loading..."
         binding.modelNameText.setText("Loading...");
@@ -955,5 +961,28 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             .replace(PromptFormat.USER_PLACEHOLDER, userMessage);
             
         return systemPrompt + conversationHistory + userPrompt;
+    }
+
+    private void setupTitleTapCounter() {
+        binding.modelNameText.setOnClickListener(v -> {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastTapTime > TAP_TIMEOUT_MS) {
+                titleTapCount = 0;
+            }
+            lastTapTime = currentTime;
+            
+            titleTapCount++;
+            if (titleTapCount == TAPS_TO_SHOW_MAIN) {
+                titleTapCount = 0;
+                // Launch MainActivity
+                Intent intent = new Intent(this, MainActivity.class);
+                startActivity(intent);
+            } else if (titleTapCount >= TAPS_TO_SHOW_MAIN - 2) {
+                // Show feedback when close to activation
+                int remaining = TAPS_TO_SHOW_MAIN - titleTapCount;
+                Toast.makeText(this, remaining + " more tap" + (remaining == 1 ? "" : "s") + "...", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }
