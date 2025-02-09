@@ -31,12 +31,12 @@
                 android:layout_height="match_parent">
 
                 <ImageButton
-                    android:id="@+id/homeButton"
+                    android:id="@+id/historyButton"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:src="@drawable/ic_home"
-                    android:contentDescription="Go to home"
+                    android:src="@drawable/ic_history"
+                    android:contentDescription="View chat history"
                     android:padding="12dp"
                     android:layout_marginStart="4dp"
                     app:layout_constraintStart_toStartOf="parent"
