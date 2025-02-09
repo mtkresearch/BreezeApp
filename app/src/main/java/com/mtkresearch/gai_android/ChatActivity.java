@@ -721,7 +721,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 // Show and update overlay opacity
                 if (slideOffset > 0) {
                     contentOverlay.setVisibility(View.VISIBLE);
-                    contentOverlay.setAlpha(0.6f * slideOffset);  // Adjusted for black background
+                    contentOverlay.setAlpha(0.6f * slideOffset);
                 } else {
                     contentOverlay.setVisibility(View.GONE);
                 }
@@ -731,6 +731,21 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             public void onDrawerClosed(View drawerView) {
                 contentOverlay.setVisibility(View.GONE);
                 contentOverlay.setAlpha(0f);
+                
+                // Exit selection mode when drawer is closed
+                if (historyAdapter.isSelectionMode() && historyAdapter.getSelectedHistories().isEmpty()) {
+                    exitSelectionMode();
+                }
+            }
+
+            @Override
+            public void onDrawerStateChanged(int newState) {
+                // Handle back press in selection mode
+                if (newState == DrawerLayout.STATE_DRAGGING && historyAdapter.isSelectionMode()) {
+                    if (historyAdapter.getSelectedHistories().isEmpty()) {
+                        exitSelectionMode();
+                    }
+                }
             }
         });
         
@@ -755,23 +770,21 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 // Enter selection mode
                 historyAdapter.setSelectionMode(true);
                 selectAllCheckbox.setVisibility(View.VISIBLE);
-                deleteButton.setImageResource(R.drawable.ic_delete);  // Use the same icon
-                deleteButton.setColorFilter(getResources().getColor(R.color.error, getTheme()));  // Add red tint
+                deleteButton.setImageResource(R.drawable.ic_delete);
+            }
+        });
+
+        // Update delete button appearance when selection changes
+        historyAdapter.setOnSelectionChangeListener(selectedCount -> {
+            if (selectedCount > 0) {
+                deleteButton.setColorFilter(getResources().getColor(R.color.error, getTheme()));
+            } else {
+                deleteButton.clearColorFilter();
             }
         });
 
         selectAllCheckbox.setOnCheckedChangeListener((buttonView, isChecked) -> {
             historyAdapter.selectAll(isChecked);
-        });
-
-        // Handle back press in selection mode
-        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            @Override
-            public void onDrawerStateChanged(int newState) {
-                if (newState == DrawerLayout.STATE_DRAGGING && historyAdapter.isSelectionMode()) {
-                    exitSelectionMode();
-                }
-            }
         });
 
         // Load and display chat histories
