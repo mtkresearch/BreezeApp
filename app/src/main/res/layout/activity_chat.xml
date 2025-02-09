@@ -1,263 +1,387 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawerLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fitsSystemWindows="true">
+    android:fitsSystemWindows="true"
+    tools:openDrawer="start">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbar"
+    <!-- Main content -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/mainContent"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/background"
-        android:elevation="4dp"
-        android:paddingStart="0dp"
-        android:paddingEnd="16dp"
-        app:contentInsetStart="0dp"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent"
+        android:background="@color/background">
 
-        <androidx.constraintlayout.widget.ConstraintLayout
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/background"
+            android:elevation="4dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:contentInsetStart="0dp"
+            app:layout_constraintTop_toTopOf="parent">
 
-            <ImageButton
-                android:id="@+id/homeButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@drawable/ic_home"
-                android:contentDescription="Go to home"
-                android:padding="12dp"
-                android:layout_marginStart="4dp"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
-
-            <TextView
-                android:id="@+id/modelNameText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="16sp"
-                android:textColor="@color/text_secondary"
-                android:text="Loading..."
-                android:ellipsize="end"
-                android:maxLines="1"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintTop_toTopOf="parent"
-                app:layout_constraintBottom_toBottomOf="parent"/>
-
-        </androidx.constraintlayout.widget.ConstraintLayout>
-
-    </androidx.appcompat.widget.Toolbar>
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:clipToPadding="false"
-        android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/inputContainer"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"/>
-
-    <!-- Watermark Container -->
-    <LinearLayout
-        android:id="@+id/watermarkContainer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center"
-        app:layout_constraintBottom_toBottomOf="@id/recyclerView"
-        app:layout_constraintEnd_toEndOf="@id/recyclerView"
-        app:layout_constraintStart_toStartOf="@id/recyclerView"
-        app:layout_constraintTop_toTopOf="@id/recyclerView">
-
-        <ImageView
-            android:id="@+id/watermarkLogo"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
-            android:src="@drawable/logo"
-            android:alpha="0.6"
-            android:contentDescription="App Logo"/>
-
-        <TextView
-            android:id="@+id/watermarkText"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="How can I help you?"
-            android:textSize="18sp"
-            android:textColor="@color/text_secondary"
-            android:textStyle="italic"
-            android:alpha="0.6"/>
-
-    </LinearLayout>
-
-    <FrameLayout
-        android:id="@+id/inputContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="@drawable/bg_input_container"
-        android:elevation="2dp"
-        android:paddingVertical="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_goneMarginBottom="16dp">
-
-        <!-- Collapsed Input -->
-        <LinearLayout
-            android:id="@+id/collapsedInput"
-            android:layout_width="match_parent"
-            android:layout_height="32dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingHorizontal="8dp">
-
-            <ImageButton
-                android:id="@+id/attachButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Add attachments"
-                android:padding="8dp"
-                android:src="@drawable/ic_add" />
-
-            <EditText
-                android:id="@+id/messageInput"
-                android:layout_width="0dp"
-                android:layout_height="32dp"
-                android:layout_marginHorizontal="8dp"
-                android:layout_marginEnd="10dp"
-                android:layout_weight="10"
-                android:background="@null"
-                android:hint="Message"
-                android:inputType="textMultiLine"
-                android:maxLines="4"
-                android:gravity="center_vertical"
-                android:textSize="16sp" />
-
-            <ImageButton
-                android:id="@+id/voiceButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Voice input"
-                android:padding="8dp"
-                android:src="@drawable/ic_mic" />
-
-            <ImageButton
-                android:id="@+id/sendButton"
-                android:layout_width="32dp"
-                android:layout_height="32dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_send_button"
-                android:contentDescription="Send message"
-                android:padding="8dp"
-                android:src="@drawable/ic_audio_wave" />
-        </LinearLayout>
-
-        <!-- Expanded Input -->
-        <LinearLayout
-            android:id="@+id/expandedInput"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone">
-
-            <EditText
-                android:id="@+id/messageInputExpanded"
+            <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="32dp"
-                android:gravity="top|start"
-                android:background="@null"
-                android:hint="Message"
-                android:inputType="textMultiLine"
-                android:padding="8dp"
-                android:layout_marginTop="8dp"
-                android:layout_marginEnd="12dp"
-                android:layout_marginStart="8dp"/>
-
-            <FrameLayout
-                android:id="@+id/imagePreviewContainer"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:visibility="gone"
-                android:padding="8dp">
-
-                <ImageView
-                    android:id="@+id/imagePreview"
-                    android:layout_width="200dp"
-                    android:layout_height="200dp"
-                    android:scaleType="centerCrop"
-                    android:layout_gravity="start"/>
+                android:layout_height="match_parent">
 
                 <ImageButton
-                    android:id="@+id/removeImageButton"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:layout_gravity="top|end"
-                    android:background="@drawable/bg_circle"
-                    android:src="@drawable/ic_close"
-                    android:padding="4dp"/>
-            </FrameLayout>
+                    android:id="@+id/historyButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_history"
+                    android:contentDescription="View chat history"
+                    android:padding="12dp"
+                    android:layout_marginStart="4dp"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
 
+                <TextView
+                    android:id="@+id/modelNameText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textColor="@color/text_secondary"
+                    android:text="Loading..."
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+                <ImageButton
+                    android:id="@+id/newConversationButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@drawable/ic_add_conversation"
+                    android:contentDescription="New conversation"
+                    android:padding="12dp"
+                    android:layout_marginEnd="0dp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    app:layout_constraintBottom_toBottomOf="parent"/>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+        </androidx.appcompat.widget.Toolbar>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:clipToPadding="false"
+            android:padding="8dp"
+            app:layout_constraintBottom_toTopOf="@+id/inputContainer"
+            app:layout_constraintTop_toBottomOf="@id/toolbar"/>
+
+        <!-- Watermark Container -->
+        <LinearLayout
+            android:id="@+id/watermarkContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            app:layout_constraintBottom_toBottomOf="@id/recyclerView"
+            app:layout_constraintEnd_toEndOf="@id/recyclerView"
+            app:layout_constraintStart_toStartOf="@id/recyclerView"
+            app:layout_constraintTop_toTopOf="@id/recyclerView">
+
+            <ImageView
+                android:id="@+id/watermarkLogo"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:src="@drawable/logo"
+                android:alpha="0.6"
+                android:contentDescription="App Logo"/>
+
+            <TextView
+                android:id="@+id/watermarkText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="How can I help you?"
+                android:textSize="18sp"
+                android:textColor="@color/text_secondary"
+                android:textStyle="italic"
+                android:alpha="0.6"/>
+
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/inputContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_input_container"
+            android:elevation="2dp"
+            android:paddingVertical="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_goneMarginBottom="16dp">
+
+            <!-- Collapsed Input -->
             <LinearLayout
+                android:id="@+id/collapsedInput"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:orientation="horizontal"
+                android:layout_height="32dp"
                 android:gravity="center_vertical"
+                android:orientation="horizontal"
                 android:paddingHorizontal="8dp">
 
                 <ImageButton
-                    android:id="@+id/attachButtonExpanded"
+                    android:id="@+id/attachButton"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Add attachments"
                     android:padding="8dp"
-                    android:src="@drawable/ic_add"
-                    android:layout_gravity="center_vertical"/>
+                    android:src="@drawable/ic_add" />
 
-                <Space
+                <EditText
+                    android:id="@+id/messageInput"
                     android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_weight="1"/>
+                    android:layout_height="32dp"
+                    android:layout_marginHorizontal="8dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_weight="10"
+                    android:background="@null"
+                    android:hint="Message"
+                    android:inputType="textMultiLine"
+                    android:maxLines="4"
+                    android:gravity="center_vertical"
+                    android:textSize="16sp" />
 
                 <ImageButton
-                    android:id="@+id/voiceButtonExpanded"
+                    android:id="@+id/voiceButton"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="Voice input"
                     android:padding="8dp"
-                    android:src="@drawable/ic_mic"
-                    android:layout_gravity="center_vertical"/>
+                    android:src="@drawable/ic_mic" />
 
                 <ImageButton
-                    android:id="@+id/sendButtonExpanded"
+                    android:id="@+id/sendButton"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_send_button"
                     android:contentDescription="Send message"
                     android:padding="8dp"
-                    android:src="@drawable/ic_audio_wave"
-                    android:layout_gravity="center_vertical"/>
+                    android:src="@drawable/ic_audio_wave" />
             </LinearLayout>
+
+            <!-- Expanded Input -->
+            <LinearLayout
+                android:id="@+id/expandedInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <EditText
+                    android:id="@+id/messageInputExpanded"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="32dp"
+                    android:gravity="top|start"
+                    android:background="@null"
+                    android:hint="Message"
+                    android:inputType="textMultiLine"
+                    android:padding="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginStart="8dp"/>
+
+                <FrameLayout
+                    android:id="@+id/imagePreviewContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:padding="8dp">
+
+                    <ImageView
+                        android:id="@+id/imagePreview"
+                        android:layout_width="200dp"
+                        android:layout_height="200dp"
+                        android:scaleType="centerCrop"
+                        android:layout_gravity="start"/>
+
+                    <ImageButton
+                        android:id="@+id/removeImageButton"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="top|end"
+                        android:background="@drawable/bg_circle"
+                        android:src="@drawable/ic_close"
+                        android:padding="4dp"/>
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingHorizontal="8dp">
+
+                    <ImageButton
+                        android:id="@+id/attachButtonExpanded"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Add attachments"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_add"
+                        android:layout_gravity="center_vertical"/>
+
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1"/>
+
+                    <ImageButton
+                        android:id="@+id/voiceButtonExpanded"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Voice input"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_mic"
+                        android:layout_gravity="center_vertical"/>
+
+                    <ImageButton
+                        android:id="@+id/sendButtonExpanded"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_send_button"
+                        android:contentDescription="Send message"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_audio_wave"
+                        android:layout_gravity="center_vertical"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Recording Input -->
+            <include
+                android:id="@+id/recordingInput"
+                layout="@layout/recording_input_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"/>
+
+        </FrameLayout>
+
+        <!-- Move overlay to the end to be on top of everything -->
+        <View
+            android:id="@+id/contentOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#000000"
+            android:alpha="0"
+            android:visibility="gone"
+            android:elevation="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Navigation Drawer -->
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/historyNavigationView"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/background"
+        android:fitsSystemWindows="false"
+        app:insetForeground="@android:color/transparent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <!-- History Header -->
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/historyToolbar"
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:background="@color/background"
+                android:elevation="4dp"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp">
+
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:text="Chat History"
+                        android:textStyle="bold"
+                        android:textSize="16sp"
+                        android:layout_marginStart="16dp"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintEnd_toStartOf="@id/selectAllCheckbox"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"/>
+
+                    <CheckBox
+                        android:id="@+id/selectAllCheckbox"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:visibility="gone"
+                        android:layout_marginEnd="8dp"
+                        app:layout_constraintEnd_toStartOf="@id/deleteHistoryButton"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"/>
+
+                    <ImageButton
+                        android:id="@+id/deleteHistoryButton"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_delete"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:padding="12dp"
+                        android:layout_marginEnd="4dp"
+                        app:layout_constraintEnd_toEndOf="parent"
+                        app:layout_constraintTop_toTopOf="parent"
+                        app:layout_constraintBottom_toBottomOf="parent"/>
+
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
+            </androidx.appcompat.widget.Toolbar>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/surface"/>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/historyRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp"
+                android:scrollbars="none"/>
+
         </LinearLayout>
 
-        <!-- Recording Input -->
-        <include
-            android:id="@+id/recordingInput"
-            layout="@layout/recording_input_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone"/>
+    </com.google.android.material.navigation.NavigationView>
 
-    </FrameLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout> 
+</androidx.drawerlayout.widget.DrawerLayout> 

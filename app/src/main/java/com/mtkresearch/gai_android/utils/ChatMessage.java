@@ -3,15 +3,24 @@ package com.mtkresearch.gai_android.utils;
 import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import java.io.Serializable;
 
-public class ChatMessage {
+public class ChatMessage implements Serializable {
+    private static final long serialVersionUID = 1L;
     private String text;
     private final boolean isUser;
-    private Uri imageUri;
+    private transient Uri imageUri; // Mark as transient since Uri is not serializable
+    private int promptId; // Added to group messages in the same conversation
+    private String imageUriString; // Store image URI as string for serialization
 
     public ChatMessage(@NonNull String text, boolean isUser) {
+        this(text, isUser, 0);
+    }
+
+    public ChatMessage(@NonNull String text, boolean isUser, int promptId) {
         this.text = text != null ? text : "";
         this.isUser = isUser;
+        this.promptId = promptId;
     }
 
     @NonNull
@@ -39,15 +48,27 @@ public class ChatMessage {
 
     @Nullable
     public Uri getImageUri() {
+        if (imageUri == null && imageUriString != null) {
+            imageUri = Uri.parse(imageUriString);
+        }
         return imageUri;
     }
 
     public void setImageUri(@Nullable Uri imageUri) {
         this.imageUri = imageUri;
+        this.imageUriString = imageUri != null ? imageUri.toString() : null;
     }
 
     public boolean hasImage() {
-        return imageUri != null;
+        return getImageUri() != null;
+    }
+
+    public int getPromptId() {
+        return promptId;
+    }
+
+    public void setPromptId(int promptId) {
+        this.promptId = promptId;
     }
 
     @Override
@@ -55,6 +76,7 @@ public class ChatMessage {
         return "ChatMessage{" +
                 "text='" + text + '\'' +
                 ", isUser=" + isUser +
+                ", promptId=" + promptId +
                 ", hasImage=" + hasImage() +
                 '}';
     }
