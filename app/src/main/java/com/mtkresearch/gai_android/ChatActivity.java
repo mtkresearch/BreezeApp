@@ -19,7 +19,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import androidx.core.view.GravityCompat;
 
 import com.mtkresearch.gai_android.utils.AudioListAdapter;
@@ -57,6 +56,9 @@ import java.util.Locale;
 import java.util.Set;
 import android.graphics.Color;
 
+import com.executorch.ModelType;
+import com.executorch.PromptFormat;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
 
@@ -87,6 +89,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private TTSEngineService ttsService;
 
     private DrawerLayout drawerLayout;
+
+    private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = 2;
+
+    // Add promptId field at the top of the class
+    private int promptId = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -165,7 +172,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNavigationButton() {
-        binding.homeButton.setOnClickListener(v -> {
+        binding.historyButton.setOnClickListener(v -> {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START);
             } else {
@@ -267,6 +274,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Add user message to conversation
         ChatMessage userMessage = new ChatMessage(message, true);
+        userMessage.setPromptId(promptId);
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
         
@@ -275,6 +283,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
+        aiMessage.setPromptId(promptId);
         conversationManager.addMessage(aiMessage);
         chatAdapter.addMessage(aiMessage);
         
@@ -284,9 +293,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Change send buttons to stop icons
         setSendButtonsAsStop(true);
         
-        // Generate AI response
+        // Generate AI response with formatted prompt
         if (llmService != null) {
-            llmService.generateStreamingResponse(message, new LLMEngineService.StreamingResponseCallback() {
+            String formattedPrompt = getFormattedPrompt(message);
+            
+            llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean hasReceivedResponse = false;
 
@@ -317,6 +328,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
                         setSendButtonsAsStop(false);
                         
+                        // Increment promptId after successful response
+                        promptId++;
+                        
                         // Only save and refresh after AI response is complete
                         saveCurrentChat();
                         refreshHistoryList();
@@ -338,16 +352,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 });
                 return null;
             });
-
-            // Add timeout check
-            new android.os.Handler().postDelayed(() -> {
-                if (aiMessage.getText().equals("Thinking...")) {
-                    runOnUiThread(() -> {
-                        aiMessage.updateText("I apologize, but the response is taking longer than expected. You can try stopping and asking again.");
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    });
-                }
-            }, 10000); // Show timeout message after 10 seconds of no response
         }
     }
 
@@ -887,5 +891,69 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         chatAdapter.clearMessages();
         // Update watermark visibility
         updateWatermarkVisibility();
+    }
+
+    private String getConversationHistory() {
+        String conversationHistory = "";
+        List<ChatMessage> conversations = new ArrayList<>();
+        
+        // Get recent messages based on lookback window
+        List<ChatMessage> allMessages = conversationManager.getMessages();
+        int startIndex = Math.max(0, allMessages.size() - (CONVERSATION_HISTORY_MESSAGE_LOOKBACK * 2));
+        for (int i = startIndex; i < allMessages.size(); i++) {
+            conversations.add(allMessages.get(i));
+        }
+        
+        if (conversations.isEmpty()) {
+            return conversationHistory;
+        }
+
+        int prevPromptId = conversations.get(0).getPromptId();
+        String conversationFormat = PromptFormat.getConversationFormat(ModelType.LLAMA_3_2);
+        String format = conversationFormat;
+        
+        for (int i = 0; i < conversations.size(); i++) {
+            ChatMessage conversation = conversations.get(i);
+            int currentPromptId = conversation.getPromptId();
+            
+            if (currentPromptId != prevPromptId) {
+                conversationHistory = conversationHistory + format;
+                format = conversationFormat;
+                prevPromptId = currentPromptId;
+            }
+            
+            if (conversation.isUser()) {
+                format = format.replace(PromptFormat.USER_PLACEHOLDER, conversation.getText());
+            } else {
+                format = format.replace(PromptFormat.ASSISTANT_PLACEHOLDER, conversation.getText());
+            }
+        }
+        conversationHistory = conversationHistory + format;
+        
+        return conversationHistory;
+    }
+
+    private String getFormattedPrompt(String userMessage) {
+        String conversationHistory = getConversationHistory();
+        
+        if (conversationHistory.isEmpty()) {
+            // If no history, just format with system prompt and user message
+            String systemPrompt = PromptFormat.getSystemPromptTemplate(ModelType.LLAMA_3_2)
+                .replace(PromptFormat.SYSTEM_PLACEHOLDER, PromptFormat.DEFAULT_SYSTEM_PROMPT);
+                
+            String userPrompt = PromptFormat.getUserPromptTemplate(ModelType.LLAMA_3_2)
+                .replace(PromptFormat.USER_PLACEHOLDER, userMessage);
+                
+            return systemPrompt + userPrompt;
+        }
+        
+        // If there is history, include it in the format
+        String systemPrompt = PromptFormat.getSystemPromptTemplate(ModelType.LLAMA_3_2)
+            .replace(PromptFormat.SYSTEM_PLACEHOLDER, PromptFormat.DEFAULT_SYSTEM_PROMPT);
+            
+        String userPrompt = PromptFormat.getUserPromptTemplate(ModelType.LLAMA_3_2)
+            .replace(PromptFormat.USER_PLACEHOLDER, userMessage);
+            
+        return systemPrompt + conversationHistory + userPrompt;
     }
 }
