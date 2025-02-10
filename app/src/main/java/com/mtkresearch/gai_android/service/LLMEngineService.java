@@ -248,99 +248,137 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        if (!isInitialized) {
+            if (callback != null) {
+                callback.onToken(DEFAULT_ERROR_RESPONSE);
+            }
+            return CompletableFuture.completedFuture(DEFAULT_ERROR_RESPONSE);
+        }
+
         hasSeenAssistantMarker = false;
         currentCallback = callback;
         currentResponse = new CompletableFuture<>();
         currentStreamingResponse.setLength(0);
         isGenerating.set(true);
         
-        try {
-            switch (backend) {
-                case "mtk":
-                    // MTK backend uses raw prompt without formatting
-                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                        @Override
-                        public void onToken(String token) {
-                            if (callback != null) {
-                                callback.onToken(token);
-                            }
-                        }
-                    });
-                    nativeResetLlm();
-                    nativeSwapModel(128);
-                    currentResponse.complete(response);
-                    break;
-                    
-                case "localCPU":
-                    // Only apply prompt formatting for local CPU backend
-                    Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
-                    
-                    // Calculate sequence length based on prompt length
-                    int seqLen = (int)(prompt.length() * 0.75) + 256;  // Increased for longer context
-                    
-                    executor.execute(() -> {
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                switch (backend) {
+                    case "mtk":
                         try {
-                            mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                @Override
-                                public void onResult(String token) {
-                                    if (!isGenerating.get()) {
-                                        return;
+                            // MTK backend uses raw prompt without formatting
+                            executor.execute(() -> {
+                                try {
+                                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                                        @Override
+                                        public void onToken(String token) {
+                                            if (callback != null && isGenerating.get()) {
+                                                callback.onToken(token);
+                                                currentStreamingResponse.append(token);
+                                            }
+                                        }
+                                    });
+                                    
+                                    // Only complete if we haven't been stopped
+                                    if (isGenerating.get()) {
+                                        currentResponse.complete(response);
                                     }
-
-                                    if (token == null || token.isEmpty()) {
-                                        return;
+                                    
+                                    // Clean up MTK state
+                                    try {
+                                        nativeResetLlm();
+                                        nativeSwapModel(128);
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Error resetting MTK state after generation", e);
                                     }
-
-                                    // Handle both stop tokens - filter out both EOS tokens
-                                    if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
-                                        token.equals("<|end_of_text|>") || token.equals("<|eot_id|>")) {
-                                        Log.d(TAG, "Stop token detected: " + token);
-                                        completeGeneration();
-                                        return;
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error in MTK streaming generation", e);
+                                    if (!currentResponse.isDone()) {
+                                        currentResponse.completeExceptionally(e);
                                     }
-
-                                    // Process token
-                                    if (callback != null) {
-                                        callback.onToken(token);
-                                    }
-                                    currentStreamingResponse.append(token);
+                                } finally {
+                                    isGenerating.set(false);
                                 }
-
-                                @Override
-                                public void onStats(float tps) {
-                                    Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
-                                }
-                            }, false);
+                            });
                             
-                            // Complete generation when finished
-                            completeGeneration();
-                            
+                            return currentResponse.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         } catch (Exception e) {
-                            Log.e(TAG, "Error during generation", e);
-                            if (!currentResponse.isDone()) {
-                                currentResponse.completeExceptionally(e);
-                            }
+                            Log.e(TAG, "Error in MTK streaming response", e);
+                            throw e;
                         }
-                    });
-                    break;
-                    
-                default:
-                    if (callback != null) {
-                        callback.onToken(DEFAULT_ERROR_RESPONSE);
-                    }
-                    currentResponse.complete(DEFAULT_ERROR_RESPONSE);
+                        
+                    case "localCPU":
+                        // Only apply prompt formatting for local CPU backend
+                        Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
+                        
+                        // Calculate sequence length based on prompt length
+                        int seqLen = (int)(prompt.length() * 0.75) + 256;  // Increased for longer context
+                        
+                        executor.execute(() -> {
+                            try {
+                                mModule.generate(prompt, seqLen, new LlamaCallback() {
+                                    @Override
+                                    public void onResult(String token) {
+                                        if (!isGenerating.get()) {
+                                            return;
+                                        }
+
+                                        if (token == null || token.isEmpty()) {
+                                            return;
+                                        }
+
+                                        // Handle both stop tokens - filter out both EOS tokens
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
+                                            token.equals("<|end_of_text|>") || token.equals("<|eot_id|>")) {
+                                            Log.d(TAG, "Stop token detected: " + token);
+                                            completeGeneration();
+                                            return;
+                                        }
+
+                                        // Process token
+                                        if (callback != null) {
+                                            callback.onToken(token);
+                                        }
+                                        currentStreamingResponse.append(token);
+                                    }
+
+                                    @Override
+                                    public void onStats(float tps) {
+                                        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                    }
+                                }, false);
+                                
+                                // Complete generation when finished
+                                completeGeneration();
+                                
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error during generation", e);
+                                if (!currentResponse.isDone()) {
+                                    currentResponse.completeExceptionally(e);
+                                }
+                            } finally {
+                                isGenerating.set(false);
+                            }
+                        });
+                        
+                        return currentResponse.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        
+                    default:
+                        if (callback != null) {
+                            callback.onToken(DEFAULT_ERROR_RESPONSE);
+                        }
+                        currentResponse.complete(DEFAULT_ERROR_RESPONSE);
+                        return DEFAULT_ERROR_RESPONSE;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error in streaming response", e);
+                if (callback != null) {
+                    callback.onToken(DEFAULT_ERROR_RESPONSE);
+                }
+                currentResponse.complete(DEFAULT_ERROR_RESPONSE);
+                return DEFAULT_ERROR_RESPONSE;
             }
-            
-            return currentResponse;
-            
-        } catch (Exception e) {
-            Log.e(TAG, "Error in streaming response", e);
-            if (callback != null) {
-                callback.onToken(DEFAULT_ERROR_RESPONSE);
-            }
-            currentResponse.complete(DEFAULT_ERROR_RESPONSE);
-            return currentResponse;
-        }
+        });
     }
 
     private void completeGeneration() {
@@ -349,21 +387,40 @@ public class LLMEngineService extends BaseEngineService {
             if (currentResponse != null && !currentResponse.isDone()) {
                 currentResponse.complete(finalResponse);
             }
+            // Clean up resources
+            currentCallback = null;
+            System.gc(); // Request garbage collection for any lingering resources
         }
     }
 
     public void stopGeneration() {
-        if (mModule != null) {
-            isGenerating.set(false);
-            mModule.stop();
-            if (currentResponse != null && !currentResponse.isDone()) {
-                String finalResponse = currentStreamingResponse.toString();
-                if (finalResponse.isEmpty()) {
-                    finalResponse = "[Generation stopped by user]";
-                }
-                currentResponse.complete(finalResponse);
+        isGenerating.set(false);
+        
+        if (backend.equals("mtk")) {
+            try {
+                nativeResetLlm();
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping MTK generation", e);
+            }
+        } else if (mModule != null) {
+            try {
+                mModule.stop();
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping CPU generation", e);
             }
         }
+
+        if (currentResponse != null && !currentResponse.isDone()) {
+            String finalResponse = currentStreamingResponse.toString();
+            if (finalResponse.isEmpty()) {
+                finalResponse = "[Generation stopped by user]";
+            }
+            currentResponse.complete(finalResponse);
+        }
+        
+        // Clean up resources
+        currentCallback = null;
+        System.gc();
     }
 
     public void releaseResources() {
