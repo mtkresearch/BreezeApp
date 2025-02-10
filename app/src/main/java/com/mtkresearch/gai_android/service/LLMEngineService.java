@@ -229,15 +229,14 @@ public class LLMEngineService extends BaseEngineService {
                     
                 case "localCPU":
                     // Only apply prompt formatting for local CPU backend
-                    String finalPrompt = conversationManager.getFormattedPrompt(prompt, ModelType.LLAMA_3_2);
-                    Log.d(TAG, "Formatted prompt for local CPU: " + finalPrompt);
+                    Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                     
                     // Calculate sequence length based on prompt length
-                    int seqLen = (int)(finalPrompt.length() * 0.75) + 256;  // Increased for longer context
+                    int seqLen = (int)(prompt.length() * 0.75) + 256;  // Increased for longer context
                     
                     executor.execute(() -> {
                         try {
-                            mModule.generate(finalPrompt, seqLen, new LlamaCallback() {
+                            mModule.generate(prompt, seqLen, new LlamaCallback() {
                                 @Override
                                 public void onResult(String token) {
                                     if (!isGenerating.get()) {
@@ -249,7 +248,7 @@ public class LLMEngineService extends BaseEngineService {
                                     }
 
                                     // Handle both stop tokens - filter out both EOS tokens
-                                    if (token.equals(ConversationManager.getStopToken(ModelType.LLAMA_3_2)) || 
+                                    if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
                                         token.equals("<|end_of_text|>") || token.equals("<|eot_id|>")) {
                                         Log.d(TAG, "Stop token detected: " + token);
                                         completeGeneration();
