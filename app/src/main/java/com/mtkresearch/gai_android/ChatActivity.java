@@ -106,7 +106,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
-        initializeServices();
+        
+        // Check for RECORD_AUDIO permission before initializing services
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+        } else {
+            initializeServices();
+        }
+        
         setupHistoryDrawer();
         
         // Clear any previous active history and start fresh
@@ -251,10 +258,27 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeServices() {
-        bindService(new Intent(this, LLMEngineService.class), llmConnection, Context.BIND_AUTO_CREATE);
+        // Start LLM service first
+        Intent llmIntent = new Intent(this, LLMEngineService.class);
+        llmIntent.putExtra("model_path", "/data/local/tmp/llama/llama3_2.pte");
+        llmIntent.putExtra("preferred_backend", "cpu");
+        llmIntent.putExtra("temperature", 0.0f);
+        startService(llmIntent);
+        bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE);
+        
+        // Start VLM service
         bindService(new Intent(this, VLMEngineService.class), vlmConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, ASREngineService.class), asrConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, TTSEngineService.class), ttsConnection, Context.BIND_AUTO_CREATE);
+        
+        // Only start ASR and TTS if we have audio permission
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Intent asrIntent = new Intent(this, ASREngineService.class);
+            startService(asrIntent);
+            bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
+            
+            Intent ttsIntent = new Intent(this, TTSEngineService.class);
+            startService(ttsIntent);
+            bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     private void handleSendAction() {
@@ -581,6 +605,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (permissions[0].equals(android.Manifest.permission.CAMERA)) {
                     handleCameraCapture();
                 } else if (permissions[0].equals(android.Manifest.permission.RECORD_AUDIO)) {
+                    // Initialize services after permission is granted
+                    initializeServices();
                     startRecording();
                 }
             } else {
@@ -651,12 +677,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService = ((LLMEngineService.LocalBinder) service).getService();
             // Update model name when service is connected
             if (llmService != null) {
-                runOnUiThread(() -> {
-                    String modelName = llmService.getModelName();
-                    if (modelName != null && !modelName.isEmpty()) {
-                        binding.modelNameText.setText(modelName);
-                    } else {
-                        binding.modelNameText.setText("Unknown");
+                llmService.initialize().thenAccept(success -> {
+                    if (success) {
+                        runOnUiThread(() -> {
+                            String modelName = llmService.getModelName();
+                            if (modelName != null && !modelName.isEmpty()) {
+                                binding.modelNameText.setText(modelName);
+                            } else {
+                                binding.modelNameText.setText("Unknown");
+                            }
+                        });
                     }
                 });
             }
@@ -686,6 +716,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             asrService = ((ASREngineService.LocalBinder) service).getService();
+            if (asrService != null) {
+                asrService.initialize();
+            }
         }
 
         @Override
@@ -698,6 +731,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
+            if (ttsService != null) {
+                ttsService.initialize();
+            }
         }
 
         @Override
