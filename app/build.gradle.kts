@@ -115,6 +115,15 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.add_setting.fileprovider"
         }
+        create("cpu") {
+            dimension = "version"
+            applicationIdSuffix = ".cpu"
+            versionNameSuffix = "-cpu"
+            resValue("string", "app_name", "GAI-CPU")
+            buildConfigField("String", "GIT_BRANCH", "\"cpu\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.cpu.fileprovider"
+        }
     }
 
 //    sourceSets.getByName("main") {
@@ -159,13 +168,15 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("add_setting")) }
+                 it.contains("Full") || it.contains("add_setting") ||
+                 it.contains("Cpu")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
                     task.contains("add_setting") -> "add_setting"
+                    task.contains("Cpu") -> "cpu"
                     else -> null
                 }
             }

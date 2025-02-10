@@ -307,10 +307,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean hasReceivedResponse = false;
+                private boolean isGenerating = true;
 
                 @Override
                 public void onToken(String token) {
-                    if (token == null || token.isEmpty()) {
+                    if (!isGenerating || token == null || token.isEmpty()) {
                         return;
                     }
 
@@ -328,38 +329,41 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     });
                 }
             }).thenAccept(finalResponse -> {
-                if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
-                    runOnUiThread(() -> {
+                runOnUiThread(() -> {
+                    if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
-                        if (response.isEmpty()) {
+                        // Only update with error message if we haven't received any real response
+                        if (response.isEmpty() && !aiMessage.hasContent()) {
                             aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
-                        } else {
+                        } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                        setSendButtonsAsStop(false);
-                        
                         // Increment promptId after successful response
                         promptId++;
-                        
-                        // Only save and refresh after AI response is complete
-                        saveCurrentChat();
-                        refreshHistoryList();
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        setSendButtonsAsStop(false);
-                    });
-                }
+                    } else {
+                        // Only show error if we haven't received any content
+                        if (!aiMessage.hasContent()) {
+                            aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                        }
+                    }
+                    
+                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                    setSendButtonsAsStop(false);
+                    
+                    // Only save and refresh after AI response is complete
+                    saveCurrentChat();
+                    refreshHistoryList();
+                });
             }).exceptionally(throwable -> {
                 Log.e(TAG, "Error generating response", throwable);
                 runOnUiThread(() -> {
-                    aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    // Only show error if we haven't received any content
+                    if (!aiMessage.hasContent()) {
+                        aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
                     setSendButtonsAsStop(false);
                 });
                 return null;
