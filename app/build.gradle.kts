@@ -106,14 +106,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("add_history") {
+        create("add_setting") {
             dimension = "version"
-            applicationIdSuffix = ".add_history"
-            versionNameSuffix = "-add_history"
-            resValue("string", "app_name", "GAI-add_history")
-            buildConfigField("String", "GIT_BRANCH", "\"add_history\"")
+            applicationIdSuffix = ".add_setting"
+            versionNameSuffix = "-add_setting"
+            resValue("string", "app_name", "GAI-add_setting")
+            buildConfigField("String", "GIT_BRANCH", "\"add_setting\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.add_history.fileprovider"
+                "com.mtkresearch.gai_android.add_setting.fileprovider"
         }
     }
 
@@ -159,13 +159,13 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("add_history")) }
+                 it.contains("Full") || it.contains("add_setting")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Full") -> "main"
-                    task.contains("add_history") -> "add_history"
+                    task.contains("add_setting") -> "add_setting"
                     else -> null
                 }
             }
