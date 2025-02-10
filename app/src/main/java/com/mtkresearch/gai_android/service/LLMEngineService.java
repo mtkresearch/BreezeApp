@@ -33,11 +33,17 @@ public class LLMEngineService extends BaseEngineService {
         }
     }
 
+    // Add static method to check MTK backend availability
+    public static boolean isMTKBackendAvailable() {
+        return MTK_BACKEND_AVAILABLE;
+    }
+
     private static final String TAG = "LLMEngineService";
     private static final long INIT_TIMEOUT_MS = 120000;
     private static final long GENERATION_TIMEOUT_MS = 60000;  // Increased timeout
     public static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     private String backend = "none";
+    private String preferredBackend = "cpu";  // Default to CPU backend
     
     // Local CPU backend (LlamaModule)
     private LlamaModule mModule = null;
@@ -74,15 +80,32 @@ public class LLMEngineService extends BaseEngineService {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.hasExtra("model_path")) {
-            modelPath = intent.getStringExtra("model_path");
-            Log.d(TAG, "Using model path: " + modelPath);
-        } else {
+        if (intent != null) {
+            if (intent.hasExtra("model_path")) {
+                modelPath = intent.getStringExtra("model_path");
+                Log.d(TAG, "Using model path: " + modelPath);
+            }
+            if (intent.hasExtra("preferred_backend")) {
+                String newBackend = intent.getStringExtra("preferred_backend");
+                if (!newBackend.equals(preferredBackend)) {
+                    preferredBackend = newBackend;
+                    // Force reinitialization if backend changed
+                    releaseResources();
+                    isInitialized = false;
+                }
+                Log.d(TAG, "Setting preferred backend to: " + preferredBackend);
+            }
+        }
+        
+        if (modelPath == null) {
             Log.e(TAG, "No model path provided in intent");
             stopSelf();
             return START_NOT_STICKY;
         }
-        executor = Executors.newSingleThreadExecutor();
+        
+        if (executor == null) {
+            executor = Executors.newSingleThreadExecutor();
+        }
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -90,16 +113,29 @@ public class LLMEngineService extends BaseEngineService {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                if (initializeMTKBackend()) {
-                    backend = "mtk";
-                    isInitialized = true;
-                    return true;
+                // Always release existing resources before initialization
+                releaseResources();
+                
+                // Try MTK backend only if it's preferred
+                if (preferredBackend.equals("mtk")) {
+                    if (initializeMTKBackend()) {
+                        backend = "mtk";
+                        isInitialized = true;
+                        Log.d(TAG, "Successfully initialized MTK backend");
+                        return true;
+                    }
+                    Log.w(TAG, "MTK backend initialization failed");
                 }
 
-                if (initializeLocalCPUBackend()) {
-                    backend = "localCPU";
-                    isInitialized = true;
-                    return true;
+                // Try CPU backend if MTK failed or CPU is preferred
+                if (preferredBackend.equals("cpu") || preferredBackend.equals("localCPU")) {
+                    if (initializeLocalCPUBackend()) {
+                        backend = "localCPU";
+                        isInitialized = true;
+                        Log.d(TAG, "Successfully initialized CPU backend");
+                        return true;
+                    }
+                    Log.w(TAG, "CPU backend initialization failed");
                 }
 
                 Log.e(TAG, "All backend initialization attempts failed");
@@ -333,14 +369,35 @@ public class LLMEngineService extends BaseEngineService {
     public void releaseResources() {
         try {
             stopGeneration();
+            
+            // Release MTK resources if using MTK backend
             if (backend.equals("mtk")) {
-                nativeReleaseLlm();
-            } else if (backend.equals("localCPU") && mModule != null) {
-                mModule.resetNative();
-                mModule = null;
+                try {
+                    nativeResetLlm();
+                    nativeReleaseLlm();
+                    Log.d(TAG, "Released MTK resources");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error releasing MTK resources", e);
+                }
             }
+            
+            // Release CPU resources if using CPU backend
+            if (mModule != null) {
+                try {
+                    mModule.resetNative();
+                    mModule = null;
+                    Log.d(TAG, "Released CPU resources");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error releasing CPU resources", e);
+                }
+            }
+            
+            // Reset state
             backend = "none";
             isInitialized = false;
+            System.gc(); // Request garbage collection
+            
+            Log.d(TAG, "All resources released");
         } catch (Exception e) {
             Log.e(TAG, "Error during cleanup", e);
         }
@@ -354,6 +411,14 @@ public class LLMEngineService extends BaseEngineService {
             executor.execute(() -> {});
             executor = null;
         }
+    }
+
+    public String getCurrentBackend() {
+        return backend;
+    }
+
+    public String getPreferredBackend() {
+        return preferredBackend;
     }
 
     // Native methods for MTK backend
