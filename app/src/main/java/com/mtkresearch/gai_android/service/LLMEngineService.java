@@ -222,17 +222,36 @@ public class LLMEngineService extends BaseEngineService {
             switch (backend) {
                 case "mtk":
                     // MTK backend uses raw prompt without formatting
-                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                        @Override
-                        public void onToken(String token) {
-                            if (callback != null) {
-                                callback.onToken(token);
+                    executor.execute(() -> {
+                        try {
+                            String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                                @Override
+                                public void onToken(String token) {
+                                    if (!isGenerating.get()) return;
+                                    
+                                    if (token != null && !token.isEmpty()) {
+                                        if (callback != null) {
+                                            callback.onToken(token);
+                                        }
+                                        currentStreamingResponse.append(token);
+                                    }
+                                }
+                            });
+                            
+                            // Complete generation after all tokens are processed
+                            completeGeneration();
+                            
+                            // Reset and swap model after completion
+                            nativeResetLlm();
+                            nativeSwapModel(128);
+                            
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in MTK streaming generation", e);
+                            if (!currentResponse.isDone()) {
+                                currentResponse.completeExceptionally(e);
                             }
                         }
                     });
-                    nativeResetLlm();
-                    nativeSwapModel(128);
-                    currentResponse.complete(response);
                     break;
                     
                 case "localCPU":
