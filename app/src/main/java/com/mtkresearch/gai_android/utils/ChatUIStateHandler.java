@@ -4,6 +4,8 @@ import android.content.Context;
 import android.net.Uri;
 import android.view.View;
 import android.app.Activity;
+import android.text.Editable;
+import android.text.TextWatcher;
 
 import com.mtkresearch.gai_android.R;
 import com.mtkresearch.gai_android.databinding.ActivityChatBinding;
@@ -12,9 +14,47 @@ public class ChatUIStateHandler {
     private final ActivityChatBinding binding;
     private Uri pendingImageUri;
     private boolean isGenerating = false;
+    private static final int MAX_LINES = 6;
 
     public ChatUIStateHandler(ActivityChatBinding binding) {
         this.binding = binding;
+        setupInputHandling();
+    }
+
+    private void setupInputHandling() {
+        // Set up text change listeners for both input fields
+        TextWatcher textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                updateSendButtonState();
+                
+                // Auto-expand if text exceeds one line
+                if (binding.collapsedInput.getVisibility() == View.VISIBLE && 
+                    binding.messageInput.getLineCount() > 1) {
+                    expandInputSection();
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        };
+
+        binding.messageInput.addTextChangedListener(textWatcher);
+        binding.messageInputExpanded.addTextChangedListener(textWatcher);
+
+        // Handle focus changes
+        View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+            if (hasFocus && v == binding.messageInput && 
+                binding.messageInput.getLineCount() > 1) {
+                expandInputSection();
+            }
+        };
+
+        binding.messageInput.setOnFocusChangeListener(focusListener);
+        binding.messageInputExpanded.setOnFocusChangeListener(focusListener);
     }
 
     public void expandInputSection() {
@@ -22,13 +62,21 @@ public class ChatUIStateHandler {
         binding.expandedInput.setVisibility(View.VISIBLE);
         binding.messageInputExpanded.requestFocus();
         binding.messageInputExpanded.setText(binding.messageInput.getText());
+        
+        // Place cursor at the end of text
+        binding.messageInputExpanded.setSelection(
+            binding.messageInputExpanded.length());
 
         scrollToBottom();
     }
 
     public void collapseInputSection() {
-        binding.expandedInput.setVisibility(View.GONE);
-        binding.collapsedInput.setVisibility(View.VISIBLE);
+        // Only collapse if text is short enough
+        if (binding.messageInputExpanded.getLineCount() <= 1) {
+            binding.expandedInput.setVisibility(View.GONE);
+            binding.collapsedInput.setVisibility(View.VISIBLE);
+            binding.messageInput.setText(binding.messageInputExpanded.getText());
+        }
     }
 
     public void updateSendButton(boolean hasContent) {
@@ -96,9 +144,12 @@ public class ChatUIStateHandler {
     }
 
     private void scrollToBottom() {
-        binding.recyclerView.postDelayed(() ->
-            binding.recyclerView.smoothScrollToPosition(
-                binding.recyclerView.getAdapter().getItemCount()), 100);
+        binding.recyclerView.post(() -> {
+            int itemCount = binding.recyclerView.getAdapter().getItemCount();
+            if (itemCount > 0) {
+                binding.recyclerView.smoothScrollToPosition(itemCount - 1);
+            }
+        });
     }
 
     public Uri getPendingImageUri() {
