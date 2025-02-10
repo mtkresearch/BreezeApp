@@ -131,6 +131,55 @@
                 android:background="@drawable/bg_input_container"
                 android:padding="8dp"/>
         </LinearLayout>
+
+        <!-- Temperature Setting -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Temperature:"
+                android:textSize="16sp"/>
+
+            <EditText
+                android:id="@+id/temperatureInput"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:inputType="numberDecimal"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:background="@drawable/bg_input_container"
+                android:padding="8dp"/>
+        </LinearLayout>
+
+        <!-- Backend Selection -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="LLM Backend:"
+                android:textSize="16sp"/>
+
+            <Spinner
+                android:id="@+id/backendSpinner"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_input_container"
+                android:padding="8dp"/>
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
