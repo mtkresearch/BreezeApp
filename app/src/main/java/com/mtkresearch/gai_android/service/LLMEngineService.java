@@ -20,14 +20,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 
 public class LLMEngineService extends BaseEngineService {
-//    static {
-//        System.loadLibrary("llm_jni");
-//    }
+    private static boolean MTK_BACKEND_AVAILABLE = false;
+    
+    static {
+        try {
+            System.loadLibrary("llm_jni");
+            MTK_BACKEND_AVAILABLE = true;
+            Log.d("LLMEngineService", "Successfully loaded llm_jni library");
+        } catch (UnsatisfiedLinkError e) {
+            MTK_BACKEND_AVAILABLE = false;
+            Log.w("LLMEngineService", "Failed to load llm_jni library, MTK backend will be disabled", e);
+        }
+    }
 
     private static final String TAG = "LLMEngineService";
     private static final long INIT_TIMEOUT_MS = 120000;
     private static final long GENERATION_TIMEOUT_MS = 60000;  // Increased timeout
-    private static final boolean MTK_BACKEND_AVAILABLE = false;
     public static final String DEFAULT_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     private String backend = "none";
     
