@@ -106,7 +106,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
-        initializeServices();
+        
+        // Check for RECORD_AUDIO permission before initializing services
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+        } else {
+            initializeServices();
+        }
+        
         setupHistoryDrawer();
         
         // Clear any previous active history and start fresh
@@ -251,10 +258,27 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeServices() {
-        bindService(new Intent(this, LLMEngineService.class), llmConnection, Context.BIND_AUTO_CREATE);
+        // Start LLM service first
+        Intent llmIntent = new Intent(this, LLMEngineService.class);
+        llmIntent.putExtra("model_path", "/data/local/tmp/llama/llama3_2.pte");
+        llmIntent.putExtra("preferred_backend", "cpu");
+        llmIntent.putExtra("temperature", 0.0f);
+        startService(llmIntent);
+        bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE);
+        
+        // Start VLM service
         bindService(new Intent(this, VLMEngineService.class), vlmConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, ASREngineService.class), asrConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, TTSEngineService.class), ttsConnection, Context.BIND_AUTO_CREATE);
+        
+        // Only start ASR and TTS if we have audio permission
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            Intent asrIntent = new Intent(this, ASREngineService.class);
+            startService(asrIntent);
+            bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
+            
+            Intent ttsIntent = new Intent(this, TTSEngineService.class);
+            startService(ttsIntent);
+            bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
+        }
     }
 
     private void handleSendAction() {
@@ -307,10 +331,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean hasReceivedResponse = false;
+                private boolean isGenerating = true;
 
                 @Override
                 public void onToken(String token) {
-                    if (token == null || token.isEmpty()) {
+                    if (!isGenerating || token == null || token.isEmpty()) {
                         return;
                     }
 
@@ -328,38 +353,41 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     });
                 }
             }).thenAccept(finalResponse -> {
-                if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
-                    runOnUiThread(() -> {
+                runOnUiThread(() -> {
+                    if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
-                        if (response.isEmpty()) {
+                        // Only update with error message if we haven't received any real response
+                        if (response.isEmpty() && !aiMessage.hasContent()) {
                             aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
-                        } else {
+                        } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                        setSendButtonsAsStop(false);
-                        
                         // Increment promptId after successful response
                         promptId++;
-                        
-                        // Only save and refresh after AI response is complete
-                        saveCurrentChat();
-                        refreshHistoryList();
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        setSendButtonsAsStop(false);
-                    });
-                }
+                    } else {
+                        // Only show error if we haven't received any content
+                        if (!aiMessage.hasContent()) {
+                            aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                        }
+                    }
+                    
+                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                    setSendButtonsAsStop(false);
+                    
+                    // Only save and refresh after AI response is complete
+                    saveCurrentChat();
+                    refreshHistoryList();
+                });
             }).exceptionally(throwable -> {
                 Log.e(TAG, "Error generating response", throwable);
                 runOnUiThread(() -> {
-                    aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    // Only show error if we haven't received any content
+                    if (!aiMessage.hasContent()) {
+                        aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
                     setSendButtonsAsStop(false);
                 });
                 return null;
@@ -577,6 +605,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (permissions[0].equals(android.Manifest.permission.CAMERA)) {
                     handleCameraCapture();
                 } else if (permissions[0].equals(android.Manifest.permission.RECORD_AUDIO)) {
+                    // Initialize services after permission is granted
+                    initializeServices();
                     startRecording();
                 }
             } else {
@@ -647,12 +677,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService = ((LLMEngineService.LocalBinder) service).getService();
             // Update model name when service is connected
             if (llmService != null) {
-                runOnUiThread(() -> {
-                    String modelName = llmService.getModelName();
-                    if (modelName != null && !modelName.isEmpty()) {
-                        binding.modelNameText.setText(modelName);
-                    } else {
-                        binding.modelNameText.setText("Unknown");
+                llmService.initialize().thenAccept(success -> {
+                    if (success) {
+                        runOnUiThread(() -> {
+                            String modelName = llmService.getModelName();
+                            if (modelName != null && !modelName.isEmpty()) {
+                                binding.modelNameText.setText(modelName);
+                            } else {
+                                binding.modelNameText.setText("Unknown");
+                            }
+                        });
                     }
                 });
             }
@@ -682,6 +716,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             asrService = ((ASREngineService.LocalBinder) service).getService();
+            if (asrService != null) {
+                asrService.initialize();
+            }
         }
 
         @Override
@@ -694,6 +731,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
+            if (ttsService != null) {
+                ttsService.initialize();
+            }
         }
 
         @Override
