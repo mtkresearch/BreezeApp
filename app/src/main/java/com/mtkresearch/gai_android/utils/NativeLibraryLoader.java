@@ -12,16 +12,6 @@ public class NativeLibraryLoader {
         }
 
         try {
-            // Load MTK LLM dependencies first
-//            System.loadLibrary("common");
-//            System.loadLibrary("tokenizer");
-//            System.loadLibrary("yaml-cpp");
-//            System.loadLibrary("re2");
-//            System.loadLibrary("sentencepiece");
-//            System.loadLibrary("mtk_llm");
-//            System.loadLibrary("main_llm");
-//            System.loadLibrary("llm_jni");
-            
             // Load Sherpa ONNX library
             System.loadLibrary("sherpa-onnx-jni");
             
