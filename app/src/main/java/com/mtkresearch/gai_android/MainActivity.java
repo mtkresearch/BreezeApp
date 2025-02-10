@@ -21,6 +21,8 @@ import android.widget.EditText;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+
+import android.widget.Spinner;
 import android.widget.Toast;
 import android.widget.ArrayAdapter;
 import android.widget.AdapterView;
@@ -36,6 +38,7 @@ import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
 import com.mtkresearch.gai_android.utils.NativeLibraryLoader;
 import com.mtkresearch.gai_android.utils.PromptManager;
+import com.mtkresearch.gai_android.utils.AppConstants;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -132,12 +135,11 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private static final String PREFS_NAME = "GAISettings";
-    private static final String KEY_HISTORY_LOOKBACK = "history_lookback";
-    private static final String KEY_SEQUENCE_LENGTH = "sequence_length";
-    
     private EditText historyLookbackInput;
     private EditText sequenceLengthInput;
+    private EditText temperatureInput;
+    private Spinner backendSpinner;
+    private ArrayAdapter<String> backendAdapter;
     private SharedPreferences settings;
 
     @Override
@@ -168,9 +170,67 @@ public class MainActivity extends AppCompatActivity {
         // Initialize status indicators
         initializeStatusIndicators();
 
-        settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        settings = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE);
         PromptManager.initialize(this);
         setupSettings();
+
+        // Initialize views
+        temperatureInput = binding.settingsContainer.findViewById(R.id.temperatureInput);
+        backendSpinner = binding.settingsContainer.findViewById(R.id.backendSpinner);
+        
+        // Setup backend spinner
+        List<String> backendOptions = new ArrayList<>();
+        backendOptions.add("cpu");  // CPU backend is always available
+        if (LLMEngineService.isMTKBackendAvailable()) {
+            backendOptions.add("mtk");
+        }
+        
+        backendAdapter = new ArrayAdapter<>(this, 
+            android.R.layout.simple_spinner_item, backendOptions);
+        backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        backendSpinner.setAdapter(backendAdapter);
+
+        // Load saved settings
+        float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
+        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
+        
+        temperatureInput.setText(String.valueOf(savedTemp));
+        int backendPosition = backendAdapter.getPosition(savedBackend);
+        if (backendPosition >= 0) {
+            backendSpinner.setSelection(backendPosition);
+        }
+
+        // Add listeners for settings changes
+        temperatureInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                try {
+                    float temp = s.length() > 0 ? Float.parseFloat(s.toString()) : 0.0f;
+                    if (temp >= 0.0f && temp <= 2.0f) {
+                        settings.edit().putFloat(AppConstants.KEY_TEMPERATURE, temp).apply();
+                    }
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid temperature value");
+                }
+            }
+        });
+
+        backendSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedBackend = backendAdapter.getItem(position);
+                settings.edit().putString(AppConstants.KEY_PREFERRED_BACKEND, selectedBackend).apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 
     private void scanForModels() {
@@ -401,6 +461,12 @@ public class MainActivity extends AppCompatActivity {
         // Add model path to intent only for LLM and VLM services
         if (serviceClass == LLMEngineService.class && selectedLlmModel != null) {
             intent.putExtra("model_path", LLAMA_MODEL_PATH + selectedLlmModel);
+            // Add backend preference and temperature for LLM service
+            String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
+            float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
+            intent.putExtra("preferred_backend", savedBackend);
+            intent.putExtra("temperature", savedTemp);
+            Log.d(TAG, "Starting LLM service with backend: " + savedBackend + ", temperature: " + savedTemp);
         } else if (serviceClass == VLMEngineService.class && selectedVlmModel != null) {
             intent.putExtra("model_path", LLAMA_MODEL_PATH + selectedVlmModel);
         }
@@ -566,15 +632,15 @@ public class MainActivity extends AppCompatActivity {
         sequenceLengthInput = binding.settingsContainer.findViewById(R.id.sequenceLengthInput);
 
         // Load saved values or use defaults
-        int savedHistoryLookback = settings.getInt(KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
-        int savedSequenceLength = settings.getInt(KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
+        int savedHistoryLookback = settings.getInt(AppConstants.KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
+        int savedSequenceLength = settings.getInt(AppConstants.KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
 
         historyLookbackInput.setText(String.valueOf(savedHistoryLookback));
         sequenceLengthInput.setText(String.valueOf(savedSequenceLength));
 
         // Add listeners to save changes
-        historyLookbackInput.addTextChangedListener(new SettingsTextWatcher(KEY_HISTORY_LOOKBACK));
-        sequenceLengthInput.addTextChangedListener(new SettingsTextWatcher(KEY_SEQUENCE_LENGTH));
+        historyLookbackInput.addTextChangedListener(new SettingsTextWatcher(AppConstants.KEY_HISTORY_LOOKBACK));
+        sequenceLengthInput.addTextChangedListener(new SettingsTextWatcher(AppConstants.KEY_SEQUENCE_LENGTH));
     }
 
     private class SettingsTextWatcher implements TextWatcher {
@@ -596,9 +662,9 @@ public class MainActivity extends AppCompatActivity {
                 int value = s.length() > 0 ? Integer.parseInt(s.toString()) : 0;
                 
                 // Apply constraints based on the setting
-                if (key.equals(KEY_HISTORY_LOOKBACK)) {
+                if (key.equals(AppConstants.KEY_HISTORY_LOOKBACK)) {
                     value = Math.max(1, Math.min(100, value)); // Limit between 1 and 100
-                } else if (key.equals(KEY_SEQUENCE_LENGTH)) {
+                } else if (key.equals(AppConstants.KEY_SEQUENCE_LENGTH)) {
                     value = Math.max(128, Math.min(8192, value)); // Limit between 256 and 8192
                 }
                 
@@ -608,7 +674,7 @@ public class MainActivity extends AppCompatActivity {
                 // Update the text if the value was constrained
                 String newText = String.valueOf(value);
                 if (!s.toString().equals(newText)) {
-                    if (key.equals(KEY_HISTORY_LOOKBACK)) {
+                    if (key.equals(AppConstants.KEY_HISTORY_LOOKBACK)) {
                         historyLookbackInput.setText(newText);
                         historyLookbackInput.setSelection(newText.length());
                     } else {
@@ -618,7 +684,7 @@ public class MainActivity extends AppCompatActivity {
                 }
             } catch (NumberFormatException e) {
                 // Reset to default if invalid input
-                int defaultValue = key.equals(KEY_HISTORY_LOOKBACK) ? 
+                int defaultValue = key.equals(AppConstants.KEY_HISTORY_LOOKBACK) ? 
                     PromptManager.DEFAULT_HISTORY_LOOKBACK : 
                     PromptManager.MAX_SEQUENCE_LENGTH;
                 settings.edit().putInt(key, defaultValue).apply();
@@ -627,12 +693,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static int getHistoryLookback(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        return prefs.getInt(KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
+        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getInt(AppConstants.KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
     }
 
     public static int getSequenceLength(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        return prefs.getInt(KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
+        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getInt(AppConstants.KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
     }
 } 
