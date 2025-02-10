@@ -60,6 +60,79 @@
         app:layout_constraintTop_toBottomOf="@id/deviceInfoContainer"
         app:layout_constraintStart_toStartOf="parent"/>
 
+    <!-- Settings Section -->
+    <TextView
+        android:id="@+id/settingsTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Model Settings"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/engineStatusContainer"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <LinearLayout
+        android:id="@+id/settingsContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/settingsTitle">
+
+        <!-- History Lookback Setting -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="History Lookback:"
+                android:textSize="16sp"/>
+
+            <EditText
+                android:id="@+id/historyLookbackInput"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:background="@drawable/bg_input_container"
+                android:padding="8dp"/>
+        </LinearLayout>
+
+        <!-- Sequence Length Setting -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+            
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Max Sequence Length:"
+                android:textSize="16sp"/>
+
+            <EditText
+                android:id="@+id/sequenceLengthInput"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:inputType="number"
+                android:textSize="16sp"
+                android:gravity="center"
+                android:background="@drawable/bg_input_container"
+                android:padding="8dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
     <LinearLayout
         android:id="@+id/engineStatusContainer"
         android:layout_width="match_parent"

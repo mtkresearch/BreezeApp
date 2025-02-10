@@ -12,9 +12,12 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.os.Handler;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.EditText;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -32,6 +35,7 @@ import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
 import com.mtkresearch.gai_android.utils.NativeLibraryLoader;
+import com.mtkresearch.gai_android.utils.PromptManager;
 
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +43,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
+import android.content.SharedPreferences;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -127,6 +132,14 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private static final String PREFS_NAME = "GAISettings";
+    private static final String KEY_HISTORY_LOOKBACK = "history_lookback";
+    private static final String KEY_SEQUENCE_LENGTH = "sequence_length";
+    
+    private EditText historyLookbackInput;
+    private EditText sequenceLengthInput;
+    private SharedPreferences settings;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -154,6 +167,10 @@ public class MainActivity extends AppCompatActivity {
         
         // Initialize status indicators
         initializeStatusIndicators();
+
+        settings = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        PromptManager.initialize(this);
+        setupSettings();
     }
 
     private void scanForModels() {
@@ -542,5 +559,80 @@ public class MainActivity extends AppCompatActivity {
                 binding.asrSwitch.setChecked(false);
             }
         }
+    }
+
+    private void setupSettings() {
+        historyLookbackInput = binding.settingsContainer.findViewById(R.id.historyLookbackInput);
+        sequenceLengthInput = binding.settingsContainer.findViewById(R.id.sequenceLengthInput);
+
+        // Load saved values or use defaults
+        int savedHistoryLookback = settings.getInt(KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
+        int savedSequenceLength = settings.getInt(KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
+
+        historyLookbackInput.setText(String.valueOf(savedHistoryLookback));
+        sequenceLengthInput.setText(String.valueOf(savedSequenceLength));
+
+        // Add listeners to save changes
+        historyLookbackInput.addTextChangedListener(new SettingsTextWatcher(KEY_HISTORY_LOOKBACK));
+        sequenceLengthInput.addTextChangedListener(new SettingsTextWatcher(KEY_SEQUENCE_LENGTH));
+    }
+
+    private class SettingsTextWatcher implements TextWatcher {
+        private final String key;
+
+        SettingsTextWatcher(String key) {
+            this.key = key;
+        }
+
+        @Override
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+        @Override
+        public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+        @Override
+        public void afterTextChanged(Editable s) {
+            try {
+                int value = s.length() > 0 ? Integer.parseInt(s.toString()) : 0;
+                
+                // Apply constraints based on the setting
+                if (key.equals(KEY_HISTORY_LOOKBACK)) {
+                    value = Math.max(1, Math.min(100, value)); // Limit between 1 and 100
+                } else if (key.equals(KEY_SEQUENCE_LENGTH)) {
+                    value = Math.max(128, Math.min(8192, value)); // Limit between 256 and 8192
+                }
+                
+                // Save the value
+                settings.edit().putInt(key, value).apply();
+                
+                // Update the text if the value was constrained
+                String newText = String.valueOf(value);
+                if (!s.toString().equals(newText)) {
+                    if (key.equals(KEY_HISTORY_LOOKBACK)) {
+                        historyLookbackInput.setText(newText);
+                        historyLookbackInput.setSelection(newText.length());
+                    } else {
+                        sequenceLengthInput.setText(newText);
+                        sequenceLengthInput.setSelection(newText.length());
+                    }
+                }
+            } catch (NumberFormatException e) {
+                // Reset to default if invalid input
+                int defaultValue = key.equals(KEY_HISTORY_LOOKBACK) ? 
+                    PromptManager.DEFAULT_HISTORY_LOOKBACK : 
+                    PromptManager.MAX_SEQUENCE_LENGTH;
+                settings.edit().putInt(key, defaultValue).apply();
+            }
+        }
+    }
+
+    public static int getHistoryLookback(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getInt(KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
+    }
+
+    public static int getSequenceLength(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return prefs.getInt(KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
     }
 } 
