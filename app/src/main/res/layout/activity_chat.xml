@@ -133,7 +133,8 @@
             <LinearLayout
                 android:id="@+id/collapsedInput"
                 android:layout_width="match_parent"
-                android:layout_height="32dp"
+                android:layout_height="wrap_content"
+                android:minHeight="32dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingHorizontal="8dp">
@@ -150,14 +151,16 @@
                 <EditText
                     android:id="@+id/messageInput"
                     android:layout_width="0dp"
-                    android:layout_height="32dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginHorizontal="8dp"
                     android:layout_marginEnd="10dp"
                     android:layout_weight="10"
                     android:background="@null"
                     android:hint="Message"
-                    android:inputType="textMultiLine"
+                    android:inputType="textMultiLine|textCapSentences"
                     android:maxLines="4"
+                    android:minHeight="32dp"
+                    android:scrollbars="vertical"
                     android:gravity="center_vertical"
                     android:textSize="16sp" />
 
@@ -194,12 +197,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:minHeight="32dp"
+                    android:maxHeight="120dp"
                     android:gravity="top|start"
                     android:background="@null"
                     android:hint="Message"
-                    android:inputType="textMultiLine"
-                    android:padding="8dp"
-                    android:layout_marginTop="8dp"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:scrollbars="vertical"
+                    android:padding="4dp"
+                    android:layout_marginTop="4dp"
                     android:layout_marginEnd="12dp"
                     android:layout_marginStart="8dp"/>
 
