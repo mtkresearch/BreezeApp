@@ -261,7 +261,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Start LLM service first
         Intent llmIntent = new Intent(this, LLMEngineService.class);
         llmIntent.putExtra("model_path", "/data/local/tmp/llama/llama3_2.pte");
-        llmIntent.putExtra("preferred_backend", "cpu");
+        llmIntent.putExtra("preferred_backend", "mtk");
         llmIntent.putExtra("temperature", 0.0f);
         startService(llmIntent);
         bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE);
