@@ -16,6 +16,7 @@ import android.widget.CheckBox;
 import android.app.AlertDialog;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -113,6 +114,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final long TAP_TIMEOUT_MS = 3000; // Reset counter after 3 seconds
     private long lastTapTime = 0;
 
+    // Add these fields at the top of the class with other fields
+    private boolean llmServiceReady = false;
+    private boolean vlmServiceReady = false;
+    private boolean asrServiceReady = false;
+    private boolean ttsServiceReady = false;
+    private View inputBlockerOverlay;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -161,13 +169,23 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
+        // Add input blocker overlay
+        inputBlockerOverlay = new View(this);
+        inputBlockerOverlay.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
+        inputBlockerOverlay.setAlpha(0.7f);
+        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_PARENT,
+            ConstraintLayout.LayoutParams.MATCH_PARENT
+        );
+        binding.getRoot().addView(inputBlockerOverlay, params);
+        
         initializeChat();
         setupButtons();
         setupInputHandling();
         setupTitleTapCounter();
         
-        // Initialize model name as "Loading..."
-        binding.modelNameText.setText("Loading...");
+        // Initially disable all interactive components
+        updateInteractionState();
     }
 
     private void initializeHandlers() {
@@ -280,89 +298,133 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeServices() {
-        // Show loading indicator
-        binding.modelNameText.setText("Initializing...");
+        // Show loading indicator with Toast
+        Toast.makeText(this, "Initializing services...", Toast.LENGTH_SHORT).show();
         
         // Create handler for background operations
         Handler initHandler = new Handler(Looper.getMainLooper());
-        ExecutorService initExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService initExecutor = Executors.newFixedThreadPool(4); // Use multiple threads
         
-        // Start services in background
+        // Start services in background with proper sequencing
         CompletableFuture.runAsync(() -> {
             try {
                 // Start LLM service first with retry mechanism
+                CountDownLatch llmLatch = new CountDownLatch(1);
+                AtomicBoolean llmSuccess = new AtomicBoolean(false);
+                
+                // Prepare LLM intent
                 Intent llmIntent = new Intent(this, LLMEngineService.class);
                 llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
                 llmIntent.putExtra("preferred_backend", "mtk");
                 
-                // Use CountDownLatch to ensure service binding completes
-                CountDownLatch bindLatch = new CountDownLatch(1);
-                AtomicBoolean bindSuccess = new AtomicBoolean(false);
-                
-                // Use handler to post to main thread
+                // Bind LLM service on main thread
                 initHandler.post(() -> {
                     try {
                         startService(llmIntent);
-                        bindSuccess.set(bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE));
+                        if (bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE)) {
+                            llmSuccess.set(true);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error binding LLM service", e);
                     } finally {
-                        bindLatch.countDown();
+                        llmLatch.countDown();
                     }
                 });
                 
-                // Wait for binding with timeout
-                if (!bindLatch.await(5, TimeUnit.SECONDS) || !bindSuccess.get()) {
+                // Wait for LLM binding with timeout
+                if (!llmLatch.await(10, TimeUnit.SECONDS)) {
+                    Log.e(TAG, "LLM service binding timed out");
                     throw new TimeoutException("LLM service binding timed out");
                 }
                 
-                // Add delay to allow service to start
-                Thread.sleep(500);
-                
-                // Start other services with similar pattern
-                CountDownLatch otherServicesLatch = new CountDownLatch(1);
-                AtomicInteger bindCount = new AtomicInteger(0);
-                
-                initHandler.post(() -> {
-                    try {
-                        // Start VLM service
-                        if (bindService(new Intent(this, VLMEngineService.class), 
-                            vlmConnection, Context.BIND_AUTO_CREATE)) {
-                            bindCount.incrementAndGet();
-                        }
-                        
-                        // Only start ASR and TTS if we have audio permission
-                        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
-                            == PackageManager.PERMISSION_GRANTED) {
-                            
-                            Intent asrIntent = new Intent(this, ASREngineService.class);
-                            startService(asrIntent);
-                            if (bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE)) {
-                                bindCount.incrementAndGet();
-                            }
-                            
-                            Intent ttsIntent = new Intent(this, TTSEngineService.class);
-                            startService(ttsIntent);
-                            if (bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
-                                bindCount.incrementAndGet();
-                            }
-                        }
-                    } finally {
-                        otherServicesLatch.countDown();
-                    }
-                });
-                
-                // Wait for other services with timeout
-                if (!otherServicesLatch.await(5, TimeUnit.SECONDS)) {
-                    Log.w(TAG, "Some services failed to bind in time");
+                if (!llmSuccess.get()) {
+                    Log.e(TAG, "LLM service binding failed");
+                    throw new Exception("LLM service binding failed");
                 }
                 
-                Log.d(TAG, "Successfully bound " + bindCount.get() + " services");
+                // Add delay to allow LLM service to start
+                Thread.sleep(1000);
+                
+                // Start other services in parallel
+                CompletableFuture<Void> vlmFuture = null;
+                CompletableFuture<Void> asrFuture = null;
+                CompletableFuture<Void> ttsFuture = null;
+                
+                // Start VLM service if needed
+                if (BuildConfig.FLAVOR.equals("vlm")) {
+                    vlmFuture = CompletableFuture.runAsync(() -> {
+                        try {
+                            CountDownLatch latch = new CountDownLatch(1);
+                            initHandler.post(() -> {
+                                try {
+                                    bindService(new Intent(this, VLMEngineService.class),
+                                        vlmConnection, Context.BIND_AUTO_CREATE);
+                                } finally {
+                                    latch.countDown();
+                                }
+                            });
+                            latch.await(5, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error initializing VLM service", e);
+                        }
+                    }, initExecutor);
+                }
+                
+                // Start ASR and TTS services if we have audio permission
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
+                    == PackageManager.PERMISSION_GRANTED) {
+                    
+                    // Start ASR service
+                    asrFuture = CompletableFuture.runAsync(() -> {
+                        try {
+                            CountDownLatch latch = new CountDownLatch(1);
+                            initHandler.post(() -> {
+                                try {
+                                    Intent asrIntent = new Intent(this, ASREngineService.class);
+                                    startService(asrIntent);
+                                    bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
+                                } finally {
+                                    latch.countDown();
+                                }
+                            });
+                            latch.await(5, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error initializing ASR service", e);
+                        }
+                    }, initExecutor);
+                    
+                    // Start TTS service
+                    ttsFuture = CompletableFuture.runAsync(() -> {
+                        try {
+                            CountDownLatch latch = new CountDownLatch(1);
+                            initHandler.post(() -> {
+                                try {
+                                    Intent ttsIntent = new Intent(this, TTSEngineService.class);
+                                    startService(ttsIntent);
+                                    bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
+                                } finally {
+                                    latch.countDown();
+                                }
+                            });
+                            latch.await(5, TimeUnit.SECONDS);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error initializing TTS service", e);
+                        }
+                    }, initExecutor);
+                }
+                
+                // Wait for all services to complete initialization
+                if (vlmFuture != null) vlmFuture.join();
+                if (asrFuture != null) asrFuture.join();
+                if (ttsFuture != null) ttsFuture.join();
+                
+                Log.d(TAG, "All services initialized");
                 
             } catch (Exception e) {
-                Log.e(TAG, "Error initializing services", e);
+                Log.e(TAG, "Error during service initialization", e);
                 initHandler.post(() -> {
-                    binding.modelNameText.setText("Initialization failed");
                     Toast.makeText(ChatActivity.this, 
-                        "Failed to initialize services: " + e.getMessage(), 
+                        "Error initializing services: " + e.getMessage(), 
                         Toast.LENGTH_SHORT).show();
                 });
             } finally {
@@ -819,32 +881,39 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             llmService = ((LLMEngineService.LocalBinder) service).getService();
-            // Update model name when service is connected
             if (llmService != null) {
-                binding.modelNameText.setText("Initializing model...");
+                Toast.makeText(ChatActivity.this, "Initializing model...", Toast.LENGTH_SHORT).show();
                 
                 llmService.initialize().thenAccept(success -> {
+                    llmServiceReady = success;
                     if (success) {
                         runOnUiThread(() -> {
                             String modelName = llmService.getModelName();
+                            String backend = llmService.getCurrentBackend();
                             if (modelName != null && !modelName.isEmpty()) {
-                                binding.modelNameText.setText(modelName);
+                                String displayText = String.format("%s (%s)", modelName, backend);
+                                binding.modelNameText.setText(displayText);
+                                binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
                             } else {
-                                binding.modelNameText.setText("Unknown");
+                                binding.modelNameText.setText("Unknown model");
                             }
-                            Toast.makeText(ChatActivity.this, "Model initialized successfully", Toast.LENGTH_SHORT).show();
                         });
                     } else {
                         runOnUiThread(() -> {
-                            binding.modelNameText.setText("Initialization failed");
+                            binding.modelNameText.setText("Model error");
+                            binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
                             Toast.makeText(ChatActivity.this, "Failed to initialize model", Toast.LENGTH_SHORT).show();
                         });
                     }
+                    updateInteractionState();
                 }).exceptionally(throwable -> {
                     Log.e(TAG, "Error initializing model", throwable);
+                    llmServiceReady = false;
                     runOnUiThread(() -> {
-                        binding.modelNameText.setText("Initialization error");
+                        binding.modelNameText.setText("Model error");
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
                         Toast.makeText(ChatActivity.this, "Error initializing model", Toast.LENGTH_SHORT).show();
+                        updateInteractionState();
                     });
                     return null;
                 });
@@ -854,8 +923,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceDisconnected(ComponentName name) {
             llmService = null;
-            // Update UI when service is disconnected
-            runOnUiThread(() -> binding.modelNameText.setText("Disconnected"));
+            llmServiceReady = false;
+            runOnUiThread(() -> {
+                binding.modelNameText.setText("Model disconnected");
+                binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                Toast.makeText(ChatActivity.this, "Model service disconnected", Toast.LENGTH_SHORT).show();
+                updateInteractionState();
+            });
         }
     };
 
@@ -863,11 +937,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             vlmService = ((VLMEngineService.LocalBinder) service).getService();
+            vlmServiceReady = vlmService != null;
+            updateInteractionState();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             vlmService = null;
+            vlmServiceReady = false;
+            updateInteractionState();
         }
     };
 
@@ -876,13 +954,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             asrService = ((ASREngineService.LocalBinder) service).getService();
             if (asrService != null) {
-                asrService.initialize();
+                asrService.initialize().thenAccept(success -> {
+                    asrServiceReady = success;
+                    updateInteractionState();
+                });
             }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             asrService = null;
+            asrServiceReady = false;
+            updateInteractionState();
         }
     };
 
@@ -891,15 +974,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
-                // Show loading state for TTS
                 runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
                     "Initializing text-to-speech...", Toast.LENGTH_SHORT).show());
                 
-                // Initialize TTS in background
                 CompletableFuture.runAsync(() -> {
                     try {
                         ttsService.initialize()
                             .thenAccept(success -> {
+                                ttsServiceReady = success;
                                 if (success) {
                                     runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
                                         "Text-to-speech ready", Toast.LENGTH_SHORT).show());
@@ -907,15 +989,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                     runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
                                         "Failed to initialize text-to-speech", Toast.LENGTH_SHORT).show());
                                 }
+                                updateInteractionState();
                             })
                             .exceptionally(throwable -> {
                                 Log.e(TAG, "Error initializing TTS", throwable);
-                                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                                    "Error initializing text-to-speech", Toast.LENGTH_SHORT).show());
+                                ttsServiceReady = false;
+                                runOnUiThread(() -> {
+                                    Toast.makeText(ChatActivity.this, 
+                                        "Error initializing text-to-speech", Toast.LENGTH_SHORT).show();
+                                    updateInteractionState();
+                                });
                                 return null;
                             });
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting TTS initialization", e);
+                        ttsServiceReady = false;
+                        updateInteractionState();
                     }
                 });
             }
@@ -924,6 +1013,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceDisconnected(ComponentName name) {
             ttsService = null;
+            ttsServiceReady = false;
+            updateInteractionState();
         }
     };
 
@@ -1237,5 +1328,56 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             Log.e(TAG, "Error saving image", e);
             Toast.makeText(this, "Error saving image", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void updateInteractionState() {
+        boolean allServicesReady = llmServiceReady && 
+            (vlmServiceReady || !BuildConfig.FLAVOR.equals("vlm")) && 
+            (asrServiceReady || !hasAudioPermission()) && 
+            (ttsServiceReady || !hasAudioPermission());
+
+        runOnUiThread(() -> {
+            // Update UI elements based on service state
+            binding.inputContainer.setEnabled(allServicesReady);
+            binding.newConversationButton.setEnabled(allServicesReady);
+            binding.historyButton.setEnabled(allServicesReady);
+            binding.attachButton.setEnabled(allServicesReady);
+            binding.attachButtonExpanded.setEnabled(allServicesReady);
+            binding.voiceButton.setEnabled(allServicesReady);
+            binding.voiceButtonExpanded.setEnabled(allServicesReady);
+            binding.sendButton.setEnabled(allServicesReady);
+            binding.sendButtonExpanded.setEnabled(allServicesReady);
+            binding.messageInput.setEnabled(allServicesReady);
+            binding.messageInputExpanded.setEnabled(allServicesReady);
+            
+            // Show/hide loading overlay
+            if (inputBlockerOverlay != null) {
+                inputBlockerOverlay.setVisibility(allServicesReady ? View.GONE : View.VISIBLE);
+            }
+
+            // Update model name and status
+            if (llmService != null) {
+                String modelName = llmService.getModelName();
+                String backend = llmService.getCurrentBackend();
+                if (modelName != null && !modelName.isEmpty()) {
+                    String displayText = String.format("%s (%s)", modelName, backend);
+                    binding.modelNameText.setText(displayText);
+                    binding.modelNameText.setTextColor(getResources().getColor(
+                        allServicesReady ? R.color.text_primary : R.color.text_secondary, 
+                        getTheme()
+                    ));
+                } else {
+                    binding.modelNameText.setText("Unknown model");
+                    binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                }
+            } else {
+                binding.modelNameText.setText("Model not available");
+                binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+            }
+        });
+    }
+
+    private boolean hasAudioPermission() {
+        return checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
     }
 }

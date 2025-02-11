@@ -42,9 +42,7 @@ public class ModelUtils {
      * @return Formatted string with model name and backend type
      */
     public static String getModelDisplayString(String modelPath, String backend) {
-        String modelName = getModelNameFromPath(modelPath);
-        String backendType = getBackendDisplayName(backend);
-        return String.format("%s (%s)", modelName, backendType);
+        return getModelNameFromPath(modelPath);
     }
 
     /**
@@ -58,7 +56,7 @@ public class ModelUtils {
         }
         switch (backend.toLowerCase()) {
             case "mtk":
-                return "NPU";
+                return "mtk";
             case "localcpu":
                 return "CPU";
             case "none":
