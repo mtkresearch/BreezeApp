@@ -1,48 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:padding="8dp">
 
+    <!-- Assistant speaker button (shown for assistant messages) -->
+    <ImageButton
+        android:id="@+id/speakerButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@id/messageBubble" />
+
     <LinearLayout
-        android:id="@+id/messageContainer"
+        android:id="@+id/messageBubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <!-- User speaker button (shown for user messages) -->
-        <ImageButton
-            android:id="@+id/userSpeakerButton"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="top"
-            android:layout_marginEnd="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:rotation="180"
-            android:scaleX="-1"
-            android:src="@drawable/ic_speaker"
-            android:visibility="gone" />
+        android:orientation="vertical"
+        android:background="@drawable/bg_message_bubble"
+        android:padding="4dp"
+        app:layout_constrainedWidth="true"
+        app:layout_constraintWidth_max="wrap"
+        app:layout_constraintWidth_percent="0.75"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/speakerButton"
+        app:layout_constraintEnd_toStartOf="@id/userSpeakerButton">
 
         <TextView
             android:id="@+id/messageText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="@drawable/message_background"
-            android:padding="12dp"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:textIsSelectable="true"
+            android:focusable="true"
+            android:longClickable="true"
+            android:padding="8dp"
+            tools:text="This is a sample message that could be quite long and might need to wrap to multiple lines"/>
 
-        <!-- Assistant speaker button (shown for assistant messages) -->
-        <ImageButton
-            android:id="@+id/speakerButton"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_gravity="top"
-            android:layout_marginStart="8dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/logo"
-            android:scaleType="fitCenter"
-            android:visibility="gone" />
+        <ImageView
+            android:id="@+id/messageImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="4dp"
+            android:scaleType="centerCrop"
+            android:visibility="gone"
+            android:adjustViewBounds="true"/>
 
     </LinearLayout>
 
-</FrameLayout> 
+    <!-- User speaker button (shown for user messages) -->
+    <ImageButton
+        android:id="@+id/userSpeakerButton"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/messageBubble" />
+
+</androidx.constraintlayout.widget.ConstraintLayout> 
