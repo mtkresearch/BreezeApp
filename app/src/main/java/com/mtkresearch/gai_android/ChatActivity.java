@@ -60,6 +60,18 @@ import com.executorch.ModelType;
 import com.executorch.PromptFormat;
 import com.mtkresearch.gai_android.utils.PromptManager;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import android.os.Handler;
+import android.os.Looper;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
 
@@ -137,7 +149,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cleanup();
+        // Ensure services are unbound and cleaned up
+        try {
+            cleanup();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
     }
 
     private void initializeViews() {
@@ -163,6 +180,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void initializeChat() {
         chatAdapter = new ChatMessageAdapter();
         chatAdapter.setSpeakerClickListener(this);
+        // Add copy message listener
+        chatAdapter.setOnMessageLongClickListener((message, position) -> {
+            showMessageOptions(message);
+            return true;
+        });
         UiUtils.setupChatRecyclerView(binding.recyclerView, chatAdapter);
         
         // Set initial watermark visibility
@@ -258,27 +280,95 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeServices() {
-        // Start LLM service first
-        Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", "/data/local/tmp/llama/llama3_2.pte");
-        llmIntent.putExtra("preferred_backend", "mtk");
-        llmIntent.putExtra("temperature", 0.0f);
-        startService(llmIntent);
-        bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE);
+        // Show loading indicator
+        binding.modelNameText.setText("Initializing...");
         
-        // Start VLM service
-        bindService(new Intent(this, VLMEngineService.class), vlmConnection, Context.BIND_AUTO_CREATE);
+        // Create handler for background operations
+        Handler initHandler = new Handler(Looper.getMainLooper());
+        ExecutorService initExecutor = Executors.newSingleThreadExecutor();
         
-        // Only start ASR and TTS if we have audio permission
-        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            Intent asrIntent = new Intent(this, ASREngineService.class);
-            startService(asrIntent);
-            bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
-            
-            Intent ttsIntent = new Intent(this, TTSEngineService.class);
-            startService(ttsIntent);
-            bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
-        }
+        // Start services in background
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Start LLM service first with retry mechanism
+                Intent llmIntent = new Intent(this, LLMEngineService.class);
+                llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
+                llmIntent.putExtra("preferred_backend", "mtk");
+                
+                // Use CountDownLatch to ensure service binding completes
+                CountDownLatch bindLatch = new CountDownLatch(1);
+                AtomicBoolean bindSuccess = new AtomicBoolean(false);
+                
+                // Use handler to post to main thread
+                initHandler.post(() -> {
+                    try {
+                        startService(llmIntent);
+                        bindSuccess.set(bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE));
+                    } finally {
+                        bindLatch.countDown();
+                    }
+                });
+                
+                // Wait for binding with timeout
+                if (!bindLatch.await(5, TimeUnit.SECONDS) || !bindSuccess.get()) {
+                    throw new TimeoutException("LLM service binding timed out");
+                }
+                
+                // Add delay to allow service to start
+                Thread.sleep(500);
+                
+                // Start other services with similar pattern
+                CountDownLatch otherServicesLatch = new CountDownLatch(1);
+                AtomicInteger bindCount = new AtomicInteger(0);
+                
+                initHandler.post(() -> {
+                    try {
+                        // Start VLM service
+                        if (bindService(new Intent(this, VLMEngineService.class), 
+                            vlmConnection, Context.BIND_AUTO_CREATE)) {
+                            bindCount.incrementAndGet();
+                        }
+                        
+                        // Only start ASR and TTS if we have audio permission
+                        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
+                            == PackageManager.PERMISSION_GRANTED) {
+                            
+                            Intent asrIntent = new Intent(this, ASREngineService.class);
+                            startService(asrIntent);
+                            if (bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE)) {
+                                bindCount.incrementAndGet();
+                            }
+                            
+                            Intent ttsIntent = new Intent(this, TTSEngineService.class);
+                            startService(ttsIntent);
+                            if (bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
+                                bindCount.incrementAndGet();
+                            }
+                        }
+                    } finally {
+                        otherServicesLatch.countDown();
+                    }
+                });
+                
+                // Wait for other services with timeout
+                if (!otherServicesLatch.await(5, TimeUnit.SECONDS)) {
+                    Log.w(TAG, "Some services failed to bind in time");
+                }
+                
+                Log.d(TAG, "Successfully bound " + bindCount.get() + " services");
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error initializing services", e);
+                initHandler.post(() -> {
+                    binding.modelNameText.setText("Initialization failed");
+                    Toast.makeText(ChatActivity.this, 
+                        "Failed to initialize services: " + e.getMessage(), 
+                        Toast.LENGTH_SHORT).show();
+                });
+            } finally {
+                initExecutor.shutdown();
+            }
+        }, initExecutor);
     }
 
     private void handleSendAction() {
@@ -620,26 +710,80 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     @Override
     public void onSpeakerClick(String messageText) {
-        if (ttsService != null && ttsService.isReady()) {
-            ttsService.speak(messageText)
-                .exceptionally(throwable -> {
-                    Log.e(TAG, "Error converting text to speech", throwable);
-                    runOnUiThread(() -> Toast.makeText(this, "Error playing audio", Toast.LENGTH_SHORT).show());
-                    return null;
-                });
-        } else {
-            Toast.makeText(this, "TTS service not ready", Toast.LENGTH_SHORT).show();
+        if (ttsService == null) {
+            Toast.makeText(this, "Text-to-speech service not available", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        if (!ttsService.isReady()) {
+            Toast.makeText(this, "Text-to-speech is still initializing...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show loading state
+        Toast.makeText(this, "Converting text to speech...", Toast.LENGTH_SHORT).show();
+
+        // Run TTS in background
+        CompletableFuture.runAsync(() -> {
+            try {
+                ttsService.speak(messageText)
+                    .thenRun(() -> {
+                        // Success - no need for notification
+                    })
+                    .exceptionally(throwable -> {
+                        Log.e(TAG, "Error converting text to speech", throwable);
+                        runOnUiThread(() -> Toast.makeText(this, 
+                            "Error playing audio", Toast.LENGTH_SHORT).show());
+                        return null;
+                    });
+            } catch (Exception e) {
+                Log.e(TAG, "Error initiating text to speech", e);
+                runOnUiThread(() -> Toast.makeText(this, 
+                    "Error starting audio playback", Toast.LENGTH_SHORT).show());
+            }
+        }).exceptionally(throwable -> {
+            Log.e(TAG, "Error in TTS background task", throwable);
+            return null;
+        });
     }
 
     private void cleanup() {
-        unbindAllServices();
-        mediaHandler.release();
-        binding = null;
-        conversationManager = null;
-        historyManager = null;
-        historyAdapter = null;
-        drawerLayout = null;
+        // Run cleanup in background to prevent ANR
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Save current chat before cleanup
+                saveCurrentChat();
+                
+                // Unbind services with timeout
+                ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+                Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
+                    unbindAllServices();
+                });
+                
+                try {
+                    cleanupFuture.get(5, TimeUnit.SECONDS);
+                } catch (TimeoutException e) {
+                    Log.w(TAG, "Service unbinding timed out", e);
+                    cleanupFuture.cancel(true);
+                }
+                
+                cleanupExecutor.shutdownNow();
+                
+                // Release other resources
+                mediaHandler.release();
+                binding = null;
+                conversationManager = null;
+                historyManager = null;
+                historyAdapter = null;
+                drawerLayout = null;
+                
+                // Force garbage collection
+                System.gc();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during cleanup", e);
+            }
+        });
     }
 
     private void unbindAllServices() {
@@ -677,6 +821,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService = ((LLMEngineService.LocalBinder) service).getService();
             // Update model name when service is connected
             if (llmService != null) {
+                binding.modelNameText.setText("Initializing model...");
+                
                 llmService.initialize().thenAccept(success -> {
                     if (success) {
                         runOnUiThread(() -> {
@@ -686,8 +832,21 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             } else {
                                 binding.modelNameText.setText("Unknown");
                             }
+                            Toast.makeText(ChatActivity.this, "Model initialized successfully", Toast.LENGTH_SHORT).show();
+                        });
+                    } else {
+                        runOnUiThread(() -> {
+                            binding.modelNameText.setText("Initialization failed");
+                            Toast.makeText(ChatActivity.this, "Failed to initialize model", Toast.LENGTH_SHORT).show();
                         });
                     }
+                }).exceptionally(throwable -> {
+                    Log.e(TAG, "Error initializing model", throwable);
+                    runOnUiThread(() -> {
+                        binding.modelNameText.setText("Initialization error");
+                        Toast.makeText(ChatActivity.this, "Error initializing model", Toast.LENGTH_SHORT).show();
+                    });
+                    return null;
                 });
             }
         }
@@ -732,7 +891,33 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
-                ttsService.initialize();
+                // Show loading state for TTS
+                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                    "Initializing text-to-speech...", Toast.LENGTH_SHORT).show());
+                
+                // Initialize TTS in background
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        ttsService.initialize()
+                            .thenAccept(success -> {
+                                if (success) {
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                                        "Text-to-speech ready", Toast.LENGTH_SHORT).show());
+                                } else {
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                                        "Failed to initialize text-to-speech", Toast.LENGTH_SHORT).show());
+                                }
+                            })
+                            .exceptionally(throwable -> {
+                                Log.e(TAG, "Error initializing TTS", throwable);
+                                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                                    "Error initializing text-to-speech", Toast.LENGTH_SHORT).show());
+                                return null;
+                            });
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting TTS initialization", e);
+                    }
+                });
             }
         }
 
@@ -984,5 +1169,73 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void showMessageOptions(ChatMessage message) {
+        PopupMenu popup = new PopupMenu(this, binding.recyclerView);
+        popup.getMenu().add(0, 1, 0, "Copy text");
+        if (message.hasImage()) {
+            popup.getMenu().add(0, 2, 0, "Save image");
+        }
+
+        popup.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1:
+                    // Copy text to clipboard
+                    android.content.ClipboardManager clipboard = 
+                        (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    android.content.ClipData clip = 
+                        android.content.ClipData.newPlainText("Message", message.getText());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(this, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                    return true;
+                case 2:
+                    // Save image
+                    if (message.hasImage()) {
+                        saveImage(message.getImageUri());
+                    }
+                    return true;
+            }
+            return false;
+        });
+
+        popup.show();
+    }
+
+    private void saveImage(Uri imageUri) {
+        try {
+            // Create a copy of the image in the Pictures directory
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String fileName = "GAI_" + timestamp + ".jpg";
+            
+            // Get the content resolver
+            android.content.ContentResolver resolver = getContentResolver();
+            
+            // Create image collection for API 29 and above
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName);
+            values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            values.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, 
+                android.os.Environment.DIRECTORY_PICTURES);
+
+            // Insert the image
+            Uri destUri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (destUri != null) {
+                try (java.io.InputStream in = resolver.openInputStream(imageUri);
+                     java.io.OutputStream out = resolver.openOutputStream(destUri)) {
+                    if (in != null && out != null) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                        Toast.makeText(this, "Image saved to Pictures", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving image", e);
+            Toast.makeText(this, "Error saving image", Toast.LENGTH_SHORT).show();
+        }
     }
 }
