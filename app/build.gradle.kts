@@ -115,14 +115,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("add_setting") {
+        create("dev") {
             dimension = "version"
-            applicationIdSuffix = ".add_setting"
-            versionNameSuffix = "-add_setting"
-            resValue("string", "app_name", "GAI-add_setting")
-            buildConfigField("String", "GIT_BRANCH", "\"add_setting\"")
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "GAI-dev")
+            buildConfigField("String", "GIT_BRANCH", "\"dev\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.add_setting.fileprovider"
+                "com.mtkresearch.gai_android.dev.fileprovider"
         }
         create("cpu") {
             dimension = "version"
@@ -177,7 +177,7 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("add_setting") ||
+                 it.contains("Full") || it.contains("dev") ||
                  it.contains("Mtk") ||
                  it.contains("Cpu")) }
             ?.let { task ->
@@ -186,7 +186,7 @@ tasks.register("switchGitBranch") {
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Mtk") -> "mtk"
                     task.contains("Full") -> "main"
-                    task.contains("add_setting") -> "add_setting"
+                    task.contains("dev") -> "dev"
                     task.contains("Cpu") -> "cpu"
                     else -> null
                 }
