@@ -97,6 +97,15 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.vlm.fileprovider"
         }
+        create("mtk") {
+            dimension = "version"
+            applicationIdSuffix = ".mtk"
+            versionNameSuffix = "-mtk"
+            resValue("string", "app_name", "GAI-MTK")
+            buildConfigField("String", "GIT_BRANCH", "\"mtk\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.mtk.fileprovider"
+        }
         create("full") {
             dimension = "version"
             applicationIdSuffix = ".full"
@@ -114,6 +123,15 @@ android {
             buildConfigField("String", "GIT_BRANCH", "\"add_setting\"")
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.add_setting.fileprovider"
+        }
+        create("cpu") {
+            dimension = "version"
+            applicationIdSuffix = ".cpu"
+            versionNameSuffix = "-cpu"
+            resValue("string", "app_name", "GAI-CPU")
+            buildConfigField("String", "GIT_BRANCH", "\"cpu\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.cpu.fileprovider"
         }
     }
 
@@ -159,13 +177,17 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("add_setting")) }
+                 it.contains("Full") || it.contains("add_setting") ||
+                 it.contains("Mtk") ||
+                 it.contains("Cpu")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
+                    task.contains("Mtk") -> "mtk"
                     task.contains("Full") -> "main"
                     task.contains("add_setting") -> "add_setting"
+                    task.contains("Cpu") -> "cpu"
                     else -> null
                 }
             }
