@@ -15,6 +15,7 @@ import android.widget.Toast;
 import android.widget.ImageButton;
 import android.widget.CheckBox;
 import android.app.AlertDialog;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
@@ -170,20 +171,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
-        // Add input blocker overlay
+        // Add input blocker overlay to the root view to cover everything
         inputBlockerOverlay = new View(this);
         inputBlockerOverlay.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
-        inputBlockerOverlay.setAlpha(0.7f);
-        // Add the overlay only to the main content area, not the drawer
-        View mainContent = binding.getRoot().findViewById(R.id.mainContent);
-        if (mainContent != null) {
-            ((ViewGroup) mainContent).addView(inputBlockerOverlay, new ConstraintLayout.LayoutParams(
-                ConstraintLayout.LayoutParams.MATCH_PARENT,
-                ConstraintLayout.LayoutParams.MATCH_PARENT
-            ));
-        } else {
-            Log.e(TAG, "Main content view not found");
-        }
+        inputBlockerOverlay.setAlpha(0.5f);  // Make it slightly more transparent
+        
+        // Add the overlay to the root view to cover all components
+        ViewGroup rootView = binding.getRoot();
+        ConstraintLayout.LayoutParams overlayParams = new ConstraintLayout.LayoutParams(
+            ConstraintLayout.LayoutParams.MATCH_PARENT,
+            ConstraintLayout.LayoutParams.MATCH_PARENT
+        );
+        overlayParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
+        overlayParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
+        overlayParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
+        overlayParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
+        rootView.addView(inputBlockerOverlay, overlayParams);
         
         initializeChat();
         setupButtons();
@@ -1343,40 +1346,68 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             (ttsServiceReady || !hasAudioPermission());
 
         runOnUiThread(() -> {
+            float enabledAlpha = 1.0f;
+            float disabledAlpha = 0.5f;
+            
             // Update UI elements based on service state
             binding.inputContainer.setEnabled(allServicesReady);
+            binding.inputContainer.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.newConversationButton.setEnabled(allServicesReady);
+            binding.newConversationButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.historyButton.setEnabled(allServicesReady);
+            binding.historyButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.attachButton.setEnabled(allServicesReady);
+            binding.attachButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
             binding.attachButtonExpanded.setEnabled(allServicesReady);
+            binding.attachButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.voiceButton.setEnabled(allServicesReady);
+            binding.voiceButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
             binding.voiceButtonExpanded.setEnabled(allServicesReady);
+            binding.voiceButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.sendButton.setEnabled(allServicesReady);
+            binding.sendButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
             binding.sendButtonExpanded.setEnabled(allServicesReady);
+            binding.sendButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            
             binding.messageInput.setEnabled(allServicesReady);
+            binding.messageInput.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
             binding.messageInputExpanded.setEnabled(allServicesReady);
+            binding.messageInputExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
             
             // Enable history recycler view and its items
             RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
             if (historyRecyclerView != null) {
                 historyRecyclerView.setEnabled(allServicesReady);
+                historyRecyclerView.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
                 // Make sure the adapter is clickable
                 if (historyAdapter != null) {
                     historyAdapter.notifyDataSetChanged();
                 }
             }
             
-            // Show/hide loading overlay
+            // Show/hide loading overlay with animation
             if (inputBlockerOverlay != null) {
                 if (allServicesReady) {
-                    // Remove the overlay completely when services are ready
-                    ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
-                    if (parent != null) {
-                        parent.removeView(inputBlockerOverlay);
-                        inputBlockerOverlay = null;
-                    }
+                    // Fade out and remove the overlay
+                    inputBlockerOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(500)
+                        .withEndAction(() -> {
+                            ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
+                            if (parent != null) {
+                                parent.removeView(inputBlockerOverlay);
+                                inputBlockerOverlay = null;
+                            }
+                        })
+                        .start();
                 } else {
                     inputBlockerOverlay.setVisibility(View.VISIBLE);
+                    inputBlockerOverlay.setAlpha(0.5f);
                 }
             }
 
@@ -1391,6 +1422,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         allServicesReady ? R.color.text_primary : R.color.text_secondary, 
                         getTheme()
                     ));
+                    binding.modelNameText.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
                 } else {
                     binding.modelNameText.setText("Unknown model");
                     binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
