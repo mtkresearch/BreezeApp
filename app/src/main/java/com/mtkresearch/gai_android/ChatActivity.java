@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 import android.widget.ImageButton;
@@ -173,11 +174,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         inputBlockerOverlay = new View(this);
         inputBlockerOverlay.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         inputBlockerOverlay.setAlpha(0.7f);
-        ConstraintLayout.LayoutParams params = new ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_PARENT,
-            ConstraintLayout.LayoutParams.MATCH_PARENT
-        );
-        binding.getRoot().addView(inputBlockerOverlay, params);
+        // Add the overlay only to the main content area, not the drawer
+        View mainContent = binding.getRoot().findViewById(R.id.mainContent);
+        if (mainContent != null) {
+            ((ViewGroup) mainContent).addView(inputBlockerOverlay, new ConstraintLayout.LayoutParams(
+                ConstraintLayout.LayoutParams.MATCH_PARENT,
+                ConstraintLayout.LayoutParams.MATCH_PARENT
+            ));
+        } else {
+            Log.e(TAG, "Main content view not found");
+        }
         
         initializeChat();
         setupButtons();
@@ -1350,9 +1356,28 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             binding.messageInput.setEnabled(allServicesReady);
             binding.messageInputExpanded.setEnabled(allServicesReady);
             
+            // Enable history recycler view and its items
+            RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+            if (historyRecyclerView != null) {
+                historyRecyclerView.setEnabled(allServicesReady);
+                // Make sure the adapter is clickable
+                if (historyAdapter != null) {
+                    historyAdapter.notifyDataSetChanged();
+                }
+            }
+            
             // Show/hide loading overlay
             if (inputBlockerOverlay != null) {
-                inputBlockerOverlay.setVisibility(allServicesReady ? View.GONE : View.VISIBLE);
+                if (allServicesReady) {
+                    // Remove the overlay completely when services are ready
+                    ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
+                    if (parent != null) {
+                        parent.removeView(inputBlockerOverlay);
+                        inputBlockerOverlay = null;
+                    }
+                } else {
+                    inputBlockerOverlay.setVisibility(View.VISIBLE);
+                }
             }
 
             // Update model name and status
