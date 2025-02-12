@@ -75,6 +75,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.mtkresearch.gai_android.utils.ModelUtils;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
 
@@ -122,6 +124,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private boolean asrServiceReady = false;
     private boolean ttsServiceReady = false;
     private View inputBlockerOverlay;
+
+    // Add a flag to track MTK support status
+    private static boolean mtkBackendChecked = false;
+    private static boolean mtkBackendSupported = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -321,10 +327,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 CountDownLatch llmLatch = new CountDownLatch(1);
                 AtomicBoolean llmSuccess = new AtomicBoolean(false);
                 
-                // Prepare LLM intent
+                // Prepare LLM intent with automatically selected backend
                 Intent llmIntent = new Intent(this, LLMEngineService.class);
                 llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
-                llmIntent.putExtra("preferred_backend", "mtk");
+                String preferredBackend = ModelUtils.getPreferredBackend();
+                llmIntent.putExtra("preferred_backend", preferredBackend);
+                
+                // Show toast with selected backend
+                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
+                    Toast.LENGTH_SHORT).show());
                 
                 // Bind LLM service on main thread
                 initHandler.post(() -> {
