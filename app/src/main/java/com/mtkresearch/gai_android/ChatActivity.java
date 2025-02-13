@@ -365,7 +365,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 // Update UI on main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!isFinishing()) {
-                        fadeOutOverlay();
+                        // Only update interaction state, let it handle the overlay
                         updateInteractionState();
                     }
                 });
@@ -377,7 +377,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         Toast.makeText(ChatActivity.this, 
                             "Error initializing services: " + e.getMessage(), 
                             Toast.LENGTH_SHORT).show();
-                        fadeOutOverlay();
+                        // Only update interaction state, let it handle the overlay
                         updateInteractionState();
                     }
                 });
@@ -482,24 +482,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
         
         latch.await(5, TimeUnit.SECONDS);
-    }
-
-    private void fadeOutOverlay() {
-        if (inputBlockerOverlay != null) {
-            inputBlockerOverlay.animate()
-                .alpha(0f)
-                .setDuration(500)
-                .withEndAction(() -> {
-                    if (!isFinishing() && inputBlockerOverlay != null) {
-                        ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
-                        if (parent != null) {
-                            parent.removeView(inputBlockerOverlay);
-                            inputBlockerOverlay = null;
-                        }
-                    }
-                })
-                .start();
-        }
     }
 
     private void handleSendAction() {
@@ -1237,7 +1219,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 exitSelectionMode();
                 refreshHistoryList();
                 Toast.makeText(this, selectedIds.size() > 1 ? 
-                    "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
+                     "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Cancel", null)
             .show();
@@ -1449,22 +1431,25 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
             
-            // Show/hide loading overlay with animation
+            // Handle overlay based on service state
             if (inputBlockerOverlay != null) {
                 if (allServicesReady) {
-                    // Fade out and remove the overlay
+                    // Fade out and remove the overlay with animation
                     inputBlockerOverlay.animate()
                         .alpha(0f)
                         .setDuration(500)
                         .withEndAction(() -> {
-                            ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
-                            if (parent != null) {
-                                parent.removeView(inputBlockerOverlay);
-                                inputBlockerOverlay = null;
+                            if (!isFinishing() && inputBlockerOverlay != null) {
+                                ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
+                                if (parent != null) {
+                                    parent.removeView(inputBlockerOverlay);
+                                    inputBlockerOverlay = null;
+                                }
                             }
                         })
                         .start();
                 } else {
+                    // Show overlay if services are not ready
                     inputBlockerOverlay.setVisibility(View.VISIBLE);
                     inputBlockerOverlay.setAlpha(0.5f);
                 }
