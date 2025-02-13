@@ -130,25 +130,21 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static boolean mtkBackendChecked = false;
     private static boolean mtkBackendSupported = true;
 
+    // Add new fields for initialization state
+    private boolean isInitializing = false;
+    private final Object initLock = new Object();
+    private static final int INIT_DELAY_MS = 1000; // Delay before starting heavy initialization
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
         
-        // Show intro dialog immediately
+        // Show intro dialog first, services will initialize after dialog is dismissed
         showIntroDialog();
         
-        // Check for RECORD_AUDIO permission before initializing services
-        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
-        } else {
-            initializeServices();
-        }
-        
         setupHistoryDrawer();
-        
-        // Clear any previous active history and start fresh
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
     }
@@ -178,25 +174,35 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeViews() {
+        // First inflate the binding but don't set it as content view yet
         binding = ActivityChatBinding.inflate(getLayoutInflater());
-        setContentView(binding.getRoot());
         
-        // Add input blocker overlay to the root view to cover everything
+        // Create the container layout
+        android.widget.FrameLayout container = new android.widget.FrameLayout(this);
+        container.setLayoutParams(new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        ));
+        
+        // Add the main content to container
+        container.addView(binding.getRoot());
+        
+        // Create and add the overlay
         inputBlockerOverlay = new View(this);
         inputBlockerOverlay.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
-        inputBlockerOverlay.setAlpha(0.5f);  // Make it slightly more transparent
+        inputBlockerOverlay.setAlpha(0f);
         
-        // Add the overlay to the root view to cover all components
-        ViewGroup rootView = binding.getRoot();
-        ConstraintLayout.LayoutParams overlayParams = new ConstraintLayout.LayoutParams(
-            ConstraintLayout.LayoutParams.MATCH_PARENT,
-            ConstraintLayout.LayoutParams.MATCH_PARENT
+        android.widget.FrameLayout.LayoutParams overlayParams = new android.widget.FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
         );
-        overlayParams.topToTop = ConstraintLayout.LayoutParams.PARENT_ID;
-        overlayParams.bottomToBottom = ConstraintLayout.LayoutParams.PARENT_ID;
-        overlayParams.startToStart = ConstraintLayout.LayoutParams.PARENT_ID;
-        overlayParams.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
-        rootView.addView(inputBlockerOverlay, overlayParams);
+        container.addView(inputBlockerOverlay, overlayParams);
+        
+        // Set the container as content view
+        setContentView(container);
+        
+        // Initially hide the overlay
+        inputBlockerOverlay.setVisibility(View.GONE);
         
         initializeChat();
         setupButtons();
@@ -316,146 +322,184 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.messageInputExpanded.addTextChangedListener(textWatcher);
     }
 
+    private void startInitialization() {
+        synchronized (initLock) {
+            if (isInitializing) return;
+            isInitializing = true;
+        }
+        
+        // Show the overlay with animation
+        if (inputBlockerOverlay != null) {
+            inputBlockerOverlay.setVisibility(View.VISIBLE);
+            inputBlockerOverlay.animate()
+                .alpha(0.5f)
+                .setDuration(300)
+                .start();
+        }
+        
+        initializeServices();
+    }
+
     private void initializeServices() {
-        // Show loading indicator with Toast
-        Toast.makeText(this, "Initializing services...", Toast.LENGTH_SHORT).show();
-        
-        // Create handler for background operations
-        Handler initHandler = new Handler(Looper.getMainLooper());
-        ExecutorService initExecutor = Executors.newFixedThreadPool(4); // Use multiple threads
-        
-        // Start services in background with proper sequencing
-        CompletableFuture.runAsync(() -> {
+        // Create a single background thread instead of thread pool to reduce memory usage
+        Thread initThread = new Thread(() -> {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+            
             try {
-                // Start LLM service first with retry mechanism
-                CountDownLatch llmLatch = new CountDownLatch(1);
-                AtomicBoolean llmSuccess = new AtomicBoolean(false);
+                // Initialize services sequentially instead of parallel to reduce memory pressure
+                initializeLLMService();
                 
-                // Prepare LLM intent with automatically selected backend
-                Intent llmIntent = new Intent(this, LLMEngineService.class);
-                llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
-                String preferredBackend = ModelUtils.getPreferredBackend();
-                llmIntent.putExtra("preferred_backend", preferredBackend);
+                // Only initialize other services if LLM is successful
+                if (llmServiceReady) {
+                    if (BuildConfig.FLAVOR.equals("vlm")) {
+                        initializeVLMService();
+                    }
+                    
+                    if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
+                        == PackageManager.PERMISSION_GRANTED) {
+                        initializeASRService();
+                        initializeTTSService();
+                    }
+                }
                 
-                // Show toast with selected backend
-                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
-                    Toast.LENGTH_SHORT).show());
-                
-                // Bind LLM service on main thread
-                initHandler.post(() -> {
-                    try {
-                        startService(llmIntent);
-                        if (bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE)) {
-                            llmSuccess.set(true);
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error binding LLM service", e);
-                    } finally {
-                        llmLatch.countDown();
+                // Update UI on main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (!isFinishing()) {
+                        fadeOutOverlay();
+                        updateInteractionState();
                     }
                 });
                 
-                // Wait for LLM binding with timeout
-                if (!llmLatch.await(10, TimeUnit.SECONDS)) {
-                    Log.e(TAG, "LLM service binding timed out");
-                    throw new TimeoutException("LLM service binding timed out");
-                }
-                
-                if (!llmSuccess.get()) {
-                    Log.e(TAG, "LLM service binding failed");
-                    throw new Exception("LLM service binding failed");
-                }
-                
-                // Add delay to allow LLM service to start
-                Thread.sleep(1000);
-                
-                // Start other services in parallel
-                CompletableFuture<Void> vlmFuture = null;
-                CompletableFuture<Void> asrFuture = null;
-                CompletableFuture<Void> ttsFuture = null;
-                
-                // Start VLM service if needed
-                if (BuildConfig.FLAVOR.equals("vlm")) {
-                    vlmFuture = CompletableFuture.runAsync(() -> {
-                        try {
-                            CountDownLatch latch = new CountDownLatch(1);
-                            initHandler.post(() -> {
-                                try {
-                                    bindService(new Intent(this, VLMEngineService.class),
-                                        vlmConnection, Context.BIND_AUTO_CREATE);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            });
-                            latch.await(5, TimeUnit.SECONDS);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error initializing VLM service", e);
-                        }
-                    }, initExecutor);
-                }
-                
-                // Start ASR and TTS services if we have audio permission
-                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
-                    == PackageManager.PERMISSION_GRANTED) {
-                    
-                    // Start ASR service
-                    asrFuture = CompletableFuture.runAsync(() -> {
-                        try {
-                            CountDownLatch latch = new CountDownLatch(1);
-                            initHandler.post(() -> {
-                                try {
-                                    Intent asrIntent = new Intent(this, ASREngineService.class);
-                                    startService(asrIntent);
-                                    bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            });
-                            latch.await(5, TimeUnit.SECONDS);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error initializing ASR service", e);
-                        }
-                    }, initExecutor);
-                    
-                    // Start TTS service
-                    ttsFuture = CompletableFuture.runAsync(() -> {
-                        try {
-                            CountDownLatch latch = new CountDownLatch(1);
-                            initHandler.post(() -> {
-                                try {
-                                    Intent ttsIntent = new Intent(this, TTSEngineService.class);
-                                    startService(ttsIntent);
-                                    bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
-                                } finally {
-                                    latch.countDown();
-                                }
-                            });
-                            latch.await(5, TimeUnit.SECONDS);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error initializing TTS service", e);
-                        }
-                    }, initExecutor);
-                }
-                
-                // Wait for all services to complete initialization
-                if (vlmFuture != null) vlmFuture.join();
-                if (asrFuture != null) asrFuture.join();
-                if (ttsFuture != null) ttsFuture.join();
-                
-                Log.d(TAG, "All services initialized");
-                
             } catch (Exception e) {
                 Log.e(TAG, "Error during service initialization", e);
-                initHandler.post(() -> {
-                    Toast.makeText(ChatActivity.this, 
-                        "Error initializing services: " + e.getMessage(), 
-                        Toast.LENGTH_SHORT).show();
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (!isFinishing()) {
+                        Toast.makeText(ChatActivity.this, 
+                            "Error initializing services: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
+                        fadeOutOverlay();
+                        updateInteractionState();
+                    }
                 });
             } finally {
-                initExecutor.shutdown();
+                synchronized (initLock) {
+                    isInitializing = false;
+                }
             }
-        }, initExecutor);
+        }, "ServiceInit");
+        
+        initThread.start();
+    }
+
+    private void initializeLLMService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean success = new AtomicBoolean(false);
+        
+        // Prepare LLM intent
+        Intent llmIntent = new Intent(this, LLMEngineService.class);
+        llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
+        String preferredBackend = ModelUtils.getPreferredBackend();
+        llmIntent.putExtra("preferred_backend", preferredBackend);
+        
+        // Show status on main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (!isFinishing()) {
+                Toast.makeText(ChatActivity.this, 
+                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        // Bind service on main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                startService(llmIntent);
+                if (bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE)) {
+                    success.set(true);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding LLM service", e);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        // Wait with timeout
+        if (!latch.await(10, TimeUnit.SECONDS)) {
+            throw new TimeoutException("LLM service binding timed out");
+        }
+        
+        if (!success.get()) {
+            throw new Exception("LLM service binding failed");
+        }
+        
+        // Add delay to allow service to start
+        Thread.sleep(1000);
+    }
+
+    private void initializeVLMService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                bindService(new Intent(this, VLMEngineService.class),
+                    vlmConnection, Context.BIND_AUTO_CREATE);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        latch.await(5, TimeUnit.SECONDS);
+    }
+
+    private void initializeASRService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Intent asrIntent = new Intent(this, ASREngineService.class);
+                startService(asrIntent);
+                bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        latch.await(5, TimeUnit.SECONDS);
+    }
+
+    private void initializeTTSService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Intent ttsIntent = new Intent(this, TTSEngineService.class);
+                startService(ttsIntent);
+                bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        latch.await(5, TimeUnit.SECONDS);
+    }
+
+    private void fadeOutOverlay() {
+        if (inputBlockerOverlay != null) {
+            inputBlockerOverlay.animate()
+                .alpha(0f)
+                .setDuration(500)
+                .withEndAction(() -> {
+                    if (!isFinishing() && inputBlockerOverlay != null) {
+                        ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
+                        if (parent != null) {
+                            parent.removeView(inputBlockerOverlay);
+                            inputBlockerOverlay = null;
+                        }
+                    }
+                })
+                .start();
+        }
     }
 
     private void handleSendAction() {
@@ -782,9 +826,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (permissions[0].equals(android.Manifest.permission.CAMERA)) {
                     handleCameraCapture();
                 } else if (permissions[0].equals(android.Manifest.permission.RECORD_AUDIO)) {
-                    // Initialize services after permission is granted
-                    initializeServices();
-                    startRecording();
+                    // Start initialization after permission is granted
+                    startInitialization();
                 }
             } else {
                 String message = permissions[0].equals(android.Manifest.permission.CAMERA) ?
@@ -1470,10 +1513,23 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
 
             IntroDialog dialog = new IntroDialog(this);
+            
+            // Set custom dismiss listener to start initialization
+            dialog.setOnFinalButtonClickListener(() -> {
+                // Check for RECORD_AUDIO permission before initializing services
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+                } else {
+                    startInitialization();
+                }
+            });
+            
             dialog.setOnDismissListener(dialogInterface -> {
                 Log.d(TAG, "Intro dialog dismissed");
             });
+            
             dialog.show();
+            
         } catch (Exception e) {
             Log.e(TAG, "Error showing intro dialog", e);
         }

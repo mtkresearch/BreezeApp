@@ -30,6 +30,15 @@ public class IntroDialog extends Dialog {
     private int currentPage = 0;
     
     private final List<IntroPage> introPages;
+    private OnFinalButtonClickListener finalButtonClickListener;
+
+    public interface OnFinalButtonClickListener {
+        void onFinalButtonClick();
+    }
+
+    public void setOnFinalButtonClickListener(OnFinalButtonClickListener listener) {
+        this.finalButtonClickListener = listener;
+    }
 
     public IntroDialog(Context context) {
         super(context);
@@ -76,19 +85,28 @@ public class IntroDialog extends Dialog {
         tabLayout = findViewById(R.id.tabLayout);
         btnNext = findViewById(R.id.btnNext);
         
+        // Configure TabLayout gravity and mode
+        tabLayout.setTabGravity(TabLayout.GRAVITY_CENTER);
+        tabLayout.setTabMode(TabLayout.MODE_FIXED);
+        
         // Set up ViewPager2
         viewPager.setAdapter(new IntroPagerAdapter(introPages));
         viewPager.setOffscreenPageLimit(1);
         
         // Set up TabLayout with ViewPager2
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> 
-            tab.view.setClickable(false)).attach();
+        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            tab.view.setClickable(false);
+        }).attach();
         
         btnNext.setOnClickListener(v -> {
             if (currentPage < introPages.size() - 1) {
                 currentPage++;
                 viewPager.setCurrentItem(currentPage);
             } else {
+                // Call the listener before dismissing if this is the final page
+                if (finalButtonClickListener != null) {
+                    finalButtonClickListener.onFinalButtonClick();
+                }
                 dismiss();
             }
             updateButtonText();
