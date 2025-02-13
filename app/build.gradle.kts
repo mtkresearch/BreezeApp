@@ -133,14 +133,14 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.cpu.fileprovider"
         }
-        create("stability") {
+        create("add_warning") {
             dimension = "version"
-            applicationIdSuffix = ".stability"
-            versionNameSuffix = "-stability"
-            resValue("string", "app_name", "GAI-Stability")
-            buildConfigField("String", "GIT_BRANCH", "\"stability\"")
+            applicationIdSuffix = ".add_warning"
+            versionNameSuffix = "-add_warning"
+            resValue("string", "app_name", "GAI-Warning")
+            buildConfigField("String", "GIT_BRANCH", "\"add_warning\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.stability.fileprovider"
+                "com.mtkresearch.gai_android.add_warning.fileprovider"
         }
     }
 
@@ -187,7 +187,7 @@ tasks.register("switchGitBranch") {
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
                  it.contains("Full") || it.contains("dev") ||
-                 it.contains("Mtk") || it.contains("Stability") ||
+                 it.contains("Mtk") || it.contains("add_warning") ||
                  it.contains("Cpu")) }
             ?.let { task ->
                 when {
@@ -197,7 +197,7 @@ tasks.register("switchGitBranch") {
                     task.contains("Full") -> "main"
                     task.contains("dev") -> "dev"
                     task.contains("Cpu") -> "cpu"
-                    task.contains("Stability") -> "stability"
+                    task.contains("add_warning") -> "add_warning"
                     else -> null
                 }
             }

@@ -37,6 +37,7 @@ import com.mtkresearch.gai_android.service.ASREngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
+import com.mtkresearch.gai_android.utils.IntroDialog;
 import com.mtkresearch.gai_android.utils.UiUtils;
 
 import java.io.IOException;
@@ -134,6 +135,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
+        
+        // Show intro dialog immediately
+        showIntroDialog();
         
         // Check for RECORD_AUDIO permission before initializing services
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -1448,5 +1452,30 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private boolean hasAudioPermission() {
         return checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showIntroDialog() {
+        Log.d(TAG, "Showing intro dialog");
+        try {
+            // Ensure we're on the main thread
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                new Handler(Looper.getMainLooper()).post(this::showIntroDialog);
+                return;
+            }
+
+            // Check if activity is finishing
+            if (isFinishing()) {
+                Log.w(TAG, "Activity is finishing, skipping dialog");
+                return;
+            }
+
+            IntroDialog dialog = new IntroDialog(this);
+            dialog.setOnDismissListener(dialogInterface -> {
+                Log.d(TAG, "Intro dialog dismissed");
+            });
+            dialog.show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing intro dialog", e);
+        }
     }
 }
