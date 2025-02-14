@@ -18,6 +18,7 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.mtkresearch.gai_android.R;
+import com.mtkresearch.gai_android.utils.AppConstants;
 
 import java.io.File;
 import java.util.Arrays;
@@ -29,7 +30,10 @@ public class IntroDialog extends Dialog {
     private Button btnNext;
     private int currentPage = 0;
     private static final long MIN_RAM_GB = 8; // Minimum 8GB RAM requirement
+    private static final long MIN_STORAGE_GB = 10; // Minimum 10GB storage requirement
     private boolean hasMinimumRam = true;
+    private boolean hasRequiredStorage = true;
+    private boolean hasRequiredModels = true;
     
     private final List<IntroPage> introPages;
     private OnFinalButtonClickListener finalButtonClickListener;
@@ -68,12 +72,8 @@ public class IntroDialog extends Dialog {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Check RAM requirement
-        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
-        ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE))
-            .getMemoryInfo(memoryInfo);
-        long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
-        hasMinimumRam = totalRamGB >= MIN_RAM_GB;
+        // Check all requirements
+        checkSystemRequirements();
         
         // Set dialog window properties
         if (getWindow() != null) {
@@ -121,17 +121,15 @@ public class IntroDialog extends Dialog {
                 currentPage++;
                 viewPager.setCurrentItem(currentPage);
             } else {
-                // Only allow dismissal if RAM requirement is met
-                if (hasMinimumRam) {
+                // Only allow dismissal if all requirements are met
+                if (meetsAllRequirements()) {
                     if (finalButtonClickListener != null) {
                         finalButtonClickListener.onFinalButtonClick();
                     }
                     dismiss();
                 } else {
-                    // Show warning toast if RAM is insufficient
-                    android.widget.Toast.makeText(getContext(),
-                        "Cannot proceed: Device RAM is insufficient (minimum " + MIN_RAM_GB + "GB required)",
-                        android.widget.Toast.LENGTH_LONG).show();
+                    // Show warning toast with specific requirements that are not met
+                    showRequirementsWarning();
                 }
             }
             updateButtonText();
@@ -168,12 +166,53 @@ public class IntroDialog extends Dialog {
         }
     }
 
+    private void checkSystemRequirements() {
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE))
+            .getMemoryInfo(memoryInfo);
+        
+        // Check RAM
+        long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+        hasMinimumRam = totalRamGB >= MIN_RAM_GB;
+        
+        // Check Storage - Get available space in internal storage
+        android.os.StatFs stat = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
+        long availableBytes = stat.getAvailableBytes();
+        long availableGB = availableBytes / (1024L * 1024L * 1024L);
+        hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
+        
+        // Check Model Files
+        File modelDir = new File("/data/local/tmp/llama/");
+        File modelFile = new File(modelDir, AppConstants.REQUIRED_MODEL_FILE);
+        hasRequiredModels = modelFile.exists() && modelFile.isFile();
+    }
+
+    private boolean meetsAllRequirements() {
+        return hasMinimumRam && hasRequiredStorage && hasRequiredModels;
+    }
+
+    private void showRequirementsWarning() {
+        StringBuilder message = new StringBuilder("Cannot proceed: ");
+        if (!hasMinimumRam) {
+            message.append("\n• Insufficient RAM (minimum ").append(MIN_RAM_GB).append("GB required)");
+        }
+        if (!hasRequiredStorage) {
+            message.append("\n• Insufficient storage space (minimum ").append(MIN_STORAGE_GB).append("GB required)");
+        }
+        if (!hasRequiredModels) {
+            message.append("\n• Required model file '").append(AppConstants.REQUIRED_MODEL_FILE).append("' is missing");
+        }
+        
+        android.widget.Toast.makeText(getContext(), message.toString(), 
+            android.widget.Toast.LENGTH_LONG).show();
+    }
+
     private void updateButtonState() {
-        // Disable the button on the last page if RAM is insufficient
-        if (currentPage == introPages.size() - 1 && !hasMinimumRam) {
+        // Disable the button on the last page if any requirement is not met
+        if (currentPage == introPages.size() - 1 && !meetsAllRequirements()) {
             btnNext.setEnabled(false);
             btnNext.setAlpha(0.5f);
-            btnNext.setText("Insufficient RAM");
+            btnNext.setText("Requirements Not Met");
         } else {
             btnNext.setEnabled(true);
             btnNext.setAlpha(1.0f);
@@ -183,7 +222,7 @@ public class IntroDialog extends Dialog {
 
     private void updateButtonText() {
         if (currentPage == introPages.size() - 1) {
-            btnNext.setText(hasMinimumRam ? "Got it" : "Insufficient RAM");
+            btnNext.setText(meetsAllRequirements() ? "Got it" : "Requirements Not Met");
         } else {
             btnNext.setText("Next");
         }
@@ -210,16 +249,41 @@ public class IntroDialog extends Dialog {
             .getMemoryInfo(memoryInfo);
         long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
         
+        // Get storage information
+        android.os.StatFs stat = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
+        long availableBytes = stat.getAvailableBytes();
+        long availableGB = availableBytes / (1024L * 1024L * 1024L);
+        
         File modelDir = new File("/data/local/tmp/llama/");
-        boolean modelsExist = modelDir.exists() && modelDir.isDirectory() && 
-            (modelDir.listFiles() != null && 
-             modelDir.listFiles((dir, name) -> name.endsWith(".pte")).length > 0);
+        File modelFile = new File(modelDir, AppConstants.REQUIRED_MODEL_FILE);
+        boolean modelExists = modelFile.exists() && modelFile.isFile();
         
         String ramStatus;
         if (totalRamGB >= MIN_RAM_GB) {
             ramStatus = "✅ Passed";
         } else {
             ramStatus = "⛔️ Error: Insufficient RAM (" + totalRamGB + "GB < " + MIN_RAM_GB + "GB required)";
+        }
+
+        String storageStatus;
+        if (availableGB >= MIN_STORAGE_GB) {
+            storageStatus = "✅ Sufficient (" + availableGB + "GB available)";
+        } else {
+            storageStatus = "⛔️ Error: Insufficient Space (only " + availableGB + "GB available)";
+        }
+        
+        StringBuilder warningMessages = new StringBuilder();
+        if (totalRamGB < MIN_RAM_GB) {
+            warningMessages.append("⚠️ WARNING: Your device does not meet the minimum RAM requirement.\n");
+        }
+        if (!modelExists) {
+            warningMessages.append("⚠️ WARNING: Required model file '" + AppConstants.REQUIRED_MODEL_FILE + "' is missing.\n");
+        }
+        if (availableGB < MIN_STORAGE_GB) {
+            warningMessages.append("⚠️ WARNING: Insufficient storage space available (" + availableGB + "GB < " + MIN_STORAGE_GB + "GB required).\n");
+        }
+        if (warningMessages.length() > 0) {
+            warningMessages.append("The application may not function properly.\n");
         }
         
         return "• RAM Memory:\n" +
@@ -228,14 +292,13 @@ public class IntroDialog extends Dialog {
                "  Status: " + ramStatus + "\n\n" +
                "• Model Files:\n" +
                "  Location: /data/local/tmp/llama/\n" +
-               "  Status: " + (modelsExist ? "✅ Models Found" : "⛔️ Models Missing") + "\n\n" +
+               "  Required: " + AppConstants.REQUIRED_MODEL_FILE + "\n" +
+               "  Status: " + (modelExists ? "✅ Model Found" : "⛔️ Model Missing") + "\n\n" +
                "• Storage Space:\n" +
-               "  Required: 10GB+ free space\n" +
-               "  Status: " + (memoryInfo.availMem > 10L * 1024 * 1024 * 1024 ? 
-                              "✅ Sufficient" : "⚠️ Warning: Low Space") + "\n\n" +
-               (totalRamGB < MIN_RAM_GB ? 
-                "⚠️ WARNING: Your device does not meet the minimum RAM requirement.\n" +
-                "The application may not function properly.\n\n" : "") +
+               "  Required: " + MIN_STORAGE_GB + "GB+ free space\n" +
+               "  Available: " + availableGB + "GB\n" +
+               "  Status: " + storageStatus + "\n\n" +
+               (warningMessages.length() > 0 ? warningMessages.toString() + "\n" : "") +
                "Please ensure all requirements are met for optimal performance.";
     }
 
