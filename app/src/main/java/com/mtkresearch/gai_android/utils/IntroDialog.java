@@ -28,6 +28,8 @@ public class IntroDialog extends Dialog {
     private TabLayout tabLayout;
     private Button btnNext;
     private int currentPage = 0;
+    private static final long MIN_RAM_GB = 8; // Minimum 8GB RAM requirement
+    private boolean hasMinimumRam = true;
     
     private final List<IntroPage> introPages;
     private OnFinalButtonClickListener finalButtonClickListener;
@@ -65,6 +67,13 @@ public class IntroDialog extends Dialog {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Check RAM requirement
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE))
+            .getMemoryInfo(memoryInfo);
+        long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+        hasMinimumRam = totalRamGB >= MIN_RAM_GB;
         
         // Set dialog window properties
         if (getWindow() != null) {
@@ -112,13 +121,21 @@ public class IntroDialog extends Dialog {
                 currentPage++;
                 viewPager.setCurrentItem(currentPage);
             } else {
-                // Call the listener before dismissing if this is the final page
-                if (finalButtonClickListener != null) {
-                    finalButtonClickListener.onFinalButtonClick();
+                // Only allow dismissal if RAM requirement is met
+                if (hasMinimumRam) {
+                    if (finalButtonClickListener != null) {
+                        finalButtonClickListener.onFinalButtonClick();
+                    }
+                    dismiss();
+                } else {
+                    // Show warning toast if RAM is insufficient
+                    android.widget.Toast.makeText(getContext(),
+                        "Cannot proceed: Device RAM is insufficient (minimum " + MIN_RAM_GB + "GB required)",
+                        android.widget.Toast.LENGTH_LONG).show();
                 }
-                dismiss();
             }
             updateButtonText();
+            updateButtonState();
         });
         
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
@@ -126,10 +143,12 @@ public class IntroDialog extends Dialog {
             public void onPageSelected(int position) {
                 currentPage = position;
                 updateButtonText();
+                updateButtonState();
             }
         });
         
         updateButtonText();
+        updateButtonState();
         setCancelable(false);
     }
 
@@ -149,8 +168,25 @@ public class IntroDialog extends Dialog {
         }
     }
 
+    private void updateButtonState() {
+        // Disable the button on the last page if RAM is insufficient
+        if (currentPage == introPages.size() - 1 && !hasMinimumRam) {
+            btnNext.setEnabled(false);
+            btnNext.setAlpha(0.5f);
+            btnNext.setText("Insufficient RAM");
+        } else {
+            btnNext.setEnabled(true);
+            btnNext.setAlpha(1.0f);
+            updateButtonText();
+        }
+    }
+
     private void updateButtonText() {
-        btnNext.setText(currentPage == introPages.size() - 1 ? "Got it" : "Next");
+        if (currentPage == introPages.size() - 1) {
+            btnNext.setText(hasMinimumRam ? "Got it" : "Insufficient RAM");
+        } else {
+            btnNext.setText("Next");
+        }
     }
 
     private String buildFeaturesDescription() {
@@ -179,17 +215,27 @@ public class IntroDialog extends Dialog {
             (modelDir.listFiles() != null && 
              modelDir.listFiles((dir, name) -> name.endsWith(".pte")).length > 0);
         
+        String ramStatus;
+        if (totalRamGB >= MIN_RAM_GB) {
+            ramStatus = "✅ Passed";
+        } else {
+            ramStatus = "⛔️ Error: Insufficient RAM (" + totalRamGB + "GB < " + MIN_RAM_GB + "GB required)";
+        }
+        
         return "• RAM Memory:\n" +
-               "  Required: 12GB+\n" +
+               "  Required: " + MIN_RAM_GB + "GB+\n" +
                "  Your Device: " + totalRamGB + "GB\n" +
-               "  Status: " + (totalRamGB >= 12 ? "✅ Passed" : "⚠️ Warning: Low Memory") + "\n\n" +
+               "  Status: " + ramStatus + "\n\n" +
                "• Model Files:\n" +
                "  Location: /data/local/tmp/llama/\n" +
-               "  Status: " + (modelsExist ? "✅ Models Found" : "❌ Models Missing") + "\n\n" +
+               "  Status: " + (modelsExist ? "✅ Models Found" : "⛔️ Models Missing") + "\n\n" +
                "• Storage Space:\n" +
                "  Required: 10GB+ free space\n" +
                "  Status: " + (memoryInfo.availMem > 10L * 1024 * 1024 * 1024 ? 
                               "✅ Sufficient" : "⚠️ Warning: Low Space") + "\n\n" +
+               (totalRamGB < MIN_RAM_GB ? 
+                "⚠️ WARNING: Your device does not meet the minimum RAM requirement.\n" +
+                "The application may not function properly.\n\n" : "") +
                "Please ensure all requirements are met for optimal performance.";
     }
 
