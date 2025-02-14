@@ -11,4 +11,7 @@ public class AppConstants {
     public static final String KEY_FIRST_LAUNCH = "first_launch";
     public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_PREFERRED_BACKEND = "preferred_backend";
+
+    // Model Files
+    public static final String REQUIRED_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
 } 
