@@ -14,22 +14,46 @@ import com.mtkresearch.gai_android.utils.ConversationManager;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 
 public class LLMEngineService extends BaseEngineService {
     private static boolean MTK_BACKEND_AVAILABLE = false;
+    private static final Object MTK_LOCK = new Object();
+    private static int mtkInitCount = 0;
+    private static final int MAX_MTK_INIT_ATTEMPTS = 5;
+    private static boolean isCleaningUp = false;
+    private static final long CLEANUP_TIMEOUT_MS = 5000; // 5 seconds timeout for cleanup
+    
+    private static final ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+    private static final long NATIVE_OP_TIMEOUT_MS = 2000; // 2 seconds timeout for native operations
     
     static {
         try {
+            // Load libraries in order
+            System.loadLibrary("sigchain");  // Load signal handler first
+            Thread.sleep(100);  // Give time for signal handlers to initialize
+            
             System.loadLibrary("llm_jni");
             MTK_BACKEND_AVAILABLE = true;
             Log.d("LLMEngineService", "Successfully loaded llm_jni library");
-        } catch (UnsatisfiedLinkError e) {
+            
+            // Register shutdown hook for cleanup
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                try {
+                    cleanupMTKResources();
+                    cleanupExecutor.shutdownNow();
+                } catch (Exception e) {
+                    Log.e("LLMEngineService", "Error in shutdown hook", e);
+                }
+            }));
+        } catch (UnsatisfiedLinkError | Exception e) {
             MTK_BACKEND_AVAILABLE = false;
-            Log.w("LLMEngineService", "Failed to load llm_jni library, MTK backend will be disabled", e);
+            Log.w("LLMEngineService", "Failed to load native libraries, MTK backend will be disabled", e);
         }
     }
 
@@ -54,7 +78,7 @@ public class LLMEngineService extends BaseEngineService {
     private StreamingResponseCallback currentCallback = null;
     private StringBuilder currentStreamingResponse = new StringBuilder();
     private boolean hasSeenAssistantMarker = false;
-    private Executor executor;
+    private ExecutorService executor;
     private AtomicBoolean isGenerating = new AtomicBoolean(false);
     private final ConversationManager conversationManager;
 
@@ -111,20 +135,39 @@ public class LLMEngineService extends BaseEngineService {
 
     @Override
     public CompletableFuture<Boolean> initialize() {
-        return CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
+        
+        // Create a timeout future
+        CompletableFuture.delayedExecutor(INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .execute(() -> {
+                if (!future.isDone()) {
+                    future.complete(false);
+                    Log.e(TAG, "Initialization timed out");
+                }
+            });
+        
+        // Run initialization in background
+        CompletableFuture.supplyAsync(() -> {
             try {
                 // Always release existing resources before initialization
                 releaseResources();
                 
                 // Try MTK backend only if it's preferred
                 if (preferredBackend.equals("mtk")) {
+                    // Add delay before trying MTK initialization
+                    Thread.sleep(200);
+                    
                     if (initializeMTKBackend()) {
                         backend = "mtk";
                         isInitialized = true;
                         Log.d(TAG, "Successfully initialized MTK backend");
+                        future.complete(true);
                         return true;
                     }
                     Log.w(TAG, "MTK backend initialization failed");
+                    
+                    // Add delay before trying fallback
+                    Thread.sleep(200);
                 }
 
                 // Try CPU backend if MTK failed or CPU is preferred
@@ -133,18 +176,126 @@ public class LLMEngineService extends BaseEngineService {
                         backend = "localCPU";
                         isInitialized = true;
                         Log.d(TAG, "Successfully initialized CPU backend");
+                        future.complete(true);
                         return true;
                     }
                     Log.w(TAG, "CPU backend initialization failed");
                 }
 
                 Log.e(TAG, "All backend initialization attempts failed");
+                future.complete(false);
                 return false;
             } catch (Exception e) {
                 Log.e(TAG, "Error during initialization", e);
+                future.completeExceptionally(e);
                 return false;
             }
         });
+        
+        return future;
+    }
+
+    private static void cleanupMTKResources() {
+        synchronized (MTK_LOCK) {
+            if (isCleaningUp) return;
+            isCleaningUp = true;
+            
+            try {
+                Log.d("LLMEngineService", "Performing emergency cleanup of MTK resources");
+                LLMEngineService tempInstance = new LLMEngineService();
+                
+                // Reset with timeout
+                Future<?> resetFuture = cleanupExecutor.submit(() -> {
+                    try {
+                        tempInstance.nativeResetLlm();
+                    } catch (Exception e) {
+                        Log.w("LLMEngineService", "Error during emergency reset", e);
+                    }
+                });
+                
+                try {
+                    resetFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    Log.w("LLMEngineService", "Reset operation timed out");
+                    resetFuture.cancel(true);
+                }
+                
+                Thread.sleep(100);
+                
+                // Release with timeout
+                Future<?> releaseFuture = cleanupExecutor.submit(() -> {
+                    try {
+                        tempInstance.nativeReleaseLlm();
+                    } catch (Exception e) {
+                        Log.w("LLMEngineService", "Error during emergency release", e);
+                    }
+                });
+                
+                try {
+                    releaseFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                } catch (TimeoutException e) {
+                    Log.w("LLMEngineService", "Release operation timed out");
+                    releaseFuture.cancel(true);
+                }
+                
+                // Reset state
+                mtkInitCount = 0;
+                
+                // Force garbage collection
+                System.gc();
+                Thread.sleep(100);
+                
+            } catch (Exception e) {
+                Log.e("LLMEngineService", "Error during MTK cleanup", e);
+            } finally {
+                isCleaningUp = false;
+            }
+        }
+    }
+
+    private void forceCleanupMTKResources() {
+        synchronized (MTK_LOCK) {
+            if (isCleaningUp) return;
+            isCleaningUp = true;
+            
+            try {
+                Log.d(TAG, "Forcing cleanup of MTK resources");
+                
+                // Multiple cleanup attempts with timeouts
+                for (int i = 0; i < 3; i++) {
+                    Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
+                        try {
+                            nativeResetLlm();
+                            Thread.sleep(100);
+                            nativeReleaseLlm();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error during forced cleanup attempt", e);
+                        }
+                    });
+                    
+                    try {
+                        cleanupFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    } catch (TimeoutException e) {
+                        Log.w(TAG, "Cleanup attempt " + (i+1) + " timed out");
+                        cleanupFuture.cancel(true);
+                    }
+                    
+                    Thread.sleep(200);
+                }
+                
+                // Reset state
+                mtkInitCount = 0;
+                
+                // Force garbage collection
+                System.gc();
+                Thread.sleep(200);
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during forced cleanup", e);
+            } finally {
+                isCleaningUp = false;
+            }
+        }
     }
 
     private boolean initializeMTKBackend() {
@@ -153,12 +304,93 @@ public class LLMEngineService extends BaseEngineService {
             return false;
         }
 
+        synchronized (MTK_LOCK) {
+            if (isCleaningUp) {
+                Log.w(TAG, "Cannot initialize while cleanup is in progress");
+                return false;
+            }
+
+            try {
+                // Force cleanup if we've hit the max init attempts
+                if (mtkInitCount >= MAX_MTK_INIT_ATTEMPTS) {
+                    Log.w(TAG, "MTK init count exceeded limit, forcing cleanup");
+                    forceCleanupMTKResources();
+                    mtkInitCount = 0;
+                    Thread.sleep(1000);  // Wait for cleanup to complete
+                }
+
+                // Add delay before initialization
+                Thread.sleep(200);
+                
+                // Initialize signal handlers first
+                try {
+                    System.loadLibrary("sigchain");
+                    Thread.sleep(100);
+                } catch (UnsatisfiedLinkError e) {
+                    Log.w(TAG, "Failed to load sigchain library", e);
+                }
+
+                Log.d(TAG, "Attempting MTK backend initialization...");
+                
+                boolean success = false;
+                try {
+                    // Reset state before initialization
+                    nativeResetLlm();
+                    Thread.sleep(100);
+                    
+                    // Initialize with conservative settings
+                    success = nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", true);
+                    
+                    if (!success) {
+                        Log.e(TAG, "MTK initialization returned false");
+                        cleanupAfterError();
+                        return false;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error during MTK initialization", e);
+                    cleanupAfterError();
+                    return false;
+                }
+                
+                if (success) {
+                    mtkInitCount++;
+                    Log.d(TAG, "MTK initialization successful. Init count: " + mtkInitCount);
+                    return true;
+                } else {
+                    Log.e(TAG, "MTK initialization failed");
+                    cleanupAfterError();
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error initializing MTK backend", e);
+                cleanupAfterError();
+                return false;
+            }
+        }
+    }
+
+    private void cleanupAfterError() {
         try {
-            Log.d(TAG, "Attempting MTK backend initialization...");
-            return nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", false);
+            // Force cleanup in a separate thread with timeout
+            Thread cleanupThread = new Thread(() -> {
+                try {
+                    nativeResetLlm();
+                    Thread.sleep(100);
+                    nativeReleaseLlm();
+                } catch (Exception e) {
+                    Log.w(TAG, "Error during error cleanup", e);
+                }
+            });
+            
+            cleanupThread.start();
+            cleanupThread.join(CLEANUP_TIMEOUT_MS);
+            
+            if (cleanupThread.isAlive()) {
+                Log.w(TAG, "Cleanup thread timed out, interrupting");
+                cleanupThread.interrupt();
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing MTK backend", e);
-            return false;
+            Log.e(TAG, "Error during cleanup after error", e);
         }
     }
 
@@ -424,48 +656,82 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public void releaseResources() {
-        try {
-            stopGeneration();
-            
-            // Release MTK resources if using MTK backend
-            if (backend.equals("mtk")) {
-                try {
-                    nativeResetLlm();
-                    nativeReleaseLlm();
-                    Log.d(TAG, "Released MTK resources");
-                } catch (Exception e) {
-                    Log.e(TAG, "Error releasing MTK resources", e);
-                }
+        synchronized (MTK_LOCK) {
+            if (isCleaningUp) {
+                Log.w(TAG, "Cleanup already in progress");
+                return;
             }
             
-            // Release CPU resources if using CPU backend
-            if (mModule != null) {
-                try {
-                    mModule.resetNative();
-                    mModule = null;
-                    Log.d(TAG, "Released CPU resources");
-                } catch (Exception e) {
-                    Log.e(TAG, "Error releasing CPU resources", e);
+            isCleaningUp = true;
+            try {
+                stopGeneration();
+                
+                // Release MTK resources if using MTK backend
+                if (backend.equals("mtk")) {
+                    try {
+                        // Add delay before cleanup
+                        Thread.sleep(100);
+                        nativeResetLlm();
+                        Thread.sleep(100);
+                        nativeReleaseLlm();
+                        mtkInitCount = 0; // Reset init count
+                        Log.d(TAG, "Released MTK resources");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error releasing MTK resources", e);
+                        cleanupAfterError();
+                    }
                 }
+                
+                // Release CPU resources if using CPU backend
+                if (mModule != null) {
+                    try {
+                        mModule.resetNative();
+                        mModule = null;
+                        Log.d(TAG, "Released CPU resources");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error releasing CPU resources", e);
+                    }
+                }
+                
+                // Reset state
+                backend = "none";
+                isInitialized = false;
+                System.gc(); // Request garbage collection
+                
+                Log.d(TAG, "All resources released");
+            } catch (Exception e) {
+                Log.e(TAG, "Error during cleanup", e);
+            } finally {
+                isCleaningUp = false;
             }
-            
-            // Reset state
-            backend = "none";
-            isInitialized = false;
-            System.gc(); // Request garbage collection
-            
-            Log.d(TAG, "All resources released");
-        } catch (Exception e) {
-            Log.e(TAG, "Error during cleanup", e);
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        releaseResources();
+        
+        // Run cleanup with timeout
+        Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
+            try {
+                cleanupMTKResources();
+                releaseResources();
+            } catch (Exception e) {
+                Log.e(TAG, "Error during service cleanup", e);
+            }
+        });
+        
+        try {
+            cleanupFuture.get(CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            Log.w(TAG, "Service cleanup timed out");
+            cleanupFuture.cancel(true);
+        } catch (Exception e) {
+            Log.e(TAG, "Error waiting for cleanup", e);
+        }
+        
         if (executor != null) {
-            executor.execute(() -> {});
+            executor.shutdown();
             executor = null;
         }
     }

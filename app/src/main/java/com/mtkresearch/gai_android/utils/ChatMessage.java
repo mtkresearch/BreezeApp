@@ -71,6 +71,10 @@ public class ChatMessage implements Serializable {
         this.promptId = promptId;
     }
 
+    public boolean hasContent() {
+        return text != null && !text.isEmpty() && !text.equals("Thinking...");
+    }
+
     @Override
     public String toString() {
         return "ChatMessage{" +

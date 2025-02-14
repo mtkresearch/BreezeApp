@@ -9,13 +9,16 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextWatcher;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.PopupMenu;
 import android.widget.Toast;
 import android.widget.ImageButton;
 import android.widget.CheckBox;
 import android.app.AlertDialog;
+import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -34,6 +37,7 @@ import com.mtkresearch.gai_android.service.ASREngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
+import com.mtkresearch.gai_android.utils.IntroDialog;
 import com.mtkresearch.gai_android.utils.UiUtils;
 
 import java.io.IOException;
@@ -60,6 +64,20 @@ import com.executorch.ModelType;
 import com.executorch.PromptFormat;
 import com.mtkresearch.gai_android.utils.PromptManager;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import android.os.Handler;
+import android.os.Looper;
+
+import com.mtkresearch.gai_android.utils.ModelUtils;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = "ChatActivity";
 
@@ -68,6 +86,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final int PICK_IMAGE_REQUEST = 1;
     private static final int CAPTURE_IMAGE_REQUEST = 2;
     private static final int PICK_FILE_REQUEST = 3;
+
+    // Constants for alpha values
+    private static final float ENABLED_ALPHA = 1.0f;
+    private static final float DISABLED_ALPHA = 0.3f;
 
     // View Binding
     private ActivityChatBinding binding;
@@ -101,15 +123,31 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final long TAP_TIMEOUT_MS = 3000; // Reset counter after 3 seconds
     private long lastTapTime = 0;
 
+    // Add these fields at the top of the class with other fields
+    private boolean llmServiceReady = false;
+    private boolean vlmServiceReady = false;
+    private boolean asrServiceReady = false;
+    private boolean ttsServiceReady = false;
+
+    // Add a flag to track MTK support status
+    private static boolean mtkBackendChecked = false;
+    private static boolean mtkBackendSupported = true;
+
+    // Add new fields for initialization state
+    private boolean isInitializing = false;
+    private final Object initLock = new Object();
+    private static final int INIT_DELAY_MS = 1000; // Delay before starting heavy initialization
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
-        initializeServices();
-        setupHistoryDrawer();
         
-        // Clear any previous active history and start fresh
+        // Show intro dialog first, services will initialize after dialog is dismissed
+        showIntroDialog();
+        
+        setupHistoryDrawer();
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
     }
@@ -130,20 +168,39 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        cleanup();
+        // Ensure services are unbound and cleaned up
+        try {
+            cleanup();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
     }
 
     private void initializeViews() {
+        // First inflate the binding but don't set it as content view yet
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        
+        // Ensure input container and toolbar are fully opaque
+        binding.inputContainer.setAlpha(1.0f);
+        binding.toolbar.setAlpha(1.0f);
+        binding.toolbar.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
+        
+        // Set input container background to be fully opaque
+        binding.inputContainer.setBackgroundResource(R.drawable.bg_input_container);
+        binding.inputContainer.setElevation(4f);  // Add elevation to ensure it's above other elements
+        
+        // Ensure the main content is fully opaque
+        binding.mainContent.setAlpha(1.0f);
+        binding.mainContent.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         
         initializeChat();
         setupButtons();
         setupInputHandling();
         setupTitleTapCounter();
         
-        // Initialize model name as "Loading..."
-        binding.modelNameText.setText("Loading...");
+        // Initially disable all interactive components
+        updateInteractionState();
     }
 
     private void initializeHandlers() {
@@ -156,6 +213,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void initializeChat() {
         chatAdapter = new ChatMessageAdapter();
         chatAdapter.setSpeakerClickListener(this);
+        // Add copy message listener
+        chatAdapter.setOnMessageLongClickListener((message, position) -> {
+            showMessageOptions(message);
+            return true;
+        });
         UiUtils.setupChatRecyclerView(binding.recyclerView, chatAdapter);
         
         // Set initial watermark visibility
@@ -179,13 +241,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNavigationButton() {
-        binding.historyButton.setOnClickListener(v -> {
+        View.OnClickListener historyClickListener = v -> {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START);
             } else {
                 drawerLayout.openDrawer(GravityCompat.START);
             }
-        });
+        };
+        binding.historyButton.setOnClickListener(historyClickListener);
+        // Ensure button is initially enabled and clickable
+        binding.historyButton.setEnabled(true);
+        binding.historyButton.setClickable(true);
     }
 
     private void setupAttachmentButton() {
@@ -232,7 +298,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNewConversationButton() {
-        binding.newConversationButton.setOnClickListener(v -> {
+        View.OnClickListener newConversationClickListener = v -> {
             // Save current chat if needed
             saveCurrentChat();
             // Clear current conversation
@@ -241,7 +307,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             historyManager.clearCurrentActiveHistory();
             // Refresh history list to show the newly saved chat
             refreshHistoryList();
-        });
+        };
+        binding.newConversationButton.setOnClickListener(newConversationClickListener);
+        // Ensure button is initially enabled and clickable
+        binding.newConversationButton.setEnabled(true);
+        binding.newConversationButton.setClickable(true);
     }
 
     private void setupInputHandling() {
@@ -250,11 +320,174 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.messageInputExpanded.addTextChangedListener(textWatcher);
     }
 
+    private void startInitialization() {
+        synchronized (initLock) {
+            if (isInitializing) return;
+            isInitializing = true;
+        }
+        
+        // Update UI state immediately when initialization starts
+        updateInteractionState();
+        
+        // Remove overlay animation code and directly start services
+        initializeServices();
+    }
+
     private void initializeServices() {
-        bindService(new Intent(this, LLMEngineService.class), llmConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, VLMEngineService.class), vlmConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, ASREngineService.class), asrConnection, Context.BIND_AUTO_CREATE);
-        bindService(new Intent(this, TTSEngineService.class), ttsConnection, Context.BIND_AUTO_CREATE);
+        // Create a single background thread instead of thread pool to reduce memory usage
+        Thread initThread = new Thread(() -> {
+            android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
+            
+            try {
+                // Initialize each service independently
+                initializeLLMService();
+                
+                // Initialize ASR and TTS if audio permission is granted
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    initializeASRService();
+                    initializeTTSService();
+                }
+                
+                // Update UI on main thread
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (!isFinishing()) {
+                        updateInteractionState();
+                    }
+                });
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during service initialization", e);
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    if (!isFinishing()) {
+                        Toast.makeText(ChatActivity.this, 
+                            "Error initializing services: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
+                        updateInteractionState();
+                    }
+                });
+            } finally {
+                synchronized (initLock) {
+                    isInitializing = false;
+                }
+            }
+        }, "ServiceInit");
+        
+        initThread.start();
+    }
+
+    private void initializeLLMService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean success = new AtomicBoolean(false);
+        
+        // Prepare LLM intent
+        Intent llmIntent = new Intent(this, LLMEngineService.class);
+        llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
+        String preferredBackend = ModelUtils.getPreferredBackend();
+        llmIntent.putExtra("preferred_backend", preferredBackend);
+        
+        // Show status on main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (!isFinishing()) {
+                Toast.makeText(ChatActivity.this, 
+                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
+                    Toast.LENGTH_SHORT).show();
+            }
+        });
+        
+        // Bind service on main thread
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                startService(llmIntent);
+                if (bindService(llmIntent, llmConnection, Context.BIND_AUTO_CREATE)) {
+                    success.set(true);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding LLM service", e);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        // Wait with timeout
+        if (!latch.await(10, TimeUnit.SECONDS)) {
+            throw new TimeoutException("LLM service binding timed out");
+        }
+        
+        if (!success.get()) {
+            throw new Exception("LLM service binding failed");
+        }
+        
+        // Add delay to allow service to start
+        Thread.sleep(1000);
+    }
+
+    private void initializeVLMService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                bindService(new Intent(this, VLMEngineService.class),
+                    vlmConnection, Context.BIND_AUTO_CREATE);
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        latch.await(5, TimeUnit.SECONDS);
+    }
+
+    private void initializeASRService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        Log.d(TAG, "Starting ASR service initialization...");
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Intent asrIntent = new Intent(this, ASREngineService.class);
+                startService(asrIntent);
+                if (!bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE)) {
+                    Log.e(TAG, "Failed to bind ASR service");
+                    asrServiceReady = false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding ASR service", e);
+                asrServiceReady = false;
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+            Log.e(TAG, "ASR service initialization timed out");
+            asrServiceReady = false;
+            throw new TimeoutException("ASR service initialization timed out");
+        }
+    }
+
+    private void initializeTTSService() throws Exception {
+        CountDownLatch latch = new CountDownLatch(1);
+        Log.d(TAG, "Starting TTS service initialization...");
+        
+        new Handler(Looper.getMainLooper()).post(() -> {
+            try {
+                Intent ttsIntent = new Intent(this, TTSEngineService.class);
+                startService(ttsIntent);
+                if (!bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
+                    Log.e(TAG, "Failed to bind TTS service");
+                    ttsServiceReady = false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding TTS service", e);
+                ttsServiceReady = false;
+            } finally {
+                latch.countDown();
+            }
+        });
+        
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+            Log.e(TAG, "TTS service initialization timed out");
+            ttsServiceReady = false;
+            throw new TimeoutException("TTS service initialization timed out");
+        }
     }
 
     private void handleSendAction() {
@@ -307,10 +540,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean hasReceivedResponse = false;
+                private boolean isGenerating = true;
 
                 @Override
                 public void onToken(String token) {
-                    if (token == null || token.isEmpty()) {
+                    if (!isGenerating || token == null || token.isEmpty()) {
                         return;
                     }
 
@@ -328,38 +562,41 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     });
                 }
             }).thenAccept(finalResponse -> {
-                if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
-                    runOnUiThread(() -> {
+                runOnUiThread(() -> {
+                    if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
-                        if (response.isEmpty()) {
+                        // Only update with error message if we haven't received any real response
+                        if (response.isEmpty() && !aiMessage.hasContent()) {
                             aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
-                        } else {
+                        } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                        setSendButtonsAsStop(false);
-                        
                         // Increment promptId after successful response
                         promptId++;
-                        
-                        // Only save and refresh after AI response is complete
-                        saveCurrentChat();
-                        refreshHistoryList();
-                    });
-                } else {
-                    runOnUiThread(() -> {
-                        aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        setSendButtonsAsStop(false);
-                    });
-                }
+                    } else {
+                        // Only show error if we haven't received any content
+                        if (!aiMessage.hasContent()) {
+                            aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                        }
+                    }
+                    
+                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                    setSendButtonsAsStop(false);
+                    
+                    // Only save and refresh after AI response is complete
+                    saveCurrentChat();
+                    refreshHistoryList();
+                });
             }).exceptionally(throwable -> {
                 Log.e(TAG, "Error generating response", throwable);
                 runOnUiThread(() -> {
-                    aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    // Only show error if we haven't received any content
+                    if (!aiMessage.hasContent()) {
+                        aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
                     setSendButtonsAsStop(false);
                 });
                 return null;
@@ -577,7 +814,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (permissions[0].equals(android.Manifest.permission.CAMERA)) {
                     handleCameraCapture();
                 } else if (permissions[0].equals(android.Manifest.permission.RECORD_AUDIO)) {
-                    startRecording();
+                    // Start initialization after permission is granted
+                    startInitialization();
                 }
             } else {
                 String message = permissions[0].equals(android.Manifest.permission.CAMERA) ?
@@ -590,26 +828,80 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     @Override
     public void onSpeakerClick(String messageText) {
-        if (ttsService != null && ttsService.isReady()) {
-            ttsService.speak(messageText)
-                .exceptionally(throwable -> {
-                    Log.e(TAG, "Error converting text to speech", throwable);
-                    runOnUiThread(() -> Toast.makeText(this, "Error playing audio", Toast.LENGTH_SHORT).show());
-                    return null;
-                });
-        } else {
-            Toast.makeText(this, "TTS service not ready", Toast.LENGTH_SHORT).show();
+        if (ttsService == null) {
+            Toast.makeText(this, "Text-to-speech service not available", Toast.LENGTH_SHORT).show();
+            return;
         }
+
+        if (!ttsService.isReady()) {
+            Toast.makeText(this, "Text-to-speech is still initializing...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Show loading state
+        Toast.makeText(this, "Converting text to speech...", Toast.LENGTH_SHORT).show();
+
+        // Run TTS in background
+        CompletableFuture.runAsync(() -> {
+            try {
+                ttsService.speak(messageText)
+                    .thenRun(() -> {
+                        // Success - no need for notification
+                    })
+                    .exceptionally(throwable -> {
+                        Log.e(TAG, "Error converting text to speech", throwable);
+                        runOnUiThread(() -> Toast.makeText(this, 
+                            "Error playing audio", Toast.LENGTH_SHORT).show());
+                        return null;
+                    });
+            } catch (Exception e) {
+                Log.e(TAG, "Error initiating text to speech", e);
+                runOnUiThread(() -> Toast.makeText(this, 
+                    "Error starting audio playback", Toast.LENGTH_SHORT).show());
+            }
+        }).exceptionally(throwable -> {
+            Log.e(TAG, "Error in TTS background task", throwable);
+            return null;
+        });
     }
 
     private void cleanup() {
-        unbindAllServices();
-        mediaHandler.release();
-        binding = null;
-        conversationManager = null;
-        historyManager = null;
-        historyAdapter = null;
-        drawerLayout = null;
+        // Run cleanup in background to prevent ANR
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Save current chat before cleanup
+                saveCurrentChat();
+                
+                // Unbind services with timeout
+                ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+                Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
+                    unbindAllServices();
+                });
+                
+                try {
+                    cleanupFuture.get(5, TimeUnit.SECONDS);
+                } catch (TimeoutException e) {
+                    Log.w(TAG, "Service unbinding timed out", e);
+                    cleanupFuture.cancel(true);
+                }
+                
+                cleanupExecutor.shutdownNow();
+                
+                // Release other resources
+                mediaHandler.release();
+                binding = null;
+                conversationManager = null;
+                historyManager = null;
+                historyAdapter = null;
+                drawerLayout = null;
+                
+                // Force garbage collection
+                System.gc();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during cleanup", e);
+            }
+        });
     }
 
     private void unbindAllServices() {
@@ -645,15 +937,42 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             llmService = ((LLMEngineService.LocalBinder) service).getService();
-            // Update model name when service is connected
             if (llmService != null) {
-                runOnUiThread(() -> {
-                    String modelName = llmService.getModelName();
-                    if (modelName != null && !modelName.isEmpty()) {
-                        binding.modelNameText.setText(modelName);
+                Toast.makeText(ChatActivity.this, "Initializing model...", Toast.LENGTH_SHORT).show();
+                
+                llmService.initialize().thenAccept(success -> {
+                    llmServiceReady = success;
+                    if (success) {
+                        runOnUiThread(() -> {
+                            String modelName = llmService.getModelName();
+                            String backend = llmService.getCurrentBackend();
+                            if (modelName != null && !modelName.isEmpty()) {
+                                String displayText = String.format("%s (%s)", modelName, ModelUtils.getBackendDisplayName(backend));
+                                binding.modelNameText.setText(displayText);
+                                binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+                            } else {
+                                binding.modelNameText.setText("Unknown model");
+                            }
+                            updateInteractionState();
+                        });
                     } else {
-                        binding.modelNameText.setText("Unknown");
+                        runOnUiThread(() -> {
+                            binding.modelNameText.setText("Model error");
+                            binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                            Toast.makeText(ChatActivity.this, "Failed to initialize model", Toast.LENGTH_SHORT).show();
+                            updateInteractionState();
+                        });
                     }
+                }).exceptionally(throwable -> {
+                    Log.e(TAG, "Error initializing model", throwable);
+                    llmServiceReady = false;
+                    runOnUiThread(() -> {
+                        binding.modelNameText.setText("Model error");
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                        Toast.makeText(ChatActivity.this, "Error initializing model", Toast.LENGTH_SHORT).show();
+                        updateInteractionState();
+                    });
+                    return null;
                 });
             }
         }
@@ -661,8 +980,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceDisconnected(ComponentName name) {
             llmService = null;
-            // Update UI when service is disconnected
-            runOnUiThread(() -> binding.modelNameText.setText("Disconnected"));
+            llmServiceReady = false;
+            runOnUiThread(() -> {
+                binding.modelNameText.setText("Model disconnected");
+                binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                Toast.makeText(ChatActivity.this, "Model service disconnected", Toast.LENGTH_SHORT).show();
+                updateInteractionState();
+            });
         }
     };
 
@@ -670,35 +994,103 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             vlmService = ((VLMEngineService.LocalBinder) service).getService();
+            vlmServiceReady = vlmService != null;
+            updateInteractionState();
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
             vlmService = null;
+            vlmServiceReady = false;
+            updateInteractionState();
         }
     };
 
     private final ServiceConnection asrConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "ASR service connected");
             asrService = ((ASREngineService.LocalBinder) service).getService();
+            if (asrService != null) {
+                asrService.initialize().thenAccept(success -> {
+                    asrServiceReady = success;
+                    Log.d(TAG, "ASR initialization " + (success ? "successful" : "failed"));
+                    if (!success) {
+                        runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                            "ASR initialization failed", Toast.LENGTH_SHORT).show());
+                    }
+                    updateInteractionState();
+                }).exceptionally(throwable -> {
+                    Log.e(TAG, "Error initializing ASR", throwable);
+                    asrServiceReady = false;
+                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                        "Error initializing ASR: " + throwable.getMessage(), 
+                        Toast.LENGTH_SHORT).show());
+                    updateInteractionState();
+                    return null;
+                });
+            }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "ASR service disconnected");
             asrService = null;
+            asrServiceReady = false;
+            updateInteractionState();
         }
     };
 
     private final ServiceConnection ttsConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "TTS service connected");
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
+            if (ttsService != null) {
+                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                    "Initializing text-to-speech...", Toast.LENGTH_SHORT).show());
+                
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        ttsService.initialize()
+                            .thenAccept(success -> {
+                                ttsServiceReady = success;
+                                Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
+                                if (success) {
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                                        "Text-to-speech ready", Toast.LENGTH_SHORT).show());
+                                } else {
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                                        "Failed to initialize text-to-speech", Toast.LENGTH_SHORT).show());
+                                }
+                                updateInteractionState();
+                            })
+                            .exceptionally(throwable -> {
+                                Log.e(TAG, "Error initializing TTS", throwable);
+                                ttsServiceReady = false;
+                                runOnUiThread(() -> {
+                                    Toast.makeText(ChatActivity.this, 
+                                        "Error initializing text-to-speech: " + throwable.getMessage(), 
+                                        Toast.LENGTH_SHORT).show();
+                                    updateInteractionState();
+                                });
+                                return null;
+                            });
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting TTS initialization", e);
+                        ttsServiceReady = false;
+                        updateInteractionState();
+                    }
+                });
+            }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "TTS service disconnected");
             ttsService = null;
+            ttsServiceReady = false;
+            updateInteractionState();
         }
     };
 
@@ -853,7 +1245,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 exitSelectionMode();
                 refreshHistoryList();
                 Toast.makeText(this, selectedIds.size() > 1 ? 
-                    "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
+                     "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
             })
             .setNegativeButton("Cancel", null)
             .show();
@@ -944,5 +1336,259 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void showMessageOptions(ChatMessage message) {
+        PopupMenu popup = new PopupMenu(this, binding.recyclerView);
+        popup.getMenu().add(0, 1, 0, "Copy text");
+        if (message.hasImage()) {
+            popup.getMenu().add(0, 2, 0, "Save image");
+        }
+
+        popup.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1:
+                    // Copy text to clipboard
+                    android.content.ClipboardManager clipboard = 
+                        (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    android.content.ClipData clip = 
+                        android.content.ClipData.newPlainText("Message", message.getText());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(this, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                    return true;
+                case 2:
+                    // Save image
+                    if (message.hasImage()) {
+                        saveImage(message.getImageUri());
+                    }
+                    return true;
+            }
+            return false;
+        });
+
+        popup.show();
+    }
+
+    private void saveImage(Uri imageUri) {
+        try {
+            // Create a copy of the image in the Pictures directory
+            String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String fileName = "GAI_" + timestamp + ".jpg";
+            
+            // Get the content resolver
+            android.content.ContentResolver resolver = getContentResolver();
+            
+            // Create image collection for API 29 and above
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, fileName);
+            values.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+            values.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, 
+                android.os.Environment.DIRECTORY_PICTURES);
+
+            // Insert the image
+            Uri destUri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (destUri != null) {
+                try (java.io.InputStream in = resolver.openInputStream(imageUri);
+                     java.io.OutputStream out = resolver.openOutputStream(destUri)) {
+                    if (in != null && out != null) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        while ((read = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, read);
+                        }
+                        Toast.makeText(this, "Image saved to Pictures", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving image", e);
+            Toast.makeText(this, "Error saving image", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void updateInteractionState() {
+        // Check initialization state
+        boolean isInitializationInProgress;
+        synchronized (initLock) {
+            isInitializationInProgress = isInitializing;
+        }
+
+        runOnUiThread(() -> {
+            if (isInitializationInProgress) {
+                // During initialization, disable all interactive components
+                binding.inputContainer.setEnabled(false);
+                binding.collapsedInput.setEnabled(false);
+                binding.expandedInput.setEnabled(false);
+                
+                // Disable input fields
+                binding.messageInput.setEnabled(false);
+                binding.messageInput.setFocusable(false);
+                binding.messageInput.setFocusableInTouchMode(false);
+                binding.messageInput.setAlpha(DISABLED_ALPHA);
+                
+                binding.messageInputExpanded.setEnabled(false);
+                binding.messageInputExpanded.setFocusable(false);
+                binding.messageInputExpanded.setFocusableInTouchMode(false);
+                binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
+                
+                // Disable navigation buttons
+                binding.historyButton.setEnabled(false);
+                binding.historyButton.setClickable(false);
+                binding.historyButton.setAlpha(DISABLED_ALPHA);
+                
+                binding.newConversationButton.setEnabled(false);
+                binding.newConversationButton.setClickable(false);
+                binding.newConversationButton.setAlpha(DISABLED_ALPHA);
+                
+                // Disable other buttons
+                binding.attachButton.setEnabled(false);
+                binding.attachButton.setAlpha(DISABLED_ALPHA);
+                binding.attachButtonExpanded.setEnabled(false);
+                binding.attachButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                binding.voiceButton.setEnabled(false);
+                binding.voiceButton.setAlpha(DISABLED_ALPHA);
+                binding.voiceButtonExpanded.setEnabled(false);
+                binding.voiceButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                binding.sendButton.setEnabled(false);
+                binding.sendButton.setAlpha(DISABLED_ALPHA);
+                binding.sendButtonExpanded.setEnabled(false);
+                binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                // Disable history recycler view
+                RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+                if (historyRecyclerView != null) {
+                    historyRecyclerView.setEnabled(false);
+                    historyRecyclerView.setAlpha(DISABLED_ALPHA);
+                }
+                
+                // Show initialization state in model name
+                binding.modelNameText.setText("Initializing...");
+                binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+            } else {
+                // After initialization, enable all components
+                binding.inputContainer.setEnabled(true);
+                binding.collapsedInput.setEnabled(true);
+                binding.expandedInput.setEnabled(true);
+                
+                binding.messageInput.setEnabled(true);
+                binding.messageInput.setFocusable(true);
+                binding.messageInput.setFocusableInTouchMode(true);
+                binding.messageInput.setAlpha(ENABLED_ALPHA);
+                
+                binding.messageInputExpanded.setEnabled(true);
+                binding.messageInputExpanded.setFocusable(true);
+                binding.messageInputExpanded.setFocusableInTouchMode(true);
+                binding.messageInputExpanded.setAlpha(ENABLED_ALPHA);
+                
+                // Enable navigation buttons
+                binding.historyButton.setEnabled(true);
+                binding.historyButton.setClickable(true);
+                binding.historyButton.setAlpha(ENABLED_ALPHA);
+                
+                binding.newConversationButton.setEnabled(true);
+                binding.newConversationButton.setClickable(true);
+                binding.newConversationButton.setAlpha(ENABLED_ALPHA);
+                
+                binding.attachButton.setEnabled(true);
+                binding.attachButton.setAlpha(ENABLED_ALPHA);
+                binding.attachButtonExpanded.setEnabled(true);
+                binding.attachButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                binding.voiceButton.setEnabled(true);
+                binding.voiceButton.setAlpha(ENABLED_ALPHA);
+                binding.voiceButtonExpanded.setEnabled(true);
+                binding.voiceButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                binding.sendButton.setEnabled(true);
+                binding.sendButton.setAlpha(ENABLED_ALPHA);
+                binding.sendButtonExpanded.setEnabled(true);
+                binding.sendButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                // Enable history recycler view
+                RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+                if (historyRecyclerView != null) {
+                    historyRecyclerView.setEnabled(true);
+                    historyRecyclerView.setAlpha(ENABLED_ALPHA);
+                    if (historyAdapter != null) {
+                        historyAdapter.notifyDataSetChanged();
+                    }
+                }
+                
+                // Update model name and status
+                if (llmService != null) {
+                    String modelName = llmService.getModelName();
+                    String backend = llmService.getCurrentBackend();
+                    if (modelName != null && !modelName.isEmpty()) {
+                        String displayText = String.format("%s (%s)", modelName, ModelUtils.getBackendDisplayName(backend));
+                        binding.modelNameText.setText(displayText);
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+                    } else {
+                        binding.modelNameText.setText("Unknown model");
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                    }
+                } else {
+                    binding.modelNameText.setText("Model not available");
+                    binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                }
+            }
+            
+            // Force a layout pass to ensure all changes are applied
+            binding.inputContainer.requestLayout();
+            binding.inputContainer.invalidate();
+        });
+    }
+
+    private boolean hasAudioPermission() {
+        return checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    private void showIntroDialog() {
+        Log.d(TAG, "Showing intro dialog");
+        try {
+            // Ensure we're on the main thread
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                new Handler(Looper.getMainLooper()).post(this::showIntroDialog);
+                return;
+            }
+
+            // Check if activity is finishing
+            if (isFinishing()) {
+                Log.w(TAG, "Activity is finishing, skipping dialog");
+                return;
+            }
+
+            IntroDialog dialog = new IntroDialog(this);
+            
+            // Set dialog window properties
+            if (dialog.getWindow() != null) {
+                // Set a semi-transparent dim background
+                dialog.getWindow().setDimAmount(0.5f);
+                // Set the background color
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                    getResources().getColor(R.color.background, getTheme())
+                ));
+            }
+            
+            // Set custom dismiss listener to start initialization
+            dialog.setOnFinalButtonClickListener(() -> {
+                // Check for RECORD_AUDIO permission before initializing services
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+                } else {
+                    startInitialization();
+                }
+            });
+            
+            dialog.setOnDismissListener(dialogInterface -> {
+                Log.d(TAG, "Intro dialog dismissed");
+            });
+            
+            dialog.show();
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing intro dialog", e);
+        }
     }
 }

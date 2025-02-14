@@ -36,6 +36,7 @@ import com.mtkresearch.gai_android.service.BaseEngineService;
 import com.mtkresearch.gai_android.service.LLMEngineService;
 import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
+import com.mtkresearch.gai_android.utils.IntroDialog;
 import com.mtkresearch.gai_android.utils.NativeLibraryLoader;
 import com.mtkresearch.gai_android.utils.PromptManager;
 import com.mtkresearch.gai_android.utils.AppConstants;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Arrays;
 import android.content.SharedPreferences;
+import android.os.Looper;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -158,78 +160,22 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        // Scan for available models
-        scanForModels();
+        // Show intro dialog immediately, don't wait for services
+        new Handler(getMainLooper()).post(this::showIntroDialog);
 
-        // Setup UI before checking permissions
-        setupUI();
-        setupModelSpinners();
-        setupServiceSwitches();
-        displayDeviceInfo();
-        
-        // Initialize status indicators
-        initializeStatusIndicators();
+        // Continue with normal initialization in background
+        new Handler(getMainLooper()).post(() -> {
+            scanForModels();
+            setupUI();
+            setupModelSpinners();
+            setupServiceSwitches();
+            displayDeviceInfo();
+            initializeStatusIndicators();
 
-        settings = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE);
-        PromptManager.initialize(this);
-        setupSettings();
-
-        // Initialize views
-        temperatureInput = binding.settingsContainer.findViewById(R.id.temperatureInput);
-        backendSpinner = binding.settingsContainer.findViewById(R.id.backendSpinner);
-        
-        // Setup backend spinner
-        List<String> backendOptions = new ArrayList<>();
-        backendOptions.add("cpu");  // CPU backend is always available
-        if (LLMEngineService.isMTKBackendAvailable()) {
-            backendOptions.add("mtk");
-        }
-        
-        backendAdapter = new ArrayAdapter<>(this, 
-            android.R.layout.simple_spinner_item, backendOptions);
-        backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        backendSpinner.setAdapter(backendAdapter);
-
-        // Load saved settings
-        float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
-        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
-        
-        temperatureInput.setText(String.valueOf(savedTemp));
-        int backendPosition = backendAdapter.getPosition(savedBackend);
-        if (backendPosition >= 0) {
-            backendSpinner.setSelection(backendPosition);
-        }
-
-        // Add listeners for settings changes
-        temperatureInput.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                try {
-                    float temp = s.length() > 0 ? Float.parseFloat(s.toString()) : 0.0f;
-                    if (temp >= 0.0f && temp <= 2.0f) {
-                        settings.edit().putFloat(AppConstants.KEY_TEMPERATURE, temp).apply();
-                    }
-                } catch (NumberFormatException e) {
-                    Log.w(TAG, "Invalid temperature value");
-                }
-            }
-        });
-
-        backendSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedBackend = backendAdapter.getItem(position);
-                settings.edit().putString(AppConstants.KEY_PREFERRED_BACKEND, selectedBackend).apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
+            settings = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE);
+            PromptManager.initialize(this);
+            setupSettings();
+            setupBackendSpinner();
         });
     }
 
@@ -619,11 +565,37 @@ public class MainActivity extends AppCompatActivity {
                 Log.d(TAG, "RECORD_AUDIO permission granted");
                 // Re-enable ASR switch if permission was granted
                 binding.asrSwitch.setChecked(true);
+                startAndBindService(ASREngineService.class, asrConnection, null);
             } else {
                 Log.e(TAG, "RECORD_AUDIO permission denied");
                 Toast.makeText(this, "Speech recognition requires audio permission", Toast.LENGTH_LONG).show();
                 binding.asrSwitch.setChecked(false);
             }
+        }
+    }
+
+    private void showIntroDialog() {
+        Log.d(TAG, "Showing intro dialog");
+        try {
+            // Ensure we're on the main thread
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                new Handler(Looper.getMainLooper()).post(this::showIntroDialog);
+                return;
+            }
+
+            // Check if activity is finishing
+            if (isFinishing()) {
+                Log.w(TAG, "Activity is finishing, skipping dialog");
+                return;
+            }
+
+            IntroDialog dialog = new IntroDialog(this);
+            dialog.setOnDismissListener(dialogInterface -> {
+                Log.d(TAG, "Intro dialog dismissed");
+            });
+            dialog.show();
+        } catch (Exception e) {
+            Log.e(TAG, "Error showing intro dialog", e);
         }
     }
 
@@ -700,5 +672,68 @@ public class MainActivity extends AppCompatActivity {
     public static int getSequenceLength(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getInt(AppConstants.KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
+    }
+
+    private void setupBackendSpinner() {
+        // Initialize views
+        temperatureInput = binding.settingsContainer.findViewById(R.id.temperatureInput);
+        backendSpinner = binding.settingsContainer.findViewById(R.id.backendSpinner);
+        
+        // Setup backend spinner
+        List<String> backendOptions = new ArrayList<>();
+        backendOptions.add("cpu");  // CPU backend is always available
+        if (LLMEngineService.isMTKBackendAvailable()) {
+            backendOptions.add("mtk");
+        }
+        
+        backendAdapter = new ArrayAdapter<>(this, 
+            android.R.layout.simple_spinner_item, backendOptions);
+        backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        backendSpinner.setAdapter(backendAdapter);
+
+        // Load saved settings
+        float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
+        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
+        
+        temperatureInput.setText(String.valueOf(savedTemp));
+        int backendPosition = backendAdapter.getPosition(savedBackend);
+        if (backendPosition >= 0) {
+            backendSpinner.setSelection(backendPosition);
+        }
+
+        setupSettingsListeners();
+    }
+
+    private void setupSettingsListeners() {
+        temperatureInput.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                try {
+                    float temp = s.length() > 0 ? Float.parseFloat(s.toString()) : 0.0f;
+                    if (temp >= 0.0f && temp <= 2.0f) {
+                        settings.edit().putFloat(AppConstants.KEY_TEMPERATURE, temp).apply();
+                    }
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid temperature value");
+                }
+            }
+        });
+
+        backendSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedBackend = backendAdapter.getItem(position);
+                settings.edit().putString(AppConstants.KEY_PREFERRED_BACKEND, selectedBackend).apply();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
     }
 } 
