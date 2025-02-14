@@ -124,7 +124,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private boolean vlmServiceReady = false;
     private boolean asrServiceReady = false;
     private boolean ttsServiceReady = false;
-    private View inputBlockerOverlay;
 
     // Add a flag to track MTK support status
     private static boolean mtkBackendChecked = false;
@@ -176,33 +175,20 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void initializeViews() {
         // First inflate the binding but don't set it as content view yet
         binding = ActivityChatBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
         
-        // Create the container layout
-        android.widget.FrameLayout container = new android.widget.FrameLayout(this);
-        container.setLayoutParams(new ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        ));
+        // Ensure input container and toolbar are fully opaque
+        binding.inputContainer.setAlpha(1.0f);
+        binding.toolbar.setAlpha(1.0f);
+        binding.toolbar.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         
-        // Add the main content to container
-        container.addView(binding.getRoot());
+        // Set input container background to be fully opaque
+        binding.inputContainer.setBackgroundResource(R.drawable.bg_input_container);
+        binding.inputContainer.setElevation(4f);  // Add elevation to ensure it's above other elements
         
-        // Create and add the overlay
-        inputBlockerOverlay = new View(this);
-        inputBlockerOverlay.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
-        inputBlockerOverlay.setAlpha(0f);
-        
-        android.widget.FrameLayout.LayoutParams overlayParams = new android.widget.FrameLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        );
-        container.addView(inputBlockerOverlay, overlayParams);
-        
-        // Set the container as content view
-        setContentView(container);
-        
-        // Initially hide the overlay
-        inputBlockerOverlay.setVisibility(View.GONE);
+        // Ensure the main content is fully opaque
+        binding.mainContent.setAlpha(1.0f);
+        binding.mainContent.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         
         initializeChat();
         setupButtons();
@@ -328,15 +314,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             isInitializing = true;
         }
         
-        // Show the overlay with animation
-        if (inputBlockerOverlay != null) {
-            inputBlockerOverlay.setVisibility(View.VISIBLE);
-            inputBlockerOverlay.animate()
-                .alpha(0.5f)
-                .setDuration(300)
-                .start();
-        }
-        
+        // Remove overlay animation code and directly start services
         initializeServices();
     }
 
@@ -1381,80 +1359,63 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void updateInteractionState() {
-        boolean allServicesReady = llmServiceReady && 
-            (vlmServiceReady || !BuildConfig.FLAVOR.equals("vlm")) && 
-            (asrServiceReady || !hasAudioPermission()) && 
-            (ttsServiceReady || !hasAudioPermission());
+        // Temporarily force all services ready to true
+        boolean allServicesReady = true;  // Removed service state checks
 
         runOnUiThread(() -> {
-            float enabledAlpha = 1.0f;
-            float disabledAlpha = 0.5f;
+            // Enable all input containers and components
+            binding.inputContainer.setEnabled(true);
+            binding.collapsedInput.setEnabled(true);
+            binding.expandedInput.setEnabled(true);
             
-            // Update UI elements based on service state
-            binding.inputContainer.setEnabled(allServicesReady);
-            binding.inputContainer.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            // Enable all input fields with full opacity
+            binding.messageInput.setEnabled(true);
+            binding.messageInput.setFocusable(true);
+            binding.messageInput.setFocusableInTouchMode(true);
+            binding.messageInput.setAlpha(1.0f);
             
-            binding.newConversationButton.setEnabled(allServicesReady);
-            binding.newConversationButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            binding.messageInputExpanded.setEnabled(true);
+            binding.messageInputExpanded.setFocusable(true);
+            binding.messageInputExpanded.setFocusableInTouchMode(true);
+            binding.messageInputExpanded.setAlpha(1.0f);
             
-            binding.historyButton.setEnabled(allServicesReady);
-            binding.historyButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            // Enable all buttons with full opacity
+            binding.newConversationButton.setEnabled(true);
+            binding.newConversationButton.setAlpha(1.0f);
             
-            binding.attachButton.setEnabled(allServicesReady);
-            binding.attachButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
-            binding.attachButtonExpanded.setEnabled(allServicesReady);
-            binding.attachButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            binding.historyButton.setEnabled(true);
+            binding.historyButton.setAlpha(1.0f);
             
-            binding.voiceButton.setEnabled(allServicesReady);
-            binding.voiceButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
-            binding.voiceButtonExpanded.setEnabled(allServicesReady);
-            binding.voiceButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            binding.attachButton.setEnabled(true);
+            binding.attachButton.setAlpha(1.0f);
+            binding.attachButtonExpanded.setEnabled(true);
+            binding.attachButtonExpanded.setAlpha(1.0f);
             
-            binding.sendButton.setEnabled(allServicesReady);
-            binding.sendButton.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
-            binding.sendButtonExpanded.setEnabled(allServicesReady);
-            binding.sendButtonExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            binding.voiceButton.setEnabled(true);
+            binding.voiceButton.setAlpha(1.0f);
+            binding.voiceButtonExpanded.setEnabled(true);
+            binding.voiceButtonExpanded.setAlpha(1.0f);
             
-            binding.messageInput.setEnabled(allServicesReady);
-            binding.messageInput.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
-            binding.messageInputExpanded.setEnabled(allServicesReady);
-            binding.messageInputExpanded.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+            binding.sendButton.setEnabled(true);
+            binding.sendButton.setAlpha(1.0f);
+            binding.sendButtonExpanded.setEnabled(true);
+            binding.sendButtonExpanded.setAlpha(1.0f);
             
-            // Enable history recycler view and its items
+            // Ensure containers remain fully opaque
+            binding.inputContainer.setAlpha(1.0f);
+            binding.toolbar.setAlpha(1.0f);
+            binding.mainContent.setAlpha(1.0f);
+            
+            // Enable history recycler view
             RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
             if (historyRecyclerView != null) {
-                historyRecyclerView.setEnabled(allServicesReady);
-                historyRecyclerView.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
-                // Make sure the adapter is clickable
+                historyRecyclerView.setEnabled(true);
+                historyRecyclerView.setAlpha(1.0f);
                 if (historyAdapter != null) {
                     historyAdapter.notifyDataSetChanged();
                 }
             }
             
-            // Handle overlay based on service state
-            if (inputBlockerOverlay != null) {
-                if (allServicesReady) {
-                    // Fade out and remove the overlay with animation
-                    inputBlockerOverlay.animate()
-                        .alpha(0f)
-                        .setDuration(500)
-                        .withEndAction(() -> {
-                            if (!isFinishing() && inputBlockerOverlay != null) {
-                                ViewGroup parent = (ViewGroup) inputBlockerOverlay.getParent();
-                                if (parent != null) {
-                                    parent.removeView(inputBlockerOverlay);
-                                    inputBlockerOverlay = null;
-                                }
-                            }
-                        })
-                        .start();
-                } else {
-                    // Show overlay if services are not ready
-                    inputBlockerOverlay.setVisibility(View.VISIBLE);
-                    inputBlockerOverlay.setAlpha(0.5f);
-                }
-            }
-
             // Update model name and status
             if (llmService != null) {
                 String modelName = llmService.getModelName();
@@ -1462,11 +1423,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (modelName != null && !modelName.isEmpty()) {
                     String displayText = String.format("%s (%s)", modelName, backend);
                     binding.modelNameText.setText(displayText);
-                    binding.modelNameText.setTextColor(getResources().getColor(
-                        allServicesReady ? R.color.text_primary : R.color.text_secondary, 
-                        getTheme()
-                    ));
-                    binding.modelNameText.setAlpha(allServicesReady ? enabledAlpha : disabledAlpha);
+                    binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
                 } else {
                     binding.modelNameText.setText("Unknown model");
                     binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
@@ -1475,6 +1432,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.modelNameText.setText("Model not available");
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
             }
+            
+            // Force a layout pass to ensure all changes are applied
+            binding.inputContainer.requestLayout();
+            binding.inputContainer.invalidate();
         });
     }
 
