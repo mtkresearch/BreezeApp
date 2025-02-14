@@ -1561,6 +1561,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
             IntroDialog dialog = new IntroDialog(this);
             
+            // Set dialog window properties
+            if (dialog.getWindow() != null) {
+                // Set a semi-transparent dim background
+                dialog.getWindow().setDimAmount(0.5f);
+                // Set the background color
+                dialog.getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(
+                    getResources().getColor(R.color.background, getTheme())
+                ));
+            }
+            
             // Set custom dismiss listener to start initialization
             dialog.setOnFinalButtonClickListener(() -> {
                 // Check for RECORD_AUDIO permission before initializing services
