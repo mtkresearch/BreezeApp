@@ -37,5 +37,17 @@
             android:gravity="start"
             app:layout_constraintTop_toBottomOf="@id/pageTitle" />
 
+        <TextView
+            android:id="@+id/scrollHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|bottom"
+            android:layout_marginBottom="8dp"
+            android:drawableBottom="@drawable/ic_arrow_down"
+            android:text="Scroll for more"
+            android:textSize="12sp"
+            android:alpha="0.7"
+            android:visibility="gone" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView> 
