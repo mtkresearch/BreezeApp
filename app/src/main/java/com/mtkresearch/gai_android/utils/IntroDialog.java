@@ -84,6 +84,15 @@ public class IntroDialog extends Dialog {
         viewPager = findViewById(R.id.viewPager);
         tabLayout = findViewById(R.id.tabLayout);
         btnNext = findViewById(R.id.btnNext);
+
+        // Detect system theme and adjust text colors
+        boolean isDarkTheme = (getContext().getResources().getConfiguration().uiMode 
+            & android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
+            == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+
+        // Find all text views in the dialog layout
+        ViewGroup root = findViewById(android.R.id.content);
+        adjustTextColors(root, isDarkTheme);
         
         // Configure TabLayout gravity and mode
         tabLayout.setTabGravity(TabLayout.GRAVITY_CENTER);
@@ -122,6 +131,22 @@ public class IntroDialog extends Dialog {
         
         updateButtonText();
         setCancelable(false);
+    }
+
+    private void adjustTextColors(View view, boolean isDarkTheme) {
+        if (view instanceof ViewGroup) {
+            ViewGroup viewGroup = (ViewGroup) view;
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                adjustTextColors(viewGroup.getChildAt(i), isDarkTheme);
+            }
+        } else if (view instanceof TextView) {
+            TextView textView = (TextView) view;
+            // Set text color based on theme
+            int textColor = isDarkTheme ? 
+                android.graphics.Color.WHITE : 
+                android.graphics.Color.BLACK;
+            textView.setTextColor(textColor);
+        }
     }
 
     private void updateButtonText() {
@@ -182,6 +207,7 @@ public class IntroDialog extends Dialog {
 
     private static class IntroPagerAdapter extends RecyclerView.Adapter<IntroPagerAdapter.PageViewHolder> {
         private final List<IntroPage> pages;
+        private boolean isDarkTheme;
 
         IntroPagerAdapter(List<IntroPage> pages) {
             this.pages = pages;
@@ -192,7 +218,11 @@ public class IntroDialog extends Dialog {
         public PageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.intro_page_layout, parent, false);
-            return new PageViewHolder(view);
+            // Get the current theme mode
+            isDarkTheme = (parent.getContext().getResources().getConfiguration().uiMode 
+                & android.content.res.Configuration.UI_MODE_NIGHT_MASK) 
+                == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            return new PageViewHolder(view, isDarkTheme);
         }
 
         @Override
@@ -210,12 +240,21 @@ public class IntroDialog extends Dialog {
             private final ImageView icon;
             private final TextView title;
             private final TextView description;
+            private final boolean isDarkTheme;
 
-            PageViewHolder(@NonNull View view) {
+            PageViewHolder(@NonNull View view, boolean isDarkTheme) {
                 super(view);
+                this.isDarkTheme = isDarkTheme;
                 icon = view.findViewById(R.id.pageIcon);
                 title = view.findViewById(R.id.pageTitle);
                 description = view.findViewById(R.id.pageDescription);
+                
+                // Set text colors based on theme
+                int textColor = isDarkTheme ? 
+                    android.graphics.Color.WHITE : 
+                    android.graphics.Color.BLACK;
+                title.setTextColor(textColor);
+                description.setTextColor(textColor);
             }
 
             void bind(IntroPage page) {
