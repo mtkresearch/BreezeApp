@@ -28,13 +28,22 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
     private final List<ChatMessage> messages = new ArrayList<>();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private OnSpeakerClickListener speakerClickListener;
+    private OnMessageLongClickListener messageLongClickListener;
 
     public interface OnSpeakerClickListener {
         void onSpeakerClick(String messageText);
     }
 
+    public interface OnMessageLongClickListener {
+        boolean onMessageLongClick(ChatMessage message, int position);
+    }
+
     public void setSpeakerClickListener(OnSpeakerClickListener listener) {
         this.speakerClickListener = listener;
+    }
+
+    public void setOnMessageLongClickListener(OnMessageLongClickListener listener) {
+        this.messageLongClickListener = listener;
     }
 
     public void setMessages(List<ChatMessage> newMessages) {
@@ -81,7 +90,20 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         ChatMessage message = messages.get(position);
-        holder.bind(message);
+        
+        // Set text selection mode
+        holder.messageText.setTextIsSelectable(true);
+        
+        // Set long click listener
+        holder.itemView.setOnLongClickListener(v -> {
+            if (messageLongClickListener != null) {
+                return messageLongClickListener.onMessageLongClick(message, position);
+            }
+            return false;
+        });
+
+        // Set the message text
+        holder.messageText.setText(message.getText());
 
         // Get the ConstraintLayout params for the message bubble
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageBubble.getLayoutParams();
