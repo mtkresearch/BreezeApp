@@ -14,7 +14,7 @@ android {
         minSdk = 31
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "release.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -79,6 +79,15 @@ android {
 
     flavorDimensions += "version"
     productFlavors {
+        create("rel") {
+            dimension = "version"
+            applicationIdSuffix = ".release"
+            versionNameSuffix = "-release"
+            resValue("string", "app_name", "Breeze2-demo")
+            buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.release.fileprovider"
+        }
         create("llm") {
             dimension = "version"
             applicationIdSuffix = ".llm"
@@ -188,9 +197,10 @@ tasks.register("switchGitBranch") {
                 (it.contains("Llm") || it.contains("Vlm") || 
                  it.contains("Full") || it.contains("dev") ||
                  it.contains("Mtk") || it.contains("add_warning") ||
-                 it.contains("Cpu")) }
+                 it.contains("Rel") || it.contains("Cpu")) }
             ?.let { task ->
                 when {
+                    task.contains("Rel") -> "release/0.1"
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
                     task.contains("Mtk") -> "mtk"
