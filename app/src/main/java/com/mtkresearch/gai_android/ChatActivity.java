@@ -241,13 +241,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNavigationButton() {
-        binding.historyButton.setOnClickListener(v -> {
+        View.OnClickListener historyClickListener = v -> {
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
                 drawerLayout.closeDrawer(GravityCompat.START);
             } else {
                 drawerLayout.openDrawer(GravityCompat.START);
             }
-        });
+        };
+        binding.historyButton.setOnClickListener(historyClickListener);
+        // Ensure button is initially enabled and clickable
+        binding.historyButton.setEnabled(true);
+        binding.historyButton.setClickable(true);
     }
 
     private void setupAttachmentButton() {
@@ -294,7 +298,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void setupNewConversationButton() {
-        binding.newConversationButton.setOnClickListener(v -> {
+        View.OnClickListener newConversationClickListener = v -> {
             // Save current chat if needed
             saveCurrentChat();
             // Clear current conversation
@@ -303,7 +307,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             historyManager.clearCurrentActiveHistory();
             // Refresh history list to show the newly saved chat
             refreshHistoryList();
-        });
+        };
+        binding.newConversationButton.setOnClickListener(newConversationClickListener);
+        // Ensure button is initially enabled and clickable
+        binding.newConversationButton.setEnabled(true);
+        binding.newConversationButton.setClickable(true);
     }
 
     private void setupInputHandling() {
@@ -1407,12 +1415,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         runOnUiThread(() -> {
             if (isInitializationInProgress) {
-                // During initialization, disable and make transparent all interactive components
+                // During initialization, disable all interactive components
                 binding.inputContainer.setEnabled(false);
                 binding.collapsedInput.setEnabled(false);
                 binding.expandedInput.setEnabled(false);
                 
-                // Disable and make transparent input fields
+                // Disable input fields
                 binding.messageInput.setEnabled(false);
                 binding.messageInput.setFocusable(false);
                 binding.messageInput.setFocusableInTouchMode(false);
@@ -1423,20 +1431,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.messageInputExpanded.setFocusableInTouchMode(false);
                 binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
                 
-                // Disable and make transparent navigation buttons
+                // Disable navigation buttons
                 binding.historyButton.setEnabled(false);
-                binding.historyButton.setFocusable(false);
-                binding.historyButton.setFocusableInTouchMode(false);
-                binding.historyButton.setAlpha(DISABLED_ALPHA);
                 binding.historyButton.setClickable(false);
+                binding.historyButton.setAlpha(DISABLED_ALPHA);
                 
                 binding.newConversationButton.setEnabled(false);
-                binding.newConversationButton.setFocusable(false);
-                binding.newConversationButton.setFocusableInTouchMode(false);
-                binding.newConversationButton.setAlpha(DISABLED_ALPHA);
                 binding.newConversationButton.setClickable(false);
+                binding.newConversationButton.setAlpha(DISABLED_ALPHA);
                 
-                // Disable and make transparent other buttons
+                // Disable other buttons
                 binding.attachButton.setEnabled(false);
                 binding.attachButton.setAlpha(DISABLED_ALPHA);
                 binding.attachButtonExpanded.setEnabled(false);
@@ -1478,17 +1482,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.messageInputExpanded.setFocusableInTouchMode(true);
                 binding.messageInputExpanded.setAlpha(ENABLED_ALPHA);
                 
+                // Enable navigation buttons
                 binding.historyButton.setEnabled(true);
-                binding.historyButton.setFocusable(true);
-                binding.historyButton.setFocusableInTouchMode(true);
-                binding.historyButton.setAlpha(ENABLED_ALPHA);
                 binding.historyButton.setClickable(true);
+                binding.historyButton.setAlpha(ENABLED_ALPHA);
                 
                 binding.newConversationButton.setEnabled(true);
-                binding.newConversationButton.setFocusable(true);
-                binding.newConversationButton.setFocusableInTouchMode(true);
-                binding.newConversationButton.setAlpha(ENABLED_ALPHA);
                 binding.newConversationButton.setClickable(true);
+                binding.newConversationButton.setAlpha(ENABLED_ALPHA);
                 
                 binding.attachButton.setEnabled(true);
                 binding.attachButton.setAlpha(ENABLED_ALPHA);
