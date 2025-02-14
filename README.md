@@ -1,10 +1,19 @@
-# Android AI Assistant
+# Overview
 
-An open-source Android chatbot that integrates multiple AI capabilities including:
-- Large Language Models (LLM)
-- Vision Language Models (VLM) 
-- Automatic Speech Recognition (ASR)
-- Text-to-Speech Synthesis (TTS)
+This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
+
+
+## Project Vision
+This app serves as an entry point for everyone, especially those not familiar with coding, to experience AI features directly on their phones. As MediaTek Research continues to develop and provide powerful AI models with various capabilities, this app will act as a carrier to showcase these models and make them accessible to users.
+
+## Community Focus
+As a kick-off project, we acknowledge that there might be stability issues and areas for improvement. We welcome developers and enthusiasts to join us in enhancing this project. Feel free to:
+- Report issues or bugs
+- Suggest new features
+- Submit pull requests
+- Share your experience and feedback
+
+Together, let's build a privacy-focused AI experience that everyone can use!
 
 ## Features
 
@@ -13,15 +22,15 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 - 📸 Image understanding capabilities
 - 🔄 Multiple backend support for each component:
   - LLM/VLM: Executorch framework, MediaTek backend (Future)
-  - ASR: Sherpa-ONNX, Android default, MediaTek backend (Future)
-  - TTS: Sherpa-TTS, Android default, MediaTek backend (Future)
+  - ASR: Sherpa-ONNX, MediaTek backend (Future)
+  - TTS: Sherpa-TTS, MediaTek backend (Future)
 
     | Model Type | Local CPU | MediaTek NPU | Default |
     |:---------:|:---------:|:-------:|:--------:|
-    | LLM       |     ✅     |    ✅    |    ❌    |
-    | VLM       |     🚧     |    ❌    |    ❌    |
-    | ASR       |     ✅     |    ❌    |    ✅    |
-    | TTS       |     ✅     |    ❌    |    ✅    |
+    | LLM       |     ✅     |    ✅    |    -    |
+    | VLM       |     🚧     |    ❌    |    -    |
+    | ASR       |     🚧     |    ❌    |    -    |
+    | TTS       |     ✅     |    ❌    |    -    |
 🚨 Note: VLM is currently not supported due to the lack of support for image processing in Executorch. 
 
 ## Prerequisites
@@ -35,7 +44,7 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/muxi1998/GAI-android.git
+    git clone https://github.com/mtkresearch/Breeze2-android-demo.git
     ```
 
 2. Download required model files:
@@ -63,7 +72,8 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
         ```
 
     - VLM models:\
-        a. LLaVA-1.5-7B
+        Coming soon...
+        <!-- a. LLaVA-1.5-7B
         ```bash
         # Download from Hugging Face
         git lfs install
@@ -72,7 +82,7 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
         # Push to Android device
         adb push llava-1.5-7b-hf-mobile/llava.pte /data/local/tmp/llava/
         adb push llava-1.5-7b-hf-mobile/tokenizer.bin /data/local/tmp/llava/
-        ```
+        ``` -->
     - ASR models (place in `app/src/main/assets/`):
         ```bash
         wget https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/
@@ -83,55 +93,13 @@ An open-source Android chatbot that integrates multiple AI capabilities includin
         ```
     - TTS models (place in `app/src/main/assets/`):
         ```bash
-        wget https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-melo-tts-zh_en.tar.bz2
-        tar xvf vits-melo-tts-zh_en.tar.bz2
-        rm vits-melo-tts-zh_en.tar.bz2
-        ```
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
 
 3. Build the project in Android Studio
 
-## Project Structure
 
-```
-app
-├── build
-├── libs
-│   ├── arm64-v8a
-│   │   ├── libllava_runner.so
-│   │   ├── libonnxruntime.so
-│   │   └── libsherpa-onnx-jni.so
-│   └── executorch.aar
-└── src
-    └── main
-        ├── AndroidManifest.xml
-        ├── assets
-        │   ├── sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20
-        │   └── vits-melo-tts-zh_en
-        ├── cpp
-        │   ├── CMakeLists.txt
-        │   └── mtk_llm_jni.cpp
-        ├── java
-        │   └── com
-        │       ├── executorch
-        │       ├── k2fsa
-        │       │   └── sherpa
-        │       │       └── onnx
-        │       └── mtkresearch
-        │           └── gai_android
-        │               ├── AudioChatActivity.java
-        │               └── utils
-        │                   ├── AudioListAdapter.java
-        │                   ├── AudioRecorder.java
-        │                   ├── AudioWaveView.java
-        │                   ├── ChatMediaHandler.java
-        │                   ├── ChatMessage.java
-        │                   ├── ChatMessageAdapter.java
-        │                   ├── ChatUIStateHandler.java
-        │                   ├── FileUtils.java
-        │                   ├── NativeLibraryLoader.java
-        │                   └── UiUtils.java
-        └── res
-```
 
 ## Architecture
 
