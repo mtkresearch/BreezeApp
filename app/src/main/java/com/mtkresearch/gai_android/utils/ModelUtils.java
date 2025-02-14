@@ -56,7 +56,7 @@ public class ModelUtils {
         }
         switch (backend.toLowerCase()) {
             case "mtk":
-                return "mtk";
+                return "NPU";
             case "localcpu":
                 return "CPU";
             case "none":

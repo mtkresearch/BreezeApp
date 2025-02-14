@@ -87,6 +87,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final int CAPTURE_IMAGE_REQUEST = 2;
     private static final int PICK_FILE_REQUEST = 3;
 
+    // Constants for alpha values
+    private static final float ENABLED_ALPHA = 1.0f;
+    private static final float DISABLED_ALPHA = 0.3f;
+
     // View Binding
     private ActivityChatBinding binding;
 
@@ -313,6 +317,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             if (isInitializing) return;
             isInitializing = true;
         }
+        
+        // Update UI state immediately when initialization starts
+        updateInteractionState();
         
         // Remove overlay animation code and directly start services
         initializeServices();
@@ -932,7 +939,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             String modelName = llmService.getModelName();
                             String backend = llmService.getCurrentBackend();
                             if (modelName != null && !modelName.isEmpty()) {
-                                String displayText = String.format("%s (%s)", modelName, backend);
+                                String displayText = String.format("%s (%s)", modelName, ModelUtils.getBackendDisplayName(backend));
                                 binding.modelNameText.setText(displayText);
                                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
                             } else {
@@ -1392,78 +1399,138 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void updateInteractionState() {
-        // Temporarily force all services ready to true
-        boolean allServicesReady = true;  // Removed service state checks
+        // Check initialization state
+        boolean isInitializationInProgress;
+        synchronized (initLock) {
+            isInitializationInProgress = isInitializing;
+        }
 
         runOnUiThread(() -> {
-            // Enable all input containers and components
-            binding.inputContainer.setEnabled(true);
-            binding.collapsedInput.setEnabled(true);
-            binding.expandedInput.setEnabled(true);
-            
-            // Enable all input fields with full opacity
-            binding.messageInput.setEnabled(true);
-            binding.messageInput.setFocusable(true);
-            binding.messageInput.setFocusableInTouchMode(true);
-            binding.messageInput.setAlpha(1.0f);
-            
-            binding.messageInputExpanded.setEnabled(true);
-            binding.messageInputExpanded.setFocusable(true);
-            binding.messageInputExpanded.setFocusableInTouchMode(true);
-            binding.messageInputExpanded.setAlpha(1.0f);
-            
-            // Enable all buttons with full opacity
-            binding.newConversationButton.setEnabled(true);
-            binding.newConversationButton.setAlpha(1.0f);
-            
-            binding.historyButton.setEnabled(true);
-            binding.historyButton.setAlpha(1.0f);
-            
-            binding.attachButton.setEnabled(true);
-            binding.attachButton.setAlpha(1.0f);
-            binding.attachButtonExpanded.setEnabled(true);
-            binding.attachButtonExpanded.setAlpha(1.0f);
-            
-            binding.voiceButton.setEnabled(true);
-            binding.voiceButton.setAlpha(1.0f);
-            binding.voiceButtonExpanded.setEnabled(true);
-            binding.voiceButtonExpanded.setAlpha(1.0f);
-            
-            binding.sendButton.setEnabled(true);
-            binding.sendButton.setAlpha(1.0f);
-            binding.sendButtonExpanded.setEnabled(true);
-            binding.sendButtonExpanded.setAlpha(1.0f);
-            
-            // Ensure containers remain fully opaque
-            binding.inputContainer.setAlpha(1.0f);
-            binding.toolbar.setAlpha(1.0f);
-            binding.mainContent.setAlpha(1.0f);
-            
-            // Enable history recycler view
-            RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
-            if (historyRecyclerView != null) {
-                historyRecyclerView.setEnabled(true);
-                historyRecyclerView.setAlpha(1.0f);
-                if (historyAdapter != null) {
-                    historyAdapter.notifyDataSetChanged();
+            if (isInitializationInProgress) {
+                // During initialization, disable and make transparent all interactive components
+                binding.inputContainer.setEnabled(false);
+                binding.collapsedInput.setEnabled(false);
+                binding.expandedInput.setEnabled(false);
+                
+                // Disable and make transparent input fields
+                binding.messageInput.setEnabled(false);
+                binding.messageInput.setFocusable(false);
+                binding.messageInput.setFocusableInTouchMode(false);
+                binding.messageInput.setAlpha(DISABLED_ALPHA);
+                
+                binding.messageInputExpanded.setEnabled(false);
+                binding.messageInputExpanded.setFocusable(false);
+                binding.messageInputExpanded.setFocusableInTouchMode(false);
+                binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
+                
+                // Disable and make transparent navigation buttons
+                binding.historyButton.setEnabled(false);
+                binding.historyButton.setFocusable(false);
+                binding.historyButton.setFocusableInTouchMode(false);
+                binding.historyButton.setAlpha(DISABLED_ALPHA);
+                binding.historyButton.setClickable(false);
+                
+                binding.newConversationButton.setEnabled(false);
+                binding.newConversationButton.setFocusable(false);
+                binding.newConversationButton.setFocusableInTouchMode(false);
+                binding.newConversationButton.setAlpha(DISABLED_ALPHA);
+                binding.newConversationButton.setClickable(false);
+                
+                // Disable and make transparent other buttons
+                binding.attachButton.setEnabled(false);
+                binding.attachButton.setAlpha(DISABLED_ALPHA);
+                binding.attachButtonExpanded.setEnabled(false);
+                binding.attachButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                binding.voiceButton.setEnabled(false);
+                binding.voiceButton.setAlpha(DISABLED_ALPHA);
+                binding.voiceButtonExpanded.setEnabled(false);
+                binding.voiceButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                binding.sendButton.setEnabled(false);
+                binding.sendButton.setAlpha(DISABLED_ALPHA);
+                binding.sendButtonExpanded.setEnabled(false);
+                binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
+                
+                // Disable history recycler view
+                RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+                if (historyRecyclerView != null) {
+                    historyRecyclerView.setEnabled(false);
+                    historyRecyclerView.setAlpha(DISABLED_ALPHA);
                 }
-            }
-            
-            // Update model name and status
-            if (llmService != null) {
-                String modelName = llmService.getModelName();
-                String backend = llmService.getCurrentBackend();
-                if (modelName != null && !modelName.isEmpty()) {
-                    String displayText = String.format("%s (%s)", modelName, backend);
-                    binding.modelNameText.setText(displayText);
-                    binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+                
+                // Show initialization state in model name
+                binding.modelNameText.setText("Initializing...");
+                binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+            } else {
+                // After initialization, enable all components
+                binding.inputContainer.setEnabled(true);
+                binding.collapsedInput.setEnabled(true);
+                binding.expandedInput.setEnabled(true);
+                
+                binding.messageInput.setEnabled(true);
+                binding.messageInput.setFocusable(true);
+                binding.messageInput.setFocusableInTouchMode(true);
+                binding.messageInput.setAlpha(ENABLED_ALPHA);
+                
+                binding.messageInputExpanded.setEnabled(true);
+                binding.messageInputExpanded.setFocusable(true);
+                binding.messageInputExpanded.setFocusableInTouchMode(true);
+                binding.messageInputExpanded.setAlpha(ENABLED_ALPHA);
+                
+                binding.historyButton.setEnabled(true);
+                binding.historyButton.setFocusable(true);
+                binding.historyButton.setFocusableInTouchMode(true);
+                binding.historyButton.setAlpha(ENABLED_ALPHA);
+                binding.historyButton.setClickable(true);
+                
+                binding.newConversationButton.setEnabled(true);
+                binding.newConversationButton.setFocusable(true);
+                binding.newConversationButton.setFocusableInTouchMode(true);
+                binding.newConversationButton.setAlpha(ENABLED_ALPHA);
+                binding.newConversationButton.setClickable(true);
+                
+                binding.attachButton.setEnabled(true);
+                binding.attachButton.setAlpha(ENABLED_ALPHA);
+                binding.attachButtonExpanded.setEnabled(true);
+                binding.attachButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                binding.voiceButton.setEnabled(true);
+                binding.voiceButton.setAlpha(ENABLED_ALPHA);
+                binding.voiceButtonExpanded.setEnabled(true);
+                binding.voiceButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                binding.sendButton.setEnabled(true);
+                binding.sendButton.setAlpha(ENABLED_ALPHA);
+                binding.sendButtonExpanded.setEnabled(true);
+                binding.sendButtonExpanded.setAlpha(ENABLED_ALPHA);
+                
+                // Enable history recycler view
+                RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+                if (historyRecyclerView != null) {
+                    historyRecyclerView.setEnabled(true);
+                    historyRecyclerView.setAlpha(ENABLED_ALPHA);
+                    if (historyAdapter != null) {
+                        historyAdapter.notifyDataSetChanged();
+                    }
+                }
+                
+                // Update model name and status
+                if (llmService != null) {
+                    String modelName = llmService.getModelName();
+                    String backend = llmService.getCurrentBackend();
+                    if (modelName != null && !modelName.isEmpty()) {
+                        String displayText = String.format("%s (%s)", modelName, ModelUtils.getBackendDisplayName(backend));
+                        binding.modelNameText.setText(displayText);
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
+                    } else {
+                        binding.modelNameText.setText("Unknown model");
+                        binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
+                    }
                 } else {
-                    binding.modelNameText.setText("Unknown model");
+                    binding.modelNameText.setText("Model not available");
                     binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
                 }
-            } else {
-                binding.modelNameText.setText("Model not available");
-                binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
             }
             
             // Force a layout pass to ensure all changes are applied
