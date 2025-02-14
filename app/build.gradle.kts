@@ -97,6 +97,15 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.vlm.fileprovider"
         }
+        create("mtk") {
+            dimension = "version"
+            applicationIdSuffix = ".mtk"
+            versionNameSuffix = "-mtk"
+            resValue("string", "app_name", "GAI-MTK")
+            buildConfigField("String", "GIT_BRANCH", "\"mtk\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.mtk.fileprovider"
+        }
         create("full") {
             dimension = "version"
             applicationIdSuffix = ".full"
@@ -106,14 +115,32 @@ android {
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.gai_android.full.fileprovider"
         }
-        create("add_setting") {
+        create("dev") {
             dimension = "version"
-            applicationIdSuffix = ".add_setting"
-            versionNameSuffix = "-add_setting"
-            resValue("string", "app_name", "GAI-add_setting")
-            buildConfigField("String", "GIT_BRANCH", "\"add_setting\"")
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            resValue("string", "app_name", "GAI-dev")
+            buildConfigField("String", "GIT_BRANCH", "\"dev\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.add_setting.fileprovider"
+                "com.mtkresearch.gai_android.dev.fileprovider"
+        }
+        create("cpu") {
+            dimension = "version"
+            applicationIdSuffix = ".cpu"
+            versionNameSuffix = "-cpu"
+            resValue("string", "app_name", "GAI-CPU")
+            buildConfigField("String", "GIT_BRANCH", "\"cpu\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.cpu.fileprovider"
+        }
+        create("add_warning") {
+            dimension = "version"
+            applicationIdSuffix = ".add_warning"
+            versionNameSuffix = "-add_warning"
+            resValue("string", "app_name", "GAI-Warning")
+            buildConfigField("String", "GIT_BRANCH", "\"add_warning\"")
+            manifestPlaceholders["file_provider_authority"] = 
+                "com.mtkresearch.gai_android.add_warning.fileprovider"
         }
     }
 
@@ -159,13 +186,18 @@ tasks.register("switchGitBranch") {
             .flatMap { it.args }
             .firstOrNull { it.contains("assemble") && 
                 (it.contains("Llm") || it.contains("Vlm") || 
-                 it.contains("Full") || it.contains("add_setting")) }
+                 it.contains("Full") || it.contains("dev") ||
+                 it.contains("Mtk") || it.contains("add_warning") ||
+                 it.contains("Cpu")) }
             ?.let { task ->
                 when {
                     task.contains("Llm") -> "llm_cpu"
                     task.contains("Vlm") -> "vlm_cpu"
+                    task.contains("Mtk") -> "mtk"
                     task.contains("Full") -> "main"
-                    task.contains("add_setting") -> "add_setting"
+                    task.contains("dev") -> "dev"
+                    task.contains("Cpu") -> "cpu"
+                    task.contains("add_warning") -> "add_warning"
                     else -> null
                 }
             }

@@ -24,38 +24,34 @@
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.GAIAndroid"
         tools:targetApi="31">
 
         <uses-native-library
-            android:name="libandroid.so"
-            android:required="false"/>
-        <uses-native-library
-            android:name="libneuronsdk_adapter.mtk.so"
-            android:required="false"/>
-        <uses-native-library
             android:name="libapuwareutils_v2.mtk.so"
-            android:required="false"/>
-        <uses-native-library
-            android:name="libapuwareutils.mtk.so"
-            android:required="false"/>
-        <uses-native-library
-            android:name="libcmdl_ndk.mtk.vndk.so"
-            android:required="false"/>
-        <uses-native-library
-            android:name="libcmdl_ndk.mtk.so"
-            android:required="false"/>
+            android:required="false" />
+
         <uses-native-library
             android:name="libapuwareapusys_v2.mtk.so"
-            android:required="false"/>
+            android:required="false" />
+
         <uses-native-library
             android:name="libnir_neon_driver_ndk.mtk.so"
-            android:required="false"/>
+            android:required="false" />
+
         <uses-native-library
             android:name="libnir_neon_driver_ndk.mtk.vndk.so"
-            android:required="false"/>
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.vndk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.so"
+            android:required="false" />
 
         <activity
             android:name=".ChatActivity"

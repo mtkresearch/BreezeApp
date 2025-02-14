@@ -100,7 +100,12 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
                     toggleSelection(history.getId());
                     ((HistoryViewHolder) holder).checkBox.setChecked(selectedHistories.contains(history.getId()));
                 } else if (listener != null) {
-                    listener.onHistoryClick(history);
+                    // Add click feedback
+                    v.setPressed(true);
+                    v.postDelayed(() -> {
+                        v.setPressed(false);
+                        listener.onHistoryClick(history);
+                    }, 100);
                 }
             });
 
@@ -108,6 +113,11 @@ public class ChatHistoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             ((HistoryViewHolder) holder).checkBox.setOnClickListener(v -> {
                 toggleSelection(history.getId());
             });
+            
+            // Make sure the item is clickable and focusable
+            holder.itemView.setClickable(true);
+            holder.itemView.setFocusable(true);
+            holder.itemView.setEnabled(true);
         }
     }
 

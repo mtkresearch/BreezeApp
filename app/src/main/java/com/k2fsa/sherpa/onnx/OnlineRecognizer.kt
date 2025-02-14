@@ -141,6 +141,14 @@ class OnlineRecognizer(
     private external fun isReady(ptr: Long, streamPtr: Long): Boolean
     private external fun getResult(ptr: Long, streamPtr: Long): Array<Any>
 
+    @Suppress("UNCHECKED_CAST")
+    private fun getStringArrayFromObject(obj: Any): Array<String> {
+        return when (obj) {
+            is Array<*> -> obj.filterIsInstance<String>().toTypedArray()
+            else -> emptyArray()
+        }
+    }
+
     companion object {
         init {
             System.loadLibrary("sherpa-onnx-jni")
