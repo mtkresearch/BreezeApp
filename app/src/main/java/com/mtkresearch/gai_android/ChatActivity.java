@@ -324,26 +324,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
             
             try {
-                // Initialize services sequentially instead of parallel to reduce memory pressure
+                // Initialize each service independently
                 initializeLLMService();
                 
-                // Only initialize other services if LLM is successful
-                if (llmServiceReady) {
-                    if (BuildConfig.FLAVOR.equals("vlm")) {
-                        initializeVLMService();
-                    }
-                    
-                    if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) 
-                        == PackageManager.PERMISSION_GRANTED) {
-                        initializeASRService();
-                        initializeTTSService();
-                    }
+                // Initialize ASR and TTS if audio permission is granted
+                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    initializeASRService();
+                    initializeTTSService();
                 }
                 
                 // Update UI on main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!isFinishing()) {
-                        // Only update interaction state, let it handle the overlay
                         updateInteractionState();
                     }
                 });
@@ -355,7 +347,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         Toast.makeText(ChatActivity.this, 
                             "Error initializing services: " + e.getMessage(), 
                             Toast.LENGTH_SHORT).show();
-                        // Only update interaction state, let it handle the overlay
                         updateInteractionState();
                     }
                 });
@@ -432,34 +423,56 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void initializeASRService() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
+        Log.d(TAG, "Starting ASR service initialization...");
         
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 Intent asrIntent = new Intent(this, ASREngineService.class);
                 startService(asrIntent);
-                bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE);
+                if (!bindService(asrIntent, asrConnection, Context.BIND_AUTO_CREATE)) {
+                    Log.e(TAG, "Failed to bind ASR service");
+                    asrServiceReady = false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding ASR service", e);
+                asrServiceReady = false;
             } finally {
                 latch.countDown();
             }
         });
         
-        latch.await(5, TimeUnit.SECONDS);
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+            Log.e(TAG, "ASR service initialization timed out");
+            asrServiceReady = false;
+            throw new TimeoutException("ASR service initialization timed out");
+        }
     }
 
     private void initializeTTSService() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
+        Log.d(TAG, "Starting TTS service initialization...");
         
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
                 Intent ttsIntent = new Intent(this, TTSEngineService.class);
                 startService(ttsIntent);
-                bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE);
+                if (!bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
+                    Log.e(TAG, "Failed to bind TTS service");
+                    ttsServiceReady = false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error binding TTS service", e);
+                ttsServiceReady = false;
             } finally {
                 latch.countDown();
             }
         });
         
-        latch.await(5, TimeUnit.SECONDS);
+        if (!latch.await(5, TimeUnit.SECONDS)) {
+            Log.e(TAG, "TTS service initialization timed out");
+            ttsServiceReady = false;
+            throw new TimeoutException("TTS service initialization timed out");
+        }
     }
 
     private void handleSendAction() {
@@ -925,15 +938,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             } else {
                                 binding.modelNameText.setText("Unknown model");
                             }
+                            updateInteractionState();
                         });
                     } else {
                         runOnUiThread(() -> {
                             binding.modelNameText.setText("Model error");
                             binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
                             Toast.makeText(ChatActivity.this, "Failed to initialize model", Toast.LENGTH_SHORT).show();
+                            updateInteractionState();
                         });
                     }
-                    updateInteractionState();
                 }).exceptionally(throwable -> {
                     Log.e(TAG, "Error initializing model", throwable);
                     llmServiceReady = false;
@@ -980,17 +994,32 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private final ServiceConnection asrConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "ASR service connected");
             asrService = ((ASREngineService.LocalBinder) service).getService();
             if (asrService != null) {
                 asrService.initialize().thenAccept(success -> {
                     asrServiceReady = success;
+                    Log.d(TAG, "ASR initialization " + (success ? "successful" : "failed"));
+                    if (!success) {
+                        runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                            "ASR initialization failed", Toast.LENGTH_SHORT).show());
+                    }
                     updateInteractionState();
+                }).exceptionally(throwable -> {
+                    Log.e(TAG, "Error initializing ASR", throwable);
+                    asrServiceReady = false;
+                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
+                        "Error initializing ASR: " + throwable.getMessage(), 
+                        Toast.LENGTH_SHORT).show());
+                    updateInteractionState();
+                    return null;
                 });
             }
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "ASR service disconnected");
             asrService = null;
             asrServiceReady = false;
             updateInteractionState();
@@ -1000,6 +1029,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private final ServiceConnection ttsConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "TTS service connected");
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
                 runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
@@ -1010,6 +1040,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         ttsService.initialize()
                             .thenAccept(success -> {
                                 ttsServiceReady = success;
+                                Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
                                 if (success) {
                                     runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
                                         "Text-to-speech ready", Toast.LENGTH_SHORT).show());
@@ -1024,7 +1055,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 ttsServiceReady = false;
                                 runOnUiThread(() -> {
                                     Toast.makeText(ChatActivity.this, 
-                                        "Error initializing text-to-speech", Toast.LENGTH_SHORT).show();
+                                        "Error initializing text-to-speech: " + throwable.getMessage(), 
+                                        Toast.LENGTH_SHORT).show();
                                     updateInteractionState();
                                 });
                                 return null;
@@ -1040,6 +1072,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "TTS service disconnected");
             ttsService = null;
             ttsServiceReady = false;
             updateInteractionState();
