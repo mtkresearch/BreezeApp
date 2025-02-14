@@ -4,6 +4,8 @@ import android.app.ActivityManager;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
+import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,8 +54,15 @@ public class IntroDialog extends Dialog {
             new IntroPage(
                 R.drawable.ic_warning,
                 "Demo Version Warning",
-                "This is a demonstration version of the application. Stability issues are currently being addressed. " +
-                "Please be aware that you may encounter unexpected behavior or crashes."
+                "This is a community-driven project aimed at bringing AI capabilities directly to your phone, " +
+                "allowing you to experience <b>AI features completely offline</b> without privacy concerns." +
+                "<br/><br/>" +
+                "As a kick-off project, we welcome developers and enthusiasts to join us in improving this app. " +
+                "You may encounter some stability issues as we're continuously enhancing the experience." +
+                "<br/><br/>" +
+                "Feel free to contribute, raise issues, or submit PRs on our GitHub repository:" +
+                "<br/>" +
+                "<a href=\"https://github.com/mtkresearch/Breeze2-android-demo\">Breeze2-android-demo</a>"
             ),
             new IntroPage(
                 R.drawable.ic_features,
@@ -229,18 +238,17 @@ public class IntroDialog extends Dialog {
     }
 
     private String buildFeaturesDescription() {
-        return "• LLM (Large Language Model):\n" +
-               "  - Local CPU and MTK backend support\n" +
-               "  - Streaming response generation\n\n" +
-               "• VLM (Vision Language Model):\n" +
-               "  - Image understanding and description\n" +
-               "  - Visual question answering\n\n" +
-               "• ASR (Automatic Speech Recognition):\n" +
-               "  - Real-time speech-to-text\n" +
-               "  - Multiple language support\n\n" +
-               "• TTS (Text-to-Speech):\n" +
-               "  - Natural voice synthesis\n" +
-               "  - Adjustable speech parameters";
+        return "• Local LLM Chat:<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Privacy-first: all data stays on device<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Text-to-Speech support" +
+               "<br/><br/>" +
+               "• Future Features (Coming Soon):<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>" +
+               "&nbsp;&nbsp;&nbsp;- Voice input support (ASR)" +
+               "<br/><br/>" +
+               "Join us in building a privacy-focused AI experience!";
     }
 
     private String buildRequirementsDescription() {
@@ -274,31 +282,31 @@ public class IntroDialog extends Dialog {
         
         StringBuilder warningMessages = new StringBuilder();
         if (totalRamGB < MIN_RAM_GB) {
-            warningMessages.append("⚠️ WARNING: Your device does not meet the minimum RAM requirement.\n");
+            warningMessages.append("⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>");
         }
         if (!modelExists) {
-            warningMessages.append("⚠️ WARNING: Required model file '" + AppConstants.REQUIRED_MODEL_FILE + "' is missing.\n");
+            warningMessages.append("⚠️ WARNING: Required model file '" + AppConstants.REQUIRED_MODEL_FILE + "' is missing.<br/>");
         }
         if (availableGB < MIN_STORAGE_GB) {
-            warningMessages.append("⚠️ WARNING: Insufficient storage space available (" + availableGB + "GB < " + MIN_STORAGE_GB + "GB required).\n");
+            warningMessages.append("⚠️ WARNING: Insufficient storage space available (" + availableGB + "GB < " + MIN_STORAGE_GB + "GB required).<br/>");
         }
         if (warningMessages.length() > 0) {
-            warningMessages.append("The application may not function properly.\n");
+            warningMessages.append("The application may not function properly.<br/>");
         }
         
-        return "• RAM Memory:\n" +
-               "  Required: " + MIN_RAM_GB + "GB+\n" +
-               "  Your Device: " + totalRamGB + "GB\n" +
-               "  Status: " + ramStatus + "\n\n" +
-               "• Model Files:\n" +
-               "  Location: /data/local/tmp/llama/\n" +
-               "  Required: " + AppConstants.REQUIRED_MODEL_FILE + "\n" +
-               "  Status: " + (modelExists ? "✅ Model Found" : "⛔️ Model Missing") + "\n\n" +
-               "• Storage Space:\n" +
-               "  Required: " + MIN_STORAGE_GB + "GB+ free space\n" +
-               "  Available: " + availableGB + "GB\n" +
-               "  Status: " + storageStatus + "\n\n" +
-               (warningMessages.length() > 0 ? warningMessages.toString() + "\n" : "") +
+        return "• RAM Memory:<br/>" +
+               "&nbsp;&nbsp;&nbsp;Required: " + MIN_RAM_GB + "GB+<br/>" +
+               "&nbsp;&nbsp;&nbsp;Your Device: " + totalRamGB + "GB<br/>" +
+               "&nbsp;&nbsp;&nbsp;Status: " + ramStatus + "<br/><br/>" +
+               "• Model Files:<br/>" +
+               "&nbsp;&nbsp;&nbsp;Location: /data/local/tmp/llama/<br/>" +
+               "&nbsp;&nbsp;&nbsp;Required: " + AppConstants.REQUIRED_MODEL_FILE + "<br/>" +
+               "&nbsp;&nbsp;&nbsp;Status: " + (modelExists ? "✅ Model Found" : "⛔️ Model Missing") + "<br/><br/>" +
+               "• Storage Space:<br/>" +
+               "&nbsp;&nbsp;&nbsp;Required: " + MIN_STORAGE_GB + "GB+ free space<br/>" +
+               "&nbsp;&nbsp;&nbsp;Available: " + availableGB + "GB<br/>" +
+               "&nbsp;&nbsp;&nbsp;Status: " + storageStatus + "<br/><br/>" +
+               (warningMessages.length() > 0 ? warningMessages.toString() + "<br/>" : "") +
                "Please ensure all requirements are met for optimal performance.";
     }
 
@@ -350,6 +358,7 @@ public class IntroDialog extends Dialog {
             private final TextView title;
             private final TextView description;
             private final boolean isDarkTheme;
+            private TextView scrollHint;
 
             PageViewHolder(@NonNull View view, boolean isDarkTheme) {
                 super(view);
@@ -357,6 +366,7 @@ public class IntroDialog extends Dialog {
                 icon = view.findViewById(R.id.pageIcon);
                 title = view.findViewById(R.id.pageTitle);
                 description = view.findViewById(R.id.pageDescription);
+                scrollHint = view.findViewById(R.id.scrollHint);
                 
                 // Set text colors based on theme
                 int textColor = isDarkTheme ? 
@@ -364,12 +374,39 @@ public class IntroDialog extends Dialog {
                     android.graphics.Color.BLACK;
                 title.setTextColor(textColor);
                 description.setTextColor(textColor);
+                if (scrollHint != null) {
+                    scrollHint.setTextColor(textColor);
+                }
+                
+                // Make links clickable
+                description.setMovementMethod(LinkMovementMethod.getInstance());
+                
+                // Add scroll listener to show/hide scroll hint
+                description.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+                    if (scrollHint != null) {
+                        boolean isScrollable = description.getLayout() != null && 
+                            description.getLayout().getHeight() > description.getHeight();
+                        scrollHint.setVisibility(isScrollable ? View.VISIBLE : View.GONE);
+                    }
+                });
+                
+                // Hide scroll hint when user starts scrolling
+                description.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                    if (scrollHint != null && scrollY > 0) {
+                        scrollHint.setVisibility(View.GONE);
+                    }
+                });
             }
 
             void bind(IntroPage page) {
                 icon.setImageResource(page.iconResId);
                 title.setText(page.title);
-                description.setText(page.description);
+                // Convert HTML to clickable spans
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    description.setText(Html.fromHtml(page.description, Html.FROM_HTML_MODE_LEGACY));
+                } else {
+                    description.setText(Html.fromHtml(page.description));
+                }
             }
         }
     }
