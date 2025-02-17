@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="56dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:background="@drawable/bg_input_container">
+
+    <ImageButton
+        android:id="@+id/cancelRecordingButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_close"
+        android:padding="8dp"
+        android:layout_gravity="center_vertical"/>
+
+    <com.mtkresearch.gai_android.utils.AudioWaveView
+        android:id="@+id/audioWaveView"
+        android:layout_width="0dp"
+        android:layout_height="32dp"
+        android:layout_weight="1"
+        android:layout_marginHorizontal="16dp"
+        android:layout_gravity="center_vertical"/>
+
+    <TextView
+        android:id="@+id/recordingTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0:00"
+        android:textSize="16sp"
+        android:layout_marginEnd="16dp"
+        android:layout_gravity="center_vertical"/>
+
+    <ImageButton
+        android:id="@+id/finishRecordingButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_send_button"
+        android:src="@drawable/ic_check"
+        android:padding="8dp"
+        android:layout_gravity="center_vertical"/>
+</LinearLayout>
