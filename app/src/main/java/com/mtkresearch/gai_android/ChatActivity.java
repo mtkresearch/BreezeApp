@@ -39,6 +39,7 @@ import com.mtkresearch.gai_android.service.TTSEngineService;
 import com.mtkresearch.gai_android.service.VLMEngineService;
 import com.mtkresearch.gai_android.utils.IntroDialog;
 import com.mtkresearch.gai_android.utils.UiUtils;
+import com.mtkresearch.gai_android.utils.AppConstants;
 
 import java.io.IOException;
 import android.content.pm.PackageManager;
@@ -79,17 +80,17 @@ import android.os.Looper;
 import com.mtkresearch.gai_android.utils.ModelUtils;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
-    private static final String TAG = "ChatActivity";
+    private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
 
     // Request codes
-    private static final int PERMISSION_REQUEST_CODE = 123;
-    private static final int PICK_IMAGE_REQUEST = 1;
-    private static final int CAPTURE_IMAGE_REQUEST = 2;
-    private static final int PICK_FILE_REQUEST = 3;
+    private static final int PERMISSION_REQUEST_CODE = AppConstants.PERMISSION_REQUEST_CODE;
+    private static final int PICK_IMAGE_REQUEST = AppConstants.PICK_IMAGE_REQUEST;
+    private static final int CAPTURE_IMAGE_REQUEST = AppConstants.CAPTURE_IMAGE_REQUEST;
+    private static final int PICK_FILE_REQUEST = AppConstants.PICK_FILE_REQUEST;
 
     // Constants for alpha values
-    private static final float ENABLED_ALPHA = 1.0f;
-    private static final float DISABLED_ALPHA = 0.3f;
+    private static final float ENABLED_ALPHA = AppConstants.ENABLED_ALPHA;
+    private static final float DISABLED_ALPHA = AppConstants.DISABLED_ALPHA;
 
     // View Binding
     private ActivityChatBinding binding;
@@ -113,14 +114,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private DrawerLayout drawerLayout;
 
-    private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = 2;
+    private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = AppConstants.CONVERSATION_HISTORY_LOOKBACK;
 
     // Add promptId field at the top of the class
     private int promptId = 0;
 
     private int titleTapCount = 0;
-    private static final int TAPS_TO_SHOW_MAIN = 7;
-    private static final long TAP_TIMEOUT_MS = 3000; // Reset counter after 3 seconds
+    private static final int TAPS_TO_SHOW_MAIN = AppConstants.TAPS_TO_SHOW_MAIN;
+    private static final long TAP_TIMEOUT_MS = AppConstants.TAP_TIMEOUT_MS;
     private long lastTapTime = 0;
 
     // Add these fields at the top of the class with other fields
@@ -136,7 +137,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     // Add new fields for initialization state
     private boolean isInitializing = false;
     private final Object initLock = new Object();
-    private static final int INIT_DELAY_MS = 1000; // Delay before starting heavy initialization
+    private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -333,19 +334,30 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeServices();
     }
 
-    private void initializeServices() {
+        private void initializeServices() {
         // Create a single background thread instead of thread pool to reduce memory usage
         Thread initThread = new Thread(() -> {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
             
             try {
-                // Initialize each service independently
-                initializeLLMService();
+                // Initialize LLM service if enabled
+                if (AppConstants.LLM_ENABLED) {
+                    initializeLLMService();
+                }
                 
-                // Initialize ASR and TTS if audio permission is granted
+                // Initialize VLM service if enabled
+                if (AppConstants.VLM_ENABLED) {
+                    initializeVLMService();
+                }
+                
+                // Initialize ASR and TTS if enabled and audio permission is granted
                 if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-                    initializeASRService();
-                    initializeTTSService();
+                    if (AppConstants.ASR_ENABLED) {
+                        initializeASRService();
+                    }
+                    if (AppConstants.TTS_ENABLED) {
+                        initializeTTSService();
+                    }
                 }
                 
                 // Update UI on main thread
