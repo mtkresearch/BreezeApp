@@ -81,7 +81,7 @@ public class ChatUIStateHandler {
 
     public void updateSendButton(boolean hasContent) {
         int iconRes = isGenerating ? R.drawable.ic_stop : 
-                     (hasContent ? R.drawable.ic_send : R.drawable.ic_audio_wave);
+                     (hasContent || !AppConstants.AUDIO_CHAT_ENABLED ? R.drawable.ic_send : R.drawable.ic_audio_wave);
         binding.sendButton.setImageResource(iconRes);
         binding.sendButtonExpanded.setImageResource(iconRes);
     }
