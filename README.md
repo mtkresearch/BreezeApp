@@ -54,18 +54,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 
 2. Download required model files:
     - LLM models: \
-        a. Llama3.2-3B-Instruct:
-        ```bash
-        # Download from Hugging Face
-        git lfs install
-        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
-        
-        # Push to Android device
-        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
-        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
-        ```
-        
-        b. BreezeTiny:
+        a. BreezeTiny:
         ```bash
         # Download from Hugging Face
         git lfs install
@@ -74,6 +63,16 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         # Push to Android device
         adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
         adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
+        ```
+        b. Llama3.2-3B-Instruct:
+        ```bash
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
+        
+        # Push to Android device
+        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
+        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
 
     - VLM models:\
