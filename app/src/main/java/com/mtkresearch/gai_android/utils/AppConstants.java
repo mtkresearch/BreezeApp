@@ -16,7 +16,7 @@ public class AppConstants {
     public static final boolean LLM_ENABLED = true;  // LLM is essential
     public static final boolean VLM_ENABLED = false; // VLM is experimental
     public static final boolean ASR_ENABLED = false; // ASR requires permission
-    public static final boolean TTS_ENABLED = false;  // TTS is stable
+    public static final boolean TTS_ENABLED = true;  // TTS is stable
 
     // Model Files and Paths
     public static final String REQUIRED_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
