@@ -2,8 +2,11 @@
 
 This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
 
-## Demo Video
-Preparing...
+
+<p align="center">
+  <img src="assets/breeze2_demo_npu.gif" width="300"/>
+</p>
+
 
 ## Project Vision
 This app serves as an entry point for everyone, especially those not familiar with coding, to experience AI features directly on their phones. As MediaTek Research continues to develop and provide powerful AI models with various capabilities, this app will act as a carrier to showcase these models and make them accessible to users.
