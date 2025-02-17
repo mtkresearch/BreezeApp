@@ -40,7 +40,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 
 ## Prerequisites
 
-- Android Studio Ladybug or newer
+- Android Studio Ladybug (2024.2.1 Patch 3) or newer
 - Android SDK 31 or higher
 - NDK 26.1.10909125 or higher
 - CMake 3.10.0 or higher
