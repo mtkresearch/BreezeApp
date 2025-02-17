@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Breeze2-demo</string>
-    <string name="file_provider_authority">${file_provider_authority}</string>
-</resources>
