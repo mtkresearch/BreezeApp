@@ -294,8 +294,21 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Set initial send icon
         binding.sendButton.setBackgroundResource(R.drawable.bg_send_button);
         binding.sendButtonExpanded.setBackgroundResource(R.drawable.bg_send_button);
-        binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
-        binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
+        
+        // Always use send icon when AUDIO_CHAT_ENABLED is false
+        if (!AppConstants.AUDIO_CHAT_ENABLED) {
+            binding.sendButton.setImageResource(R.drawable.ic_send);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+            // Hide voice buttons when audio chat is disabled
+            binding.voiceButton.setVisibility(View.GONE);
+            binding.voiceButtonExpanded.setVisibility(View.GONE);
+        } else {
+            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
+            // Show voice buttons when audio chat is enabled
+            binding.voiceButton.setVisibility(View.VISIBLE);
+            binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
+        }
     }
 
     private void setupNewConversationButton() {
