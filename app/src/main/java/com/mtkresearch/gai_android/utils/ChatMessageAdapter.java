@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import com.mtkresearch.gai_android.R;
+import com.mtkresearch.gai_android.utils.AppConstants;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
     private final Handler handler = new Handler(Looper.getMainLooper());
     private OnSpeakerClickListener speakerClickListener;
     private OnMessageLongClickListener messageLongClickListener;
+    private boolean ttsEnabled = AppConstants.TTS_ENABLED;  // Default to AppConstants value
 
     public interface OnSpeakerClickListener {
         void onSpeakerClick(String messageText);
@@ -44,6 +46,11 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
 
     public void setOnMessageLongClickListener(OnMessageLongClickListener listener) {
         this.messageLongClickListener = listener;
+    }
+
+    public void setTTSEnabled(boolean enabled) {
+        this.ttsEnabled = enabled;
+        notifyDataSetChanged();  // Refresh all items to update speaker icon visibility
     }
 
     public void setMessages(List<ChatMessage> newMessages) {
@@ -116,6 +123,20 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
 
         holder.messageBubble.setLayoutParams(params);
         setupImageAndSpeakerButtons(holder, message);
+
+        // Show/hide speaker icon based on TTS enabled state
+        if (holder.speakerIcon != null) {
+            if (!message.isUser() && ttsEnabled) {
+                holder.speakerIcon.setVisibility(View.VISIBLE);
+                holder.speakerIcon.setOnClickListener(v -> {
+                    if (speakerClickListener != null) {
+                        speakerClickListener.onSpeakerClick(message.getText());
+                    }
+                });
+            } else {
+                holder.speakerIcon.setVisibility(View.GONE);
+            }
+        }
     }
 
     private void setupUserMessage(MessageViewHolder holder, ConstraintLayout.LayoutParams params, ChatMessage message) {
@@ -190,6 +211,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         private final LinearLayout messageBubble;
         private final ImageView messageImage;
         private final ImageButton userSpeakerButton;
+        private final ImageButton speakerIcon;
 
         MessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -198,6 +220,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             messageBubble = itemView.findViewById(R.id.messageBubble);
             messageImage = itemView.findViewById(R.id.messageImage);
             userSpeakerButton = itemView.findViewById(R.id.userSpeakerButton);
+            speakerIcon = itemView.findViewById(R.id.speakerIcon);
         }
 
         void bind(ChatMessage message) {
