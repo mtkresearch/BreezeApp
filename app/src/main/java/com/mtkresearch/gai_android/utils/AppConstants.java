@@ -17,6 +17,10 @@ public class AppConstants {
     public static final boolean VLM_ENABLED = false; // VLM is experimental
     public static final boolean ASR_ENABLED = false; // ASR requires permission
     public static final boolean TTS_ENABLED = true;  // TTS is stable
+    
+    // When false: Send button always shows send icon and only sends messages
+    // When true: Send button toggles between send and audio chat mode
+    public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Model Files and Paths
     public static final String REQUIRED_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
