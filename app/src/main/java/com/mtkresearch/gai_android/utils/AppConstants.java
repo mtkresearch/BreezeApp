@@ -14,4 +14,5 @@ public class AppConstants {
 
     // Model Files
     public static final String REQUIRED_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
+    public static final String MODEL_PATH = "/data/local/tmp/llama/" + REQUIRED_MODEL_FILE;
 } 

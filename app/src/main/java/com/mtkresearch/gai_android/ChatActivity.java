@@ -381,7 +381,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", "/data/local/tmp/llama/breeze-tiny-instruct_0203.pte");
+        llmIntent.putExtra("model_path", AppConstants.MODEL_PATH);
         String preferredBackend = ModelUtils.getPreferredBackend();
         llmIntent.putExtra("preferred_backend", preferredBackend);
         
