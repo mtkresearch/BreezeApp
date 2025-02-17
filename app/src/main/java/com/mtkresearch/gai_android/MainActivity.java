@@ -180,41 +180,43 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void scanForModels() {
-        File modelDir = new File(LLAMA_MODEL_PATH);
+        File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
         if (!modelDir.exists() || !modelDir.isDirectory()) {
-            Log.e(TAG, "Model directory not found: " + LLAMA_MODEL_PATH);
+            Log.e(TAG, "Model directory not found: " + AppConstants.LLAMA_MODEL_DIR);
             Toast.makeText(this, "Model directory not found", Toast.LENGTH_LONG).show();
             return;
         }
 
-        // Get all .pte files
-        File[] modelFiles = modelDir.listFiles((dir, name) -> name.endsWith(".pte"));
-        if (modelFiles == null) {
-            Log.e(TAG, "Unable to list files in model directory");
-            return;
-        }
-
-        // Create lists to store models by type
+        // Create list to store LLM models
         List<String> llmList = new ArrayList<>();
-        List<String> vlmList = new ArrayList<>();
 
-        // Categorize models based on filename patterns
-        for (File file : modelFiles) {
-            String name = file.getName();
-            if (name.contains("llava")) {
-                vlmList.add(name);
-            } else if (name.contains("llama") || name.contains("breeze")) {
-                llmList.add(name);
-            }
+        // Check for Llama3.2 model
+        File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
+        if (llamaModel.exists() && llamaModel.isFile()) {
+            llmList.add(AppConstants.LLAMA_MODEL_FILE);
         }
 
-        // Convert lists to arrays
+        // Check for Breeze2 model
+        File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        if (breezeModel.exists() && breezeModel.isFile()) {
+            llmList.add(AppConstants.BREEZE_MODEL_FILE);
+        }
+
+        // Convert list to array
         llmModels = llmList.toArray(new String[0]);
-        vlmModels = vlmList.toArray(new String[0]);
 
         // Log found models
         Log.d(TAG, "Found LLM models: " + Arrays.toString(llmModels));
-        Log.d(TAG, "Found VLM models: " + Arrays.toString(vlmModels));
+        
+        // Update UI based on available models
+        runOnUiThread(() -> {
+            if (llmModels.length == 0) {
+                Toast.makeText(this, "No LLM models found. Please ensure either " + 
+                    AppConstants.LLAMA_MODEL_FILE + " or " + 
+                    AppConstants.BREEZE_MODEL_FILE + " model is available.", Toast.LENGTH_LONG).show();
+            }
+            setupModelSpinners();
+        });
     }
 
     private void setupUI() {
