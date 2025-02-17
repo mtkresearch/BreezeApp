@@ -23,9 +23,10 @@ public class AppConstants {
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Model Files and Paths
-    public static final String REQUIRED_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
-    public static final String MODEL_PATH = "/data/local/tmp/llama/" + REQUIRED_MODEL_FILE;
+    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
+    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
+    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;

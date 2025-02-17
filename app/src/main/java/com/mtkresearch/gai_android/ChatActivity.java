@@ -347,7 +347,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeServices();
     }
 
-        private void initializeServices() {
+    private void initializeServices() {
         // Create a single background thread instead of thread pool to reduce memory usage
         Thread initThread = new Thread(() -> {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
@@ -376,6 +376,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 // Update UI on main thread
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!isFinishing()) {
+                        // Mark initialization as complete
+                        synchronized (initLock) {
+                            isInitializing = false;
+                        }
                         updateInteractionState();
                     }
                 });
@@ -387,16 +391,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         Toast.makeText(ChatActivity.this, 
                             "Error initializing services: " + e.getMessage(), 
                             Toast.LENGTH_SHORT).show();
+                        // Mark initialization as complete even on error
+                        synchronized (initLock) {
+                            isInitializing = false;
+                        }
                         updateInteractionState();
                     }
                 });
-            } finally {
-                synchronized (initLock) {
-                    isInitializing = false;
-                }
             }
-        }, "ServiceInit");
-        
+        });
         initThread.start();
     }
 
@@ -1439,6 +1442,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
 
         runOnUiThread(() -> {
+            // Show/hide content overlay based on initialization state
+            binding.contentOverlay.setVisibility(isInitializationInProgress ? View.VISIBLE : View.GONE);
+            binding.contentOverlay.setAlpha(isInitializationInProgress ? 0.5f : 0f);
+
             if (isInitializationInProgress) {
                 // During initialization, disable all interactive components
                 disableAllInteractions();
@@ -1528,7 +1535,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
     }
 
-private void disableAllInteractions() {
+    private void disableAllInteractions() {
         binding.inputContainer.setEnabled(false);
         binding.collapsedInput.setEnabled(false);
         binding.expandedInput.setEnabled(false);

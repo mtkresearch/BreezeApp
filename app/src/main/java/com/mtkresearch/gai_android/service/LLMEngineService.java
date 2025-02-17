@@ -84,7 +84,16 @@ public class LLMEngineService extends BaseEngineService {
 
     // Add method to get model name
     public String getModelName() {
-        return com.mtkresearch.gai_android.utils.ModelUtils.getModelDisplayString(modelPath, backend);
+        // If no model path is set, check if we're using MTK backend
+        if (modelPath == null) {
+            if (backend.equals("mtk")) {
+                return "Breeze2";  // Default to Breeze2 for MTK backend
+            }
+            return "Unknown";
+        }
+        
+        // For CPU backend or when model path is available
+        return com.mtkresearch.gai_android.utils.ModelUtils.getModelDisplayName(modelPath);
     }
 
     public LLMEngineService() {

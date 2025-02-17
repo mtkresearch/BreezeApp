@@ -46,21 +46,51 @@ public class ModelUtils {
     }
 
     /**
+     * Gets the model type based on the model file name.
+     * @param modelPath Full path to the model file
+     * @return ModelType enum value
+     */
+    public static com.executorch.ModelType getModelType(String modelPath) {
+        String modelName = getModelNameFromPath(modelPath).toLowerCase();
+        // Both Breeze and Llama models will use LLAMA_3_2 since BREEZE_2 is not available
+        if (modelName.contains("llama") || modelName.contains("breeze")) {
+            return com.executorch.ModelType.LLAMA_3_2;
+        }
+        return com.executorch.ModelType.LLAMA_3_2; // Default to LLAMA_3_2
+    }
+
+    /**
+     * Gets a user-friendly display name for the model.
+     * @param modelPath Full path to the model file or config file
+     * @return User-friendly model name
+     */
+    public static String getModelDisplayName(String modelPath) {
+        if (modelPath == null) return "Unknown";
+        
+        String lowerPath = modelPath.toLowerCase();
+        // Check for breeze in either model file name or config file path
+        if (lowerPath.contains("breeze")) {
+            return "Breeze2";
+        } else if (lowerPath.contains("llama")) {
+            return "llama3_2";
+        }
+        return getModelNameFromPath(modelPath);
+    }
+
+    /**
      * Converts backend identifier to display name.
      * @param backend Backend identifier string
      * @return User-friendly backend display name
      */
     public static String getBackendDisplayName(String backend) {
-        if (backend == null) {
-            return "Unknown";
-        }
+        if (backend == null) return "Unknown";
         switch (backend.toLowerCase()) {
             case "mtk":
                 return "NPU";
+            case "cpu":
             case "localcpu":
+            case "local_cpu":
                 return "CPU";
-            case "none":
-                return "None";
             default:
                 return backend.toUpperCase();
         }
