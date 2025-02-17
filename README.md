@@ -59,7 +59,14 @@ Together, let's build a privacy-focused AI experience that everyone can use!
     - Click "OK" to open the project
     - Wait for the project sync and indexing to complete
 
-3. Download required model files:
+3. Connect your Android device:
+    - Connect your phone to your computer using a USB cable
+    - On your phone, allow file transfer/Android Auto when prompted
+    - When prompted "Allow USB debugging?", check "Always allow from this computer" and tap "Allow"
+    - In Android Studio, select your device from the device dropdown menu in the toolbar
+    - If your device is not listed, make sure your USB cable supports data transfer
+
+4. Download required model files:
     - LLM models: \
         a. BreezeTiny:
         ```bash
@@ -108,7 +115,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         git lfs install
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
 
-4. Build the project in Android Studio
+5. Build the project in Android Studio
 
 
 
