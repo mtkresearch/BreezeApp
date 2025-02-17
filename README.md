@@ -52,7 +52,14 @@ Together, let's build a privacy-focused AI experience that everyone can use!
     git clone https://github.com/mtkresearch/Breeze2-android-demo.git
     ```
 
-2. Download required model files:
+2. Open the project in Android Studio:
+    - Launch Android Studio
+    - Select "Open" from the welcome screen
+    - Navigate to and select the `Breeze2-android-demo` folder
+    - Click "OK" to open the project
+    - Wait for the project sync and indexing to complete
+
+3. Download required model files:
     - LLM models: \
         a. BreezeTiny:
         ```bash
@@ -101,7 +108,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         git lfs install
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
 
-3. Build the project in Android Studio
+4. Build the project in Android Studio
 
 
 
