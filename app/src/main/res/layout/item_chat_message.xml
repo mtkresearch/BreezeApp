@@ -32,6 +32,20 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:tint="@color/primary" />
 
+    <!-- TTS speaker icon -->
+    <ImageButton
+        android:id="@+id/speakerIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/messageBubble"
+        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
+        app:layout_constraintEnd_toEndOf="@id/messageBubble"
+        app:tint="@color/primary" />
+
     <LinearLayout
         android:id="@+id/messageBubble"
         android:layout_width="wrap_content"
