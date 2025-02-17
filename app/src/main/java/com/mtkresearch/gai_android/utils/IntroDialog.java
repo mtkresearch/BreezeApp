@@ -191,9 +191,11 @@ public class IntroDialog extends Dialog {
         hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
         
         // Check Model Files
-        File modelDir = new File("/data/local/tmp/llama/");
-        File modelFile = new File(modelDir, AppConstants.REQUIRED_MODEL_FILE);
-        hasRequiredModels = modelFile.exists() && modelFile.isFile();
+        File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
+        File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
+        File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        hasRequiredModels = (llamaModel.exists() && llamaModel.isFile()) || 
+                           (breezeModel.exists() && breezeModel.isFile());
     }
 
     private boolean meetsAllRequirements() {
@@ -209,7 +211,8 @@ public class IntroDialog extends Dialog {
             message.append("\n• Insufficient storage space (minimum ").append(MIN_STORAGE_GB).append("GB required)");
         }
         if (!hasRequiredModels) {
-            message.append("\n• Required model file '").append(AppConstants.REQUIRED_MODEL_FILE).append("' is missing");
+            message.append("\n• Required model files (").append(AppConstants.LLAMA_MODEL_FILE)
+                  .append(" or ").append(AppConstants.BREEZE_MODEL_FILE).append(") are missing");
         }
         
         android.widget.Toast.makeText(getContext(), message.toString(), 
@@ -262,9 +265,11 @@ public class IntroDialog extends Dialog {
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
         
-        File modelDir = new File("/data/local/tmp/llama/");
-        File modelFile = new File(modelDir, AppConstants.REQUIRED_MODEL_FILE);
-        boolean modelExists = modelFile.exists() && modelFile.isFile();
+        File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
+        File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
+        File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        boolean modelExists = (llamaModel.exists() && llamaModel.isFile()) || 
+                           (breezeModel.exists() && breezeModel.isFile());
         
         String ramStatus;
         if (totalRamGB >= MIN_RAM_GB) {
@@ -285,7 +290,11 @@ public class IntroDialog extends Dialog {
             warningMessages.append("⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>");
         }
         if (!modelExists) {
-            warningMessages.append("⚠️ WARNING: Required model file '" + AppConstants.REQUIRED_MODEL_FILE + "' is missing.<br/>");
+            warningMessages.append("⚠️ WARNING: Required model files (")
+                          .append(AppConstants.LLAMA_MODEL_FILE)
+                          .append(" or ")
+                          .append(AppConstants.BREEZE_MODEL_FILE)
+                          .append(") are missing.<br/>");
         }
         if (availableGB < MIN_STORAGE_GB) {
             warningMessages.append("⚠️ WARNING: Insufficient storage space available (" + availableGB + "GB < " + MIN_STORAGE_GB + "GB required).<br/>");
@@ -299,8 +308,8 @@ public class IntroDialog extends Dialog {
                "&nbsp;&nbsp;&nbsp;Your Device: " + totalRamGB + "GB<br/>" +
                "&nbsp;&nbsp;&nbsp;Status: " + ramStatus + "<br/><br/>" +
                "• Model Files:<br/>" +
-               "&nbsp;&nbsp;&nbsp;Location: /data/local/tmp/llama/<br/>" +
-               "&nbsp;&nbsp;&nbsp;Required: " + AppConstants.REQUIRED_MODEL_FILE + "<br/>" +
+               "&nbsp;&nbsp;&nbsp;Location: " + AppConstants.LLAMA_MODEL_DIR + "<br/>" +
+               "&nbsp;&nbsp;&nbsp;Required: " + AppConstants.LLAMA_MODEL_FILE + " or " + AppConstants.BREEZE_MODEL_FILE + "<br/>" +
                "&nbsp;&nbsp;&nbsp;Status: " + (modelExists ? "✅ Model Found" : "⛔️ Model Missing") + "<br/><br/>" +
                "• Storage Space:<br/>" +
                "&nbsp;&nbsp;&nbsp;Required: " + MIN_STORAGE_GB + "GB+ free space<br/>" +
