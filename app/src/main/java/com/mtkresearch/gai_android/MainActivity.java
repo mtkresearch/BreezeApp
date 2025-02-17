@@ -51,8 +51,8 @@ import android.content.SharedPreferences;
 import android.os.Looper;
 
 public class MainActivity extends AppCompatActivity {
-    private static final String TAG = "MainActivity";
-    private static final int PERMISSION_REQUEST_CODE = 1;
+    private static final String TAG = AppConstants.MAIN_ACTIVITY_TAG;
+    private static final int PERMISSION_REQUEST_CODE = AppConstants.PERMISSION_REQUEST_CODE;
     private ActivityMainBinding binding;
     
     // Services
@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean asrEnabled = false;
     private boolean ttsEnabled = false;
 
-    private static final String LLAMA_MODEL_PATH = "/data/local/tmp/llama/";
+    private static final String LLAMA_MODEL_PATH = AppConstants.LLAMA_MODEL_DIR;
     
     // Model lists for each service
     private String[] llmModels;
