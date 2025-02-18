@@ -1,0 +1,37 @@
+# macOS system files
+.DS_Store
+
+# Git
+.gitattributes
+
+# Gradle files
+.gradle/
+**/build/
+**/local.properties
+
+# Android Studio/IntelliJ
+.idea/
+*.iml
+
+# Libraries and dependencies
+*.jar
+*.aar
+*.ap_ 
+**/libs/
+
+# Temporary files
+*.log
+*.temp
+*.tmp
+*.swp
+
+# Generated files
+captures/
+*.class
+*.dex
+
+# Other unimportant files
+Breeze2-android-demo/.gradle/
+Breeze2-android-demo/.idea/
+Breeze2-android-demo/app/libs/executorch.aar
+Breeze2-android-demo/app/libs/executorch.aar.sha256sums
