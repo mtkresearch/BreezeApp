@@ -7,6 +7,15 @@ This project aims to create a community-driven platform for running AI capabilit
   <img src="assets/breeze2_demo_npu.gif" width="300"/>
 </p>
 
+## Download & Try the App 🚀
+You can download the latest APK from [[Preparing...]](https://github.com/your-repo/releases/latest).
+
+> [!CAUTION]
+> After installing the APK, you'll need to download and set up the required model files:
+> 1. The app requires LLM model files that need to be downloaded separately and pushed to your device
+> 2. Please follow the model setup instructions in the [Download required model files](#setup) section below (Step 4)
+> 3. Without the model files, the app will not be able to function properly
+
 
 ## Project Vision
 This app serves as an entry point for everyone, especially those not familiar with coding, to experience AI features directly on their phones. As MediaTek Research continues to develop and provide powerful AI models with various capabilities, this app will act as a carrier to showcase these models and make them accessible to users.
@@ -135,10 +144,6 @@ Key components:
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
-
-## License
-TBD
-<!-- This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details. -->
 
 ## Known Issues
 
