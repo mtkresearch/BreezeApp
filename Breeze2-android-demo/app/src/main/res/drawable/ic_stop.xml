@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Primary orange circular background -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/primary"/>
+            <size android:width="24dp" android:height="24dp"/>
+        </shape>
+    </item>
+    
+    <!-- White stop square -->
+    <item
+        android:left="7dp"
+        android:top="7dp"
+        android:right="7dp"
+        android:bottom="7dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/background"/>
+        </shape>
+    </item>
+</layer-list> 
