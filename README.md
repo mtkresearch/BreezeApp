@@ -8,7 +8,7 @@ This project aims to create a community-driven platform for running AI capabilit
 </p>
 
 ## Download & Try the App 🚀
-You can download the latest APK from [[Preparing...]](https://github.com/your-repo/releases/latest).
+You can download the latest APK from [here](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo.apk).
 
 > [!CAUTION]
 > After installing the APK, you'll need to download and set up the required model files:
