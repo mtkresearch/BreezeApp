@@ -33,18 +33,6 @@ public class TTSEngineService extends BaseEngineService {
     private static final long INIT_TIMEOUT_MS = 20000; // 20 seconds timeout
     private static final String TEST_TEXT = "Hello, this is a test.";
     
-    // Model configuration
-    private static final String MODEL_DIR = "vits-melo-tts-zh_en";
-    private static final String MODEL_NAME = "model.onnx";
-    private static final String LEXICON = "lexicon.txt";
-    private static final String DICT_DIR = MODEL_DIR + "/dict";
-    private static final String RULE_FSTS = String.join(",",
-        MODEL_DIR + "/date.fst",
-        MODEL_DIR + "/new_heteronym.fst",
-        MODEL_DIR + "/number.fst",
-        MODEL_DIR + "/phone.fst"
-    );
-    
     // TTS components
     private TextToSpeech textToSpeech;
     private SherpaTTS localTTS;
