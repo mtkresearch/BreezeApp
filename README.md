@@ -2,10 +2,20 @@
 
 This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
 
+## About
+
+Breeze2 Android Demo is a privacy-focused AI assistant that runs completely offline on your Android device. It features local language models for chat, voice input/output, and image understanding capabilities. All processing happens on your device - no cloud services, no data collection, just pure local AI power in your pocket.
 
 <p align="center">
-  <img src="assets/breeze2_demo_npu.gif" width="300"/>
+  <img src="assets/breeze2_demo_npu.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/breeze2_demo_cpu.gif" width="300" alt="CPU Backend Demo"/>
 </p>
+<p align="center">
+  <em>Left: NPU Backend &nbsp;&nbsp;&nbsp;&nbsp; Right: CPU Backend</em>
+</p>
+
+> [!NOTE]
+> Unreasonable or abnormal responses from <b>CPU<b> backend are known issues (see <a href="https://github.com/mtkresearch/Breeze2-android-demo/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
 
 ## Download & Try the App 🚀
 You can download the latest APK from [here](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo.apk).
