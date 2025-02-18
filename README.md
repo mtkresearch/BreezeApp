@@ -148,7 +148,7 @@ TBD
 
 3. **MediaTek NPU Backend**: Support for MediaTek NPU acceleration is currently in development. Only CPU inference is fully supported at this time.
 
-Please check our [Issues](https://github.com/muxi1998/GAI-android/issues) page for the most up-to-date status of these and other known issues.
+Please check our [Issues](https://github.com/mtkresearch/Breeze2-android-demo/issues) page for the most up-to-date status of these and other known issues.
 
 ## Acknowledgments
 
