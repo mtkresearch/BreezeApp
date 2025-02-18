@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="4dp">
+
+    <!-- Assistant speaker button (left side) -->
+    <ImageButton
+        android:id="@+id/speakerButton"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/logo"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/messageBubble"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- User speaker button (right side) -->
+    <ImageButton
+        android:id="@+id/userSpeakerButton"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/messageBubble"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:tint="@color/primary" />
+
+    <!-- TTS speaker icon -->
+    <ImageButton
+        android:id="@+id/speakerIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@drawable/ic_speaker"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/messageBubble"
+        app:layout_constraintBottom_toBottomOf="@id/messageBubble"
+        app:layout_constraintEnd_toEndOf="@id/messageBubble"
+        app:tint="@color/primary" />
+
+    <LinearLayout
+        android:id="@+id/messageBubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:layout_marginEnd="4dp"
+        android:layout_marginStart="4dp"
+        android:maxWidth="260dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/speakerButton"
+        app:layout_constraintEnd_toStartOf="@id/userSpeakerButton"
+        app:layout_constraintHorizontal_bias="0">
+
+        <TextView
+            android:id="@+id/messageText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxWidth="260dp"
+            android:textSize="16sp" />
+
+        <ImageView
+            android:id="@+id/messageImage"
+            android:layout_width="200dp"
+            android:layout_height="200dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone"
+            android:scaleType="centerCrop"/>
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout> 

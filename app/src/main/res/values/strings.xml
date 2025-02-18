@@ -1,4 +1,0 @@
-<resources>
-    <string name="app_name">GAI Android</string>
-    <string name="file_provider_authority">${file_provider_authority}</string>
-</resources>

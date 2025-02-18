@@ -3,6 +3,11 @@
 This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
 
 
+<p align="center">
+  <img src="assets/breeze2_demo_npu.gif" width="300"/>
+</p>
+
+
 ## Project Vision
 This app serves as an entry point for everyone, especially those not familiar with coding, to experience AI features directly on their phones. As MediaTek Research continues to develop and provide powerful AI models with various capabilities, this app will act as a carrier to showcase these models and make them accessible to users.
 
@@ -35,7 +40,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 
 ## Prerequisites
 
-- Android Studio Ladybug or newer
+- Android Studio Ladybug (2024.2.1 Patch 3) or newer
 - Android SDK 31 or higher
 - NDK 26.1.10909125 or higher
 - CMake 3.10.0 or higher
@@ -47,20 +52,23 @@ Together, let's build a privacy-focused AI experience that everyone can use!
     git clone https://github.com/mtkresearch/Breeze2-android-demo.git
     ```
 
-2. Download required model files:
+2. Open the project in Android Studio:
+    - Launch Android Studio
+    - Select "Open" from the welcome screen
+    - Navigate to and select the `Breeze2-android-demo` folder
+    - Click "OK" to open the project
+    - Wait for the project sync and indexing to complete
+
+3. Connect your Android device:
+    - Connect your phone to your computer using a USB cable
+    - On your phone, allow file transfer/Android Auto when prompted
+    - When prompted "Allow USB debugging?", check "Always allow from this computer" and tap "Allow"
+    - In Android Studio, select your device from the device dropdown menu in the toolbar
+    - If your device is not listed, make sure your USB cable supports data transfer
+
+4. Download required model files:
     - LLM models: \
-        a. Llama3.2-3B-Instruct:
-        ```bash
-        # Download from Hugging Face
-        git lfs install
-        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
-        
-        # Push to Android device
-        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
-        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
-        ```
-        
-        b. BreezeTiny:
+        a. BreezeTiny:
         ```bash
         # Download from Hugging Face
         git lfs install
@@ -69,6 +77,16 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         # Push to Android device
         adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
         adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
+        ```
+        b. Llama3.2-3B-Instruct:
+        ```bash
+        # Download from Hugging Face
+        git lfs install
+        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
+        
+        # Push to Android device
+        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
+        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
 
     - VLM models:\
@@ -97,7 +115,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         git lfs install
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
 
-3. Build the project in Android Studio
+5. Build the project in Android Studio
 
 
 
