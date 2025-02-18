@@ -684,9 +684,10 @@ public class MainActivity extends AppCompatActivity {
         // Setup backend spinner
         List<String> backendOptions = new ArrayList<>();
         backendOptions.add("cpu");  // CPU backend is always available
-        if (LLMEngineService.isMTKBackendAvailable()) {
-            backendOptions.add("mtk");
-        }
+        // Disable MTK backend option for now
+        // if (LLMEngineService.isMTKBackendAvailable()) {
+        //     backendOptions.add("mtk");
+        // }
         
         backendAdapter = new ArrayAdapter<>(this, 
             android.R.layout.simple_spinner_item, backendOptions);
@@ -695,7 +696,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Load saved settings
         float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
-        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
+        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.DEFAULT_BACKEND);
         
         temperatureInput.setText(String.valueOf(savedTemp));
         int backendPosition = backendAdapter.getPosition(savedBackend);
