@@ -529,8 +529,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 handleTextMessage(message);
             }
             uiHandler.clearInput();
-        } else {
+        } else if (AppConstants.AUDIO_CHAT_ENABLED && AppConstants.ASR_ENABLED) {
+            // Only start audio chat if both AUDIO_CHAT_ENABLED and ASR_ENABLED are true
             startAudioChat();
+        } else if (AppConstants.AUDIO_CHAT_ENABLED) {
+            // Show a message if audio chat is enabled but ASR is disabled
+            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
         }
     }
 
