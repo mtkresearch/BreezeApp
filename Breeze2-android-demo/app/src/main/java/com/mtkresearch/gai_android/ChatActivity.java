@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
@@ -195,6 +196,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.mainContent.setAlpha(1.0f);
         binding.mainContent.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         
+        // Initialize handlers first
+        initializeHandlers();
+        
+        // Then initialize UI components
         initializeChat();
         setupButtons();
         setupInputHandling();
@@ -309,6 +314,54 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             binding.voiceButton.setVisibility(View.VISIBLE);
             binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
         }
+
+        // Initial button state (only if uiHandler is initialized)
+        if (uiHandler != null) {
+            updateSendButtonState();
+        }
+    }
+
+    private void setupInputHandling() {
+        TextWatcher textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateSendButtonState();
+            }
+        };
+        binding.messageInput.addTextChangedListener(textWatcher);
+        binding.messageInputExpanded.addTextChangedListener(textWatcher);
+    }
+
+    private void updateSendButtonState() {
+        if (uiHandler == null) return;
+
+        boolean hasText = !uiHandler.getCurrentInputText().trim().isEmpty();
+        boolean hasImage = uiHandler.getPendingImageUri() != null;
+        boolean shouldEnable = hasText || hasImage || AppConstants.AUDIO_CHAT_ENABLED;
+
+        // Update button state
+        binding.sendButton.setEnabled(shouldEnable);
+        binding.sendButtonExpanded.setEnabled(shouldEnable);
+        
+        // Update button appearance
+        float alpha = shouldEnable ? ENABLED_ALPHA : DISABLED_ALPHA;
+        binding.sendButton.setAlpha(alpha);
+        binding.sendButtonExpanded.setAlpha(alpha);
+
+        // Update icon based on content
+        if (!AppConstants.AUDIO_CHAT_ENABLED || hasText || hasImage) {
+            binding.sendButton.setImageResource(R.drawable.ic_send);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+        } else {
+            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
+        }
     }
 
     private void setupNewConversationButton() {
@@ -326,12 +379,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Ensure button is initially enabled and clickable
         binding.newConversationButton.setEnabled(true);
         binding.newConversationButton.setClickable(true);
-    }
-
-    private void setupInputHandling() {
-        TextWatcher textWatcher = UiUtils.createTextWatcher(() -> uiHandler.updateSendButtonState());
-        binding.messageInput.addTextChangedListener(textWatcher);
-        binding.messageInputExpanded.addTextChangedListener(textWatcher);
     }
 
     private void startInitialization() {
@@ -519,6 +566,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void handleSendAction() {
+        if (uiHandler == null) return;
+
         String message = uiHandler.getCurrentInputText();
         Uri pendingImage = uiHandler.getPendingImageUri();
 
@@ -529,7 +578,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 handleTextMessage(message);
             }
             uiHandler.clearInput();
-        } else {
+        } else if (AppConstants.AUDIO_CHAT_ENABLED) {
+            // Only start audio chat if AUDIO_CHAT_ENABLED is true and there's no pending text/image
             startAudioChat();
         }
     }
