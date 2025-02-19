@@ -219,7 +219,7 @@ public class LLMEngineService extends BaseEngineService {
                 });
                 
                 try {
-                    resetFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    resetFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                     Log.w("LLMEngineService", "Reset operation timed out");
                     resetFuture.cancel(true);
@@ -237,7 +237,7 @@ public class LLMEngineService extends BaseEngineService {
                 });
                 
                 try {
-                    releaseFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    releaseFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                 } catch (TimeoutException e) {
                     Log.w("LLMEngineService", "Release operation timed out");
                     releaseFuture.cancel(true);
@@ -279,7 +279,7 @@ public class LLMEngineService extends BaseEngineService {
                     });
                     
                     try {
-                        cleanupFuture.get(NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        cleanupFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                     } catch (TimeoutException e) {
                         Log.w(TAG, "Cleanup attempt " + (i+1) + " timed out");
                         cleanupFuture.cancel(true);
@@ -317,7 +317,7 @@ public class LLMEngineService extends BaseEngineService {
 
             try {
                 // Force cleanup if we've hit the max init attempts
-                if (mtkInitCount >= MAX_MTK_INIT_ATTEMPTS) {
+                if (mtkInitCount >= AppConstants.MAX_MTK_INIT_ATTEMPTS) {
                     Log.w(TAG, "MTK init count exceeded limit, forcing cleanup");
                     forceCleanupMTKResources();
                     mtkInitCount = 0;
@@ -388,7 +388,7 @@ public class LLMEngineService extends BaseEngineService {
             });
             
             cleanupThread.start();
-            cleanupThread.join(CLEANUP_TIMEOUT_MS);
+            cleanupThread.join(AppConstants.MTK_CLEANUP_TIMEOUT_MS);
             
             if (cleanupThread.isAlive()) {
                 Log.w(TAG, "Cleanup thread timed out, interrupting");
@@ -473,7 +473,7 @@ public class LLMEngineService extends BaseEngineService {
                             }, false);
                         });
                         
-                        return future.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        return future.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                     default:
                         return AppConstants.LLM_ERROR_RESPONSE;
                 }
@@ -538,7 +538,7 @@ public class LLMEngineService extends BaseEngineService {
                                 }
                             });
                             
-                            return currentResponse.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                            return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         } catch (Exception e) {
                             Log.e(TAG, "Error in MTK streaming response", e);
                             throw e;
@@ -598,7 +598,7 @@ public class LLMEngineService extends BaseEngineService {
                             }
                         });
                         
-                        return currentResponse.get(GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         
                     default:
                         if (callback != null) {
@@ -727,7 +727,7 @@ public class LLMEngineService extends BaseEngineService {
         });
         
         try {
-            cleanupFuture.get(CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            cleanupFuture.get(AppConstants.MTK_CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
         } catch (TimeoutException e) {
             Log.w(TAG, "Service cleanup timed out");
             cleanupFuture.cancel(true);

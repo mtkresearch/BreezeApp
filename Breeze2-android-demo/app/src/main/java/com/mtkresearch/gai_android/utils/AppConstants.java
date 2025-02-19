@@ -36,6 +36,10 @@ public class AppConstants {
     // LLM Service Constants
     public static final long LLM_INIT_TIMEOUT_MS = 120000;  // 2 minutes
     public static final long LLM_GENERATION_TIMEOUT_MS = 60000;  // 1 minute
+    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds
+    public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
+    public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
+    public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
     public static final float LLM_TEMPERATURE = 0.8f;
