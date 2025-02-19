@@ -677,8 +677,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void toggleRecording() {
-        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+        // Skip if ASR is disabled
+        if (!AppConstants.ASR_ENABLED) {
+            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (!hasAudioPermission()) {
+            requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 
+                PERMISSION_REQUEST_CODE);
             return;
         }
 
@@ -842,8 +849,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 if (permissions[0].equals(android.Manifest.permission.CAMERA)) {
                     handleCameraCapture();
                 } else if (permissions[0].equals(android.Manifest.permission.RECORD_AUDIO)) {
-                    // Start initialization after permission is granted
-                    startInitialization();
+                    // Only start initialization if ASR is enabled
+                    if (AppConstants.ASR_ENABLED) {
+                        startInitialization();
+                    }
                 }
             } else {
                 String message = permissions[0].equals(android.Manifest.permission.CAMERA) ?
@@ -1461,68 +1470,30 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 
                 // Handle LLM-dependent components
                 if (AppConstants.LLM_ENABLED) {
-                    binding.messageInput.setEnabled(true);
-                    binding.messageInput.setFocusable(true);
-                    binding.messageInput.setFocusableInTouchMode(true);
-                    binding.messageInput.setAlpha(ENABLED_ALPHA);
-                    
-                    binding.messageInputExpanded.setEnabled(true);
-                    binding.messageInputExpanded.setFocusable(true);
-                    binding.messageInputExpanded.setFocusableInTouchMode(true);
-                    binding.messageInputExpanded.setAlpha(ENABLED_ALPHA);
-                    
-                    binding.sendButton.setEnabled(true);
-                    binding.sendButton.setAlpha(ENABLED_ALPHA);
-                    binding.sendButtonExpanded.setEnabled(true);
-                    binding.sendButtonExpanded.setAlpha(ENABLED_ALPHA);
+                    enableLLMComponents();
                 } else {
-                    binding.messageInput.setEnabled(false);
-                    binding.messageInput.setFocusable(false);
-                    binding.messageInput.setAlpha(DISABLED_ALPHA);
-                    binding.messageInputExpanded.setEnabled(false);
-                    binding.messageInputExpanded.setFocusable(false);
-                    binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
-                    binding.sendButton.setEnabled(false);
-                    binding.sendButton.setAlpha(DISABLED_ALPHA);
-                    binding.sendButtonExpanded.setEnabled(false);
-                    binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
+                    disableLLMComponents();
                 }
                 
                 // Handle VLM-dependent components
                 if (AppConstants.VLM_ENABLED) {
-                    binding.attachButton.setEnabled(true);
-                    binding.attachButton.setVisibility(View.VISIBLE);
-                    binding.attachButton.setAlpha(ENABLED_ALPHA);
-                    binding.attachButtonExpanded.setEnabled(true);
-                    binding.attachButtonExpanded.setVisibility(View.VISIBLE);
-                    binding.attachButtonExpanded.setAlpha(ENABLED_ALPHA);
+                    enableVLMComponents();
                 } else {
-                    binding.attachButton.setEnabled(false);
-                    binding.attachButton.setVisibility(View.GONE);
-                    binding.attachButtonExpanded.setEnabled(false);
-                    binding.attachButtonExpanded.setVisibility(View.GONE);
+                    disableVLMComponents();
                 }
                 
                 // Handle ASR-dependent components
                 if (AppConstants.ASR_ENABLED) {
-                    binding.voiceButton.setEnabled(true);
-                    binding.voiceButton.setVisibility(View.VISIBLE);
-                    binding.voiceButton.setAlpha(ENABLED_ALPHA);
-                    binding.voiceButtonExpanded.setEnabled(true);
-                    binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
-                    binding.voiceButtonExpanded.setAlpha(ENABLED_ALPHA);
+                    enableASRComponents();
                 } else {
-                    binding.voiceButton.setEnabled(false);
-                    binding.voiceButton.setVisibility(View.GONE);
-                    binding.voiceButtonExpanded.setEnabled(false);
-                    binding.voiceButtonExpanded.setVisibility(View.GONE);
+                    disableASRComponents();
                 }
                 
-                // Handle TTS-dependent components (speaker icons in chat messages)
+                // Handle TTS-dependent components
                 if (AppConstants.TTS_ENABLED) {
-                    chatAdapter.setTTSEnabled(true);
+                    enableTTSComponents();
                 } else {
-                    chatAdapter.setTTSEnabled(false);
+                    disableTTSComponents();
                 }
                 
                 // Update model name and status
@@ -1613,7 +1584,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
             } else {
                 binding.modelNameText.setText("Unknown model");
-                binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
             }
         } else {
             binding.modelNameText.setText("Model not available");
@@ -1654,9 +1624,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             
             // Set custom dismiss listener to start initialization
             dialog.setOnFinalButtonClickListener(() -> {
-                // Check for RECORD_AUDIO permission before initializing services
-                if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, PERMISSION_REQUEST_CODE);
+                // Only request RECORD_AUDIO permission if ASR is enabled
+                if (AppConstants.ASR_ENABLED && !hasAudioPermission()) {
+                    requestPermissions(new String[]{android.Manifest.permission.RECORD_AUDIO}, 
+                        PERMISSION_REQUEST_CODE);
                 } else {
                     startInitialization();
                 }
@@ -1671,5 +1642,77 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         } catch (Exception e) {
             Log.e(TAG, "Error showing intro dialog", e);
         }
+    }
+
+    private void enableASRComponents() {
+        if (hasAudioPermission()) {
+            binding.voiceButton.setEnabled(true);
+            binding.voiceButton.setVisibility(View.VISIBLE);
+            binding.voiceButton.setAlpha(ENABLED_ALPHA);
+            binding.voiceButtonExpanded.setEnabled(true);
+            binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
+            binding.voiceButtonExpanded.setAlpha(ENABLED_ALPHA);
+        }
+    }
+
+    private void disableASRComponents() {
+        binding.voiceButton.setEnabled(false);
+        binding.voiceButton.setVisibility(View.GONE);
+        binding.voiceButtonExpanded.setEnabled(false);
+        binding.voiceButtonExpanded.setVisibility(View.GONE);
+    }
+
+    private void enableLLMComponents() {
+        binding.messageInput.setEnabled(true);
+        binding.messageInput.setFocusable(true);
+        binding.messageInput.setFocusableInTouchMode(true);
+        binding.messageInput.setAlpha(ENABLED_ALPHA);
+        
+        binding.messageInputExpanded.setEnabled(true);
+        binding.messageInputExpanded.setFocusable(true);
+        binding.messageInputExpanded.setFocusableInTouchMode(true);
+        binding.messageInputExpanded.setAlpha(ENABLED_ALPHA);
+        
+        binding.sendButton.setEnabled(true);
+        binding.sendButton.setAlpha(ENABLED_ALPHA);
+        binding.sendButtonExpanded.setEnabled(true);
+        binding.sendButtonExpanded.setAlpha(ENABLED_ALPHA);
+    }
+
+    private void disableLLMComponents() {
+        binding.messageInput.setEnabled(false);
+        binding.messageInput.setFocusable(false);
+        binding.messageInput.setAlpha(DISABLED_ALPHA);
+        binding.messageInputExpanded.setEnabled(false);
+        binding.messageInputExpanded.setFocusable(false);
+        binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
+        binding.sendButton.setEnabled(false);
+        binding.sendButton.setAlpha(DISABLED_ALPHA);
+        binding.sendButtonExpanded.setEnabled(false);
+        binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
+    }
+
+    private void enableVLMComponents() {
+        binding.attachButton.setEnabled(true);
+        binding.attachButton.setVisibility(View.VISIBLE);
+        binding.attachButton.setAlpha(ENABLED_ALPHA);
+        binding.attachButtonExpanded.setEnabled(true);
+        binding.attachButtonExpanded.setVisibility(View.VISIBLE);
+        binding.attachButtonExpanded.setAlpha(ENABLED_ALPHA);
+    }
+
+    private void disableVLMComponents() {
+        binding.attachButton.setEnabled(false);
+        binding.attachButton.setVisibility(View.GONE);
+        binding.attachButtonExpanded.setEnabled(false);
+        binding.attachButtonExpanded.setVisibility(View.GONE);
+    }
+
+    private void enableTTSComponents() {
+        chatAdapter.setTTSEnabled(true);
+    }
+
+    private void disableTTSComponents() {
+        chatAdapter.setTTSEnabled(false);
     }
 }
