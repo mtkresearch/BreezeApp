@@ -298,6 +298,12 @@ public class MainActivity extends AppCompatActivity {
         binding.asrSwitch.setChecked(asrEnabled);
         binding.ttsSwitch.setChecked(ttsEnabled);
 
+        // Disable ASR switch if ASR is not enabled in AppConstants
+        if (!AppConstants.ASR_ENABLED) {
+            binding.asrSwitch.setEnabled(false);
+            binding.asrSwitch.setAlpha(0.5f);
+        }
+
         binding.llmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && selectedLlmModel == null) {
                 Toast.makeText(this, "Please select a model first", Toast.LENGTH_SHORT).show();
@@ -339,6 +345,12 @@ public class MainActivity extends AppCompatActivity {
         });
 
         binding.asrSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            // Skip if ASR is disabled in AppConstants
+            if (!AppConstants.ASR_ENABLED) {
+                buttonView.setChecked(false);
+                return;
+            }
+
             asrEnabled = isChecked;
             if (isChecked) {
                 if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
@@ -346,7 +358,7 @@ public class MainActivity extends AppCompatActivity {
                     ActivityCompat.requestPermissions(this,
                         new String[]{android.Manifest.permission.RECORD_AUDIO},
                         PERMISSION_REQUEST_CODE);
-                    binding.asrSwitch.setChecked(false);
+                    buttonView.setChecked(false);
                     return;
                 }
                 startAndBindService(ASREngineService.class, asrConnection, null);
