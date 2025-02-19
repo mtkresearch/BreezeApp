@@ -591,7 +591,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }).thenAccept(finalResponse -> {
                 runOnUiThread(() -> {
-                    if (finalResponse != null && !finalResponse.equals(LLMEngineService.DEFAULT_ERROR_RESPONSE)) {
+                    if (finalResponse != null && !finalResponse.equals(AppConstants.LLM_DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
                         // Only update with error message if we haven't received any real response
                         if (response.isEmpty() && !aiMessage.hasContent()) {
