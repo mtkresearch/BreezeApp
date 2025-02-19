@@ -129,8 +129,18 @@ Together, let's build a privacy-focused AI experience that everyone can use!
         # Download from Hugging Face
         git lfs install
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
+        ```
 
-5. Build the project in Android Studio
+5. Download aar file
+    - Open the "Project tab" in the left panel of Android Studio
+    - Click the dropdown and select "Project" instead of Android view
+    - Find download_prebuilt_lib.sh inside Breeze2-android-demo
+    - Open the "Terminal" in the left panel, and run the bash file to retrieve aar file
+    ```bash
+    sh {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/download_prebuilt_lib.sh
+    ```
+
+6. Build the project in Android Studio
 
 
 
