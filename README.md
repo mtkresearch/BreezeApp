@@ -14,7 +14,7 @@ This project aims to create a community-driven platform for running AI capabilit
 > Unreasonable or abnormal responses from <b>CPU<b> backend are known issues (see <a href="https://github.com/mtkresearch/Breeze2-android-demo/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
 
 ## Download & Try the App 🚀
-You can download the latest APK from [here](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo.apk).
+You can download the latest APK → [breeze2-android-demo-20250219.apk](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo-20250219.apk)
 
 > [!CAUTION]
 > After installing the APK, you'll need to download and set up the required model files:
