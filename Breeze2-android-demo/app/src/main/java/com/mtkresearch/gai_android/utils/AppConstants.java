@@ -11,12 +11,38 @@ public class AppConstants {
     public static final String KEY_FIRST_LAUNCH = "first_launch";
     public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_PREFERRED_BACKEND = "preferred_backend";
+    public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
     
     // Service Enable Flags
     public static final boolean LLM_ENABLED = true;  // LLM is essential
     public static final boolean VLM_ENABLED = false; // VLM is experimental
     public static final boolean ASR_ENABLED = false; // ASR requires permission
     public static final boolean TTS_ENABLED = true;  // TTS is stable
+    
+    // Backend Enable Flags
+    public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
+    public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
+    
+    // Backend Constants
+    public static final String BACKEND_CPU = "cpu";
+    public static final String BACKEND_MTK = "mtk";
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;
+    
+    // MTK Backend Constants
+    public static final int MAX_MTK_INIT_ATTEMPTS = 5;
+    public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds timeout for cleanup
+    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds timeout for native operations
+    
+    // LLM Service Constants
+    public static final long LLM_INIT_TIMEOUT_MS = 120000;  // 2 minutes
+    public static final long LLM_GENERATION_TIMEOUT_MS = 60000;  // 1 minute
+    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds
+    public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
+    public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
+    public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
+    public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
+    public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
+    public static final float LLM_TEMPERATURE = 0.8f;
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode
