@@ -101,11 +101,21 @@ public class ModelUtils {
      * @return The preferred backend identifier ("mtk" or "cpu")
      */
     public static String getPreferredBackend() {
+        // If MTK backend is disabled via flag, always return CPU
+        if (!AppConstants.MTK_BACKEND_ENABLED) {
+            Log.i(TAG, "MTK backend is disabled by flag, using CPU backend");
+            return "cpu";
+        }
+
         try {
             // Get the device's chipset information from multiple sources
             String hardware = android.os.Build.HARDWARE.toLowerCase();
             String processor = System.getProperty("os.arch", "").toLowerCase();
             String cpuInfo = readCpuInfo();
+
+            Log.d(TAG, "Chipset detection - Hardware: " + hardware + 
+                      ", Processor: " + processor + 
+                      ", CPU Info: " + cpuInfo);
 
             // Check if the device has MT6991 chipset
             if (isMTKChipset(hardware, processor, cpuInfo)) {
