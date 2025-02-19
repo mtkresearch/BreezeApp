@@ -135,16 +135,10 @@ Together, let's build a privacy-focused AI experience that everyone can use!
     - Open the "Project tab" in the left panel of Android Studio
     - Click the dropdown and select "Project" instead of Android view
     - Find download_prebuilt_lib.sh inside Breeze2-android-demo
-    - Retrieve aar file\
-      a. Using the Play Button (Green Triangle) :
-         - Open download_prebuilt_lib.sh in the editor
-         - Click the green triangle (run button)
-           
-      b. Using the Terminal :
-         - Open the "Terminal" in the left panel
-           ```bash
-           sh {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/download_prebuilt_lib.sh
-           ```
+    - Open the "Terminal" in the left panel, and run the bash file to retrieve aar file
+    ```bash
+    sh {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/download_prebuilt_lib.sh
+    ```
 
 6. Build the project in Android Studio
 
