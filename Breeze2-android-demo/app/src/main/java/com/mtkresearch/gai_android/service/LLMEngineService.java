@@ -450,30 +450,58 @@ public class LLMEngineService extends BaseEngineService {
                         nativeSwapModel(128);
                         return response;
                     case "localCPU":
-                        CompletableFuture<String> future = new CompletableFuture<>();
-                        currentResponse = future;
-                        
-                        // Calculate sequence length based on prompt length
-                        int seqLen = (int)(prompt.length() * 0.75) + 64;
-                        
-                        executor.execute(() -> {
-                            mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                @Override
-                                public void onResult(String result) {
-                                    if (result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                        return;
-                                    }
-                                    currentStreamingResponse.append(result);
-                                }
+                        try {
+                            // Calculate input tokens (rough estimate: 1 token ≈ 4 characters)
+                            int estimatedTokens = (int)(prompt.length() * 0.25);
+                            
+                            // Check if input might exceed max length
+                            if (estimatedTokens >= 96) { // 128 - 32 reserved for output
+                                return "I apologize, but your input is too long. Please try breaking it into smaller parts.";
+                            }
 
-                                @Override
-                                public void onStats(float tps) {
-                                    Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                            CompletableFuture<String> future = new CompletableFuture<>();
+                            currentResponse = future;
+                            
+                            // Use conservative sequence length
+                            int seqLen = Math.min(128, estimatedTokens + 32);
+                            
+                            executor.execute(() -> {
+                                try {
+                                    mModule.generate(prompt, seqLen, new LlamaCallback() {
+                                        @Override
+                                        public void onResult(String result) {
+                                            if (!isGenerating.get() || 
+                                                result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
+                                                return;
+                                            }
+                                            currentStreamingResponse.append(result);
+                                        }
+
+                                        @Override
+                                        public void onStats(float tps) {
+                                            Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                        }
+                                    }, false);
+                                    
+                                    // Only complete if we haven't been stopped
+                                    if (isGenerating.get()) {
+                                        currentResponse.complete(currentStreamingResponse.toString());
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error in CPU generation", e);
+                                    if (!currentResponse.isDone()) {
+                                        currentResponse.completeExceptionally(e);
+                                    }
+                                } finally {
+                                    isGenerating.set(false);
                                 }
-                            }, false);
-                        });
-                        
-                        return future.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                            });
+                            
+                            return future.get(60000, TimeUnit.MILLISECONDS);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in CPU streaming response", e);
+                            throw e;
+                        }
                     default:
                         return AppConstants.LLM_ERROR_RESPONSE;
                 }
@@ -544,12 +572,27 @@ public class LLMEngineService extends BaseEngineService {
                             throw e;
                         }
                         
-                    case "localCPU":
+                                        case "localCPU":
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                         
-                        // Calculate sequence length based on prompt length
-                        int seqLen = (int)(prompt.length() * 0.75) + 256;  // Increased for longer context
+                        // Calculate input tokens (rough estimate: 1 token ≈ 4 characters)
+                        int estimatedTokens = (int)(prompt.length() * 0.25);
+                        
+                        // Check if input might exceed max length
+                        if (estimatedTokens >= AppConstants.LLM_MAX_INPUT_LENGTH) {
+                            if (callback != null) {
+                                callback.onToken(AppConstants.LLM_INPUT_TOO_LONG_ERROR);
+                            }
+                            currentResponse.complete(AppConstants.LLM_INPUT_TOO_LONG_ERROR);
+                            return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        }
+                        
+                        // Use conservative sequence length
+                        int seqLen = Math.min(
+                            AppConstants.LLM_MAX_SEQ_LENGTH,
+                            estimatedTokens + AppConstants.LLM_MIN_OUTPUT_LENGTH
+                        );
                         
                         executor.execute(() -> {
                             try {
@@ -598,7 +641,7 @@ public class LLMEngineService extends BaseEngineService {
                             }
                         });
                         
-                        return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS); 
                         
                     default:
                         if (callback != null) {
