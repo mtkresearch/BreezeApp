@@ -40,10 +40,16 @@ public class AppConstants {
     public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     
+    // LLM Sequence Length Constants
+    public static final int LLM_MAX_SEQ_LENGTH = 128;  // Maximum sequence length supported by model
+    public static final int LLM_MIN_OUTPUT_LENGTH = 32;  // Minimum space to reserve for output
+    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;  // Maximum input length (96)
+    
     // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
     public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
     public static final String LLM_EMPTY_RESPONSE_ERROR = "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.";
+    public static final String LLM_INPUT_TOO_LONG_ERROR = "I apologize, but your input is too long. Please try breaking it into smaller parts.";
     
     // LLM Configuration
     public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
