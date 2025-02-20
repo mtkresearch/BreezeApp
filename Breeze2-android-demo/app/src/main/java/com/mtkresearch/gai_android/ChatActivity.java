@@ -599,7 +599,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         String response = finalResponse.trim();
                         // Only update with error message if we haven't received any real response
                         if (response.isEmpty() && !aiMessage.hasContent()) {
-                            aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
+                            aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
                         } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
@@ -608,7 +608,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     } else {
                         // Only show error if we haven't received any content
                         if (!aiMessage.hasContent()) {
-                            aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                            aiMessage.updateText(AppConstants.LLM_DEFAULT_ERROR_RESPONSE);
                         }
                     }
                     
