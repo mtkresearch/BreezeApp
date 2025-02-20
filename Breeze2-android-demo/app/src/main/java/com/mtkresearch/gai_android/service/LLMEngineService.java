@@ -451,19 +451,11 @@ public class LLMEngineService extends BaseEngineService {
                         return response;
                     case "localCPU":
                         try {
-                            // Calculate input tokens (rough estimate: 1 token ≈ 4 characters)
-                            int estimatedTokens = (int)(prompt.length() * 0.25);
+                            // Calculate sequence length based on prompt length, matching original implementation
+                            int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
                             
-                            // Check if input might exceed max length
-                            if (estimatedTokens >= 96) { // 128 - 32 reserved for output
-                                return "I apologize, but your input is too long. Please try breaking it into smaller parts.";
-                            }
-
                             CompletableFuture<String> future = new CompletableFuture<>();
                             currentResponse = future;
-                            
-                            // Use conservative sequence length
-                            int seqLen = Math.min(128, estimatedTokens + 32);
                             
                             executor.execute(() -> {
                                 try {
@@ -572,27 +564,12 @@ public class LLMEngineService extends BaseEngineService {
                             throw e;
                         }
                         
-                                        case "localCPU":
+                    case "localCPU":
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                         
-                        // Calculate input tokens (rough estimate: 1 token ≈ 4 characters)
-                        int estimatedTokens = (int)(prompt.length() * 0.25);
-                        
-                        // Check if input might exceed max length
-                        if (estimatedTokens >= AppConstants.LLM_MAX_INPUT_LENGTH) {
-                            if (callback != null) {
-                                callback.onToken(AppConstants.LLM_INPUT_TOO_LONG_ERROR);
-                            }
-                            currentResponse.complete(AppConstants.LLM_INPUT_TOO_LONG_ERROR);
-                            return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                        }
-                        
-                        // Use conservative sequence length
-                        int seqLen = Math.min(
-                            AppConstants.LLM_MAX_SEQ_LENGTH,
-                            estimatedTokens + AppConstants.LLM_MIN_OUTPUT_LENGTH
-                        );
+                        // Calculate sequence length based on prompt length, matching original implementation
+                        int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
                         
                         executor.execute(() -> {
                             try {
