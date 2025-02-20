@@ -26,7 +26,7 @@ public class AppConstants {
     // Backend Constants
     public static final String BACKEND_CPU = "cpu";
     public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;
+    public static final String BACKEND_DEFAULT = BACKEND_MTK;
     
     // MTK Backend Constants
     public static final int MAX_MTK_INIT_ATTEMPTS = 5;
@@ -39,8 +39,13 @@ public class AppConstants {
     public static final long LLM_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds
     public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
-    public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
+    
+    // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
+    public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
+    public static final String LLM_EMPTY_RESPONSE_ERROR = "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.";
+    
+    // LLM Configuration
     public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
     public static final float LLM_TEMPERATURE = 0.8f;
     
@@ -52,7 +57,7 @@ public class AppConstants {
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
-    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
+    public static final String MODEL_PATH = LLAMA_MODEL_DIR + LLAMA_MODEL_FILE; // Default to Breeze model
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
