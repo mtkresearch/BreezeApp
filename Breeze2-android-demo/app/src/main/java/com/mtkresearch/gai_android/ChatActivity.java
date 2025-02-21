@@ -353,6 +353,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
             
             try {
+                Log.d(TAG, "Starting service initialization...");
+                Log.d(TAG, "TTS_ENABLED: " + AppConstants.TTS_ENABLED);
+                Log.d(TAG, "ASR_ENABLED: " + AppConstants.ASR_ENABLED);
+                Log.d(TAG, "LLM_ENABLED: " + AppConstants.LLM_ENABLED);
+                Log.d(TAG, "VLM_ENABLED: " + AppConstants.VLM_ENABLED);
+                
                 // Initialize LLM service if enabled
                 if (AppConstants.LLM_ENABLED) {
                     initializeLLMService();
@@ -363,14 +369,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     initializeVLMService();
                 }
                 
-                // Initialize ASR and TTS if enabled and audio permission is granted
+                // Initialize TTS service if enabled (moved before ASR check since it doesn't require permissions)
+                if (AppConstants.TTS_ENABLED) {
+                    Log.d(TAG, "Initializing TTS service...");
+                    try {
+                        initializeTTSService();
+                        Log.d(TAG, "TTS service initialization completed");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error initializing TTS service", e);
+                    }
+                }
+                
+                // Initialize ASR if enabled and audio permission is granted
                 if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     if (AppConstants.ASR_ENABLED) {
                         initializeASRService();
                     }
-                    if (AppConstants.TTS_ENABLED) {
-                        initializeTTSService();
-                    }
+                } else {
+                    Log.w(TAG, "Audio permission not granted, skipping ASR initialization");
                 }
                 
                 // Update UI on main thread
@@ -381,6 +397,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             isInitializing = false;
                         }
                         updateInteractionState();
+                        
+                        // Log final service states
+                        Log.d(TAG, "Service initialization complete. States:");
+                        Log.d(TAG, "LLM ready: " + llmServiceReady);
+                        Log.d(TAG, "VLM ready: " + vlmServiceReady);
+                        Log.d(TAG, "ASR ready: " + asrServiceReady);
+                        Log.d(TAG, "TTS ready: " + ttsServiceReady);
                     }
                 });
                 
@@ -493,29 +516,38 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void initializeTTSService() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean success = new AtomicBoolean(false);
+        
         Log.d(TAG, "Starting TTS service initialization...");
         
+        // Prepare TTS intent
+        Intent ttsIntent = new Intent(this, TTSEngineService.class);
+        
+        // Bind service on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
-                Intent ttsIntent = new Intent(this, TTSEngineService.class);
                 startService(ttsIntent);
-                if (!bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
-                    Log.e(TAG, "Failed to bind TTS service");
-                    ttsServiceReady = false;
+                if (bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
+                    success.set(true);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error binding TTS service", e);
-                ttsServiceReady = false;
             } finally {
                 latch.countDown();
             }
         });
         
+        // Wait with timeout
         if (!latch.await(5, TimeUnit.SECONDS)) {
-            Log.e(TAG, "TTS service initialization timed out");
-            ttsServiceReady = false;
-            throw new TimeoutException("TTS service initialization timed out");
+            throw new TimeoutException("TTS service binding timed out");
         }
+        
+        if (!success.get()) {
+            throw new Exception("TTS service binding failed");
+        }
+        
+        // Add delay to allow service to start
+        Thread.sleep(500);
     }
 
     private void handleSendAction() {
