@@ -1339,7 +1339,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private String getFormattedPrompt(String userMessage) {
-        // Get messages excluding the current message
+        // First try with full history
         List<ChatMessage> allMessages = conversationManager.getMessages();
         List<ChatMessage> historyMessages = new ArrayList<>();
         
@@ -1352,8 +1352,19 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
         }
         
-        // Use PromptManager to format the complete prompt
-        return PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
+        // First try formatting with history
+        String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
+        
+        // Check if prompt might exceed max length (using conservative estimate)
+        if (fullPrompt.length() > AppConstants.LLM_MAX_INPUT_LENGTH * 3) { // Assuming average of 3 chars per token
+            Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
+            // Format prompt with empty history list to get just system prompt + user message
+            String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+            Log.d(TAG, "Reduced prompt without history: " + reducedPrompt);
+            return reducedPrompt;
+        }
+        
+        return fullPrompt;
     }
 
     private void setupTitleTapCounter() {
