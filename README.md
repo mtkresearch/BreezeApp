@@ -11,7 +11,7 @@ This project aims to create a community-driven platform for running AI capabilit
 </p>
 
 > [!NOTE]
-> Unreasonable or abnormal responses from <b>CPU<b> backend are known issues (see <a href="https://github.com/mtkresearch/Breeze2-android-demo/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
+> Unreasonable or abnormal responses from <b>CPU</b> backend are known issues (see <a href="https://github.com/mtkresearch/Breeze2-android-demo/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
 
 ## Download & Try the App 🚀
 You can download the latest APK in two variants:
@@ -139,7 +139,7 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 5. Download aar file
     - Open the "Project tab" in the left panel of Android Studio
     - Click the dropdown and select "Project" instead of Android view
-    - Find download_prebuilt_lib.sh inside Breeze2-android-demo
+    - Find "download_prebuilt_lib.sh" inside Breeze2-android-demo
     - Open the "Terminal" in the left panel, and run the bash file to retrieve aar file
     ```bash
     sh {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/download_prebuilt_lib.sh
@@ -185,7 +185,7 @@ To change the default backend (CPU) or LLM model (Breeze), follow these steps:
       public static final String MODEL_PATH = LLAMA_MODEL_DIR + LLAMA_MODEL_FILE ; // Change to desired model
       ```
 
-3. After modifying the backend or LLM model, rebuild the project in Android Studio to apply the changes.
+3. After modifying the backend or LLM model, "rebuild" the project in Android Studio to apply the changes.
 
 
 ## Architecture
