@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
 import android.view.ViewGroup;
@@ -195,6 +196,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.mainContent.setAlpha(1.0f);
         binding.mainContent.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
         
+        // Initialize handlers first
+        initializeHandlers();
+        
+        // Then initialize UI components
         initializeChat();
         setupButtons();
         setupInputHandling();
@@ -309,6 +314,54 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             binding.voiceButton.setVisibility(View.VISIBLE);
             binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
         }
+
+        // Initial button state (only if uiHandler is initialized)
+        if (uiHandler != null) {
+            updateSendButtonState();
+        }
+    }
+
+    private void setupInputHandling() {
+        TextWatcher textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                updateSendButtonState();
+            }
+        };
+        binding.messageInput.addTextChangedListener(textWatcher);
+        binding.messageInputExpanded.addTextChangedListener(textWatcher);
+    }
+
+    private void updateSendButtonState() {
+        if (uiHandler == null) return;
+
+        boolean hasText = !uiHandler.getCurrentInputText().trim().isEmpty();
+        boolean hasImage = uiHandler.getPendingImageUri() != null;
+        boolean shouldEnable = hasText || hasImage || AppConstants.AUDIO_CHAT_ENABLED;
+
+        // Update button state
+        binding.sendButton.setEnabled(shouldEnable);
+        binding.sendButtonExpanded.setEnabled(shouldEnable);
+        
+        // Update button appearance
+        float alpha = shouldEnable ? ENABLED_ALPHA : DISABLED_ALPHA;
+        binding.sendButton.setAlpha(alpha);
+        binding.sendButtonExpanded.setAlpha(alpha);
+
+        // Update icon based on content
+        if (!AppConstants.AUDIO_CHAT_ENABLED || hasText || hasImage) {
+            binding.sendButton.setImageResource(R.drawable.ic_send);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+        } else {
+            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
+        }
     }
 
     private void setupNewConversationButton() {
@@ -326,12 +379,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Ensure button is initially enabled and clickable
         binding.newConversationButton.setEnabled(true);
         binding.newConversationButton.setClickable(true);
-    }
-
-    private void setupInputHandling() {
-        TextWatcher textWatcher = UiUtils.createTextWatcher(() -> uiHandler.updateSendButtonState());
-        binding.messageInput.addTextChangedListener(textWatcher);
-        binding.messageInputExpanded.addTextChangedListener(textWatcher);
     }
 
     private void startInitialization() {
@@ -353,6 +400,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND);
             
             try {
+                Log.d(TAG, "Starting service initialization...");
+                Log.d(TAG, "TTS_ENABLED: " + AppConstants.TTS_ENABLED);
+                Log.d(TAG, "ASR_ENABLED: " + AppConstants.ASR_ENABLED);
+                Log.d(TAG, "LLM_ENABLED: " + AppConstants.LLM_ENABLED);
+                Log.d(TAG, "VLM_ENABLED: " + AppConstants.VLM_ENABLED);
+                
                 // Initialize LLM service if enabled
                 if (AppConstants.LLM_ENABLED) {
                     initializeLLMService();
@@ -363,14 +416,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     initializeVLMService();
                 }
                 
-                // Initialize ASR and TTS if enabled and audio permission is granted
+                // Initialize TTS service if enabled (moved before ASR check since it doesn't require permissions)
+                if (AppConstants.TTS_ENABLED) {
+                    Log.d(TAG, "Initializing TTS service...");
+                    try {
+                        initializeTTSService();
+                        Log.d(TAG, "TTS service initialization completed");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error initializing TTS service", e);
+                    }
+                }
+                
+                // Initialize ASR if enabled and audio permission is granted
                 if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     if (AppConstants.ASR_ENABLED) {
                         initializeASRService();
                     }
-                    if (AppConstants.TTS_ENABLED) {
-                        initializeTTSService();
-                    }
+                } else {
+                    Log.w(TAG, "Audio permission not granted, skipping ASR initialization");
                 }
                 
                 // Update UI on main thread
@@ -381,6 +444,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             isInitializing = false;
                         }
                         updateInteractionState();
+                        
+                        // Log final service states
+                        Log.d(TAG, "Service initialization complete. States:");
+                        Log.d(TAG, "LLM ready: " + llmServiceReady);
+                        Log.d(TAG, "VLM ready: " + vlmServiceReady);
+                        Log.d(TAG, "ASR ready: " + asrServiceReady);
+                        Log.d(TAG, "TTS ready: " + ttsServiceReady);
                     }
                 });
                 
@@ -493,32 +563,43 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void initializeTTSService() throws Exception {
         CountDownLatch latch = new CountDownLatch(1);
+        AtomicBoolean success = new AtomicBoolean(false);
+        
         Log.d(TAG, "Starting TTS service initialization...");
         
+        // Prepare TTS intent
+        Intent ttsIntent = new Intent(this, TTSEngineService.class);
+        
+        // Bind service on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             try {
-                Intent ttsIntent = new Intent(this, TTSEngineService.class);
                 startService(ttsIntent);
-                if (!bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
-                    Log.e(TAG, "Failed to bind TTS service");
-                    ttsServiceReady = false;
+                if (bindService(ttsIntent, ttsConnection, Context.BIND_AUTO_CREATE)) {
+                    success.set(true);
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error binding TTS service", e);
-                ttsServiceReady = false;
             } finally {
                 latch.countDown();
             }
         });
         
+        // Wait with timeout
         if (!latch.await(5, TimeUnit.SECONDS)) {
-            Log.e(TAG, "TTS service initialization timed out");
-            ttsServiceReady = false;
-            throw new TimeoutException("TTS service initialization timed out");
+            throw new TimeoutException("TTS service binding timed out");
         }
+        
+        if (!success.get()) {
+            throw new Exception("TTS service binding failed");
+        }
+        
+        // Add delay to allow service to start
+        Thread.sleep(500);
     }
 
     private void handleSendAction() {
+        if (uiHandler == null) return;
+
         String message = uiHandler.getCurrentInputText();
         Uri pendingImage = uiHandler.getPendingImageUri();
 
@@ -599,7 +680,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         String response = finalResponse.trim();
                         // Only update with error message if we haven't received any real response
                         if (response.isEmpty() && !aiMessage.hasContent()) {
-                            aiMessage.updateText("I apologize, but I couldn't generate a proper response. Please try rephrasing your question.");
+                            aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
                         } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
@@ -608,7 +689,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     } else {
                         // Only show error if we haven't received any content
                         if (!aiMessage.hasContent()) {
-                            aiMessage.updateText("I apologize, but I encountered an issue generating a response. Please try again.");
+                            aiMessage.updateText(AppConstants.LLM_DEFAULT_ERROR_RESPONSE);
                         }
                     }
                     
@@ -1339,7 +1420,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private String getFormattedPrompt(String userMessage) {
-        // Get messages excluding the current message
+        // First try with full history
         List<ChatMessage> allMessages = conversationManager.getMessages();
         List<ChatMessage> historyMessages = new ArrayList<>();
         
@@ -1352,8 +1433,19 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
         }
         
-        // Use PromptManager to format the complete prompt
-        return PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
+        // First try formatting with history
+        String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
+        
+        // Check if prompt might exceed max length (using conservative estimate)
+        if (fullPrompt.length() > AppConstants.LLM_MAX_INPUT_LENGTH * 3) { // Assuming average of 3 chars per token
+            Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
+            // Format prompt with empty history list to get just system prompt + user message
+            String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+            Log.d(TAG, "Reduced prompt without history: " + reducedPrompt);
+            return reducedPrompt;
+        }
+        
+        return fullPrompt;
     }
 
     private void setupTitleTapCounter() {

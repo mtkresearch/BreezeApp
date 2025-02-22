@@ -22,6 +22,7 @@ import java.io.OutputStream;
 import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import java.util.concurrent.TimeUnit;
 
 import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
@@ -240,7 +241,15 @@ public class TTSEngineService extends BaseEngineService {
 
     private void localSpeak(String text) {
         try {
+            // Initialize audio track with the sample rate
             initAudioTrack(localTTS.getSampleRate());
+            
+            // Add a flag to track if synthesis is complete
+            final boolean[] isSynthesisComplete = new boolean[1];
+            final boolean[] isPlaybackComplete = new boolean[1];
+            
+            // Create a completion handler
+            CompletableFuture<Void> synthesisComplete = new CompletableFuture<>();
             
             localTTS.synthesize(
                 text,
@@ -249,18 +258,34 @@ public class TTSEngineService extends BaseEngineService {
                 new Function1<float[], Unit>() {
                     @Override
                     public Unit invoke(float[] samples) {
-                        playAudioSamples(samples);
+                        if (audioTrack != null && !isPlaybackComplete[0]) {
+                            playAudioSamples(samples);
+                        }
                         return Unit.INSTANCE;
                     }
                 },
                 new Function0<Unit>() {
                     @Override
                     public Unit invoke() {
-                        releaseAudioTrack();
+                        isSynthesisComplete[0] = true;
+                        // Add a small delay before releasing to ensure all audio is played
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            isPlaybackComplete[0] = true;
+                            releaseAudioTrack();
+                            synthesisComplete.complete(null);
+                        }, 1000); // 1 second delay to ensure playback completes
                         return Unit.INSTANCE;
                     }
                 }
             );
+            
+            // Wait for synthesis to complete
+            try {
+                synthesisComplete.get(10, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                Log.e(TAG, "Error waiting for synthesis completion", e);
+            }
+            
         } catch (Exception e) {
             Log.e(TAG, "Error in local TTS", e);
             releaseAudioTrack();
@@ -299,39 +324,66 @@ public class TTSEngineService extends BaseEngineService {
     }
 
     private void initAudioTrack(int sampleRate) {
+        // Use a larger buffer size for better audio quality
         int minBufferSize = AudioTrack.getMinBufferSize(
             sampleRate,
             AudioFormat.CHANNEL_OUT_MONO,
             AudioFormat.ENCODING_PCM_FLOAT
         );
+        int bufferSize = Math.max(minBufferSize * 4, 32768); // Use larger buffer
 
-        audioTrack = new AudioTrack.Builder()
-            .setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build())
-            .setAudioFormat(new AudioFormat.Builder()
-                .setSampleRate(sampleRate)
-                .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build())
-            .setBufferSizeInBytes(minBufferSize)
-            .setTransferMode(AudioTrack.MODE_STREAM)
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .setFlags(AudioAttributes.FLAG_AUDIBILITY_ENFORCED) // Enforce audibility
             .build();
 
+        AudioFormat audioFormat = new AudioFormat.Builder()
+            .setSampleRate(sampleRate)
+            .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
+            .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+            .build();
+
+        audioTrack = new AudioTrack.Builder()
+            .setAudioAttributes(audioAttributes)
+            .setAudioFormat(audioFormat)
+            .setBufferSizeInBytes(bufferSize)
+            .setTransferMode(AudioTrack.MODE_STREAM)
+            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY) // Better performance
+            .build();
+
+        // Set maximum volume
+        audioTrack.setVolume(AudioTrack.getMaxVolume());
         audioTrack.play();
     }
 
     private void playAudioSamples(float[] samples) {
         if (audioTrack != null && audioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
-            audioTrack.write(samples, 0, samples.length, AudioTrack.WRITE_BLOCKING);
+            try {
+                // Amplify the samples to increase volume
+                float[] amplifiedSamples = new float[samples.length];
+                for (int i = 0; i < samples.length; i++) {
+                    // Amplify by 3x while preventing clipping
+                    amplifiedSamples[i] = Math.max(-1.0f, Math.min(1.0f, samples[i] * 3.0f));
+                }
+                
+                // Write samples with timeout to prevent blocking
+                int result = audioTrack.write(amplifiedSamples, 0, amplifiedSamples.length, AudioTrack.WRITE_BLOCKING);
+                if (result < 0) {
+                    Log.e(TAG, "Error writing audio samples: " + result);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error playing audio samples", e);
+            }
         }
     }
 
     private void releaseAudioTrack() {
         if (audioTrack != null) {
             try {
+                // Ensure all queued audio is played before stopping
                 audioTrack.stop();
+                Thread.sleep(100); // Small delay to ensure clean stop
                 audioTrack.release();
             } catch (Exception e) {
                 Log.e(TAG, "Error releasing AudioTrack", e);
