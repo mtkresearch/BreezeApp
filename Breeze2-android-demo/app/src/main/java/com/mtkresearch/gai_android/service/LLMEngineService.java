@@ -450,30 +450,50 @@ public class LLMEngineService extends BaseEngineService {
                         nativeSwapModel(128);
                         return response;
                     case "localCPU":
-                        CompletableFuture<String> future = new CompletableFuture<>();
-                        currentResponse = future;
-                        
-                        // Calculate sequence length based on prompt length
-                        int seqLen = (int)(prompt.length() * 0.75) + 64;
-                        
-                        executor.execute(() -> {
-                            mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                @Override
-                                public void onResult(String result) {
-                                    if (result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                        return;
-                                    }
-                                    currentStreamingResponse.append(result);
-                                }
+                        try {
+                            // Calculate sequence length based on prompt length, matching original implementation
+                            int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
+                            
+                            CompletableFuture<String> future = new CompletableFuture<>();
+                            currentResponse = future;
+                            
+                            executor.execute(() -> {
+                                try {
+                                    mModule.generate(prompt, seqLen, new LlamaCallback() {
+                                        @Override
+                                        public void onResult(String result) {
+                                            if (!isGenerating.get() || 
+                                                result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
+                                                return;
+                                            }
+                                            currentStreamingResponse.append(result);
+                                        }
 
-                                @Override
-                                public void onStats(float tps) {
-                                    Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                        @Override
+                                        public void onStats(float tps) {
+                                            Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                        }
+                                    }, false);
+                                    
+                                    // Only complete if we haven't been stopped
+                                    if (isGenerating.get()) {
+                                        currentResponse.complete(currentStreamingResponse.toString());
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error in CPU generation", e);
+                                    if (!currentResponse.isDone()) {
+                                        currentResponse.completeExceptionally(e);
+                                    }
+                                } finally {
+                                    isGenerating.set(false);
                                 }
-                            }, false);
-                        });
-                        
-                        return future.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                            });
+                            
+                            return future.get(60000, TimeUnit.MILLISECONDS);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in CPU streaming response", e);
+                            throw e;
+                        }
                     default:
                         return AppConstants.LLM_ERROR_RESPONSE;
                 }
@@ -551,8 +571,8 @@ public class LLMEngineService extends BaseEngineService {
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                         
-                        // Calculate sequence length based on prompt length
-                        int seqLen = (int)(prompt.length() * 0.75) + 256;  // Increased for longer context
+                        // Calculate sequence length based on prompt length, matching original implementation
+                        int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
                         
                         executor.execute(() -> {
                             try {
@@ -617,7 +637,8 @@ public class LLMEngineService extends BaseEngineService {
                                 isGenerating.set(false);
                             }
                         });
-                        break;
+
+                        return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS); 
                         
                     default:
                         String error = "Unsupported backend: " + currentBackend;
