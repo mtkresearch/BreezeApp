@@ -636,7 +636,7 @@ public class LLMEngineService extends BaseEngineService {
                             }
                         });
 
-                        return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS); 
+                        currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         
                     default:
                         String error = "Unsupported backend: " + currentBackend;

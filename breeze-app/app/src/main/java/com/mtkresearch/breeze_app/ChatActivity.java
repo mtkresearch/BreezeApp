@@ -618,8 +618,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void handleTextMessage(String message) {
         if (message.trim().isEmpty()) return;
         
-        // Hide keyboard
+        // Hide keyboard and clear input first
         hideKeyboard();
+        uiHandler.clearInput();
         
         // Add user message to conversation
         ChatMessage userMessage = new ChatMessage(message, true);
@@ -633,23 +634,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Create empty AI message with loading indicator
         ChatMessage aiMessage = new ChatMessage("Thinking...", false);
         aiMessage.setPromptId(promptId);
-        // Don't add the "Thinking..." message to conversation history yet
         chatAdapter.addMessage(aiMessage);
         
         // Save chat after adding both messages
         saveCurrentChat();
         
-        // Change send buttons to stop icons
-        setSendButtonsAsStop(true);
-        
         // Generate AI response with formatted prompt
         if (llmService != null) {
             String formattedPrompt = getFormattedPrompt(message);
             
+            // Set UI to generation state BEFORE starting generation
+            setSendButtonsAsStop(true);
+            
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean hasReceivedResponse = false;
-                private boolean isGenerating = true;
+                private boolean isGenerating = true;  // Track generation state
 
                 @Override
                 public void onToken(String token) {
@@ -658,7 +658,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     }
 
                     if (!hasReceivedResponse) {
-                        // Add the AI message to conversation history only when we get the first real response
                         hasReceivedResponse = true;
                         conversationManager.addMessage(aiMessage);
                     }
@@ -674,16 +673,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 runOnUiThread(() -> {
                     if (finalResponse != null && !finalResponse.equals(AppConstants.LLM_DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
-                        // Only update with error message if we haven't received any real response
                         if (response.isEmpty() && !aiMessage.hasContent()) {
                             aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
                         } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
-                        // Increment promptId after successful response
                         promptId++;
                     } else {
-                        // Only show error if we haven't received any content
                         if (!aiMessage.hasContent()) {
                             aiMessage.updateText(AppConstants.LLM_DEFAULT_ERROR_RESPONSE);
                         }
@@ -691,21 +687,22 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                     UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                    
+                    // Re-enable input and restore send button AFTER response is complete
                     setSendButtonsAsStop(false);
                     
-                    // Only save and refresh after AI response is complete
                     saveCurrentChat();
                     refreshHistoryList();
                 });
             }).exceptionally(throwable -> {
                 Log.e(TAG, "Error generating response", throwable);
                 runOnUiThread(() -> {
-                    // Only show error if we haven't received any content
                     if (!aiMessage.hasContent()) {
                         aiMessage.updateText("Error: Unable to generate response. Please try again later.");
                     }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
                     Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    
                     setSendButtonsAsStop(false);
                 });
                 return null;
@@ -715,21 +712,87 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void setSendButtonsAsStop(boolean isStop) {
         runOnUiThread(() -> {
-            // Update UI state
-            uiHandler.setGeneratingState(isStop);
-            
-            // Update click listeners
-            View.OnClickListener listener = isStop ? 
-                v -> {
-                    if (llmService != null) {
-                        llmService.stopGeneration();
-                        setSendButtonsAsStop(false);
-                    }
-                } :
-                v -> handleSendAction();
+            try {
+                // Update UI state first
+                uiHandler.setGeneratingState(isStop);
+                
+                // Disable input section
+                binding.messageInput.setEnabled(!isStop);
+                binding.messageInputExpanded.setEnabled(!isStop);
+                binding.messageInput.setAlpha(isStop ? DISABLED_ALPHA : ENABLED_ALPHA);
+                binding.messageInputExpanded.setAlpha(isStop ? DISABLED_ALPHA : ENABLED_ALPHA);
+                
+                // Update hint text
+                String hintText = isStop ? "Please wait for the response to finish" : "Type a message...";
+                binding.messageInput.setHint(hintText);
+                binding.messageInputExpanded.setHint(hintText);
+                
+                // Clear text when disabling
+                if (isStop) {
+                    binding.messageInput.setText("");
+                    binding.messageInputExpanded.setText("");
+                }
 
-            binding.sendButton.setOnClickListener(listener);
-            binding.sendButtonExpanded.setOnClickListener(listener);
+                // Configure send/stop buttons - AFTER UI state update
+                if (isStop) {
+                    // When in stop mode, ensure button is fully visible and enabled
+                    binding.sendButton.setImageResource(R.drawable.ic_stop);
+                    binding.sendButtonExpanded.setImageResource(R.drawable.ic_stop);
+                    binding.sendButton.setEnabled(true);
+                    binding.sendButtonExpanded.setEnabled(true);
+                    binding.sendButton.setAlpha(1.0f);  // Use full opacity for stop button
+                    binding.sendButtonExpanded.setAlpha(1.0f);
+                    
+                    // Set click listener for stop functionality
+                    View.OnClickListener stopListener = v -> {
+                        if (llmService != null) {
+                            // Show stopping feedback
+                            Toast.makeText(ChatActivity.this, "Stopping generation...", Toast.LENGTH_SHORT).show();
+                            
+                            // Stop generation
+                            llmService.stopGeneration();
+                            
+                            // Keep button enabled but update appearance
+                            binding.sendButton.setImageResource(R.drawable.ic_send);
+                            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+                        }
+                    };
+                    binding.sendButton.setOnClickListener(stopListener);
+                    binding.sendButtonExpanded.setOnClickListener(stopListener);
+                    
+                    // Force button state update
+                    binding.sendButton.post(() -> {
+                        binding.sendButton.setEnabled(true);
+                        binding.sendButton.setAlpha(1.0f);
+                    });
+                    binding.sendButtonExpanded.post(() -> {
+                        binding.sendButtonExpanded.setEnabled(true);
+                        binding.sendButtonExpanded.setAlpha(1.0f);
+                    });
+                } else {
+                    // Normal send mode
+                    binding.sendButton.setImageResource(R.drawable.ic_send);
+                    binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+                    binding.sendButton.setEnabled(true);
+                    binding.sendButtonExpanded.setEnabled(true);
+                    binding.sendButton.setAlpha(ENABLED_ALPHA);
+                    binding.sendButtonExpanded.setAlpha(ENABLED_ALPHA);
+                    
+                    // Reset to send functionality
+                    View.OnClickListener sendListener = v -> handleSendAction();
+                    binding.sendButton.setOnClickListener(sendListener);
+                    binding.sendButtonExpanded.setOnClickListener(sendListener);
+                }
+                
+                // Force layout update
+                binding.inputContainer.post(() -> {
+                    binding.inputContainer.requestLayout();
+                    binding.inputContainer.invalidate();
+                });
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating UI state", e);
+            }
         });
     }
 
