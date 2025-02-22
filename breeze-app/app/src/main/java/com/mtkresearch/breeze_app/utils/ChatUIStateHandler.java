@@ -80,8 +80,20 @@ public class ChatUIStateHandler {
     }
 
     public void updateSendButton(boolean hasContent) {
-        int iconRes = isGenerating ? R.drawable.ic_stop : 
-                     (hasContent || !AppConstants.AUDIO_CHAT_ENABLED ? R.drawable.ic_send : R.drawable.ic_audio_wave);
+        // During generation, always show stop icon
+        if (isGenerating) {
+            binding.sendButton.setImageResource(R.drawable.ic_stop);
+            binding.sendButtonExpanded.setImageResource(R.drawable.ic_stop);
+            binding.sendButton.setEnabled(true);
+            binding.sendButtonExpanded.setEnabled(true);
+            binding.sendButton.setAlpha(1.0f);
+            binding.sendButtonExpanded.setAlpha(1.0f);
+            return;
+        }
+        
+        // Normal mode icon selection
+        int iconRes = hasContent || !AppConstants.AUDIO_CHAT_ENABLED ? 
+            R.drawable.ic_send : R.drawable.ic_audio_wave;
         binding.sendButton.setImageResource(iconRes);
         binding.sendButtonExpanded.setImageResource(iconRes);
     }
@@ -169,6 +181,7 @@ public class ChatUIStateHandler {
 
     public void setGeneratingState(boolean generating) {
         this.isGenerating = generating;
-        updateSendButtonState();
+        // Always update button when generation state changes
+        updateSendButton(true);
     }
 } 
