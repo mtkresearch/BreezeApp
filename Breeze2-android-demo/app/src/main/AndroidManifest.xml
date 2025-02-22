@@ -54,7 +54,7 @@
             android:required="false" />
 
         <activity
-            android:name=".ChatActivity"
+            android:name="com.mtkresearch.breeze_app.ChatActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Breeze2Demo">
@@ -65,12 +65,12 @@
         </activity>
         
         <activity
-            android:name=".MainActivity"
+            android:name="com.mtkresearch.breeze_app.MainActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo" />
 
         <activity
-            android:name=".AudioChatActivity"
+            android:name="com.mtkresearch.breeze_app.AudioChatActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo" />
 
@@ -84,10 +84,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <service android:name=".service.LLMEngineService" />
-        <service android:name=".service.VLMEngineService" />
-        <service android:name=".service.ASREngineService" />
-        <service android:name=".service.TTSEngineService" />
+        <service android:name="com.mtkresearch.breeze_app.service.LLMEngineService" />
+        <service android:name="com.mtkresearch.breeze_app.service.VLMEngineService" />
+        <service android:name="com.mtkresearch.breeze_app.service.ASREngineService" />
+        <service android:name="com.mtkresearch.breeze_app.service.TTSEngineService" />
     </application>
 
 </manifest>

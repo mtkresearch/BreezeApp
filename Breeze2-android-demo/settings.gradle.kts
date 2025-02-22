@@ -13,6 +13,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GAIandroid"
+rootProject.name = "breeze-app"
 include(":app")
  

@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.mtkresearch.gai_android"
+    namespace = "com.mtkresearch.breeze_app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtkresearch.gai_android"
+        applicationId = "com.mtkresearch.breeze_app"
         minSdk = 31
         targetSdk = 35
         versionCode = 1
@@ -78,7 +78,7 @@ android {
             resValue("string", "app_name", "Breeze2-demo")
             buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
             manifestPlaceholders["file_provider_authority"] = 
-                "com.mtkresearch.gai_android.breeze.fileprovider"
+                "com.mtkresearch.breeze_app.breeze.fileprovider"
         }
     }
 }
