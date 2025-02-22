@@ -518,7 +518,9 @@ public class LLMEngineService extends BaseEngineService {
         currentStreamingResponse.setLength(0);
         isGenerating.set(true);
         
-        return CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<String> resultFuture = new CompletableFuture<>();
+        
+        CompletableFuture.runAsync(() -> {
             try {
                 switch (currentBackend) {
                     case "mtk":
@@ -539,6 +541,7 @@ public class LLMEngineService extends BaseEngineService {
                                     // Only complete if we haven't been stopped
                                     if (isGenerating.get()) {
                                         currentResponse.complete(response);
+                                        resultFuture.complete(response);
                                     }
                                     
                                     // Clean up MTK state
@@ -552,17 +555,17 @@ public class LLMEngineService extends BaseEngineService {
                                     Log.e(TAG, "Error in MTK streaming generation", e);
                                     if (!currentResponse.isDone()) {
                                         currentResponse.completeExceptionally(e);
+                                        resultFuture.completeExceptionally(e);
                                     }
                                 } finally {
                                     isGenerating.set(false);
                                 }
                             });
-                            
-                            return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
                         } catch (Exception e) {
                             Log.e(TAG, "Error in MTK streaming response", e);
                             throw e;
                         }
+                        break;
                         
                     case "localCPU":
                         // Only apply prompt formatting for local CPU backend
@@ -586,13 +589,18 @@ public class LLMEngineService extends BaseEngineService {
 
                                         // Handle both stop tokens - filter out both EOS tokens
                                         if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
-                                            token.equals("<|end_of_text|>") || token.equals("<|eot_id|>")) {
+                                            token.equals("<|end_of_text|>")) {
                                             Log.d(TAG, "Stop token detected: " + token);
-                                            completeGeneration();
+                                            String finalResponse = currentStreamingResponse.toString();
+                                            if (!currentResponse.isDone()) {
+                                                currentResponse.complete(finalResponse);
+                                                resultFuture.complete(finalResponse);
+                                            }
+                                            isGenerating.set(false);
                                             return;
                                         }
 
-                                        // Process token
+                                        // Handle streaming response
                                         if (callback != null) {
                                             callback.onToken(token);
                                         }
@@ -602,40 +610,61 @@ public class LLMEngineService extends BaseEngineService {
                                     @Override
                                     public void onStats(float tps) {
                                         Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                        // If we're getting stats but no tokens, check if we need to complete
+                                        if (currentStreamingResponse.length() > 0 && !currentResponse.isDone() && !isGenerating.get()) {
+                                            String finalResponse = currentStreamingResponse.toString();
+                                            currentResponse.complete(finalResponse);
+                                            resultFuture.complete(finalResponse);
+                                        }
                                     }
                                 }, false);
                                 
-                                // Complete generation when finished
-                                completeGeneration();
+                                // Add a delay and check if we need to complete the response
+                                Thread.sleep(100);
+                                if (!currentResponse.isDone() && currentStreamingResponse.length() > 0) {
+                                    String finalResponse = currentStreamingResponse.toString();
+                                    currentResponse.complete(finalResponse);
+                                    resultFuture.complete(finalResponse);
+                                }
                                 
                             } catch (Exception e) {
-                                Log.e(TAG, "Error during generation", e);
+                                Log.e(TAG, "Error in CPU streaming generation", e);
                                 if (!currentResponse.isDone()) {
                                     currentResponse.completeExceptionally(e);
+                                    resultFuture.completeExceptionally(e);
                                 }
                             } finally {
                                 isGenerating.set(false);
                             }
                         });
-                        
+
                         return currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS); 
                         
                     default:
-                        if (callback != null) {
-                            callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
-                        }
-                        currentResponse.complete(AppConstants.LLM_ERROR_RESPONSE);
-                        return AppConstants.LLM_ERROR_RESPONSE;
+                        String error = "Unsupported backend: " + currentBackend;
+                        Log.e(TAG, error);
+                        resultFuture.completeExceptionally(new IllegalStateException(error));
                 }
+                
+                // Set up timeout that doesn't interrupt generation
+                CompletableFuture.delayedExecutor(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .execute(() -> {
+                        if (!resultFuture.isDone() && isGenerating.get()) {
+                            Log.w(TAG, "Generation taking longer than expected but continuing...");
+                            // Don't stop generation, just notify about timeout
+                            if (callback != null) {
+                                callback.onToken("\n[Note: Generation is taking longer than usual but will continue...]");
+                            }
+                        }
+                    });
+                
             } catch (Exception e) {
                 Log.e(TAG, "Error in streaming response", e);
-                if (callback != null) {
-                    callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
-                }
-                currentResponse.complete(AppConstants.LLM_ERROR_RESPONSE);
-                return AppConstants.LLM_ERROR_RESPONSE;
+                resultFuture.completeExceptionally(e);
             }
         });
+        
+        return resultFuture;
     }
 
     private void completeGeneration() {
