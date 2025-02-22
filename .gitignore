@@ -35,3 +35,8 @@ Breeze2-android-demo/.gradle/
 Breeze2-android-demo/.idea/
 Breeze2-android-demo/app/libs/executorch.aar
 Breeze2-android-demo/app/libs/executorch.aar.sha256sums
+
+# Model weight folder
+Breeze-Tiny-Instruct-v0_1-mobile
+Llama3.2-3B-Instruct-mobile
+
