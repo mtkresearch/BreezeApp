@@ -632,7 +632,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         updateWatermarkVisibility();
         
         // Create empty AI message with loading indicator
-        ChatMessage aiMessage = new ChatMessage("Thinking...", false);
+        ChatMessage aiMessage = new ChatMessage(getString(R.string.thinking), false);
         aiMessage.setPromptId(promptId);
         chatAdapter.addMessage(aiMessage);
         
