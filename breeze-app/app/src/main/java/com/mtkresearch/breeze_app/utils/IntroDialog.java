@@ -130,7 +130,7 @@ public class IntroDialog extends Dialog {
                     dismiss();
                 } else {
                     // Show warning toast with specific requirements that are not met
-                    showRequirementsWarning();
+                    showRequirementsWarning( context );
                 }
             }
             updateButtonText(context);
@@ -194,21 +194,21 @@ public class IntroDialog extends Dialog {
         return hasMinimumRam && hasRequiredStorage && hasRequiredModels;
     }
 
-    private void showRequirementsWarning() {
-        StringBuilder message = new StringBuilder("Cannot proceed: ");
+    private void showRequirementsWarning( Context context ) {
+        StringBuilder message = new StringBuilder(context.getString(R.string.cannot_proceed));
+
         if (!hasMinimumRam) {
-            message.append("\n• Insufficient RAM (minimum ").append(MIN_RAM_GB).append("GB required)");
+            message.append("\n").append(context.getString(R.string.insufficient_ram, MIN_RAM_GB));
         }
         if (!hasRequiredStorage) {
-            message.append("\n• Insufficient storage space (minimum ").append(MIN_STORAGE_GB).append("GB required)");
+            message.append("\n").append(context.getString(R.string.insufficient_storage, MIN_STORAGE_GB));
         }
         if (!hasRequiredModels) {
-            message.append("\n• Required model files (").append(AppConstants.LLAMA_MODEL_FILE)
-                  .append(" or ").append(AppConstants.BREEZE_MODEL_FILE).append(") are missing");
+            message.append("\n").append(context.getString(R.string.missing_models,
+                    AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE));
         }
-        
-        android.widget.Toast.makeText(getContext(), message.toString(), 
-            android.widget.Toast.LENGTH_LONG).show();
+
+        android.widget.Toast.makeText(context, message.toString(), android.widget.Toast.LENGTH_LONG).show();
     }
 
     private void updateButtonState( Context context ) {
