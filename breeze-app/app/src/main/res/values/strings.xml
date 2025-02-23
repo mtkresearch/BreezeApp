@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Breeze2-demo</string>
-    <string name="file_provider_authority" translatable="false">${file_provider_authority}</string>
+    <string name="file_provider_authority">${file_provider_authority}</string>
 
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- Intro Dialog Title -->
     <string name="intro_dialog_title_warning">Demo Version Warning</string>
@@ -61,7 +62,7 @@
     <string name="warning_footer"><![CDATA[The application may not function properly.<br/>]]></string>
 
     <!-- status summary -->
-    <string name="status_summary" translatable="false">
+    <string name="status_summary">
          <![CDATA[
         • RAM Memory:<br/>
         &nbsp;&nbsp;&nbsp;Required: %1$sGB+<br/>
@@ -88,7 +89,71 @@
     <string name="next">Next</string>
     <string name="got_it">Got it</string>
     <string name="requirements_not_met">Requirements Not Met</string>
+    <string name="cannot_proceed">Cannot proceed:</string>
+    <string name="insufficient_ram">• Insufficient RAM (minimum %1$dGB required)</string>
+    <string name="insufficient_storage">• Insufficient storage space (minimum %1$dGB required)</string>
+    <string name="missing_models">• Required model files (%1$s or %2$s) are missing</string>
 
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="thinking">Thinking...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="view_chat_history">View chat history</string>
+    <string name="loading">Loading...</string>
+    <string name="new_conversation">New conversation</string>
+    <string name="app_logo">App Logo</string>
+    <string name="how_can_i_help_you">How can I help you?</string>
+    <string name="type_in_here">Type in here...</string>
+    <string name="chat_history">Chat History</string>
+    <string name="send_message">Send message</string>
+    <string name="voice_input">Voice input</string>
+    <string name="add_attachments">Add attachments</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## intro_page_layout.xml -->
+    <string name="scroll_for_more">Scroll for more</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatMediaHandler.java -->
+    <string name="failed_to_start_recording">Failed to start recording</string>
+    <string name="failed_to_process_file">Failed to process file</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## UiUtils.java -->
+    <string name="error_showing_image_preview">Error showing image preview</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## AudioChatActivity.java -->
+    <string name="camera_switched">Switched to %1$s camera</string>
+    <string name="camera_front">front</string>
+    <string name="camera_back">back</string>
+    <string name="menu_options">Menu options</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## MainActivity.java -->
+    <string name="failed_to_initialize">Failed to initialize: </string>
+    <string name="model_directory_not_found">Model directory not found</string>
+    <string name="no_llm_models_found">No LLM models found. Please ensure either %1$s or %2$s model is available."</string>
+    <string name="please_select_a_model_first">Please select a model first</string>
+    <string name="waiting_for_services_to_initialize">Waiting for services to initialize</string>
+    <string name="speech_recognition_requires_audio_permission">Speech recognition requires audio permission</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="error_initializing_services">Error initializing services: </string>
+    <string name="initializing_model_with">Initializing model with </string>
+    <string name="speech_recognition_is_disabled">Speech recognition is disabled</string>
+    <string name="error_generating_response">Error generating response</string>
+    <string name="stopping_generation">Stopping generation...</string>
+    <string name="error_analyzing_image">Error analyzing image</string>
+    <string name="ASR_service_not_ready">ASR service not ready</string>
+    <string name="error_launching_camera">Error launching camera</string>
+    <string name="no_recordings_found">No recordings found</string>
+    <string name="recording_deleted">Recording deleted</string>
+    <string name="camera_permission_required">Camera permission is required for taking photos</string>
+    <string name="mic_permission_required">Microphone permission is required for voice input</string>
+
+
 </resources>
