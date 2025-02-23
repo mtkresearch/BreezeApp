@@ -8,6 +8,8 @@ import android.util.Log;
 import android.widget.Toast;
 import androidx.core.content.FileProvider;
 
+import com.mtkresearch.breeze_app.R;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -35,7 +37,7 @@ public class ChatMediaHandler {
             isRecording = true;
         } catch (IOException e) {
             Log.e(TAG, "Failed to start recording", e);
-            Toast.makeText(context, "Failed to start recording", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.failed_to_start_recording), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -93,7 +95,7 @@ public class ChatMediaHandler {
             return new ChatMessage("Attached file: " + fileName, true);
         } catch (Exception e) {
             Log.e(TAG, "Failed to process file", e);
-            Toast.makeText(context, "Failed to process file", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.failed_to_process_file), Toast.LENGTH_SHORT).show();
             return null;
         }
     }

@@ -454,8 +454,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 Log.e(TAG, "Error during service initialization", e);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!isFinishing()) {
-                        Toast.makeText(ChatActivity.this, 
-                            "Error initializing services: " + e.getMessage(), 
+                        Toast.makeText(ChatActivity.this,
+                                ChatActivity.this.getString(R.string.error_initializing_services) + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                         // Mark initialization as complete even on error
                         synchronized (initLock) {
@@ -482,8 +482,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
-                Toast.makeText(ChatActivity.this, 
-                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
+                Toast.makeText(ChatActivity.this,
+                        ChatActivity.this.getString(R.string.initializing_model_with) + preferredBackend.toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });
@@ -611,7 +611,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             startAudioChat();
         } else if (AppConstants.AUDIO_CHAT_ENABLED) {
             // Show a message if audio chat is enabled but ASR is disabled
-            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString( R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -701,7 +701,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         aiMessage.updateText("Error: Unable to generate response. Please try again later.");
                     }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_generating_response), Toast.LENGTH_SHORT).show();
                     
                     setSendButtonsAsStop(false);
                 });
@@ -747,7 +747,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     View.OnClickListener stopListener = v -> {
                         if (llmService != null) {
                             // Show stopping feedback
-                            Toast.makeText(ChatActivity.this, "Stopping generation...", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.stopping_generation), Toast.LENGTH_SHORT).show();
                             
                             // Stop generation
                             llmService.stopGeneration();
@@ -814,7 +814,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 })
                 .exceptionally(throwable -> {
                     Log.e(TAG, "Error analyzing image", throwable);
-                    runOnUiThread(() -> Toast.makeText(this, "Error analyzing image", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(this, this.getString(R.string.error_analyzing_image), Toast.LENGTH_SHORT).show());
                     return null;
                 });
         }
@@ -823,7 +823,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void toggleRecording() {
         // Skip if ASR is disabled
         if (!AppConstants.ASR_ENABLED) {
-            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -842,7 +842,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void startRecording() {
         if (asrService == null) {
-            Toast.makeText(this, "ASR service not ready", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.ASR_service_not_ready), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -917,14 +917,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
         } catch (IOException e) {
             Log.e(TAG, "Error creating camera intent", e);
-            Toast.makeText(this, "Error launching camera", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.error_launching_camera), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void showAudioList() {
         File[] files = FileUtils.getAudioRecordings(this);
         if (files == null || files.length == 0) {
-            Toast.makeText(this, "No recordings found", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.no_recordings_found), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -940,7 +940,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             @Override
             public void onDeleteClick(File file) {
                 if (file.delete()) {
-                    Toast.makeText(ChatActivity.this, "Recording deleted", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.recording_deleted), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -1000,8 +1000,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             } else {
                 String message = permissions[0].equals(android.Manifest.permission.CAMERA) ?
-                    "Camera permission is required for taking photos" :
-                    "Microphone permission is required for voice input";
+                        getString(R.string.camera_permission_required) :
+                        getString(R.string.mic_permission_required);
                 Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
             }
         }

@@ -1,5 +1,6 @@
 package com.mtkresearch.breeze_app;
 
+import android.content.Context;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import com.mtkresearch.breeze_app.databinding.ActivityAudioChatBinding;
@@ -18,17 +19,17 @@ public class AudioChatActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityAudioChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-        
-        setupButtons();
+        Context context = this.getBaseContext() ;
+
+        setupButtons(context);
     }
 
-    private void setupButtons() {
+    private void setupButtons(Context context) {
         binding.cameraButton.setOnClickListener(v -> {
             isFrontCamera = !isFrontCamera;
             // TODO: Implement camera switch logic
-            Toast.makeText(this, 
-                "Switched to " + (isFrontCamera ? "front" : "back") + " camera", 
-                Toast.LENGTH_SHORT).show();
+            String cameraType = context.getString(isFrontCamera ? R.string.camera_front : R.string.camera_back);
+            Toast.makeText(context, context.getString(R.string.camera_switched, cameraType), Toast.LENGTH_SHORT).show();
         });
 
         binding.micButton.setOnClickListener(v -> {
@@ -40,7 +41,7 @@ public class AudioChatActivity extends AppCompatActivity {
 
         binding.menuButton.setOnClickListener(v -> {
             // TODO: Implement menu options
-            Toast.makeText(this, "Menu options", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.menu_options), Toast.LENGTH_SHORT).show();
         });
 
         binding.closeButton.setOnClickListener(v -> {
