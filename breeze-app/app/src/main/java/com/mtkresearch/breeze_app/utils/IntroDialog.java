@@ -35,7 +35,6 @@ public class IntroDialog extends Dialog {
     private boolean hasMinimumRam = true;
     private boolean hasRequiredStorage = true;
     private boolean hasRequiredModels = true;
-    
     private final List<IntroPage> introPages;
     private OnFinalButtonClickListener finalButtonClickListener;
 
@@ -52,26 +51,18 @@ public class IntroDialog extends Dialog {
         introPages = Arrays.asList(
             new IntroPage(
                 R.drawable.ic_warning,
-                "Demo Version Warning",
-                "This is a community-driven project aimed at bringing AI capabilities directly to your phone, " +
-                "allowing you to experience <b>AI features completely offline</b> without privacy concerns." +
-                "<br/><br/>" +
-                "As a kick-off project, we welcome developers and enthusiasts to join us in improving this app. " +
-                "You may encounter some stability issues as we're continuously enhancing the experience." +
-                "<br/><br/>" +
-                "Feel free to contribute, raise issues, or submit PRs on our GitHub repository:" +
-                "<br/>" +
-                "<a href=\"https://github.com/mtkresearch/Breeze2-android-demo\">Breeze2-android-demo</a>"
+                    context.getString(R.string.intro_dialog_title_warning),
+                    context.getString(R.string.intro_description)
             ),
             new IntroPage(
                 R.drawable.ic_features,
-                "Current Features",
-                buildFeaturesDescription()
+                    context.getString(R.string.intro_dialog_title_current_features),
+                    context.getString(R.string.build_features_description)
             ),
             new IntroPage(
                 R.drawable.ic_requirements,
-                "System Requirements",
-                buildRequirementsDescription()
+                    context.getString(R.string.intro_dialog_title_system_requirements),
+                buildRequirementsDescription( context )
             )
         );
     }
@@ -79,6 +70,8 @@ public class IntroDialog extends Dialog {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Context context = this.getContext();
         
         // Check all requirements
         checkSystemRequirements();
@@ -123,7 +116,7 @@ public class IntroDialog extends Dialog {
         new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
             tab.view.setClickable(false);
         }).attach();
-        
+
         btnNext.setOnClickListener(v -> {
             if (currentPage < introPages.size() - 1) {
                 currentPage++;
@@ -140,21 +133,21 @@ public class IntroDialog extends Dialog {
                     showRequirementsWarning();
                 }
             }
-            updateButtonText();
-            updateButtonState();
+            updateButtonText(context);
+            updateButtonState(context);
         });
         
         viewPager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override
             public void onPageSelected(int position) {
                 currentPage = position;
-                updateButtonText();
-                updateButtonState();
+                updateButtonText(context);
+                updateButtonState(context);
             }
         });
         
-        updateButtonText();
-        updateButtonState();
+        updateButtonText(context);
+        updateButtonState(context);
         setCancelable(false);
     }
 
@@ -218,27 +211,28 @@ public class IntroDialog extends Dialog {
             android.widget.Toast.LENGTH_LONG).show();
     }
 
-    private void updateButtonState() {
+    private void updateButtonState( Context context ) {
         // Disable the button on the last page if any requirement is not met
         if (currentPage == introPages.size() - 1 && !meetsAllRequirements()) {
             btnNext.setEnabled(false);
             btnNext.setAlpha(0.5f);
-            btnNext.setText("Requirements Not Met");
+            btnNext.setText(context.getString(R.string.requirements_not_met));
         } else {
             btnNext.setEnabled(true);
             btnNext.setAlpha(1.0f);
-            updateButtonText();
+            updateButtonText(context);
         }
     }
 
-    private void updateButtonText() {
+    private void updateButtonText(Context context) {
         if (currentPage == introPages.size() - 1) {
-            btnNext.setText(meetsAllRequirements() ? "Got it" : "Requirements Not Met");
+            btnNext.setText(meetsAllRequirements() ? context.getString(R.string.got_it) : context.getString(R.string.requirements_not_met) );
         } else {
-            btnNext.setText("Next");
+            btnNext.setText( context.getString(R.string.next) );
         }
     }
 
+    /*
     private String buildFeaturesDescription() {
         return "• Local LLM Chat:<br/>" +
                "&nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>" +
@@ -252,70 +246,58 @@ public class IntroDialog extends Dialog {
                "<br/><br/>" +
                "Join us in building a privacy-focused AI experience!";
     }
+     */
 
-    private String buildRequirementsDescription() {
+    private String buildRequirementsDescription(Context context) {
         ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
         ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE))
-            .getMemoryInfo(memoryInfo);
+                .getMemoryInfo(memoryInfo);
         long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
-        
+
         // Get storage information
         android.os.StatFs stat = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
-        
+
         File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
         File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
         File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-        boolean modelExists = (llamaModel.exists() && llamaModel.isFile()) || 
-                           (breezeModel.exists() && breezeModel.isFile());
-        
-        String ramStatus;
-        if (totalRamGB >= MIN_RAM_GB) {
-            ramStatus = "✅ Passed";
-        } else {
-            ramStatus = "⛔️ Error: Insufficient RAM (" + totalRamGB + "GB < " + MIN_RAM_GB + "GB required)";
-        }
+        boolean modelExists = (llamaModel.exists() && llamaModel.isFile()) ||
+                (breezeModel.exists() && breezeModel.isFile());
 
-        String storageStatus;
-        if (availableGB >= MIN_STORAGE_GB) {
-            storageStatus = "✅ Sufficient (" + availableGB + "GB available)";
-        } else {
-            storageStatus = "⛔️ Error: Insufficient Space (only " + availableGB + "GB available)";
-        }
-        
+        String ramStatus = (totalRamGB >= MIN_RAM_GB)
+                ? context.getString(R.string.ram_passed)
+                : context.getString(R.string.ram_error, totalRamGB, MIN_RAM_GB);
+
+        String storageStatus = (availableGB >= MIN_STORAGE_GB)
+                ? context.getString(R.string.storage_sufficient, availableGB)
+                : context.getString(R.string.storage_error, availableGB);
+
         StringBuilder warningMessages = new StringBuilder();
         if (totalRamGB < MIN_RAM_GB) {
-            warningMessages.append("⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>");
+            warningMessages.append(context.getString(R.string.warning_ram));
         }
         if (!modelExists) {
-            warningMessages.append("⚠️ WARNING: Required model files (")
-                          .append(AppConstants.LLAMA_MODEL_FILE)
-                          .append(" or ")
-                          .append(AppConstants.BREEZE_MODEL_FILE)
-                          .append(") are missing.<br/>");
+            warningMessages.append(context.getString(R.string.warning_model_missing,
+                    AppConstants.LLAMA_MODEL_FILE,
+                    AppConstants.BREEZE_MODEL_FILE));
         }
         if (availableGB < MIN_STORAGE_GB) {
-            warningMessages.append("⚠️ WARNING: Insufficient storage space available (" + availableGB + "GB < " + MIN_STORAGE_GB + "GB required).<br/>");
+            warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_GB));
         }
         if (warningMessages.length() > 0) {
-            warningMessages.append("The application may not function properly.<br/>");
+            warningMessages.append(context.getString(R.string.warning_footer));
         }
-        
-        return "• RAM Memory:<br/>" +
-               "&nbsp;&nbsp;&nbsp;Required: " + MIN_RAM_GB + "GB+<br/>" +
-               "&nbsp;&nbsp;&nbsp;Your Device: " + totalRamGB + "GB<br/>" +
-               "&nbsp;&nbsp;&nbsp;Status: " + ramStatus + "<br/><br/>" +
-               "• Model Files:<br/>" +
-               "&nbsp;&nbsp;&nbsp;Location: " + AppConstants.LLAMA_MODEL_DIR + "<br/>" +
-               "&nbsp;&nbsp;&nbsp;Required: " + AppConstants.LLAMA_MODEL_FILE + " or " + AppConstants.BREEZE_MODEL_FILE + "<br/>" +
-               "&nbsp;&nbsp;&nbsp;Status: " + (modelExists ? "✅ Model Found" : "⛔️ Model Missing") + "<br/><br/>" +
-               "• Storage Space:<br/>" +
-               "&nbsp;&nbsp;&nbsp;Required: " + MIN_STORAGE_GB + "GB+ free space<br/>" +
-               "&nbsp;&nbsp;&nbsp;Available: " + availableGB + "GB<br/>" +
-               "&nbsp;&nbsp;&nbsp;Status: " + storageStatus + "<br/><br/>" +
-               (warningMessages.length() > 0 ? warningMessages.toString() + "<br/>" : "") +
-               "Please ensure all requirements are met for optimal performance.";
+
+        String string_of_modelExists = ( modelExists )
+                ? context.getString(R.string.model_found)
+                : context.getString(R.string.model_missing) ;
+
+        return context.getString(R.string.status_summary,
+                MIN_RAM_GB, totalRamGB, ramStatus,
+                AppConstants.LLAMA_MODEL_DIR, AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE, string_of_modelExists,
+                MIN_STORAGE_GB, availableGB, storageStatus,
+                warningMessages.toString());
     }
 
     private static class IntroPage {

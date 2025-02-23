@@ -1,5 +1,94 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Breeze2-demo</string>
-    <string name="file_provider_authority">${file_provider_authority}</string>
+    <string name="file_provider_authority" translatable="false">${file_provider_authority}</string>
+
+    <!-- ## IntroDialog.java -->
+    <!-- Intro Dialog Title -->
+    <string name="intro_dialog_title_warning">Demo Version Warning</string>
+    <string name="intro_dialog_title_current_features">Current Features</string>
+    <string name="intro_dialog_title_system_requirements">System Requirements</string>
+
+    <!-- Intro Dialog Page 1 : Demo Version Warning -->
+    <string name="intro_description">
+        <![CDATA[
+        This is a community-driven project aimed at bringing AI capabilities directly to your phone,
+        allowing you to experience <b>AI features completely offline</b> without privacy concerns.
+        <br/><br/>
+        As a kick-off project, we welcome developers and enthusiasts to join us in improving this app.
+        You may encounter some stability issues as we\'re continuously enhancing the experience.
+        <br/><br/>
+        Feel free to contribute, raise issues, or submit PRs on our GitHub repository:
+        <br/>
+        <a href="https://github.com/mtkresearch/Breeze2-android-demo">Breeze2-android-demo</a>
+        ]]>
+    </string>
+
+    <!-- Intro Dialog Page 2 : Current Features -->
+    <string name="build_features_description">
+        <![CDATA[
+        • Local LLM Chat:<br/>
+        &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
+        &nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>
+        &nbsp;&nbsp;&nbsp;- Privacy-first: all data stays on device<br/>
+        &nbsp;&nbsp;&nbsp;- Text-to-Speech support
+        <br/><br/>
+        • Future Features (Coming Soon):<br/>
+        &nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>
+        &nbsp;&nbsp;&nbsp;- Voice input support (ASR)
+        <br/><br/>
+        Join us in building a privacy-focused AI experience!
+        ]]>
+    </string>
+
+    <!-- Intro Dialog Page 3 : System Requirements -->
+    <!-- RAM status -->
+    <string name="ram_passed">✅ Passed</string>
+    <string name="ram_error">⛔️ Error: Insufficient RAM (%1$sGB &lt; %2$sGB required)</string>
+
+    <!-- memory status -->
+    <string name="storage_sufficient">✅ Sufficient (%1$sGB available)</string>
+    <string name="storage_error">⛔️ Error: Insufficient Space (only %1$sGB available)</string>
+
+    <!-- model status -->
+    <string name="model_found">✅ Model Found</string>
+    <string name="model_missing">⛔️ Model Missing</string>
+
+    <!-- warning message -->
+    <string name="warning_ram"><![CDATA[⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>]]></string>
+    <string name="warning_model_missing"><![CDATA[⚠️ WARNING: Required model files (%1$s or %2$s) are missing.<br/>]]></string>
+    <string name="warning_storage"><![CDATA[⚠️ WARNING: Insufficient storage space available (%1$sGB &lt; %2$sGB required).<br/>]]></string>
+    <string name="warning_footer"><![CDATA[The application may not function properly.<br/>]]></string>
+
+    <!-- status summary -->
+    <string name="status_summary" translatable="false">
+         <![CDATA[
+        • RAM Memory:<br/>
+        &nbsp;&nbsp;&nbsp;Required: %1$sGB+<br/>
+        &nbsp;&nbsp;&nbsp;Your Device: %2$sGB<br/>
+        &nbsp;&nbsp;&nbsp;Status: %3$s<br/><br/>
+
+        • Model Files:<br/>
+        &nbsp;&nbsp;&nbsp;Location: %4$s<br/>
+        &nbsp;&nbsp;&nbsp;Required: %5$s or %6$s<br/>
+        &nbsp;&nbsp;&nbsp;Status: %7$s<br/><br/>
+
+        • Storage Space:<br/>
+        &nbsp;&nbsp;&nbsp;Required: %8$sGB+ free space<br/>
+        &nbsp;&nbsp;&nbsp;Available: %9$sGB<br/>
+        &nbsp;&nbsp;&nbsp;Status: %10$s<br/><br/>
+
+        %11$s
+        <br/>
+        Please ensure all requirements are met for optimal performance.
+        ]]>
+    </string>
+
+    <!-- Intro Dialog util -->
+    <string name="next">Next</string>
+    <string name="got_it">Got it</string>
+    <string name="requirements_not_met">Requirements Not Met</string>
+
+    <!-- ## ChatActivity.java -->
+    <string name="thinking">Thinking...</string>
 </resources>
