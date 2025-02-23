@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Breeze2-demo</string>
+    <string name="intro_dialog_title_warning">陳沐希有話要說</string>
+    <string name="intro_dialog_title_current_features">老子正在做的東西</string>
+    <string name="intro_dialog_title_system_requirements">想要用 你手機要買貴點</string>
+    <string name="build_features_description">這是陳沐希老大做的APP，很多功能，你用就對了，不要吵，趕快下一步。</string>
+    <string name="ram_passed">✅ 不錯歐 通過了</string>
+    <string name="storage_error">⛔️ 你手機裡是都放什麼？ 只剩下%1$sGB 空間 爛誒</string>
+    <string name="model_found">✅ 哎呦！有記得下載模型</string>
+    <string name="model_missing">⛔️ 搞啥？你模型呢？</string>
+    <string name="next">滾到下一步</string>
+    <string name="got_it">拎北知道了！</string>
+    <string name="requirements_not_met">手機太爛！勸你換一隻啦</string>
+    <string name="ram_error">⛔️ 爛誒！ RAM不足啦 (你很可憐只有%1$sGB &lt; 至少要%2$sGB 好嗎)</string>
+    <string name="storage_sufficient">✅ 手機ㄅㄨ錯喔 (還有這麼多空間啊%1$sGB)</string>
+    <string name="warning_ram"><![CDATA[⚠️ 警告：你手機RAM太低，不是我服務的對象<br/>]]></string>
+    <string name="warning_model_missing"><![CDATA[⚠️ 警告: 我們要這兩個模型(%1$s or %2$s)，你下載到哪去了？<br/>]]></string>
+    <string name="warning_storage"><![CDATA[⚠️ 警告: 手機該空清空間了！你只剩下%1$sGB &lt; 去清理到%2$sGB以上再回來。<br/>]]></string>
+    <string name="warning_footer"><![CDATA[我們還在開發階段，能用請感激；不能用別吵，要不然你來做啊，吵屁！<br/>]]></string>
+    <string name="intro_description">這是陳沐希老大做的APP，一句話要不要下載，要不要支持，要不要去Github按讚！</string>
+    <string name="thinking">拎北正在思考，等一下啦...</string>
+</resources>
