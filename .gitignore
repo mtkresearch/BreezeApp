@@ -17,7 +17,6 @@
 *.jar
 *.aar
 *.ap_ 
-**/libs/
 
 # Temporary files
 *.log
