@@ -48,7 +48,7 @@ public class UiUtils {
         // Validate views
         if (imagePreviewContainer == null || imagePreview == null || removeButton == null) {
             Log.e(TAG, "Failed to find image preview views");
-            Toast.makeText(context, "Error showing image preview", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, context.getString(R.string.error_showing_image_preview), Toast.LENGTH_SHORT).show();
             return;
         }
 
