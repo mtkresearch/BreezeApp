@@ -205,7 +205,7 @@
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_main.xml -->
-    <string name="device_nformation">裝置資訊</string>
+    <string name="device_information">裝置資訊</string>
     <string name="engine_status">引擎狀態</string>
     <string name="model_settings">模型設定</string>
     <string name="history_lookback">歷史回溯：</string>
