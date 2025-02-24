@@ -142,6 +142,7 @@
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
+    <!-- Toast.makeText -->
     <string name="error_initializing_services">Error initializing services: </string>
     <string name="initializing_model_with">Initializing model with </string>
     <string name="speech_recognition_is_disabled">Speech recognition is disabled</string>
@@ -154,6 +155,72 @@
     <string name="recording_deleted">Recording deleted</string>
     <string name="camera_permission_required">Camera permission is required for taking photos</string>
     <string name="mic_permission_required">Microphone permission is required for voice input</string>
+    <string name="text_to_speech_service_not_available">Text-to-speech service not available</string>
+    <string name="text_to_speech_is_still_initializing">Text-to-speech is still initializing...</string>
+    <string name="converting_text_to_speech">Converting text to speech...</string>
+    <string name="error_playing_audio">Error playing audio</string>
+    <string name="error_starting_audio_playback">Error starting audio playback</string>
+    <string name="failed_to_reinitialize_llm">Failed to reinitialize LLM</string>
+    <string name="initializing_model">Initializing model...</string>
+    <string name="failed_to_initialize_model">Failed to initialize model</string>
+    <string name="error_initializing_model">Error initializing model</string>
+    <string name="model_service_disconnected">Model service disconnected</string>
+    <string name="ars_initialization_failed">ASR initialization failed</string>
+    <string name="error_initializing_asr">Error initializing ASR: </string>
+    <string name="initializing_text_to_speech">Initializing text-to-speech...</string>
+    <string name="text_to_speech_ready">Text-to-speech ready</string>
+    <string name="failed_to_initialize_text_to_speech">Failed to initialize text-to-speech</string>
+    <string name="error_initialize_text_to_speech">Error initializing text-to-speech: </string>
+    <string name="no_histories_selected">No histories selected</string>
+    <string name="selected_histories_deleted">Selected histories deleted</string>
+    <string name="history_deleted">History deleted</string>
+    <string name="more_taps">%1$d more tap%2$s...</string>
+    <string name="text_copied_to_clipboard">Text copied to clipboard</string>
+    <string name="image_saved_to_pictures">Image saved to Pictures</string>
+    <string name="error_saving_image">Error saving image</string>
 
+    <!-- binding.modelNameText.setText -->
+    <string name="unknown_model">Unknown model</string>
+    <string name="model_error">Model error</string>
+    <string name="model_disconnected">Model disconnected</string>
+    <string name="initializing">Initializing...</string>
+    <string name="model_not_available">Model not available</string>
+
+    <string name="delete_selected_histories">Delete Selected Histories</string>
+    <string name="check_delete">Are you sure you want to delete %1$d selected histories?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_audio_chat.xml -->
+    <string name="choose_voice">Choose voice</string>
+    <string name="toggle_camera">Toggle camera</string>
+    <string name="toggle_microphone">Toggle microphone</string>
+    <string name="more_options">More options</string>
+    <string name="close">Close</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="message">Message</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_main.xml -->
+    <string name="device_nformation">Device Information</string>
+    <string name="engine_status">Engine Status</string>
+    <string name="model_settings">Model Settings</string>
+    <string name="history_lookback">History Lookback:</string>
+    <string name="max_sequence_Length">Max Sequence Length:</string>
+    <string name="temperature">Temperature:</string>
+    <string name="llm_backend">LLM Backend:</string>
+    <string name="llm_engine">LLM Engine:</string>
+    <string name="vlm_engine">VLM Engine:</string>
+    <string name="asr_engine">ASR Engine:</string>
+    <string name="tts_engine">TTS Engine:</string>
+    <string name="start_chat">Start Chat</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## dialog_voice_selection.xml -->
+    <string name="start_new_chat">Start new chat</string>
+    <string name="choose_a_voice">Choose a voice</string>
 
 </resources>

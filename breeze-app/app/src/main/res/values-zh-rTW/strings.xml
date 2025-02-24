@@ -154,5 +154,72 @@
     <string name="recording_deleted" translatable="false">錄音已刪除</string>
     <string name="camera_permission_required" translatable="false">拍攝照片需要相機權限</string>
     <string name="mic_permission_required" translatable="false">語音輸入需要麥克風權限</string>
+    <string name="text_to_speech_service_not_available">文字轉語音服務不可用</string>
+    <string name="text_to_speech_is_still_initializing">文字轉語音仍在初始化中...</string>
+    <string name="converting_text_to_speech">正在將文字轉換為語音...</string>
+    <string name="error_playing_audio">播放音訊時發生錯誤</string>
+    <string name="error_starting_audio_playback">啟動音訊播放時發生錯誤</string>
+    <string name="failed_to_reinitialize_llm">重新初始化 LLM 失敗</string>
+    <string name="initializing_model">正在初始化模型...</string>
+    <string name="failed_to_initialize_model">初始化模型失敗</string>
+    <string name="error_initializing_model">初始化模型時發生錯誤</string>
+    <string name="model_service_disconnected">模型服務已斷線</string>
+    <string name="ars_initialization_failed">ASR 初始化失敗</string>
+    <string name="error_initializing_asr">初始化 ASR 時發生錯誤：</string>
+    <string name="initializing_text_to_speech">正在初始化文字轉語音...</string>
+    <string name="text_to_speech_ready">文字轉語音已準備就緒</string>
+    <string name="failed_to_initialize_text_to_speech">初始化文字轉語音失敗</string>
+    <string name="error_initialize_text_to_speech">初始化文字轉語音時發生錯誤：</string>
+    <string name="no_histories_selected">未選擇任何歷史記錄</string>
+    <string name="selected_histories_deleted">已刪除所選歷史記錄</string>
+    <string name="history_deleted">歷史記錄已刪除</string>
+    <string name="more_taps">還需點擊 %1$d 次...</string>
+    <string name="text_copied_to_clipboard">文字已複製到剪貼簿</string>
+    <string name="image_saved_to_pictures">圖片已儲存至「圖片」資料夾</string>
+    <string name="error_saving_image">儲存圖片時發生錯誤</string>
 
+    <!-- binding.modelNameText.setText -->
+    <string name="unknown_model">未知模型</string>
+    <string name="model_error">模型錯誤</string>
+    <string name="model_disconnected">模型已斷線</string>
+    <string name="initializing">正在初始化...</string>
+    <string name="model_not_available">模型不可用</string>
+
+    <string name="delete_selected_histories">刪除選擇的歷史記錄</string>
+    <string name="check_delete">確定要刪除選擇的 %1$d 條歷史記錄嗎？</string>
+
+    <string name="delete">刪除</string>
+    <string name="cancel">取消</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_audio_chat.xml -->
+    <string name="choose_voice">選擇語音</string>
+    <string name="toggle_camera">切換相機</string>
+    <string name="toggle_microphone">切換麥克風</string>
+    <string name="more_options">更多選項</string>
+    <string name="close">關閉</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="message">訊息</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_main.xml -->
+    <string name="device_nformation">裝置資訊</string>
+    <string name="engine_status">引擎狀態</string>
+    <string name="model_settings">模型設定</string>
+    <string name="history_lookback">歷史回溯：</string>
+    <string name="max_sequence_Length">最大序列長度：</string>
+    <string name="temperature">溫度：</string>
+    <string name="llm_backend">LLM 後端：</string>
+    <string name="llm_engine">LLM 引擎：</string>
+    <string name="vlm_engine">VLM 引擎：</string>
+    <string name="asr_engine">ASR 引擎：</string>
+    <string name="tts_engine">TTS 引擎：</string>
+    <string name="start_chat">開始聊天</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## dialog_voice_selection.xml -->
+    <string name="start_new_chat">開始新聊天</string>
+    <string name="choose_a_voice">選擇語音</string>
 </resources>

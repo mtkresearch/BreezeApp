@@ -202,7 +202,7 @@
                     android:maxHeight="120dp"
                     android:gravity="top|start"
                     android:background="@null"
-                    android:hint="Message"
+                    android:hint="@string/message"
                     android:inputType="textMultiLine|textCapSentences"
                     android:scrollbars="vertical"
                     android:padding="4dp"
