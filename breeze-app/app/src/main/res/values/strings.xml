@@ -205,7 +205,7 @@
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_main.xml -->
-    <string name="device_nformation">Device Information</string>
+    <string name="device_information">Device Information</string>
     <string name="engine_status">Engine Status</string>
     <string name="model_settings">Model Settings</string>
     <string name="history_lookback">History Lookback:</string>
