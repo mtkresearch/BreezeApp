@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Breeze2-demo</string>
+    <string name="file_provider_authority" translatable="false">${file_provider_authority}</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## IntroDialog.java -->
+    <!-- 介紹對話框標題 -->
+    <string name="intro_dialog_title_warning">Demo 版本警告</string>
+    <string name="intro_dialog_title_current_features">目前功能</string>
+    <string name="intro_dialog_title_system_requirements">系統需求</string>
+
+    <!-- 介紹對話框第 1 頁：Demo 版本警告 -->
+    <string name="intro_description">
+    <![CDATA[
+    這是一個社群驅動的專案，旨在將 AI 功能直接帶到您的手機，
+    讓您能夠<b>完全離線</b>體驗 AI 功能，無需擔心隱私問題。
+    <br/><br/>
+    作為一個起步專案，我們歡迎開發者和愛好者加入我們，共同改進這款應用。
+    由於我們持續提升使用體驗，您可能會遇到一些穩定性問題。
+    <br/><br/>
+    歡迎透過 GitHub 貢獻、回報問題或提交 PR：
+    <br/>
+    <a href="https://github.com/mtkresearch/Breeze2-android-demo">Breeze2-android-demo</a>
+    ]]>
+    </string>
+
+    <!-- 介紹對話框第 2 頁：目前功能 -->
+    <string name="build_features_description">
+    <![CDATA[
+    • 本地 LLM 聊天：<br/>
+    &nbsp;&nbsp;&nbsp;- 完全離線的 AI 聊天功能<br/>
+    &nbsp;&nbsp;&nbsp;- 支援 CPU 和 MTK NPU<br/>
+    &nbsp;&nbsp;&nbsp;- 以隱私為優先：所有數據皆存於裝置內<br/>
+    &nbsp;&nbsp;&nbsp;- 支援文字轉語音 (TTS)
+    <br/><br/>
+    • 未來功能（即將推出）：<br/>
+    &nbsp;&nbsp;&nbsp;- 視覺理解 (VLM)<br/>
+    &nbsp;&nbsp;&nbsp;- 語音輸入支援 (ASR)
+    <br/><br/>
+    加入我們，共同打造以隱私為核心的 AI 體驗！
+    ]]>
+    </string>
+
+    <!-- 介紹對話框第 3 頁：系統需求 -->
+    <!-- 記憶體狀態 -->
+    <string name="ram_passed">✅ 通過</string>
+    <string name="ram_error">⛔️ 錯誤：記憶體不足（%1$sGB &lt; 需求 %2$sGB）</string>
+
+    <!-- 存儲狀態 -->
+    <string name="storage_sufficient">✅ 空間充足（可用 %1$sGB）</string>
+    <string name="storage_error">⛔️ 錯誤：存儲空間不足（僅剩 %1$sGB）</string>
+
+    <!-- 模型狀態 -->
+    <string name="model_found">✅ 已找到模型</string>
+    <string name="model_missing">⛔️ 缺少模型</string>
+
+    <!-- 警告訊息 -->
+    <string name="warning_ram"><![CDATA[⚠️ 警告：您的裝置不符合最低記憶體需求。<br/>]]></string>
+    <string name="warning_model_missing"><![CDATA[⚠️ 警告：所需模型文件（%1$s 或 %2$s）缺失。<br/>]]></string>
+    <string name="warning_storage"><![CDATA[⚠️ 警告：存儲空間不足（%1$sGB &lt; 需求 %2$sGB）。<br/>]]></string>
+    <string name="warning_footer"><![CDATA[應用程式可能無法正常運行。<br/>]]></string>
+
+    <!-- 狀態摘要 -->
+    <string name="status_summary" translatable="false">
+     <![CDATA[
+    • 記憶體：<br/>
+    &nbsp;&nbsp;&nbsp;需求：%1$sGB+<br/>
+    &nbsp;&nbsp;&nbsp;您的裝置：%2$sGB<br/>
+    &nbsp;&nbsp;&nbsp;狀態：%3$s<br/><br/>
+
+    • 模型文件：<br/>
+    &nbsp;&nbsp;&nbsp;位置：%4$s<br/>
+    &nbsp;&nbsp;&nbsp;需求：%5$s 或 %6$s<br/>
+    &nbsp;&nbsp;&nbsp;狀態：%7$s<br/><br/>
+
+    • 存儲空間：<br/>
+    &nbsp;&nbsp;&nbsp;需求：至少 %8$sGB 可用空間<br/>
+    &nbsp;&nbsp;&nbsp;可用：%9$sGB<br/>
+    &nbsp;&nbsp;&nbsp;狀態：%10$s<br/><br/>
+
+    %11$s
+    <br/>
+    請確保所有需求都符合，以獲得最佳效能。
+    ]]>
+    </string>
+
+    <!-- 介紹對話框操作 -->
+    <string name="next">下一步</string>
+    <string name="got_it">知道了</string>
+    <string name="requirements_not_met">未符合需求</string>
+    <string name="cannot_proceed">無法繼續：</string>
+    <string name="insufficient_ram">• 記憶體不足（最低需求 %1$dGB）</string>
+    <string name="insufficient_storage">• 存儲空間不足（最低需求 %1$dGB）</string>
+    <string name="missing_models">• 所需模型文件（%1$s 或 %2$s）缺失</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="thinking">思考中...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="view_chat_history">查看聊天記錄</string>
+    <string name="loading">載入中...</string>
+    <string name="new_conversation">新的對話</string>
+    <string name="app_logo">應用程式標誌</string>
+    <string name="how_can_i_help_you">我可以如何幫助您？</string>
+    <string name="type_in_here">請在此輸入...</string>
+    <string name="chat_history">聊天記錄</string>
+    <string name="send_message">發送訊息</string>
+    <string name="voice_input">語音輸入</string>
+    <string name="add_attachments" translatable="false">新增附件</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## intro_page_layout.xml -->
+    <string name="scroll_for_more">向下滾動以查看更多</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatMediaHandler.java -->
+    <string name="failed_to_start_recording">無法開始錄音</string>
+    <string name="failed_to_process_file">無法處理文件</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## UiUtils.java -->
+    <string name="error_showing_image_preview">顯示圖片預覽時發生錯誤</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## AudioChatActivity.java -->
+    <string name="camera_switched">已切換至 %1$s 相機</string>
+    <string name="camera_front">前置</string>
+    <string name="camera_back">後置</string>
+    <string name="menu_options">選單選項</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## MainActivity.java -->
+    <string name="failed_to_initialize" translatable="false">初始化失敗：</string>
+    <string name="model_directory_not_found" translatable="false">找不到模型目錄</string>
+    <string name="no_llm_models_found" translatable="false">未找到 LLM 模型。請確保 %1$s 或 %2$s 模型可用。</string>
+    <string name="please_select_a_model_first" translatable="false">請先選擇模型</string>
+    <string name="waiting_for_services_to_initialize" translatable="false">正在等待服務初始化</string>
+    <string name="speech_recognition_requires_audio_permission" translatable="false">語音識別需要音訊權限</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="error_initializing_services" translatable="false">初始化服務時發生錯誤：</string>
+    <string name="initializing_model_with" translatable="false">正在初始化模型</string>
+    <string name="speech_recognition_is_disabled" translatable="false">語音識別已停用</string>
+    <string name="error_generating_response" translatable="false">生成回應時發生錯誤</string>
+    <string name="stopping_generation" translatable="false">停止生成...</string>
+    <string name="error_analyzing_image" translatable="false">分析圖片時發生錯誤</string>
+    <string name="ASR_service_not_ready" translatable="false">ASR 服務尚未準備就緒</string>
+    <string name="error_launching_camera" translatable="false">啟動相機時發生錯誤</string>
+    <string name="no_recordings_found" translatable="false">未找到錄音</string>
+    <string name="recording_deleted" translatable="false">錄音已刪除</string>
+    <string name="camera_permission_required" translatable="false">拍攝照片需要相機權限</string>
+    <string name="mic_permission_required" translatable="false">語音輸入需要麥克風權限</string>
+    <string name="text_to_speech_service_not_available">文字轉語音服務不可用</string>
+    <string name="text_to_speech_is_still_initializing">文字轉語音仍在初始化中...</string>
+    <string name="converting_text_to_speech">正在將文字轉換為語音...</string>
+    <string name="error_playing_audio">播放音訊時發生錯誤</string>
+    <string name="error_starting_audio_playback">啟動音訊播放時發生錯誤</string>
+    <string name="failed_to_reinitialize_llm">重新初始化 LLM 失敗</string>
+    <string name="initializing_model">正在初始化模型...</string>
+    <string name="failed_to_initialize_model">初始化模型失敗</string>
+    <string name="error_initializing_model">初始化模型時發生錯誤</string>
+    <string name="model_service_disconnected">模型服務已斷線</string>
+    <string name="ars_initialization_failed">ASR 初始化失敗</string>
+    <string name="error_initializing_asr">初始化 ASR 時發生錯誤：</string>
+    <string name="initializing_text_to_speech">正在初始化文字轉語音...</string>
+    <string name="text_to_speech_ready">文字轉語音已準備就緒</string>
+    <string name="failed_to_initialize_text_to_speech">初始化文字轉語音失敗</string>
+    <string name="error_initialize_text_to_speech">初始化文字轉語音時發生錯誤：</string>
+    <string name="no_histories_selected">未選擇任何歷史記錄</string>
+    <string name="selected_histories_deleted">已刪除所選歷史記錄</string>
+    <string name="history_deleted">歷史記錄已刪除</string>
+    <string name="more_taps">還需點擊 %1$d 次...</string>
+    <string name="text_copied_to_clipboard">文字已複製到剪貼簿</string>
+    <string name="image_saved_to_pictures">圖片已儲存至「圖片」資料夾</string>
+    <string name="error_saving_image">儲存圖片時發生錯誤</string>
+
+    <!-- binding.modelNameText.setText -->
+    <string name="unknown_model">未知模型</string>
+    <string name="model_error">模型錯誤</string>
+    <string name="model_disconnected">模型已斷線</string>
+    <string name="initializing">正在初始化...</string>
+    <string name="model_not_available">模型不可用</string>
+
+    <string name="delete_selected_histories">刪除選擇的歷史記錄</string>
+    <string name="check_delete">確定要刪除選擇的 %1$d 條歷史記錄嗎？</string>
+
+    <string name="delete">刪除</string>
+    <string name="cancel">取消</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_audio_chat.xml -->
+    <string name="choose_voice">選擇語音</string>
+    <string name="toggle_camera">切換相機</string>
+    <string name="toggle_microphone">切換麥克風</string>
+    <string name="more_options">更多選項</string>
+    <string name="close">關閉</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="message">訊息</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_main.xml -->
+    <string name="device_information">裝置資訊</string>
+    <string name="engine_status">引擎狀態</string>
+    <string name="model_settings">模型設定</string>
+    <string name="history_lookback">歷史回溯：</string>
+    <string name="max_sequence_Length">最大序列長度：</string>
+    <string name="temperature">溫度：</string>
+    <string name="llm_backend">LLM 後端：</string>
+    <string name="llm_engine">LLM 引擎：</string>
+    <string name="vlm_engine">VLM 引擎：</string>
+    <string name="asr_engine">ASR 引擎：</string>
+    <string name="tts_engine">TTS 引擎：</string>
+    <string name="start_chat">開始聊天</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## dialog_voice_selection.xml -->
+    <string name="start_new_chat">開始新聊天</string>
+    <string name="choose_a_voice">選擇語音</string>
+</resources>
