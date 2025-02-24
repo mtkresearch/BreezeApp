@@ -10,7 +10,7 @@
         android:id="@+id/deviceInfoTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Device Information"
+        android:text="@string/device_nformation"
         android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
@@ -53,7 +53,7 @@
         android:id="@+id/engineStatusTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Engine Status"
+        android:text="@string/engine_status"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginTop="24dp"
@@ -65,7 +65,7 @@
         android:id="@+id/settingsTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Model Settings"
+        android:text="@string/model_settings"
         android:textSize="20sp"
         android:textStyle="bold"
         android:layout_marginTop="24dp"
@@ -92,7 +92,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="History Lookback:"
+                android:text="@string/history_lookback"
                 android:textSize="16sp"/>
 
             <EditText
@@ -118,7 +118,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Max Sequence Length:"
+                android:text="@string/max_sequence_Length"
                 android:textSize="16sp"/>
 
             <EditText
@@ -144,7 +144,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Temperature:"
+                android:text="@string/temperature"
                 android:textSize="16sp"/>
 
             <EditText
@@ -170,7 +170,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="LLM Backend:"
+                android:text="@string/llm_backend"
                 android:textSize="16sp"/>
 
             <Spinner
@@ -200,7 +200,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.3"
-                android:text="LLM Engine:" />
+                android:text="@string/llm_engine" />
             <Spinner
                 android:id="@+id/llm_model_spinner"
                 android:layout_width="0dp"
@@ -230,7 +230,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.3"
-                android:text="VLM Engine:" />
+                android:text="@string/vlm_engine" />
             <Spinner
                 android:id="@+id/vlm_model_spinner"
                 android:layout_width="0dp"
@@ -260,7 +260,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.3"
-                android:text="ASR Engine:" />
+                android:text="@string/asr_engine" />
             <Spinner
                 android:id="@+id/asr_model_spinner"
                 android:layout_width="0dp"
@@ -290,7 +290,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.3"
-                android:text="TTS Engine:" />
+                android:text="@string/tts_engine" />
             <Spinner
                 android:id="@+id/tts_model_spinner"
                 android:layout_width="0dp"
@@ -316,7 +316,7 @@
         android:id="@+id/startChatButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Start Chat"
+        android:text="@string/start_chat"
         android:enabled="false"
         android:textColor="@color/text_primary"
         android:backgroundTint="@color/primary"
