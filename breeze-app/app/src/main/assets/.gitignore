@@ -1,0 +1,4 @@
+# Ignore all files in assets/
+*
+# But allow this .gitignore file to be tracked
+!.gitignore
