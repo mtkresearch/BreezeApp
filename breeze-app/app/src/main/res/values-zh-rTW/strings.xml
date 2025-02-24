@@ -222,4 +222,19 @@
     <!-- ## dialog_voice_selection.xml -->
     <string name="start_new_chat">開始新聊天</string>
     <string name="choose_a_voice">選擇語音</string>
+
+    <!-- ## ModelDownloadDialog -->
+    <string name="download_model">下載模型</string>
+    <string name="model_missing_message">缺少所需的模型文件。下載大小約為 6GB。</string>
+    <string name="download">下載</string>
+    <string name="downloading">下載中...</string>
+    <string name="download_progress">下載進度：%1$d%%</string>
+    <string name="download_complete">下載完成</string>
+    <string name="download_failed">下載失敗：%1$s</string>
+    <string name="insufficient_storage_for_download">存儲空間不足，無法下載。請釋放至少 %1$dGB 空間。</string>
+    <string name="error_creating_model_directory">建立模型目錄時發生錯誤</string>
+    <string name="error_downloading_model">下載模型時發生錯誤：%1$s</string>
+    <string name="download_cancelled">下載已取消</string>
+    <string name="error_all_download_attempts_failed">所有下載嘗試均失敗</string>
+
 </resources>

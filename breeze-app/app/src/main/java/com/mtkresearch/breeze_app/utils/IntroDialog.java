@@ -143,6 +143,24 @@ public class IntroDialog extends Dialog {
                 currentPage = position;
                 updateButtonText(context);
                 updateButtonState(context);
+                
+                // Check if we're on the requirements page (last page)
+                if (position == introPages.size() - 1) {
+                    checkSystemRequirements();
+                    // Show download dialog if only models are missing
+                    if (!hasRequiredModels && hasMinimumRam && hasRequiredStorage) {
+                        ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context);
+                        downloadDialog.setOnDismissListener(dialog -> {
+                            // Recheck requirements after dialog is dismissed
+                            checkSystemRequirements();
+                            // Update the requirements description
+                            ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
+                                buildRequirementsDescription(context));
+                            updateButtonState(context);
+                        });
+                        downloadDialog.show();
+                    }
+                }
             }
         });
         
@@ -182,12 +200,19 @@ public class IntroDialog extends Dialog {
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
         hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
         
-        // Check Model Files
+        // Check Model Files - Need either LLAMA model or Breeze model
         File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
+        if (!modelDir.exists()) {
+            hasRequiredModels = false;
+            return;
+        }
+        
         File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
         File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-        hasRequiredModels = (llamaModel.exists() && llamaModel.isFile()) || 
-                           (breezeModel.exists() && breezeModel.isFile());
+        
+        // Check if either model file exists and is a valid file
+        hasRequiredModels = (llamaModel.exists() && llamaModel.isFile() && llamaModel.length() > 0) || 
+                           (breezeModel.exists() && breezeModel.isFile() && breezeModel.length() > 0);
     }
 
     private boolean meetsAllRequirements() {
@@ -204,6 +229,18 @@ public class IntroDialog extends Dialog {
             message.append("\n").append(context.getString(R.string.insufficient_storage, MIN_STORAGE_GB));
         }
         if (!hasRequiredModels) {
+            // Show model download dialog if only the model requirement is not met
+            // and other requirements are satisfied
+            if (hasMinimumRam && hasRequiredStorage) {
+                ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context);
+                downloadDialog.setOnDismissListener(dialog -> {
+                    // Recheck requirements after dialog is dismissed
+                    checkSystemRequirements();
+                    updateButtonState(context);
+                });
+                downloadDialog.show();
+                return;
+            }
             message.append("\n").append(context.getString(R.string.missing_models,
                     AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE));
         }
@@ -341,6 +378,19 @@ public class IntroDialog extends Dialog {
         @Override
         public int getItemCount() {
             return pages.size();
+        }
+
+        void updateRequirementsPage(String newDescription) {
+            // Update the last page (requirements page) with new description
+            if (pages.size() > 0) {
+                IntroPage oldPage = pages.get(pages.size() - 1);
+                pages.set(pages.size() - 1, new IntroPage(
+                    oldPage.iconResId,
+                    oldPage.title,
+                    newDescription
+                ));
+                notifyItemChanged(pages.size() - 1);
+            }
         }
 
         static class PageViewHolder extends RecyclerView.ViewHolder {

@@ -62,8 +62,9 @@ public class AppConstants {
     // Model Files and Paths
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
-    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
-    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
+    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";  // Legacy path
+    public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
+    public static final String MODEL_PATH = APP_MODEL_DIR + "/" + BREEZE_MODEL_FILE; // Default to Breeze model in app storage
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
@@ -83,4 +84,15 @@ public class AppConstants {
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
     public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
+
+    // Model Download Constants
+    public static final String[] MODEL_DOWNLOAD_URLS = {
+        // Primary URL - Direct download from Hugging Face
+        "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/tokenizer.bin?download=true",
+        "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/Breeze-Tiny-Instruct-v0_1.pte?download=true"
+    };
+    public static final int MODEL_DOWNLOAD_BUFFER_SIZE = 8192;
+    public static final int MODEL_DOWNLOAD_PROGRESS_UPDATE_INTERVAL = 1;
+    public static final long MODEL_DOWNLOAD_TIMEOUT_MS = 600000; // 10 minutes
+    public static final long MODEL_DOWNLOAD_MIN_SPACE_MB = 8192; // 8GB minimum free space
 } 
