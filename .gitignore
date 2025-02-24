@@ -17,6 +17,7 @@
 *.jar
 *.aar
 *.ap_ 
+*.sha256sums
 
 # Temporary files
 *.log
