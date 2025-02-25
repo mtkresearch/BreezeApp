@@ -723,7 +723,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.messageInputExpanded.setAlpha(isStop ? DISABLED_ALPHA : ENABLED_ALPHA);
                 
                 // Update hint text
-                String hintText = isStop ? "Please wait for the response to finish" : "Type a message...";
+                String hintText = isStop ? this.getString(R.string.please_wait_for_the_response_to_finish) : this.getString(R.string.type_a_message);
                 binding.messageInput.setHint(hintText);
                 binding.messageInputExpanded.setHint(hintText);
                 
