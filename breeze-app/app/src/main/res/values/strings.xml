@@ -190,6 +190,8 @@
     <string name="check_delete">Are you sure you want to delete %1$d selected histories?</string>
     <string name="delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="please_wait_for_the_response_to_finish">Please wait for the response to finish</string>
+    <string name="type_a_message">Type a message...</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_audio_chat.xml -->

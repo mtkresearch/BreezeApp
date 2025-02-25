@@ -19,31 +19,40 @@ public class AppConstants {
     public static final boolean ASR_ENABLED = false; // ASR requires permission
     public static final boolean TTS_ENABLED = true;  // TTS is stable
     
+    // Backend Constants
+    public static final String BACKEND_NONE = "none";
+    public static final String BACKEND_CPU = "cpu";
+    public static final String BACKEND_MTK = "mtk";
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend since MTK is experimental
+    
     // Backend Enable Flags
     public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
     public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
     
-    // Backend Constants
-    public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_MTK;
-    
-    // MTK Backend Constants
+    // Backend Initialization Constants
     public static final int MAX_MTK_INIT_ATTEMPTS = 5;
     public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds timeout for cleanup
     public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds timeout for native operations
+    public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
+    public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     
     // LLM Service Constants
-    public static final long LLM_INIT_TIMEOUT_MS = 120000;  // 2 minutes
-    public static final long LLM_GENERATION_TIMEOUT_MS = 60000;  // 1 minute
-    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds
-    public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
+    public static final long LLM_INIT_TIMEOUT_MS = 300000;  // 5 minutes for initialization
+    public static final long LLM_GENERATION_TIMEOUT_MS = Long.MAX_VALUE;  // No timeout for generation
+    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
+    public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     
+    // Model Files and Paths
+    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
+    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
+    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
+    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
+
     // LLM Sequence Length Constants
-    public static final int LLM_MAX_SEQ_LENGTH = 128;  // Maximum sequence length supported by model
-    public static final int LLM_MIN_OUTPUT_LENGTH = 32;  // Minimum space to reserve for output
-    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;  // Maximum input length (96)
+    public static final int LLM_MAX_SEQ_LENGTH = MODEL_PATH.contains("2048") ? 2048 : 128;
+    public static final int LLM_MIN_OUTPUT_LENGTH = MODEL_PATH.contains("2048") ? 512 : 32;
+    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;
     
     // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
@@ -53,18 +62,14 @@ public class AppConstants {
     
     // LLM Configuration
     public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
-    public static final float LLM_TEMPERATURE = 0.8f;
+    public static final float LLM_TEMPERATURE = 0.0f;
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
-    // Model Files and Paths
-    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
-    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
-    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";  // Legacy path
-    public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
-    public static final String MODEL_PATH = APP_MODEL_DIR + "/" + BREEZE_MODEL_FILE; // Default to Breeze model in app storage
+    // Conversation History Constants
+    public static final int CONVERSATION_HISTORY_LOOKBACK = MODEL_PATH.contains("2048") ? 10 : 3;
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
@@ -75,7 +80,12 @@ public class AppConstants {
     // UI Constants
     public static final float ENABLED_ALPHA = 1.0f;
     public static final float DISABLED_ALPHA = 0.3f;
-    public static final int CONVERSATION_HISTORY_LOOKBACK = 2;
+
+    // Get history lookback based on model sequence length
+    public static int getConversationHistoryLookback(String modelName) {
+        return modelName != null && modelName.contains("2048") ? 10 : 3;  // 10 messages for 2048 models, 3 for others
+    }
+
     public static final int TAPS_TO_SHOW_MAIN = 7;
     public static final long TAP_TIMEOUT_MS = 3000;
     public static final int INIT_DELAY_MS = 1000;
