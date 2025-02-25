@@ -24,7 +24,7 @@ public class LLMEngineService extends BaseEngineService {
     private static final String TAG = "LLMEngineService";
     
     // Service state
-    private String currentBackend = "none";
+    private String currentBackend = AppConstants.BACKEND_NONE;
     private String preferredBackend = AppConstants.BACKEND_DEFAULT;
     private boolean hasSeenAssistantMarker = false;
     private final ConversationManager conversationManager;
@@ -156,12 +156,12 @@ public class LLMEngineService extends BaseEngineService {
                 releaseResources();
                 
                 // Try MTK backend only if it's preferred
-                if (preferredBackend.equals("mtk")) {
+                if (preferredBackend.equals(AppConstants.BACKEND_MTK)) {
                     // Add delay before trying MTK initialization
-                    Thread.sleep(200);
+                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
                     
                     if (initializeMTKBackend()) {
-                        currentBackend = "mtk";
+                        currentBackend = AppConstants.BACKEND_MTK;
                         isInitialized = true;
                         Log.d(TAG, "Successfully initialized MTK backend");
                         future.complete(true);
@@ -170,13 +170,13 @@ public class LLMEngineService extends BaseEngineService {
                     Log.w(TAG, "MTK backend initialization failed");
                     
                     // Add delay before trying fallback
-                    Thread.sleep(200);
+                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
                 }
 
                 // Try CPU backend if MTK failed or CPU is preferred
-                if (preferredBackend.equals("cpu") || preferredBackend.equals("localCPU")) {
+                if (preferredBackend.equals(AppConstants.BACKEND_CPU)) {
                     if (initializeLocalCPUBackend()) {
-                        currentBackend = "localCPU";
+                        currentBackend = AppConstants.BACKEND_CPU;
                         isInitialized = true;
                         Log.d(TAG, "Successfully initialized CPU backend");
                         future.complete(true);
@@ -323,7 +323,7 @@ public class LLMEngineService extends BaseEngineService {
                 }
 
                 // Add delay before initialization
-                Thread.sleep(200);
+                Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
                 
                 // Initialize signal handlers first
                 try {
@@ -442,12 +442,12 @@ public class LLMEngineService extends BaseEngineService {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 switch (currentBackend) {
-                    case "mtk":
+                    case AppConstants.BACKEND_MTK:
                         String response = nativeInference(prompt, 256, false);
                         nativeResetLlm();
                         nativeSwapModel(128);
                         return response;
-                    case "localCPU":
+                    case AppConstants.BACKEND_CPU:
                         try {
                             // Calculate sequence length based on prompt length, matching original implementation
                             int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
@@ -521,7 +521,7 @@ public class LLMEngineService extends BaseEngineService {
         CompletableFuture.runAsync(() -> {
             try {
                 switch (currentBackend) {
-                    case "mtk":
+                    case AppConstants.BACKEND_MTK:
                         try {
                             // MTK backend uses raw prompt without formatting
                             executor.execute(() -> {
@@ -565,12 +565,15 @@ public class LLMEngineService extends BaseEngineService {
                         }
                         break;
                         
-                    case "localCPU":
+                    case AppConstants.BACKEND_CPU:
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                         
-                        // Calculate sequence length based on prompt length, matching original implementation
-                        int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
+                        // Calculate sequence length with more generous output space
+                        int seqLen = Math.min(
+                            AppConstants.LLM_MAX_SEQ_LENGTH,
+                            prompt.length() + AppConstants.LLM_MIN_OUTPUT_LENGTH
+                        );
                         
                         executor.execute(() -> {
                             try {
@@ -608,17 +611,10 @@ public class LLMEngineService extends BaseEngineService {
                                     @Override
                                     public void onStats(float tps) {
                                         Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
-                                        // If we're getting stats but no tokens, check if we need to complete
-                                        if (currentStreamingResponse.length() > 0 && !currentResponse.isDone() && !isGenerating.get()) {
-                                            String finalResponse = currentStreamingResponse.toString();
-                                            currentResponse.complete(finalResponse);
-                                            resultFuture.complete(finalResponse);
-                                        }
                                     }
                                 }, false);
                                 
-                                // Add a delay and check if we need to complete the response
-                                Thread.sleep(100);
+                                // Only complete if we haven't been stopped and have a response
                                 if (!currentResponse.isDone() && currentStreamingResponse.length() > 0) {
                                     String finalResponse = currentStreamingResponse.toString();
                                     currentResponse.complete(finalResponse);
@@ -635,27 +631,13 @@ public class LLMEngineService extends BaseEngineService {
                                 isGenerating.set(false);
                             }
                         });
-
-                        currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        break;
                         
                     default:
                         String error = "Unsupported backend: " + currentBackend;
                         Log.e(TAG, error);
                         resultFuture.completeExceptionally(new IllegalStateException(error));
                 }
-                
-                // Set up timeout that doesn't interrupt generation
-                CompletableFuture.delayedExecutor(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                    .execute(() -> {
-                        if (!resultFuture.isDone() && isGenerating.get()) {
-                            Log.w(TAG, "Generation taking longer than expected but continuing...");
-                            // Don't stop generation, just notify about timeout
-                            if (callback != null) {
-                                callback.onToken("\n[Note: Generation is taking longer than usual but will continue...]");
-                            }
-                        }
-                    });
-                
             } catch (Exception e) {
                 Log.e(TAG, "Error in streaming response", e);
                 resultFuture.completeExceptionally(e);
@@ -680,7 +662,7 @@ public class LLMEngineService extends BaseEngineService {
     public void stopGeneration() {
         isGenerating.set(false);
         
-        if (currentBackend.equals("mtk")) {
+        if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
             try {
                 nativeResetLlm();
             } catch (Exception e) {
@@ -719,12 +701,12 @@ public class LLMEngineService extends BaseEngineService {
                 stopGeneration();
                 
                 // Release MTK resources if using MTK backend
-                if (currentBackend.equals("mtk")) {
+                if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
                     try {
                         // Add delay before cleanup
-                        Thread.sleep(100);
+                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
                         nativeResetLlm();
-                        Thread.sleep(100);
+                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
                         nativeReleaseLlm();
                         mtkInitCount = 0; // Reset init count
                         Log.d(TAG, "Released MTK resources");
@@ -746,7 +728,7 @@ public class LLMEngineService extends BaseEngineService {
                 }
                 
                 // Reset state
-                currentBackend = "none";
+                currentBackend = AppConstants.BACKEND_NONE;
                 isInitialized = false;
                 System.gc(); // Request garbage collection
                 
@@ -806,5 +788,13 @@ public class LLMEngineService extends BaseEngineService {
 
     public interface TokenCallback {
         void onToken(String token);
+    }
+
+    private int getMaxSequenceLength() {
+        return AppConstants.LLM_MAX_SEQ_LENGTH;
+    }
+
+    private int getMinOutputLength() {
+        return AppConstants.LLM_MIN_OUTPUT_LENGTH;
     }
 } 

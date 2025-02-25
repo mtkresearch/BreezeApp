@@ -44,7 +44,7 @@
             android:layout_gravity="center_horizontal|bottom"
             android:layout_marginBottom="8dp"
             android:drawableBottom="@drawable/ic_arrow_down"
-            android:text="Scroll for more"
+            android:text="@string/scroll_for_more"
             android:textSize="12sp"
             android:alpha="0.7"
             android:visibility="gone" />
