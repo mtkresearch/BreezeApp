@@ -1,6 +1,6 @@
-# Contributing to Breeze-App
+# Contributing to BreezeApp
 
-First off, thank you for considering contributing to Breeze-App! Your contributions help make this project better.
+First off, thank you for considering contributing to BreezeApp! Your contributions help make this project better.
 
 
 ## Branching Strategy
@@ -105,4 +105,3 @@ By contributing to this project, you agree to:
 Feel free to open an issue with your question or contact the maintainers directly.
 
 Thank you for your contributions! 🚀
-
