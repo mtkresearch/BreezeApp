@@ -53,7 +53,7 @@ public class AppConstants {
     
     // LLM Configuration
     public static final String LLM_TOKENIZER_PATH = "/data/local/tmp/llama/tokenizer.bin";
-    public static final float LLM_TEMPERATURE = 0.8f;
+    public static final float LLM_TEMPERATURE = 0.0f;
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode
