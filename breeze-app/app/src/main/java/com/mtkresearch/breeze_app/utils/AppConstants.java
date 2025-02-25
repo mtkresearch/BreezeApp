@@ -37,10 +37,10 @@ public class AppConstants {
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     
     // LLM Service Constants
-    public static final long LLM_INIT_TIMEOUT_MS = 120000;  // 2 minutes
-    public static final long LLM_GENERATION_TIMEOUT_MS = 60000;  // 1 minute
-    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds
-    public static final long LLM_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds
+    public static final long LLM_INIT_TIMEOUT_MS = 300000;  // 5 minutes for initialization
+    public static final long LLM_GENERATION_TIMEOUT_MS = Long.MAX_VALUE;  // No timeout for generation
+    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
+    public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     
     // LLM Sequence Length Constants

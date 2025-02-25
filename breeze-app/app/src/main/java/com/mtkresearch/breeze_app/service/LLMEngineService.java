@@ -608,17 +608,10 @@ public class LLMEngineService extends BaseEngineService {
                                     @Override
                                     public void onStats(float tps) {
                                         Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
-                                        // If we're getting stats but no tokens, check if we need to complete
-                                        if (currentStreamingResponse.length() > 0 && !currentResponse.isDone() && !isGenerating.get()) {
-                                            String finalResponse = currentStreamingResponse.toString();
-                                            currentResponse.complete(finalResponse);
-                                            resultFuture.complete(finalResponse);
-                                        }
                                     }
                                 }, false);
                                 
-                                // Add a delay and check if we need to complete the response
-                                Thread.sleep(100);
+                                // Only complete if we haven't been stopped and have a response
                                 if (!currentResponse.isDone() && currentStreamingResponse.length() > 0) {
                                     String finalResponse = currentStreamingResponse.toString();
                                     currentResponse.complete(finalResponse);
@@ -635,27 +628,13 @@ public class LLMEngineService extends BaseEngineService {
                                 isGenerating.set(false);
                             }
                         });
-
-                        currentResponse.get(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                        break;
                         
                     default:
                         String error = "Unsupported backend: " + currentBackend;
                         Log.e(TAG, error);
                         resultFuture.completeExceptionally(new IllegalStateException(error));
                 }
-                
-                // Set up timeout that doesn't interrupt generation
-                CompletableFuture.delayedExecutor(AppConstants.LLM_GENERATION_TIMEOUT_MS, TimeUnit.MILLISECONDS)
-                    .execute(() -> {
-                        if (!resultFuture.isDone() && isGenerating.get()) {
-                            Log.w(TAG, "Generation taking longer than expected but continuing...");
-                            // Don't stop generation, just notify about timeout
-                            if (callback != null) {
-                                callback.onToken("\n[Note: Generation is taking longer than usual but will continue...]");
-                            }
-                        }
-                    });
-                
             } catch (Exception e) {
                 Log.e(TAG, "Error in streaming response", e);
                 resultFuture.completeExceptionally(e);
