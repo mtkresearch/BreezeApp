@@ -12,7 +12,7 @@
         android:layout_margin="16dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@drawable/ic_voice_selection"
-        android:contentDescription="Choose voice"
+        android:contentDescription="@string/choose_voice"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintRight_toRightOf="parent"/>
 
@@ -43,7 +43,7 @@
             android:src="@drawable/ic_camera"
             android:padding="16dp"
             android:layout_marginHorizontal="12dp"
-            android:contentDescription="Toggle camera"/>
+            android:contentDescription="@string/toggle_camera"/>
 
         <ImageButton
             android:id="@+id/micButton"
@@ -53,7 +53,7 @@
             android:src="@drawable/ic_mic"
             android:padding="16dp"
             android:layout_marginHorizontal="12dp"
-            android:contentDescription="Toggle microphone"/>
+            android:contentDescription="@string/toggle_microphone"/>
 
         <ImageButton
             android:id="@+id/menuButton"
@@ -63,7 +63,7 @@
             android:src="@drawable/ic_more"
             android:padding="16dp"
             android:layout_marginHorizontal="12dp"
-            android:contentDescription="More options"/>
+            android:contentDescription="@string/more_options"/>
 
         <ImageButton
             android:id="@+id/closeButton"
@@ -73,6 +73,6 @@
             android:src="@drawable/ic_close"
             android:padding="16dp"
             android:layout_marginHorizontal="12dp"
-            android:contentDescription="Close"/>
+            android:contentDescription="@string/close"/>
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout> 
