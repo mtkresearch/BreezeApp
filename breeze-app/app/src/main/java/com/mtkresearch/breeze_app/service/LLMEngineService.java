@@ -569,8 +569,11 @@ public class LLMEngineService extends BaseEngineService {
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
                         
-                        // Calculate sequence length based on prompt length, matching original implementation
-                        int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
+                        // Calculate sequence length with more generous output space
+                        int seqLen = Math.min(
+                            AppConstants.LLM_MAX_SEQ_LENGTH,
+                            prompt.length() + AppConstants.LLM_MIN_OUTPUT_LENGTH
+                        );
                         
                         executor.execute(() -> {
                             try {
@@ -785,5 +788,13 @@ public class LLMEngineService extends BaseEngineService {
 
     public interface TokenCallback {
         void onToken(String token);
+    }
+
+    private int getMaxSequenceLength() {
+        return AppConstants.LLM_MAX_SEQ_LENGTH;
+    }
+
+    private int getMinOutputLength() {
+        return AppConstants.LLM_MIN_OUTPUT_LENGTH;
     }
 } 
