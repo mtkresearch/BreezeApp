@@ -1,6 +1,6 @@
-# Contributing to breeze-app
+# Contributing to BreezeApp
 
-First off, thank you for considering contributing to breeze-app! It's people like you that make this project better.
+First off, thank you for considering contributing to BreezeApp! It's people like you that make this project better.
 
 ## Branch Descriptions
 
@@ -104,8 +104,8 @@ When you're ready to contribute your code:
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/mtkresearch/Breeze2-android-demo.git
-   cd Breeze2-android-demo
+   git clone https://github.com/mtkresearch/BreezeApp.git
+   cd BreezeApp-main
    ```
 
 2. Create a Branch from Develop
