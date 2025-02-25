@@ -43,10 +43,16 @@ public class AppConstants {
     public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     
+    // Model Files and Paths
+    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
+    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
+    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
+    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
+
     // LLM Sequence Length Constants
-    public static final int LLM_MAX_SEQ_LENGTH = 128;  // Maximum sequence length supported by model
-    public static final int LLM_MIN_OUTPUT_LENGTH = 32;  // Minimum space to reserve for output
-    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;  // Maximum input length (96)
+    public static final int LLM_MAX_SEQ_LENGTH = MODEL_PATH.contains("2048") ? 2048 : 128;
+    public static final int LLM_MIN_OUTPUT_LENGTH = MODEL_PATH.contains("2048") ? 512 : 32;
+    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;
     
     // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
@@ -62,11 +68,8 @@ public class AppConstants {
     // When true: Send button toggles between send and audio chat mode
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
-    // Model Files and Paths
-    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
-    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
-    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
-    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
+    // Conversation History Constants
+    public static final int CONVERSATION_HISTORY_LOOKBACK = MODEL_PATH.contains("2048") ? 10 : 3;
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
@@ -77,7 +80,12 @@ public class AppConstants {
     // UI Constants
     public static final float ENABLED_ALPHA = 1.0f;
     public static final float DISABLED_ALPHA = 0.3f;
-    public static final int CONVERSATION_HISTORY_LOOKBACK = 2;
+
+    // Get history lookback based on model sequence length
+    public static int getConversationHistoryLookback(String modelName) {
+        return modelName != null && modelName.contains("2048") ? 10 : 3;  // 10 messages for 2048 models, 3 for others
+    }
+
     public static final int TAPS_TO_SHOW_MAIN = 7;
     public static final long TAP_TIMEOUT_MS = 3000;
     public static final int INIT_DELAY_MS = 1000;
