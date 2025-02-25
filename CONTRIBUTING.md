@@ -137,4 +137,3 @@ When you're ready to contribute your code:
 
 ## Questions?
 Feel free to open an issue with your question or contact the maintainers directly.
-
