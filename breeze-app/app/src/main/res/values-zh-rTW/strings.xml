@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Breeze2-demo</string>
+    <string name="app_name">BreezeApp</string>
     <string name="file_provider_authority" translatable="false">${file_provider_authority}</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
@@ -21,7 +21,7 @@
     <br/><br/>
     歡迎透過 GitHub 貢獻、回報問題或提交 PR：
     <br/>
-    <a href="https://github.com/mtkresearch/Breeze2-android-demo">Breeze2-android-demo</a>
+    <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
     ]]>
     </string>
 
