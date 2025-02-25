@@ -191,6 +191,9 @@
     <string name="delete">刪除</string>
     <string name="cancel">取消</string>
 
+    <string name="please_wait_for_the_response_to_finish">請等待回應完成</string>
+    <string name="type_a_message">請輸入訊息...</string>
+
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_audio_chat.xml -->
     <string name="choose_voice">選擇語音</string>
