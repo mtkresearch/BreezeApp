@@ -11,13 +11,13 @@ This project aims to create a community-driven platform for running AI capabilit
 </p>
 
 > [!NOTE]
-> Unreasonable or abnormal responses from <b>CPU</b> backend are known issues (see <a href="https://github.com/mtkresearch/Breeze2-android-demo/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
+> Unreasonable or abnormal responses from <b>CPU</b> backend are known issues (see <a href="https://github.com/mtkresearch/BreezeApp/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
 
 ## Download & Try the App 🚀
 You can download the latest APK in two variants:
 
-1. [breeze2-android-demo (breeze2)](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo-20250219_breeze2.apk)
-2. [breeze2-android-demo (llama3_2)](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo-20250219_llama3_2.apk)
+1. [BreezeApp (breeze2)](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo-20250219_breeze2.apk)
+2. [BreezeApp (llama3_2)](https://huggingface.co/MediaTek-Research/Breeze2-android-demo/resolve/main/breeze2-android-demo-20250219_llama3_2.apk)
 
 Choose the APK based on your preferred default LLM model. Both versions support switching between models after installation.
 
@@ -69,13 +69,13 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/mtkresearch/Breeze2-android-demo.git
+    git clone https://github.com/mtkresearch/BreezeApp.git
     ```
 
 2. Open the project in Android Studio:
     - Launch Android Studio
     - Select "Open" from the welcome screen
-    - Navigate to and select the `Breeze2-android-demo` folder
+    - Navigate to and select the `breeze-app` folder
     - Click "OK" to open the project
     - Wait for the project sync and indexing to complete
 
@@ -139,10 +139,10 @@ Together, let's build a privacy-focused AI experience that everyone can use!
 5. Download aar file
     - Open the "Project tab" in the left panel of Android Studio
     - Click the dropdown and select "Project" instead of Android view
-    - Find "download_prebuilt_lib.sh" inside Breeze2-android-demo
+    - Find "download_prebuilt_lib.sh" inside breeze-app
     - Open the "Terminal" in the left panel, and run the bash file to retrieve aar file
     ```bash
-    sh {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/download_prebuilt_lib.sh
+    sh {YOURPATH}/BreezeApp-main/breeze-app/download_prebuilt_lib.sh
     ```
 
 6. Build the project in Android Studio
@@ -153,7 +153,7 @@ To change the default backend (CPU) or LLM model (Breeze), follow these steps:
 
 1. Open the "AppConstants.java" file, located at:
    ```bash
-   cd {YOURPATH}/Breeze2-android-demo-release-0.1/Breeze2-android-demo/app/src/main/java/com/mtkresearch/gai_android/utils/AppConstants.java
+   cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/gai_android/utils/AppConstants.java
    ```
 2. Use your preferred programming tools to modify the following constants and set your desired backend and model:
    ```jave
@@ -213,7 +213,7 @@ Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTIN
 
 3. **MediaTek NPU Backend**: Support for MediaTek NPU acceleration is currently in development. Only CPU inference is fully supported at this time.
 
-Please check our [Issues](https://github.com/mtkresearch/Breeze2-android-demo/issues) page for the most up-to-date status of these and other known issues.
+Please check our [Issues](https://github.com/mtkresearch/BreezeApp/issues) page for the most up-to-date status of these and other known issues.
 
 ## Acknowledgments
 
