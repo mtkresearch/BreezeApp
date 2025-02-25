@@ -3,8 +3,8 @@
 This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
 
 <p align="center">
-  <img src="assets/breeze2_demo_npu.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="assets/breeze2_demo_cpu.gif" width="300" alt="CPU Backend Demo"/>
+  <img src="assets/BreezeApp_npu.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="assets/BreezeApp_cpu.gif" width="300" alt="CPU Backend Demo"/>
 </p>
 <p align="center">
   <em>Left: NPU Backend &nbsp;&nbsp;&nbsp;&nbsp; Right: CPU Backend</em>
