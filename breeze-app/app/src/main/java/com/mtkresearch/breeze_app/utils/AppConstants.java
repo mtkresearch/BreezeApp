@@ -19,19 +19,22 @@ public class AppConstants {
     public static final boolean ASR_ENABLED = false; // ASR requires permission
     public static final boolean TTS_ENABLED = true;  // TTS is stable
     
+    // Backend Constants
+    public static final String BACKEND_NONE = "none";
+    public static final String BACKEND_CPU = "cpu";
+    public static final String BACKEND_MTK = "mtk";
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend since MTK is experimental
+    
     // Backend Enable Flags
     public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
     public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
     
-    // Backend Constants
-    public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_MTK;
-    
-    // MTK Backend Constants
+    // Backend Initialization Constants
     public static final int MAX_MTK_INIT_ATTEMPTS = 5;
     public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds timeout for cleanup
     public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds timeout for native operations
+    public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
+    public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     
     // LLM Service Constants
     public static final long LLM_INIT_TIMEOUT_MS = 120000;  // 2 minutes
@@ -61,7 +64,7 @@ public class AppConstants {
 
     // Model Files and Paths
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
-    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte";
+    public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";
     public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE; // Default to Breeze model
 
