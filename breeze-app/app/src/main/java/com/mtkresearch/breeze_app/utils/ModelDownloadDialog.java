@@ -13,6 +13,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.viewpager2.widget.ViewPager2;
+
 import com.mtkresearch.breeze_app.R;
 
 import java.io.File;
@@ -26,6 +28,7 @@ import java.net.URL;
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
 
+    private final IntroDialog parentDialog;
     private ProgressBar progressBar;
     private TextView statusText;
     private Button downloadButton;
@@ -33,8 +36,9 @@ public class ModelDownloadDialog extends Dialog {
     private DownloadTask downloadTask;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public ModelDownloadDialog(Context context) {
+    public ModelDownloadDialog(Context context, IntroDialog parentDialog) {
         super(context);
+        this.parentDialog = parentDialog;
     }
 
     @Override
@@ -343,6 +347,29 @@ public class ModelDownloadDialog extends Dialog {
                 downloadButton.setEnabled(false);
                 downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
                 Toast.makeText(getContext(), R.string.download_complete, Toast.LENGTH_SHORT).show();
+                
+                // Ensure we recheck system requirements before dismissing
+                if (getContext() instanceof android.app.Activity) {
+                    android.app.Activity activity = (android.app.Activity) getContext();
+                    activity.runOnUiThread(() -> {
+                        // Recheck requirements to update status
+                        if (getOwnerActivity() instanceof android.app.Activity) {
+                            android.app.Activity ownerActivity = getOwnerActivity();
+                            android.view.View currentFocus = ownerActivity.getCurrentFocus();
+                            if (currentFocus instanceof ViewPager2) {
+                                ViewPager2 viewPager = (ViewPager2) currentFocus;
+                                if (viewPager.getAdapter() instanceof IntroDialog.IntroPagerAdapter) {
+                                    IntroDialog.IntroPagerAdapter adapter = 
+                                        (IntroDialog.IntroPagerAdapter) viewPager.getAdapter();
+                                    adapter.updateRequirementsPage(
+                                        parentDialog.buildRequirementsDescription(getContext()));
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Dismiss after a short delay to show completion
                 mainHandler.postDelayed(() -> dismiss(), 1000);
             } else {
                 // Only re-enable button if download failed
