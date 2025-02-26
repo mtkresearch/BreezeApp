@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
@@ -93,7 +94,9 @@ public class ModelDownloadDialog extends Dialog {
             return;
         }
 
+        // Disable UI elements
         downloadButton.setEnabled(false);
+        downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);  // Visual feedback that button is disabled
         progressBar.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.VISIBLE);
         statusText.setText(R.string.downloading);
@@ -107,6 +110,7 @@ public class ModelDownloadDialog extends Dialog {
         private final File modelDir;
         private int totalFiles = 0;
         private int currentFileIndex = 0;
+        private volatile boolean isCancelled = false;
 
         public DownloadTask(File modelDir) {
             this.modelDir = modelDir;
@@ -117,20 +121,30 @@ public class ModelDownloadDialog extends Dialog {
             String[] urls = params[0];
             totalFiles = urls.length;
             
-            for (int i = 0; i < urls.length; i++) {
-                currentFileIndex = i;
-                String url = urls[i];
-                String fileName = url.contains("tokenizer.bin") ? "tokenizer.bin" : AppConstants.BREEZE_MODEL_FILE;
-                
-                if (!tryDownloadFromUrl(url, fileName)) {
-                    return false;
+            // Download tokenizer first (small file)
+            if (!tryDownloadFromUrl(urls[0], "tokenizer.bin")) {
+                return false;
+            }
+            
+            if (isCancelled()) {
+                return false;
+            }
+
+            // For the model file, try multiple URLs
+            File outputFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+            File tempFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
+            
+            // Try each URL until successful
+            for (int i = 1; i < urls.length; i++) {
+                if (tryDownloadFromUrl(urls[i], AppConstants.BREEZE_MODEL_FILE)) {
+                    return true;
                 }
                 if (isCancelled()) {
                     return false;
                 }
             }
             
-            return true;
+            return false;
         }
 
         private boolean tryDownloadFromUrl(String urlString, String fileName) {
@@ -151,16 +165,36 @@ public class ModelDownloadDialog extends Dialog {
                     throw new IOException("Failed to create model directory");
                 }
 
+                // Setup files
+                File outputFile = new File(modelDir, fileName);
+                File tempFile = new File(modelDir, fileName + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
+                long existingLength = 0;
+
+                // Check for existing temporary file
+                if (tempFile.exists()) {
+                    existingLength = tempFile.length();
+                    Log.i(TAG, "Found existing partial download: " + existingLength + " bytes");
+                }
+
                 URL url = new URL(urlString);
                 connection = (HttpURLConnection) url.openConnection();
+                
+                // Set all required headers
+                for (String[] header : AppConstants.DOWNLOAD_HEADERS) {
+                    connection.setRequestProperty(header[0], header[1]);
+                }
+
+                // Add Range header if we have partial file
+                if (existingLength > 0) {
+                    connection.setRequestProperty("Range", "bytes=" + existingLength + "-");
+                }
+                
+                // Set timeouts
                 connection.setConnectTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
                 connection.setReadTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
                 
-                // Set standard headers
-                connection.setRequestProperty("User-Agent", "Breeze-Android-App");
-                connection.setRequestProperty("Accept", "application/octet-stream");
                 connection.connect();
-
+                
                 // Handle redirects
                 int responseCode = connection.getResponseCode();
                 if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP || 
@@ -176,20 +210,27 @@ public class ModelDownloadDialog extends Dialog {
                     connection.disconnect();
                     url = new URL(redirectUrl);
                     connection = (HttpURLConnection) url.openConnection();
+                    
+                    // Set headers again for redirected URL
+                    for (String[] header : AppConstants.DOWNLOAD_HEADERS) {
+                        connection.setRequestProperty(header[0], header[1]);
+                    }
+                    if (existingLength > 0) {
+                        connection.setRequestProperty("Range", "bytes=" + existingLength + "-");
+                    }
                     connection.setConnectTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
                     connection.setReadTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
-                    connection.setRequestProperty("User-Agent", "Breeze-Android-App");
-                    connection.setRequestProperty("Accept", "application/octet-stream");
                     connection.connect();
                     
                     responseCode = connection.getResponseCode();
                 }
 
-                if (responseCode != HttpURLConnection.HTTP_OK) {
+                // Check if range request was accepted
+                boolean isResuming = (responseCode == HttpURLConnection.HTTP_PARTIAL);
+                if (!isResuming && responseCode != HttpURLConnection.HTTP_OK) {
                     String errorMessage = "";
                     try {
                         errorMessage = connection.getResponseMessage();
-                        // Get more detailed error message if available
                         try (InputStream errorStream = connection.getErrorStream()) {
                             if (errorStream != null) {
                                 byte[] errorBytes = new byte[1024];
@@ -207,16 +248,25 @@ public class ModelDownloadDialog extends Dialog {
                     return false;
                 }
 
-                // Get the file length if possible
-                int fileLength = connection.getContentLength();
+                // Get the file length
+                long fileLength = connection.getContentLengthLong();
+                if (isResuming) {
+                    String contentRange = connection.getHeaderField("Content-Range");
+                    if (contentRange != null) {
+                        String[] parts = contentRange.split("/");
+                        if (parts.length == 2) {
+                            fileLength = Long.parseLong(parts[1]);
+                        }
+                    }
+                }
+                
                 input = connection.getInputStream();
                 
-                // Create the output file
-                File outputFile = new File(modelDir, fileName);
-                output = new FileOutputStream(outputFile);
+                // Open output in append mode if resuming
+                output = new FileOutputStream(tempFile, isResuming);
 
                 byte[] data = new byte[AppConstants.MODEL_DOWNLOAD_BUFFER_SIZE];
-                long total = 0;
+                long total = existingLength;
                 int count;
                 int lastProgress = 0;
 
@@ -224,7 +274,7 @@ public class ModelDownloadDialog extends Dialog {
                     if (isCancelled()) {
                         input.close();
                         output.close();
-                        outputFile.delete();
+                        // Don't delete temp file to allow resume
                         return false;
                     }
                     
@@ -242,9 +292,20 @@ public class ModelDownloadDialog extends Dialog {
                     }
                 }
 
+                // Close streams before moving file
+                output.close();
+                output = null;
+                input.close();
+                input = null;
+
                 // Verify the downloaded file
-                if (!outputFile.exists() || outputFile.length() == 0) {
-                    throw new IOException("Download completed but file is empty or missing");
+                if (!tempFile.exists() || tempFile.length() != fileLength) {
+                    throw new IOException("Download incomplete or file size mismatch");
+                }
+
+                // Move temp file to final location
+                if (!tempFile.renameTo(outputFile)) {
+                    throw new IOException("Failed to move temporary file to final location");
                 }
 
                 // Log successful download
@@ -269,16 +330,24 @@ public class ModelDownloadDialog extends Dialog {
         protected void onProgressUpdate(Integer... values) {
             progressBar.setProgress(values[0]);
             statusText.setText(getContext().getString(R.string.download_progress, values[0]));
+            // Ensure button stays disabled during download
+            downloadButton.setEnabled(false);
+            downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
         }
 
         @Override
         protected void onPostExecute(Boolean success) {
             if (success) {
                 statusText.setText(R.string.download_complete);
+                // Keep button disabled on success since download is complete
+                downloadButton.setEnabled(false);
+                downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
                 Toast.makeText(getContext(), R.string.download_complete, Toast.LENGTH_SHORT).show();
                 mainHandler.postDelayed(() -> dismiss(), 1000);
             } else {
+                // Only re-enable button if download failed
                 downloadButton.setEnabled(true);
+                downloadButton.setAlpha(AppConstants.ENABLED_ALPHA);
                 String errorMessage = error != null ? 
                     error.getMessage() : 
                     getContext().getString(R.string.error_all_download_attempts_failed);
