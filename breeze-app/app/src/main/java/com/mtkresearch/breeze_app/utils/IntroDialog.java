@@ -6,6 +6,7 @@ import android.content.Context;
 import android.os.Bundle;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -149,14 +150,18 @@ public class IntroDialog extends Dialog {
                     checkSystemRequirements();
                     // Show download dialog if only models are missing
                     if (!hasRequiredModels && hasMinimumRam && hasRequiredStorage) {
-                        ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context);
+                        ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this);
                         downloadDialog.setOnDismissListener(dialog -> {
                             // Recheck requirements after dialog is dismissed
                             checkSystemRequirements();
                             // Update the requirements description
                             ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
                                 buildRequirementsDescription(context));
+                            // Update button state and text
                             updateButtonState(context);
+                            updateButtonText(context);
+                            // Force refresh the current page
+                            viewPager.getAdapter().notifyItemChanged(currentPage);
                         });
                         downloadDialog.show();
                     }
@@ -200,20 +205,21 @@ public class IntroDialog extends Dialog {
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
         hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
         
-        // Check Model Files - Need the model specified in AppConstants
-        File appDir = getContext().getFilesDir();
-        File modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
-        if (!modelDir.exists()) {
-            hasRequiredModels = false;
-            return;
-        }
+        // Check Model Files - Use AppConstants methods to check both locations
+        String modelPath = AppConstants.getModelPath(getContext());
+        String tokenizerPath = AppConstants.getTokenizerPath(getContext());
         
-        File modelFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-        File tokenizerFile = new File(modelDir, "tokenizer.bin");
+        File modelFile = new File(modelPath);
+        File tokenizerFile = new File(tokenizerPath);
         
         // Check if both model and tokenizer files exist and are valid files
         hasRequiredModels = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
                            tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+        
+        Log.d("IntroDialog", "Model check - Model exists: " + modelFile.exists() + 
+                            ", Tokenizer exists: " + tokenizerFile.exists() +
+                            ", Model path: " + modelPath +
+                            ", Tokenizer path: " + tokenizerPath);
     }
 
     private boolean meetsAllRequirements() {
@@ -233,7 +239,7 @@ public class IntroDialog extends Dialog {
             // Show model download dialog if only the model requirement is not met
             // and other requirements are satisfied
             if (hasMinimumRam && hasRequiredStorage) {
-                ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context);
+                ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this);
                 downloadDialog.setOnDismissListener(dialog -> {
                     // Recheck requirements after dialog is dismissed
                     checkSystemRequirements();
@@ -286,7 +292,7 @@ public class IntroDialog extends Dialog {
     }
      */
 
-    private String buildRequirementsDescription(Context context) {
+    String buildRequirementsDescription(Context context) {
         ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
         ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE))
                 .getMemoryInfo(memoryInfo);
@@ -297,9 +303,18 @@ public class IntroDialog extends Dialog {
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
 
-        File modelDir = new File(AppConstants.APP_MODEL_DIR);
-        File modelFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-        boolean modelExists = modelFile.exists() && modelFile.isFile();
+        // Use the same model check logic as checkSystemRequirements
+        String modelPath = AppConstants.getModelPath(context);
+        String tokenizerPath = AppConstants.getTokenizerPath(context);
+        File modelFile = new File(modelPath);
+        File tokenizerFile = new File(tokenizerPath);
+        boolean modelExists = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
+                            tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+
+        Log.d("IntroDialog", "buildRequirementsDescription - Model exists: " + modelFile.exists() + 
+                            ", Tokenizer exists: " + tokenizerFile.exists() +
+                            ", Model path: " + modelPath +
+                            ", Tokenizer path: " + tokenizerPath);
 
         String ramStatus = (totalRamGB >= MIN_RAM_GB)
                 ? context.getString(R.string.ram_passed)
@@ -315,7 +330,7 @@ public class IntroDialog extends Dialog {
         }
         if (!modelExists) {
             warningMessages.append(context.getString(R.string.warning_model_missing,
-                    AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin"));
+                    AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE));
         }
         if (availableGB < MIN_STORAGE_GB) {
             warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_GB));
@@ -324,19 +339,13 @@ public class IntroDialog extends Dialog {
             warningMessages.append(context.getString(R.string.warning_footer));
         }
 
-        String string_of_modelExists = ( modelExists )
-                ? context.getString(R.string.model_found)
-                : context.getString(R.string.model_missing) ;
-
-        // Create model status string that includes both the status and warnings
-        String modelStatus = string_of_modelExists;
-        if (!modelExists) {
-            modelStatus = context.getString(R.string.model_missing);
-        }
+        String modelStatus = modelExists ? 
+                context.getString(R.string.model_found) :
+                context.getString(R.string.model_missing);
 
         return context.getString(R.string.status_summary,
                 MIN_RAM_GB, totalRamGB, ramStatus,
-                AppConstants.APP_MODEL_DIR, AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin",
+                modelFile.getParent(), AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE,
                 modelStatus,
                 MIN_STORAGE_GB, availableGB, storageStatus,
                 warningMessages.toString());
@@ -354,7 +363,7 @@ public class IntroDialog extends Dialog {
         }
     }
 
-    private static class IntroPagerAdapter extends RecyclerView.Adapter<IntroPagerAdapter.PageViewHolder> {
+    static class IntroPagerAdapter extends RecyclerView.Adapter<IntroPagerAdapter.PageViewHolder> {
         private final List<IntroPage> pages;
         private boolean isDarkTheme;
 
