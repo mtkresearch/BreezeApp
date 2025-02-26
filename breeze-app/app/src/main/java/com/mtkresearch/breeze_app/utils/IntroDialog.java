@@ -200,19 +200,20 @@ public class IntroDialog extends Dialog {
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
         hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
         
-        // Check Model Files - Need either LLAMA model or Breeze model
-        File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
+        // Check Model Files - Need the model specified in AppConstants
+        File appDir = getContext().getFilesDir();
+        File modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
         if (!modelDir.exists()) {
             hasRequiredModels = false;
             return;
         }
         
-        File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
-        File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        File modelFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        File tokenizerFile = new File(modelDir, "tokenizer.bin");
         
-        // Check if either model file exists and is a valid file
-        hasRequiredModels = (llamaModel.exists() && llamaModel.isFile() && llamaModel.length() > 0) || 
-                           (breezeModel.exists() && breezeModel.isFile() && breezeModel.length() > 0);
+        // Check if both model and tokenizer files exist and are valid files
+        hasRequiredModels = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
+                           tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
     }
 
     private boolean meetsAllRequirements() {
@@ -242,7 +243,7 @@ public class IntroDialog extends Dialog {
                 return;
             }
             message.append("\n").append(context.getString(R.string.missing_models,
-                    AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE));
+                    AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin"));
         }
 
         android.widget.Toast.makeText(context, message.toString(), android.widget.Toast.LENGTH_LONG).show();
@@ -296,11 +297,9 @@ public class IntroDialog extends Dialog {
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
 
-        File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
-        File llamaModel = new File(modelDir, AppConstants.LLAMA_MODEL_FILE);
-        File breezeModel = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-        boolean modelExists = (llamaModel.exists() && llamaModel.isFile()) ||
-                (breezeModel.exists() && breezeModel.isFile());
+        File modelDir = new File(AppConstants.APP_MODEL_DIR);
+        File modelFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
+        boolean modelExists = modelFile.exists() && modelFile.isFile();
 
         String ramStatus = (totalRamGB >= MIN_RAM_GB)
                 ? context.getString(R.string.ram_passed)
@@ -316,8 +315,7 @@ public class IntroDialog extends Dialog {
         }
         if (!modelExists) {
             warningMessages.append(context.getString(R.string.warning_model_missing,
-                    AppConstants.LLAMA_MODEL_FILE,
-                    AppConstants.BREEZE_MODEL_FILE));
+                    AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin"));
         }
         if (availableGB < MIN_STORAGE_GB) {
             warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_GB));
@@ -330,9 +328,16 @@ public class IntroDialog extends Dialog {
                 ? context.getString(R.string.model_found)
                 : context.getString(R.string.model_missing) ;
 
+        // Create model status string that includes both the status and warnings
+        String modelStatus = string_of_modelExists;
+        if (!modelExists) {
+            modelStatus = context.getString(R.string.model_missing);
+        }
+
         return context.getString(R.string.status_summary,
                 MIN_RAM_GB, totalRamGB, ramStatus,
-                AppConstants.LLAMA_MODEL_DIR, AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE, string_of_modelExists,
+                AppConstants.APP_MODEL_DIR, AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin",
+                modelStatus,
                 MIN_STORAGE_GB, availableGB, storageStatus,
                 warningMessages.toString());
     }
