@@ -361,7 +361,15 @@ public class ModelDownloadDialog extends Dialog {
                     if (fileLength > 0) {
                         // Calculate combined progress across all files
                         int fileProgress = (int) (total * 100 / fileLength);
-                        int overallProgress = (currentFileIndex * 100 + fileProgress) / totalFiles;
+                        int overallProgress;
+                        if (downloadMode == DownloadMode.TTS) {
+                            // For TTS, we have 3 pairs of URLs (primary + mirror), so divide currentFileIndex by 2
+                            overallProgress = ((currentFileIndex / 2) * 100 + fileProgress) / (totalFiles / 2);
+                        } else {
+                            overallProgress = (currentFileIndex * 100 + fileProgress) / totalFiles;
+                        }
+                        // Ensure progress doesn't exceed 100%
+                        overallProgress = Math.min(overallProgress, 100);
                         if (overallProgress > lastProgress + AppConstants.MODEL_DOWNLOAD_PROGRESS_UPDATE_INTERVAL) {
                             publishProgress(overallProgress);
                             lastProgress = overallProgress;
