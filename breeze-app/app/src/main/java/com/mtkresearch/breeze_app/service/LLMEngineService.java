@@ -594,8 +594,7 @@ public class LLMEngineService extends BaseEngineService {
                                         }
 
                                         // Handle both stop tokens - filter out both EOS tokens
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
-                                            token.equals("<|end_of_text|>")) {
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
                                             Log.d(TAG, "Stop token detected: " + token);
                                             String finalResponse = currentStreamingResponse.toString();
                                             if (!currentResponse.isDone()) {
@@ -603,6 +602,12 @@ public class LLMEngineService extends BaseEngineService {
                                                 resultFuture.complete(finalResponse);
                                             }
                                             isGenerating.set(false);
+                                            // Explicitly stop the module when we detect a stop token
+                                            try {
+                                                mModule.stop();
+                                            } catch (Exception e) {
+                                                Log.e(TAG, "Error stopping module after stop token", e);
+                                            }
                                             return;
                                         }
 
