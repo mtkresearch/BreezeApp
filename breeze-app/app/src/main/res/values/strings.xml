@@ -225,4 +225,18 @@
     <string name="start_new_chat">Start new chat</string>
     <string name="choose_a_voice">Choose a voice</string>
 
+    <!-- ## ModelDownloadDialog -->
+    <string name="download_model">Download Model</string>
+    <string name="model_missing_message">Required model file is missing. Download size is approximately 6GB.</string>
+    <string name="download">Download</string>
+    <string name="downloading">Downloading...</string>
+    <string name="download_progress">Download progress: %1$d%%</string>
+    <string name="download_complete">Download complete</string>
+    <string name="download_failed">Download failed: %1$s</string>
+    <string name="insufficient_storage_for_download">Insufficient storage space for download. Please free up at least %1$dGB.</string>
+    <string name="error_creating_model_directory">Error creating model directory</string>
+    <string name="error_downloading_model">Error downloading model: %1$s</string>
+    <string name="download_cancelled">Download cancelled</string>
+    <string name="error_all_download_attempts_failed">All download attempts failed</string>
+
 </resources>
