@@ -28,7 +28,13 @@ import java.net.URL;
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
 
+    public enum DownloadMode {
+        LLM,
+        TTS
+    }
+
     private final IntroDialog parentDialog;
+    private final DownloadMode downloadMode;
     private ProgressBar progressBar;
     private TextView statusText;
     private Button downloadButton;
@@ -36,9 +42,10 @@ public class ModelDownloadDialog extends Dialog {
     private DownloadTask downloadTask;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    public ModelDownloadDialog(Context context, IntroDialog parentDialog) {
+    public ModelDownloadDialog(Context context, IntroDialog parentDialog, DownloadMode mode) {
         super(context);
         this.parentDialog = parentDialog;
+        this.downloadMode = mode;
     }
 
     @Override
@@ -64,6 +71,12 @@ public class ModelDownloadDialog extends Dialog {
         statusText = findViewById(R.id.statusText);
         downloadButton = findViewById(R.id.downloadButton);
         cancelButton = findViewById(R.id.cancelButton);
+        TextView messageText = findViewById(R.id.messageText);
+
+        // Set appropriate message based on download mode
+        messageText.setText(downloadMode == DownloadMode.TTS ? 
+            R.string.model_missing_message_tts : 
+            R.string.model_missing_message);
 
         downloadButton.setOnClickListener(v -> startDownload());
         cancelButton.setOnClickListener(v -> {
@@ -77,24 +90,58 @@ public class ModelDownloadDialog extends Dialog {
         setCancelable(false);
     }
 
-    private void startDownload() {
-        // Get app's private storage directory
+    private File getModelDir() {
         File appDir = getContext().getFilesDir();
-        File modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
+        File modelDir;
         
-        // Check available storage space
-        long availableSpace = modelDir.getParentFile().getFreeSpace() / (1024 * 1024); // Convert to MB
+        if (downloadMode == DownloadMode.TTS) {
+            File baseModelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
+            if (!baseModelDir.exists()) {
+                if (!baseModelDir.mkdirs()) {
+                    Log.e(TAG, "Failed to create base model directory");
+                    return null;
+                }
+            }
+            modelDir = new File(baseModelDir, AppConstants.TTS_MODEL_DIR);
+            if (!modelDir.exists()) {
+                if (!modelDir.mkdirs()) {
+                    Log.e(TAG, "Failed to create TTS model directory");
+                    return null;
+                }
+            }
+        } else {
+            modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
+            if (!modelDir.exists() && !modelDir.mkdirs()) {
+                Log.e(TAG, "Failed to create model directory");
+                return null;
+            }
+        }
+        
+        return modelDir;
+    }
 
-        if (availableSpace < AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB) {
-            int requiredGB = (int) Math.ceil(AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB / 1024.0);
-            String message = getContext().getString(R.string.insufficient_storage_for_download, requiredGB);
-            Toast.makeText(getContext(), message, Toast.LENGTH_LONG).show();
+    private void startDownload() {
+        File modelDir = getModelDir();
+        if (modelDir == null) {
+            Toast.makeText(getContext(), R.string.error_creating_model_directory, Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Create model directory if it doesn't exist
-        if (!modelDir.exists() && !modelDir.mkdirs()) {
-            Toast.makeText(getContext(), R.string.error_creating_model_directory, Toast.LENGTH_SHORT).show();
+        // Get available space from the app's private storage
+        long availableSpaceMB = getContext().getFilesDir().getFreeSpace() / (1024 * 1024);
+        long requiredSpace = downloadMode == DownloadMode.TTS ? 125 : 8 * 1024; // 125MB for TTS, 8GB for LLM
+
+        Log.d(TAG, String.format("Storage check - Available: %dMB, Required: %dMB", availableSpaceMB, requiredSpace));
+
+        if (availableSpaceMB < requiredSpace) {
+            if (downloadMode == DownloadMode.TTS) {
+                Toast.makeText(getContext(), getContext().getString(R.string.insufficient_storage_for_download_mb, requiredSpace),
+                        Toast.LENGTH_LONG).show();
+            } else {
+                Toast.makeText(getContext(), getContext().getString(R.string.insufficient_storage_for_download, requiredSpace / 1024),
+                        Toast.LENGTH_LONG).show();
+            }
+            dismiss();
             return;
         }
 
@@ -103,10 +150,13 @@ public class ModelDownloadDialog extends Dialog {
         downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);  // Visual feedback that button is disabled
         progressBar.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.VISIBLE);
-        statusText.setText(R.string.downloading);
+        statusText.setText(downloadMode == DownloadMode.TTS ? R.string.download_progress_tts : R.string.downloading);
 
         downloadTask = new DownloadTask(modelDir);
-        downloadTask.execute(AppConstants.MODEL_DOWNLOAD_URLS);
+        String[] urls = downloadMode == DownloadMode.TTS ? 
+            AppConstants.TTS_MODEL_DOWNLOAD_URLS : 
+            AppConstants.MODEL_DOWNLOAD_URLS;
+        downloadTask.execute(urls);
     }
 
     private class DownloadTask extends AsyncTask<String[], Integer, Boolean> {
@@ -125,30 +175,49 @@ public class ModelDownloadDialog extends Dialog {
             String[] urls = params[0];
             totalFiles = urls.length;
             
-            // Download tokenizer first (small file)
-            if (!tryDownloadFromUrl(urls[0], "tokenizer.bin")) {
-                return false;
-            }
-            
-            if (isCancelled()) {
-                return false;
-            }
-
-            // For the model file, try multiple URLs
-            File outputFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE);
-            File tempFile = new File(modelDir, AppConstants.BREEZE_MODEL_FILE + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
-            
-            // Try each URL until successful
-            for (int i = 1; i < urls.length; i++) {
-                if (tryDownloadFromUrl(urls[i], AppConstants.BREEZE_MODEL_FILE)) {
-                    return true;
+            if (downloadMode == DownloadMode.TTS) {
+                // Download all TTS model files
+                for (int i = 0; i < urls.length; i += 2) {  // Process in pairs (main URL + mirror)
+                    String fileName = getFileNameFromUrl(urls[i]);
+                    if (!tryDownloadFromUrl(urls[i], fileName) && !tryDownloadFromUrl(urls[i + 1], fileName)) {
+                        return false;
+                    }
+                    if (isCancelled()) {
+                        return false;
+                    }
+                    currentFileIndex += 2;
                 }
+                return true;
+            } else {
+                // Download LLM files
+                // Download tokenizer first (small file)
+                if (!tryDownloadFromUrl(urls[0], "tokenizer.bin")) {
+                    return false;
+                }
+                
                 if (isCancelled()) {
                     return false;
+                }
+
+                // For the model file, try multiple URLs
+                for (int i = 1; i < urls.length; i++) {
+                    if (tryDownloadFromUrl(urls[i], AppConstants.BREEZE_MODEL_FILE)) {
+                        return true;
+                    }
+                    if (isCancelled()) {
+                        return false;
+                    }
                 }
             }
             
             return false;
+        }
+
+        private String getFileNameFromUrl(String url) {
+            String[] parts = url.split("/");
+            String lastPart = parts[parts.length - 1];
+            int queryIndex = lastPart.indexOf('?');
+            return queryIndex > 0 ? lastPart.substring(0, queryIndex) : lastPart;
         }
 
         private boolean tryDownloadFromUrl(String urlString, String fileName) {
@@ -158,15 +227,19 @@ public class ModelDownloadDialog extends Dialog {
 
             try {
                 // Check available storage space first
-                long availableSpace = modelDir.getParentFile().getFreeSpace() / (1024 * 1024); // Convert to MB
-                if (availableSpace < AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB) {
-                    int requiredGB = (int) Math.ceil(AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB / 1024.0);
-                    throw new IOException("Insufficient storage space. Need " + requiredGB + "GB free.");
-                }
+                long availableSpace = getContext().getFilesDir().getFreeSpace() / (1024 * 1024); // Convert to MB
+                long requiredSpace = downloadMode == DownloadMode.TTS ? 125 : AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB;
+                
+                Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
+                    urlString, fileName, availableSpace, requiredSpace));
 
-                // Create model directory if needed
-                if (!modelDir.exists() && !modelDir.mkdirs()) {
-                    throw new IOException("Failed to create model directory");
+                if (availableSpace < requiredSpace) {
+                    if (downloadMode == DownloadMode.TTS) {
+                        throw new IOException("Insufficient storage space. Need " + requiredSpace + "MB free.");
+                    } else {
+                        int requiredGB = (int) Math.ceil(requiredSpace / 1024.0);
+                        throw new IOException("Insufficient storage space. Need " + requiredGB + "GB free.");
+                    }
                 }
 
                 // Setup files
@@ -333,7 +406,10 @@ public class ModelDownloadDialog extends Dialog {
         @Override
         protected void onProgressUpdate(Integer... values) {
             progressBar.setProgress(values[0]);
-            statusText.setText(getContext().getString(R.string.download_progress, values[0]));
+            String progressText = downloadMode == DownloadMode.TTS ?
+                getContext().getString(R.string.download_progress_tts, values[0]) :
+                getContext().getString(R.string.download_progress, values[0]);
+            statusText.setText(progressText);
             // Ensure button stays disabled during download
             downloadButton.setEnabled(false);
             downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
@@ -342,11 +418,17 @@ public class ModelDownloadDialog extends Dialog {
         @Override
         protected void onPostExecute(Boolean success) {
             if (success) {
-                statusText.setText(R.string.download_complete);
+                statusText.setText(downloadMode == DownloadMode.TTS ? 
+                    R.string.download_complete_tts : 
+                    R.string.download_complete);
                 // Keep button disabled on success since download is complete
                 downloadButton.setEnabled(false);
                 downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
-                Toast.makeText(getContext(), R.string.download_complete, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getContext(), 
+                    downloadMode == DownloadMode.TTS ? 
+                        R.string.download_complete_tts : 
+                        R.string.download_complete, 
+                    Toast.LENGTH_SHORT).show();
                 
                 // Ensure we recheck system requirements before dismissing
                 if (getContext() instanceof android.app.Activity) {
@@ -377,10 +459,22 @@ public class ModelDownloadDialog extends Dialog {
                 downloadButton.setAlpha(AppConstants.ENABLED_ALPHA);
                 String errorMessage = error != null ? 
                     error.getMessage() : 
-                    getContext().getString(R.string.error_all_download_attempts_failed);
-                statusText.setText(getContext().getString(R.string.download_failed, errorMessage));
+                    getContext().getString(
+                        downloadMode == DownloadMode.TTS ? 
+                            R.string.error_all_download_attempts_failed_tts : 
+                            R.string.error_all_download_attempts_failed
+                    );
+                statusText.setText(getContext().getString(
+                    downloadMode == DownloadMode.TTS ? 
+                        R.string.download_failed_tts : 
+                        R.string.download_failed, 
+                    errorMessage));
                 Toast.makeText(getContext(), 
-                    getContext().getString(R.string.error_downloading_model, errorMessage), 
+                    getContext().getString(
+                        downloadMode == DownloadMode.TTS ? 
+                            R.string.error_downloading_tts_model : 
+                            R.string.error_downloading_model, 
+                        errorMessage), 
                     Toast.LENGTH_LONG).show();
             }
         }
