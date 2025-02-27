@@ -111,6 +111,10 @@ public class LLMEngineService extends BaseEngineService {
             if (intent.hasExtra("model_path")) {
                 modelPath = intent.getStringExtra("model_path");
                 Log.d(TAG, "Using model path: " + modelPath);
+            } else {
+                // Use AppConstants to get the correct model path
+                modelPath = AppConstants.getModelPath(this);
+                Log.d(TAG, "Using default model path: " + modelPath);
             }
             if (intent.hasExtra("preferred_backend")) {
                 String newBackend = intent.getStringExtra("preferred_backend");
@@ -124,8 +128,9 @@ public class LLMEngineService extends BaseEngineService {
             }
         }
         
-        if (modelPath == null) {
-            Log.e(TAG, "No model path provided in intent");
+        // Check if model needs to be downloaded
+        if (AppConstants.needsModelDownload(this)) {
+            Log.e(TAG, "Model not found in any location, download required");
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -415,7 +420,7 @@ public class LLMEngineService extends BaseEngineService {
             mModule = new LlamaModule(
                 ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
                 modelPath,
-                AppConstants.LLM_TOKENIZER_PATH,
+                AppConstants.getTokenizerPath(this),
                 AppConstants.LLM_TEMPERATURE
             );
 
@@ -571,8 +576,8 @@ public class LLMEngineService extends BaseEngineService {
                         
                         // Calculate sequence length with more generous output space
                         int seqLen = Math.min(
-                            AppConstants.LLM_MAX_SEQ_LENGTH,
-                            prompt.length() + AppConstants.LLM_MIN_OUTPUT_LENGTH
+                            AppConstants.getLLMMaxSeqLength(context),
+                            prompt.length() + AppConstants.getLLMMinOutputLength(context)
                         );
                         
                         executor.execute(() -> {
@@ -791,10 +796,10 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     private int getMaxSequenceLength() {
-        return AppConstants.LLM_MAX_SEQ_LENGTH;
+        return AppConstants.getLLMMaxSeqLength(this);
     }
 
     private int getMinOutputLength() {
-        return AppConstants.LLM_MIN_OUTPUT_LENGTH;
+        return AppConstants.getLLMMinOutputLength(this);
     }
 } 

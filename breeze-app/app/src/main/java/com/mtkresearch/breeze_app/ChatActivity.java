@@ -477,7 +477,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", AppConstants.MODEL_PATH);
+        llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
         String preferredBackend = ModelUtils.getPreferredBackend();
         llmIntent.putExtra("preferred_backend", preferredBackend);
         
@@ -1509,7 +1509,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
         
         // Check if prompt might exceed max length (using conservative estimate)
-        if (fullPrompt.length() > AppConstants.LLM_MAX_INPUT_LENGTH * 3) { // Assuming average of 3 chars per token
+        if (fullPrompt.length() > AppConstants.getLLMMaxInputLength(this) * 3) { // Assuming average of 3 chars per token
             Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
             // Format prompt with empty history list to get just system prompt + user message
             String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
