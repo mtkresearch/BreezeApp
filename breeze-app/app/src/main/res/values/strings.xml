@@ -239,4 +239,37 @@
     <string name="download_cancelled">Download cancelled</string>
     <string name="error_all_download_attempts_failed">All download attempts failed</string>
 
+    <!-- Model Status -->
+    <string name="model_status_llm_found">✅ Found</string>
+    <string name="model_status_llm_missing">⛔️ Missing</string>
+    <string name="model_status_vlm_not_implemented">⚠️ Not implemented yet</string>
+    <string name="model_status_asr_not_implemented">⚠️ Not implemented yet</string>
+    <string name="model_status_tts_available">✅ System service available</string>
+
+    <string name="model_status_llm_title">LLM Model Status: %1$s</string>
+    <string name="model_status_vlm_title">VLM Model Status: %1$s</string>
+    <string name="model_status_asr_title">ASR Model Status: %1$s</string>
+    <string name="model_status_tts_title">TTS Model Status: %1$s</string>
+
+    <!-- Requirements Description Section Headers -->
+    <string name="requirements_header_memory">Memory:</string>
+    <string name="requirements_header_model_status">Model Status:</string>
+    <string name="requirements_header_storage">Storage Space:</string>
+
+    <!-- Requirements Description Details -->
+    <string name="requirements_memory_required">Required: %1$dGB+</string>
+    <string name="requirements_memory_device">Your Device: %1$dGB</string>
+    <string name="requirements_memory_status">Status: %1$s</string>
+    
+    <string name="requirements_storage_required">Required: At least %1$dGB free space</string>
+    <string name="requirements_storage_available">Available: %1$dGB</string>
+    <string name="requirements_storage_status">Status: %1$s</string>
+
+    <string name="requirements_footer">Please ensure all requirements are met for optimal performance.</string>
+
+    <!-- HTML Formatting -->
+    <string name="html_bullet">•&#160;</string>
+    <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
+    <string name="html_linebreak">&lt;br/&gt;</string>
+
 </resources>
