@@ -242,6 +242,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         setupVoiceButton();
         setupSendButton();
         setupNewConversationButton();
+        
+        // Setup button vibration after all click listeners are set
+        if (uiHandler != null) {
+            uiHandler.setupButtonVibration();
+        }
     }
 
     private void setupNavigationButton() {
