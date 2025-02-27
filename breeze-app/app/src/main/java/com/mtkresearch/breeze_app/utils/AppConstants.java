@@ -3,8 +3,11 @@ package com.mtkresearch.breeze_app.utils;
 import android.content.Context;
 import java.io.File;
 import android.util.Log;
+import java.io.IOException;
 
 public class AppConstants {
+    private static final String TAG = "AppConstants";
+
     // Shared Preferences
     public static final String PREFS_NAME = "GAISettings";
     
@@ -54,6 +57,87 @@ public class AppConstants {
     public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
     public static final String LLM_TOKENIZER_FILE = "tokenizer.bin";  // Add tokenizer filename constant
     
+    // TTS Model Files and Paths
+    public static final String TTS_MODEL_DIR = "Breeze2-VITS-onnx";
+    public static final String TTS_MODEL_FILE = "breeze2-vits.onnx";
+    public static final String TTS_LEXICON_FILE = "lexicon.txt";
+    
+    // TTS Model Download URLs
+    private static final String TTS_MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx/resolve/main/";
+    private static final String TTS_HF_MIRROR_URL = "https://hf-mirror.com/MediaTek-Research/Breeze2-VITS-onnx/resolve/main/";
+    
+    public static final String[] TTS_MODEL_DOWNLOAD_URLS = {
+        // Primary TTS model files
+        TTS_MODEL_BASE_URL + TTS_MODEL_FILE + "?download=true",
+        TTS_HF_MIRROR_URL + TTS_MODEL_FILE + "?download=true",
+        // Lexicon file
+        TTS_MODEL_BASE_URL + TTS_LEXICON_FILE + "?download=true",
+        TTS_HF_MIRROR_URL + TTS_LEXICON_FILE + "?download=true",
+        // Tokens file
+        TTS_MODEL_BASE_URL + "tokens.txt?download=true",
+        TTS_HF_MIRROR_URL + "tokens.txt?download=true"
+    };
+
+    // Check if TTS models exist in assets or app storage
+    public static boolean hasTTSModels(Context context) {
+        // First check app's private storage
+        File ttsDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), TTS_MODEL_DIR);
+        File primaryModel = new File(ttsDir, TTS_MODEL_FILE);
+        File primaryLexicon = new File(ttsDir, TTS_LEXICON_FILE);
+        File primaryTokens = new File(ttsDir, "tokens.txt");
+        
+        boolean primaryExists = primaryModel.exists() && primaryModel.isFile() && primaryModel.length() > 0 &&
+                              primaryLexicon.exists() && primaryLexicon.isFile() && primaryLexicon.length() > 0 &&
+                              primaryTokens.exists() && primaryTokens.isFile() && primaryTokens.length() > 0;
+        
+        if (primaryExists) {
+            return true;
+        }
+        
+        // Then check assets
+        try {
+            context.getAssets().open(TTS_MODEL_DIR + "/" + TTS_MODEL_FILE).close();
+            context.getAssets().open(TTS_MODEL_DIR + "/" + TTS_LEXICON_FILE).close();
+            context.getAssets().open(TTS_MODEL_DIR + "/tokens.txt").close();
+            return true;
+        } catch (IOException e) {
+            Log.d(TAG, "TTS models not found in assets", e);
+        }
+        
+        return false;
+    }
+
+    // Get TTS model path
+    public static String getTTSModelPath(Context context) {
+        // First check app's private storage
+        File ttsDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), TTS_MODEL_DIR);
+        File primaryModel = new File(ttsDir, TTS_MODEL_FILE);
+        
+        if (primaryModel.exists() && primaryModel.isFile() && primaryModel.length() > 0) {
+            return primaryModel.getAbsolutePath();
+        }
+        
+        // Then check assets
+        try {
+            context.getAssets().open(TTS_MODEL_DIR + "/" + TTS_MODEL_FILE).close();
+            return TTS_MODEL_DIR + "/" + TTS_MODEL_FILE;
+        } catch (IOException e) {
+            Log.d(TAG, "TTS model not found in assets", e);
+        }
+        
+        return null;
+    }
+
+    // Check if TTS models need to be downloaded
+    public static boolean needsTTSModelDownload(Context context) {
+        return !hasTTSModels(context);
+    }
+    
+    // Get absolute path to the app's TTS model directory
+    public static String getAppTTSModelDir(Context context) {
+        return new File(new File(context.getFilesDir(), APP_MODEL_DIR), TTS_MODEL_DIR).getAbsolutePath();
+    }
+
     // Get absolute path to the app's model directory
     public static String getAppModelDir(Context context) {
         return new File(context.getFilesDir(), APP_MODEL_DIR).getAbsolutePath();

@@ -1,5 +1,6 @@
 package com.mtkresearch.breeze_app.utils;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Dialog;
 import android.content.Context;
@@ -32,7 +33,8 @@ public class IntroDialog extends Dialog {
     private Button btnNext;
     private int currentPage = 0;
     private static final long MIN_RAM_GB = 8; // Minimum 8GB RAM requirement
-    private static final long MIN_STORAGE_GB = 10; // Minimum 10GB storage requirement
+    private static final long MIN_STORAGE_LLM_GB = 7; // Minimum 10GB storage requirement for LLM
+    private static final long MIN_STORAGE_TTS_MB = 125; // Minimum 125MB storage requirement for TTS
     private boolean hasMinimumRam = true;
     private boolean hasRequiredStorage = true;
     private boolean hasRequiredModels = true;
@@ -131,7 +133,7 @@ public class IntroDialog extends Dialog {
                     dismiss();
                 } else {
                     // Show warning toast with specific requirements that are not met
-                    showRequirementsWarning( context );
+                    showRequirementsWarning(context);
                 }
             }
             updateButtonText(context);
@@ -150,20 +152,39 @@ public class IntroDialog extends Dialog {
                     checkSystemRequirements();
                     // Show download dialog if only models are missing
                     if (!hasRequiredModels && hasMinimumRam && hasRequiredStorage) {
-                        ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this);
-                        downloadDialog.setOnDismissListener(dialog -> {
-                            // Recheck requirements after dialog is dismissed
-                            checkSystemRequirements();
-                            // Update the requirements description
-                            ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
-                                buildRequirementsDescription(context));
-                            // Update button state and text
-                            updateButtonState(context);
-                            updateButtonText(context);
-                            // Force refresh the current page
-                            viewPager.getAdapter().notifyItemChanged(currentPage);
-                        });
-                        downloadDialog.show();
+                        // Check if TTS models are missing
+                        if (AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
+                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.TTS);
+                            downloadDialog.setOnDismissListener(dialog -> {
+                                // Recheck requirements after dialog is dismissed
+                                checkSystemRequirements();
+                                // Update the requirements description
+                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
+                                    buildRequirementsDescription(context));
+                                // Update button state and text
+                                updateButtonState(context);
+                                updateButtonText(context);
+                                // Force refresh the current page
+                                viewPager.getAdapter().notifyItemChanged(currentPage);
+                            });
+                            downloadDialog.show();
+                        } else {
+                            // For LLM models
+                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.LLM);
+                            downloadDialog.setOnDismissListener(dialog -> {
+                                // Recheck requirements after dialog is dismissed
+                                checkSystemRequirements();
+                                // Update the requirements description
+                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
+                                    buildRequirementsDescription(context));
+                                // Update button state and text
+                                updateButtonState(context);
+                                updateButtonText(context);
+                                // Force refresh the current page
+                                viewPager.getAdapter().notifyItemChanged(currentPage);
+                            });
+                            downloadDialog.show();
+                        }
                     }
                 }
             }
@@ -203,76 +224,156 @@ public class IntroDialog extends Dialog {
         android.os.StatFs stat = new android.os.StatFs(android.os.Environment.getDataDirectory().getPath());
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
-        hasRequiredStorage = availableGB >= MIN_STORAGE_GB;
+        long availableMB = availableBytes / (1024L * 1024L);
         
-        // Check Model Files - Use AppConstants methods to check both locations
-        String modelPath = AppConstants.getModelPath(getContext());
-        String tokenizerPath = AppConstants.getTokenizerPath(getContext());
+        // Check Model Files
+        boolean hasLLMModels = !AppConstants.needsModelDownload(getContext());
+        boolean hasTTSModels = !AppConstants.TTS_ENABLED || !AppConstants.needsTTSModelDownload(getContext());
         
-        File modelFile = new File(modelPath);
-        File tokenizerFile = new File(tokenizerPath);
+        // Both LLM and TTS models (if enabled) must be present
+        hasRequiredModels = hasLLMModels && hasTTSModels;
         
-        // Check if both model and tokenizer files exist and are valid files
-        hasRequiredModels = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
-                           tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+        // Calculate required storage based on missing models
+        long requiredStorageMB = 0;
+        if (!hasLLMModels) {
+            requiredStorageMB += MIN_STORAGE_LLM_GB * 1024; // Convert GB to MB
+        }
+        if (!hasTTSModels && AppConstants.TTS_ENABLED) {
+            requiredStorageMB += MIN_STORAGE_TTS_MB;
+        }
         
-        Log.d("IntroDialog", "Model check - Model exists: " + modelFile.exists() + 
-                            ", Tokenizer exists: " + tokenizerFile.exists() +
-                            ", Model path: " + modelPath +
-                            ", Tokenizer path: " + tokenizerPath);
+        // Check if we have enough storage for all missing models
+        hasRequiredStorage = requiredStorageMB == 0 || availableMB >= requiredStorageMB;
+        
+        Log.d("IntroDialog", "Storage check - " +
+                            "LLM Model exists: " + hasLLMModels + 
+                            ", TTS Models exist: " + hasTTSModels +
+                            ", Required storage (MB): " + requiredStorageMB +
+                            ", Available storage (MB): " + availableMB +
+                            ", Storage requirement met: " + hasRequiredStorage);
     }
 
     private boolean meetsAllRequirements() {
         return hasMinimumRam && hasRequiredStorage && hasRequiredModels;
     }
 
-    private void showRequirementsWarning( Context context ) {
-        StringBuilder message = new StringBuilder(context.getString(R.string.cannot_proceed));
+    private void showRequirementsWarning(Context context) {
+        if (!hasMinimumRam || !hasRequiredStorage || !hasRequiredModels) {
+            // Cast context to Activity for runOnUiThread
+            if (context instanceof Activity) {
+                Activity activity = (Activity) context;
+                activity.runOnUiThread(() -> {
+                    if (!hasRequiredModels) {
+                        // Check which models are missing and show appropriate download dialogs
+                        boolean needsTTS = AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context);
+                        boolean needsLLM = AppConstants.needsModelDownload(context);
 
-        if (!hasMinimumRam) {
-            message.append("\n").append(context.getString(R.string.insufficient_ram, MIN_RAM_GB));
-        }
-        if (!hasRequiredStorage) {
-            message.append("\n").append(context.getString(R.string.insufficient_storage, MIN_STORAGE_GB));
-        }
-        if (!hasRequiredModels) {
-            // Show model download dialog if only the model requirement is not met
-            // and other requirements are satisfied
-            if (hasMinimumRam && hasRequiredStorage) {
-                ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this);
-                downloadDialog.setOnDismissListener(dialog -> {
-                    // Recheck requirements after dialog is dismissed
-                    checkSystemRequirements();
-                    updateButtonState(context);
+                        // Show appropriate download dialog based on missing models
+                        if (needsTTS) {
+                            // Show TTS model download dialog first
+                            Log.d("IntroDialog", "Showing TTS model download dialog");
+                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.TTS);
+                            downloadDialog.setOnDismissListener(dialog -> {
+                                checkSystemRequirements();
+                                // Update the requirements description
+                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
+                                    buildRequirementsDescription(context));
+                                // Update button state and text
+                                updateButtonState(context);
+                                updateButtonText(context);
+                                // If TTS download completed but LLM is still missing, show LLM download dialog
+                                if (!AppConstants.needsTTSModelDownload(context) && needsLLM) {
+                                    showRequirementsWarning(context);
+                                }
+                            });
+                            downloadDialog.show();
+                        } else if (needsLLM) {
+                            // Show LLM model download dialog
+                            Log.d("IntroDialog", "Showing LLM model download dialog");
+                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.LLM);
+                            downloadDialog.setOnDismissListener(dialog -> {
+                                checkSystemRequirements();
+                                // Update the requirements description
+                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
+                                    buildRequirementsDescription(context));
+                                // Update button state and text
+                                updateButtonState(context);
+                                updateButtonText(context);
+                            });
+                            downloadDialog.show();
+                        }
+                    } else if (!hasMinimumRam) {
+                        btnNext.setText(context.getString(R.string.insufficient_ram, MIN_RAM_GB));
+                    } else if (!hasRequiredStorage) {
+                        // Check which models need to be downloaded to show appropriate storage requirement
+                        boolean needsTTS = AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context);
+                        boolean needsLLM = AppConstants.needsModelDownload(context);
+
+                        if (needsTTS && !needsLLM) {
+                            // Only TTS model is missing
+                            btnNext.setText(context.getString(R.string.insufficient_storage_mb, MIN_STORAGE_TTS_MB));
+                        } else if (needsLLM) {
+                            // LLM model is missing (possibly along with TTS)
+                            btnNext.setText(context.getString(R.string.insufficient_storage, MIN_STORAGE_LLM_GB));
+                        }
+                    }
                 });
-                downloadDialog.show();
-                return;
             }
-            message.append("\n").append(context.getString(R.string.missing_models,
-                    AppConstants.BREEZE_MODEL_FILE, "tokenizer.bin"));
         }
-
-        android.widget.Toast.makeText(context, message.toString(), android.widget.Toast.LENGTH_LONG).show();
     }
 
-    private void updateButtonState( Context context ) {
-        // Disable the button on the last page if any requirement is not met
-        if (currentPage == introPages.size() - 1 && !meetsAllRequirements()) {
-            btnNext.setEnabled(false);
-            btnNext.setAlpha(0.5f);
-            btnNext.setText(context.getString(R.string.requirements_not_met));
+    private void updateButtonState(Context context) {
+        boolean meetsRequirements = meetsAllRequirements();
+        
+        // Only check requirements on the last page
+        if (currentPage == introPages.size() - 1) {
+            btnNext.setEnabled(meetsRequirements);
+            
+            if (!meetsRequirements) {
+                StringBuilder errorMessage = new StringBuilder(context.getString(R.string.cannot_proceed));
+                
+                if (!hasMinimumRam) {
+                    errorMessage.append("\n").append(context.getString(R.string.insufficient_ram, MIN_RAM_GB));
+                }
+                if (!hasRequiredStorage) {
+                    // Check which model is missing to show appropriate storage requirement
+                    if (!AppConstants.hasTTSModels(context) && AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
+                        errorMessage.append("\n").append(context.getString(R.string.insufficient_storage_mb, MIN_STORAGE_TTS_MB));
+                    } else {
+                        errorMessage.append("\n").append(context.getString(R.string.insufficient_storage, MIN_STORAGE_LLM_GB));
+                    }
+                }
+                if (!hasRequiredModels) {
+                    if (AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
+                        errorMessage.append("\n").append(context.getString(R.string.missing_models, 
+                            AppConstants.TTS_MODEL_FILE, AppConstants.TTS_LEXICON_FILE));
+                    } else if (AppConstants.needsModelDownload(context)) {
+                        errorMessage.append("\n").append(context.getString(R.string.missing_models, 
+                            AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE));
+                    }
+                    showRequirementsWarning(context);
+                }
+                
+                btnNext.setText(errorMessage.toString());
+            } else {
+                updateButtonText(context);
+            }
         } else {
+            // For other pages, always enable the button and show normal text
             btnNext.setEnabled(true);
-            btnNext.setAlpha(1.0f);
             updateButtonText(context);
         }
     }
 
     private void updateButtonText(Context context) {
         if (currentPage == introPages.size() - 1) {
-            btnNext.setText(meetsAllRequirements() ? context.getString(R.string.got_it) : context.getString(R.string.requirements_not_met) );
+            // On the last page (requirements page)
+            btnNext.setText(meetsAllRequirements() ? 
+                context.getString(R.string.got_it) : 
+                context.getString(R.string.requirements_not_met));
         } else {
-            btnNext.setText( context.getString(R.string.next) );
+            // For all other pages
+            btnNext.setText(context.getString(R.string.next));
         }
     }
 
@@ -346,17 +447,22 @@ public class IntroDialog extends Dialog {
 
         // Check TTS if enabled
         if (AppConstants.TTS_ENABLED) {
-            modelStatus.append(context.getString(
-                R.string.model_status_tts_title,
-                context.getString(R.string.model_status_tts_available)))
-                .append(context.getString(R.string.html_linebreak));
+            boolean ttsModelsExist = AppConstants.hasTTSModels(context);
+            String ttsStatus = context.getString(ttsModelsExist ? 
+                R.string.model_status_tts_found : R.string.model_status_tts_missing);
+            modelStatus.append(context.getString(R.string.model_status_tts_title, ttsStatus))
+                      .append(context.getString(R.string.html_linebreak));
+            
+            if (!ttsModelsExist) {
+                modelWarnings.append(context.getString(R.string.warning_tts_model_missing));
+            }
         }
 
         String ramStatus = (totalRamGB >= MIN_RAM_GB)
                 ? context.getString(R.string.ram_passed)
                 : context.getString(R.string.ram_error, totalRamGB, MIN_RAM_GB);
 
-        String storageStatus = (availableGB >= MIN_STORAGE_GB)
+        String storageStatus = (availableGB >= MIN_STORAGE_LLM_GB)
                 ? context.getString(R.string.storage_sufficient, availableGB)
                 : context.getString(R.string.storage_error, availableGB);
 
@@ -364,8 +470,8 @@ public class IntroDialog extends Dialog {
         if (totalRamGB < MIN_RAM_GB) {
             warningMessages.append(context.getString(R.string.warning_ram));
         }
-        if (availableGB < MIN_STORAGE_GB) {
-            warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_GB));
+        if (availableGB < MIN_STORAGE_LLM_GB) {
+            warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_LLM_GB));
         }
         warningMessages.append(modelWarnings);
         if (warningMessages.length() > 0) {
@@ -396,7 +502,7 @@ public class IntroDialog extends Dialog {
             bullet, context.getString(R.string.requirements_header_model_status), linebreak,
             indent, modelStatus.toString().replace(linebreak, linebreak + indent), linebreak,
             bullet, context.getString(R.string.requirements_header_storage), linebreak,
-            indent, context.getString(R.string.requirements_storage_required, MIN_STORAGE_GB), linebreak,
+            indent, context.getString(R.string.requirements_storage_required, MIN_STORAGE_LLM_GB), linebreak,
             indent, context.getString(R.string.requirements_storage_available, availableGB), linebreak,
             indent, context.getString(R.string.requirements_storage_status, storageStatus), linebreak, linebreak,
             warningMessages.toString(), linebreak,

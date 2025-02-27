@@ -92,6 +92,7 @@
     <string name="cannot_proceed">無法繼續：</string>
     <string name="insufficient_ram">• 記憶體不足（最低需求 %1$dGB）</string>
     <string name="insufficient_storage">• 存儲空間不足（最低需求 %1$dGB）</string>
+    <string name="insufficient_storage_mb">• 存儲空間不足（最低需求 %1$dMB）</string>
     <string name="missing_models">• 所需模型文件（%1$s 或 %2$s）缺失</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
@@ -229,23 +230,33 @@
     <!-- ## ModelDownloadDialog -->
     <string name="download_model">下載模型</string>
     <string name="model_missing_message">缺少所需的模型文件。下載大小約為 6GB。</string>
+    <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下載大小約為 125MB。</string>
     <string name="download">下載</string>
     <string name="downloading">下載中...</string>
     <string name="download_progress">下載進度：%1$d%%</string>
+    <string name="download_progress_tts">正在下載 TTS 模型：%1$d%%</string>
     <string name="download_complete">下載完成</string>
+    <string name="download_complete_tts">TTS 模型下載完成</string>
     <string name="download_failed">下載失敗：%1$s</string>
+    <string name="download_failed_tts">TTS 模型下載失敗：%1$s</string>
     <string name="insufficient_storage_for_download">存儲空間不足，無法下載。請釋放至少 %1$dGB 空間。</string>
+    <string name="insufficient_storage_for_download_mb">存儲空間不足，無法下載。請釋放至少 %1$dMB 空間。</string>
     <string name="error_creating_model_directory">建立模型目錄時發生錯誤</string>
     <string name="error_downloading_model">下載模型時發生錯誤：%1$s</string>
+    <string name="error_downloading_tts_model">下載 TTS 模型時發生錯誤：%1$s</string>
     <string name="download_cancelled">下載已取消</string>
     <string name="error_all_download_attempts_failed">所有下載嘗試均失敗</string>
+    <string name="error_all_download_attempts_failed_tts">所有 TTS 模型下載嘗試均失敗</string>
 
     <!-- Model Status -->
     <string name="model_status_llm_found">✅ 已找到</string>
     <string name="model_status_llm_missing">⛔️ 缺失</string>
     <string name="model_status_vlm_not_implemented">⚠️ 尚未實作</string>
     <string name="model_status_asr_not_implemented">⚠️ 尚未實作</string>
-    <string name="model_status_tts_available">✅ 系統服務可用</string>
+    <string name="model_status_tts_found">✅ 已找到</string>
+    <string name="model_status_tts_missing">⛔️ 缺失</string>
+
+    <string name="warning_tts_model_missing">⚠️ 警告：所需的 TTS 模型文件缺失。<br/></string>
 
     <string name="model_status_llm_title">LLM 模型狀態：%1$s</string>
     <string name="model_status_vlm_title">VLM 模型狀態：%1$s</string>

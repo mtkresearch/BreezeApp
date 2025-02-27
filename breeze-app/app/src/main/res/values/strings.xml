@@ -92,6 +92,7 @@
     <string name="cannot_proceed">Cannot proceed:</string>
     <string name="insufficient_ram">• Insufficient RAM (minimum %1$dGB required)</string>
     <string name="insufficient_storage">• Insufficient storage space (minimum %1$dGB required)</string>
+    <string name="insufficient_storage_mb">• Insufficient storage space (minimum %1$dMB required)</string>
     <string name="missing_models">• Required model files (%1$s or %2$s) are missing</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
@@ -228,12 +229,14 @@
     <!-- ## ModelDownloadDialog -->
     <string name="download_model">Download Model</string>
     <string name="model_missing_message">Required model file is missing. Download size is approximately 6GB.</string>
+    <string name="model_missing_message_tts">Required TTS model files are missing. Download size is approximately 125MB.</string>
     <string name="download">Download</string>
     <string name="downloading">Downloading...</string>
     <string name="download_progress">Download progress: %1$d%%</string>
     <string name="download_complete">Download complete</string>
     <string name="download_failed">Download failed: %1$s</string>
-    <string name="insufficient_storage_for_download">Insufficient storage space for download. Please free up at least %1$dGB.</string>
+    <string name="insufficient_storage_for_download">Insufficient storage space. Please free up at least %1$dGB.</string>
+    <string name="insufficient_storage_for_download_mb">Insufficient storage space. Please free up at least %1$dMB.</string>
     <string name="error_creating_model_directory">Error creating model directory</string>
     <string name="error_downloading_model">Error downloading model: %1$s</string>
     <string name="download_cancelled">Download cancelled</string>
@@ -244,8 +247,12 @@
     <string name="model_status_llm_missing">⛔️ Missing</string>
     <string name="model_status_vlm_not_implemented">⚠️ Not implemented yet</string>
     <string name="model_status_asr_not_implemented">⚠️ Not implemented yet</string>
-    <string name="model_status_tts_available">✅ System service available</string>
+    <string name="model_status_tts_found">✅ Found</string>
+    <string name="model_status_tts_missing">⛔️ Missing</string>
 
+    <string name="warning_tts_model_missing">⚠️ WARNING: Required TTS model files are missing.<br/></string>
+
+    <!-- Model Status Titles -->
     <string name="model_status_llm_title">LLM Model Status: %1$s</string>
     <string name="model_status_vlm_title">VLM Model Status: %1$s</string>
     <string name="model_status_asr_title">ASR Model Status: %1$s</string>
@@ -271,5 +278,12 @@
     <string name="html_bullet">•&#160;</string>
     <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
     <string name="html_linebreak">&lt;br/&gt;</string>
+
+    <!-- Download Progress Messages -->
+    <string name="download_progress_tts">Downloading TTS models: %1$d%%</string>
+    <string name="download_complete_tts">TTS models downloaded successfully</string>
+    <string name="download_failed_tts">Failed to download TTS models: %1$s</string>
+    <string name="error_downloading_tts_model">Error downloading TTS models: %1$s</string>
+    <string name="error_all_download_attempts_failed_tts">All TTS model download attempts failed</string>
 
 </resources>
