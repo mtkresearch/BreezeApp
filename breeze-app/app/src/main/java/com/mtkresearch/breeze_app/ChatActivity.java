@@ -1499,7 +1499,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         if (!allMessages.isEmpty()) {
             // Get messages up to but not including the last one (which would be the current query)
             int endIndex = allMessages.size() - 1;
-            int startIndex = Math.max(0, endIndex - (AppConstants.CONVERSATION_HISTORY_LOOKBACK * 2));
+            int startIndex = Math.max(0, endIndex - AppConstants.CONVERSATION_HISTORY_LOOKBACK);
             for (int i = startIndex; i < endIndex; i++) {
                 historyMessages.add(allMessages.get(i));
             }
