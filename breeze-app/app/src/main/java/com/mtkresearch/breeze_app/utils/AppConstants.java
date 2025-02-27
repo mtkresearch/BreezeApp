@@ -61,6 +61,7 @@ public class AppConstants {
     public static final String TTS_MODEL_DIR = "Breeze2-VITS-onnx";
     public static final String TTS_MODEL_FILE = "breeze2-vits.onnx";
     public static final String TTS_LEXICON_FILE = "lexicon.txt";
+    public static final String TTS_TOKENS_FILE = "tokens.txt";
     
     // TTS Model Download URLs
     private static final String TTS_MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx/resolve/main/";

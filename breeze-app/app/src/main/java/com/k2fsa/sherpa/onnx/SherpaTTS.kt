@@ -19,7 +19,7 @@ class SherpaTTS private constructor(
 
     companion object {
         private const val TAG = "SherpaTTS"
-
+        
         @Volatile
         private var instance: SherpaTTS? = null
         private val instanceLock = Any()
@@ -42,45 +42,74 @@ class SherpaTTS private constructor(
 
         private fun createInstance(context: Context): SherpaTTS {
             try {
-                // Check if models exist
-                if (!AppConstants.hasTTSModels(context)) {
-                    throw IOException("TTS models not found. Please download them first.")
-                }
+                val modelConfig = ModelConfig(
+                    modelDir = AppConstants.TTS_MODEL_DIR,
+                    modelName = AppConstants.TTS_MODEL_FILE,
+                    lexicon = AppConstants.TTS_LEXICON_FILE
+                )
 
-                // Get model path and determine if we should use assets or file system
-                val modelPath = AppConstants.getTTSModelPath(context)
-                if (modelPath == null) {
-                    throw IOException("Could not determine TTS model path")
-                }
+                val assets = context.assets
+                val modelDir = modelConfig.modelDir
 
-                // If the model is in the app's private storage, use the full path
-                val useAssets = !modelPath.startsWith(context.filesDir.absolutePath)
-                val modelDir = if (useAssets) {
-                    AppConstants.TTS_MODEL_DIR
-                } else {
-                    AppConstants.getAppTTSModelDir(context)
-                }
-
-                // Create TTS config with the appropriate paths
+                // Create TTS config
                 val config = getOfflineTtsConfig(
                     modelDir = modelDir,
-                    modelName = AppConstants.TTS_MODEL_FILE,
-                    lexicon = AppConstants.TTS_LEXICON_FILE,
-                    dataDir = "",  // Empty string for unused parameters
-                    dictDir = "",  // Empty string for unused parameters
-                    ruleFsts = "", // Empty string for unused parameters
-                    ruleFars = ""  // Empty string for unused parameters
+                    modelName = modelConfig.modelName,
+                    lexicon = modelConfig.lexicon ?: "",
+                    dataDir = modelConfig.dataDir ?: "",
+                    dictDir = "",
+                    ruleFsts = "",
+                    ruleFars = ""
                 )
 
                 Log.d(TAG, "Initializing TTS with config: $config")
-                val tts = OfflineTts(if (useAssets) context.assets else null, config)
+                val tts = OfflineTts(assets, config)
                 return SherpaTTS(tts, tts.sampleRate()).also {
                     it.isInitialized.set(true)
                     Log.d(TAG, "TTS initialization completed. Speakers: ${it.getNumSpeakers()}")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize TTS", e)
+                Log.e(TAG, "Failed to create SherpaTTS instance", e)
                 throw e
+            }
+        }
+
+        private fun copyDataDir(context: Context, dataDir: String): String {
+            Log.i(TAG, "Copying data dir: $dataDir")
+            copyAssets(context, dataDir)
+            val newDataDir = context.getExternalFilesDir(null)!!.absolutePath
+            Log.i(TAG, "New data dir: $newDataDir")
+            return newDataDir
+        }
+
+        private fun copyAssets(context: Context, path: String) {
+            try {
+                val assets = context.assets.list(path)
+                if (assets.isNullOrEmpty()) {
+                    copyFile(context, path)
+                } else {
+                    val fullPath = "${context.getExternalFilesDir(null)}/$path"
+                    File(fullPath).mkdirs()
+                    assets.forEach { asset ->
+                        val subPath = if (path.isEmpty()) asset else "$path/$asset"
+                        copyAssets(context, subPath)
+                    }
+                }
+            } catch (ex: IOException) {
+                Log.e(TAG, "Failed to copy $path", ex)
+            }
+        }
+
+        private fun copyFile(context: Context, filename: String) {
+            try {
+                context.assets.open(filename).use { input ->
+                    val newFilename = "${context.getExternalFilesDir(null)}/$filename"
+                    FileOutputStream(newFilename).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            } catch (ex: Exception) {
+                Log.e(TAG, "Failed to copy $filename", ex)
             }
         }
     }
@@ -170,5 +199,8 @@ data class ModelConfig(
     val modelDir: String,
     val modelName: String,
     val lexicon: String? = null,
-    val dataDir: String? = null
+    val dataDir: String? = null,
+    var dictDir: String? = null,
+    var ruleFsts: String? = null,
+    val ruleFars: String? = null,
 ) 
