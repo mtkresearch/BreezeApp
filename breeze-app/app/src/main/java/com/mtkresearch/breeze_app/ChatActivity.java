@@ -1492,7 +1492,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private String getFormattedPrompt(String userMessage) {
-        // First try with full history
+        // If history lookback is 1, only use system prompt + current message
+        if (AppConstants.CONVERSATION_HISTORY_LOOKBACK == 1) {
+            return PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+        }
+        
+        // Otherwise use history as before
         List<ChatMessage> allMessages = conversationManager.getMessages();
         List<ChatMessage> historyMessages = new ArrayList<>();
         
@@ -1500,12 +1505,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Get messages up to but not including the last one (which would be the current query)
             int endIndex = allMessages.size() - 1;
             int startIndex = Math.max(0, endIndex - AppConstants.CONVERSATION_HISTORY_LOOKBACK);
+            
             for (int i = startIndex; i < endIndex; i++) {
                 historyMessages.add(allMessages.get(i));
             }
         }
         
-        // First try formatting with history
+        // Format with history
         String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
         
         // Check if prompt might exceed max length (using conservative estimate)

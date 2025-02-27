@@ -141,7 +141,7 @@ public class AppConstants {
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Conversation History Constants
-    public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 2 : 2;
+    public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
@@ -152,11 +152,6 @@ public class AppConstants {
     // UI Constants
     public static final float ENABLED_ALPHA = 1.0f;
     public static final float DISABLED_ALPHA = 0.3f;
-
-    // Get history lookback based on model sequence length
-    public static int getConversationHistoryLookback(String modelName) {
-        return modelName != null && modelName.contains("2048") ? 10 : 3;  // 10 messages for 2048 models, 3 for others
-    }
 
     public static final int TAPS_TO_SHOW_MAIN = 7;
     public static final long TAP_TIMEOUT_MS = 3000;
