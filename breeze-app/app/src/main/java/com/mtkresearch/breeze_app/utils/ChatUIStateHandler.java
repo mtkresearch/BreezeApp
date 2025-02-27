@@ -116,6 +116,26 @@ public class ChatUIStateHandler {
                 });
             }
             
+            // History button
+            if (binding.historyButton != null) {
+                binding.historyButton.setOnTouchListener((v, event) -> {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_DOWN && v.isEnabled()) {
+                        vibrateButton();
+                    }
+                    return false;
+                });
+            }
+            
+            // New conversation button
+            if (binding.newConversationButton != null) {
+                binding.newConversationButton.setOnTouchListener((v, event) -> {
+                    if (event.getAction() == android.view.MotionEvent.ACTION_DOWN && v.isEnabled()) {
+                        vibrateButton();
+                    }
+                    return false;
+                });
+            }
+            
             Log.d(TAG, "Button vibration setup complete");
         } catch (Exception e) {
             Log.e(TAG, "Error setting up button vibration", e);
