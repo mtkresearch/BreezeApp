@@ -240,4 +240,37 @@
     <string name="download_cancelled">下載已取消</string>
     <string name="error_all_download_attempts_failed">所有下載嘗試均失敗</string>
 
+    <!-- Model Status -->
+    <string name="model_status_llm_found">✅ 已找到</string>
+    <string name="model_status_llm_missing">⛔️ 缺失</string>
+    <string name="model_status_vlm_not_implemented">⚠️ 尚未實作</string>
+    <string name="model_status_asr_not_implemented">⚠️ 尚未實作</string>
+    <string name="model_status_tts_available">✅ 系統服務可用</string>
+
+    <string name="model_status_llm_title">LLM 模型狀態：%1$s</string>
+    <string name="model_status_vlm_title">VLM 模型狀態：%1$s</string>
+    <string name="model_status_asr_title">ASR 模型狀態：%1$s</string>
+    <string name="model_status_tts_title">TTS 模型狀態：%1$s</string>
+
+    <!-- Requirements Description Section Headers -->
+    <string name="requirements_header_memory">記憶體：</string>
+    <string name="requirements_header_model_status">模型狀態：</string>
+    <string name="requirements_header_storage">存儲空間：</string>
+
+    <!-- Requirements Description Details -->
+    <string name="requirements_memory_required">需求：%1$dGB+</string>
+    <string name="requirements_memory_device">您的裝置：%1$dGB</string>
+    <string name="requirements_memory_status">狀態：%1$s</string>
+    
+    <string name="requirements_storage_required">需求：至少 %1$dGB 可用空間</string>
+    <string name="requirements_storage_available">可用：%1$dGB</string>
+    <string name="requirements_storage_status">狀態：%1$s</string>
+
+    <string name="requirements_footer">請確保所有需求都符合，以獲得最佳效能。</string>
+
+    <!-- HTML Formatting -->
+    <string name="html_bullet">•&#160;</string>
+    <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
+    <string name="html_linebreak">&lt;br/&gt;</string>
+
 </resources>

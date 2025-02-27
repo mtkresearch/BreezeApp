@@ -303,18 +303,54 @@ public class IntroDialog extends Dialog {
         long availableBytes = stat.getAvailableBytes();
         long availableGB = availableBytes / (1024L * 1024L * 1024L);
 
-        // Use the same model check logic as checkSystemRequirements
-        String modelPath = AppConstants.getModelPath(context);
-        String tokenizerPath = AppConstants.getTokenizerPath(context);
-        File modelFile = new File(modelPath);
-        File tokenizerFile = new File(tokenizerPath);
-        boolean modelExists = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
-                            tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+        // Check models based on enabled services
+        StringBuilder modelStatus = new StringBuilder();
+        StringBuilder modelWarnings = new StringBuilder();
+        
+        // Check LLM models if enabled
+        if (AppConstants.LLM_ENABLED) {
+            String modelPath = AppConstants.getModelPath(context);
+            String tokenizerPath = AppConstants.getTokenizerPath(context);
+            File modelFile = new File(modelPath);
+            File tokenizerFile = new File(tokenizerPath);
+            
+            boolean llmModelsExist = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
+                                   tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+            
+            String llmStatus = context.getString(llmModelsExist ? 
+                R.string.model_status_llm_found : R.string.model_status_llm_missing);
+            modelStatus.append(context.getString(R.string.model_status_llm_title, llmStatus))
+                      .append(context.getString(R.string.html_linebreak));
+            
+            if (!llmModelsExist) {
+                modelWarnings.append(context.getString(R.string.warning_model_missing,
+                    AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE));
+            }
+        }
+        
+        // Check VLM models if enabled
+        if (AppConstants.VLM_ENABLED) {
+            modelStatus.append(context.getString(
+                R.string.model_status_vlm_title,
+                context.getString(R.string.model_status_vlm_not_implemented)))
+                .append(context.getString(R.string.html_linebreak));
+        }
+        
+        // Check ASR models if enabled
+        if (AppConstants.ASR_ENABLED) {
+            modelStatus.append(context.getString(
+                R.string.model_status_asr_title,
+                context.getString(R.string.model_status_asr_not_implemented)))
+                .append(context.getString(R.string.html_linebreak));
+        }
 
-        Log.d("IntroDialog", "buildRequirementsDescription - Model exists: " + modelFile.exists() + 
-                            ", Tokenizer exists: " + tokenizerFile.exists() +
-                            ", Model path: " + modelPath +
-                            ", Tokenizer path: " + tokenizerPath);
+        // Check TTS if enabled
+        if (AppConstants.TTS_ENABLED) {
+            modelStatus.append(context.getString(
+                R.string.model_status_tts_title,
+                context.getString(R.string.model_status_tts_available)))
+                .append(context.getString(R.string.html_linebreak));
+        }
 
         String ramStatus = (totalRamGB >= MIN_RAM_GB)
                 ? context.getString(R.string.ram_passed)
@@ -328,27 +364,44 @@ public class IntroDialog extends Dialog {
         if (totalRamGB < MIN_RAM_GB) {
             warningMessages.append(context.getString(R.string.warning_ram));
         }
-        if (!modelExists) {
-            warningMessages.append(context.getString(R.string.warning_model_missing,
-                    AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE));
-        }
         if (availableGB < MIN_STORAGE_GB) {
             warningMessages.append(context.getString(R.string.warning_storage, availableGB, MIN_STORAGE_GB));
         }
+        warningMessages.append(modelWarnings);
         if (warningMessages.length() > 0) {
             warningMessages.append(context.getString(R.string.warning_footer));
         }
 
-        String modelStatus = modelExists ? 
-                context.getString(R.string.model_found) :
-                context.getString(R.string.model_missing);
+        String bullet = context.getString(R.string.html_bullet);
+        String indent = context.getString(R.string.html_indent);
+        String linebreak = context.getString(R.string.html_linebreak);
 
-        return context.getString(R.string.status_summary,
-                MIN_RAM_GB, totalRamGB, ramStatus,
-                modelFile.getParent(), AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE,
-                modelStatus,
-                MIN_STORAGE_GB, availableGB, storageStatus,
-                warningMessages.toString());
+        return String.format(
+            "%s%s%s" + // Memory header
+            "%s%s%s" + // Memory required
+            "%s%s%s" + // Memory device
+            "%s%s%s%s" + // Memory status
+            "%s%s%s" + // Model status header
+            "%s%s%s" + // Model status details
+            "%s%s%s" + // Storage header
+            "%s%s%s" + // Storage required
+            "%s%s%s" + // Storage available
+            "%s%s%s%s" + // Storage status
+            "%s%s" + // Warnings and footer
+            "%s", // Final footer
+            bullet, context.getString(R.string.requirements_header_memory), linebreak,
+            indent, context.getString(R.string.requirements_memory_required, MIN_RAM_GB), linebreak,
+            indent, context.getString(R.string.requirements_memory_device, totalRamGB), linebreak,
+            indent, context.getString(R.string.requirements_memory_status, ramStatus), linebreak, linebreak,
+            bullet, context.getString(R.string.requirements_header_model_status), linebreak,
+            indent, modelStatus.toString().replace(linebreak, linebreak + indent), linebreak,
+            bullet, context.getString(R.string.requirements_header_storage), linebreak,
+            indent, context.getString(R.string.requirements_storage_required, MIN_STORAGE_GB), linebreak,
+            indent, context.getString(R.string.requirements_storage_available, availableGB), linebreak,
+            indent, context.getString(R.string.requirements_storage_status, storageStatus), linebreak, linebreak,
+            warningMessages.toString(), linebreak,
+            context.getString(R.string.requirements_footer)
+        );
     }
 
     private static class IntroPage {
