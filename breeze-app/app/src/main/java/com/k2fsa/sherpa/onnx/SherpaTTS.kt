@@ -2,6 +2,7 @@ package com.k2fsa.sherpa.onnx;
 
 import android.content.Context
 import android.util.Log
+import com.mtkresearch.breeze_app.utils.AppConstants
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -18,25 +19,12 @@ class SherpaTTS private constructor(
 
     companion object {
         private const val TAG = "SherpaTTS"
-        
-        // Model configurations
-        private const val MR_TTS_DIR = "Breeze2-VITS-onnx"
-        private const val VITS_MELO_DIR = "vits-melo-tts-zh_en"
-        
-        private const val MR_TTS_MODEL = "breeze2-vits.onnx"
-        private const val VITS_MELO_MODEL = "model.onnx"
-        
-        private const val MR_TTS_LEXICON = "lexicon.txt"
-        private const val VITS_MELO_LEXICON = "lexicon.txt"
-        
-        private const val VITS_MELO_DICT = "$VITS_MELO_DIR/dict"
-        private const val VITS_MELO_RULES = "$VITS_MELO_DIR/date.fst,$VITS_MELO_DIR/new_heteronym.fst,$VITS_MELO_DIR/number.fst,$VITS_MELO_DIR/phone.fst"
 
         @Volatile
         private var instance: SherpaTTS? = null
         private val instanceLock = Any()
 
-        fun getInstance(context: Context, useVitsMelo: Boolean = false): SherpaTTS {
+        fun getInstance(context: Context): SherpaTTS {
             val currentInstance = instance
             if (currentInstance != null && !currentInstance.isReleased.get()) {
                 return currentInstance
@@ -45,103 +33,54 @@ class SherpaTTS private constructor(
             synchronized(instanceLock) {
                 var localInstance = instance
                 if (localInstance == null || localInstance.isReleased.get()) {
-                    localInstance = createInstance(context, useVitsMelo)
+                    localInstance = createInstance(context)
                     instance = localInstance
                 }
                 return localInstance
             }
         }
 
-        private fun createInstance(context: Context, useVitsMelo: Boolean): SherpaTTS {
+        private fun createInstance(context: Context): SherpaTTS {
             try {
-                val modelConfig = if (useVitsMelo) {
-                    ModelConfig(
-                        modelDir = VITS_MELO_DIR,
-                        modelName = VITS_MELO_MODEL,
-                        lexicon = VITS_MELO_LEXICON,
-                        dictDir = VITS_MELO_DICT,
-                        ruleFsts = VITS_MELO_RULES
-                    )
+                // Check if models exist
+                if (!AppConstants.hasTTSModels(context)) {
+                    throw IOException("TTS models not found. Please download them first.")
+                }
+
+                // Get model path and determine if we should use assets or file system
+                val modelPath = AppConstants.getTTSModelPath(context)
+                if (modelPath == null) {
+                    throw IOException("Could not determine TTS model path")
+                }
+
+                // If the model is in the app's private storage, use the full path
+                val useAssets = !modelPath.startsWith(context.filesDir.absolutePath)
+                val modelDir = if (useAssets) {
+                    AppConstants.TTS_MODEL_DIR
                 } else {
-                    // Default to MR TTS
-                    ModelConfig(
-                        modelDir = MR_TTS_DIR,
-                        modelName = MR_TTS_MODEL,
-                        lexicon = MR_TTS_LEXICON
-                    )
+                    AppConstants.getAppTTSModelDir(context)
                 }
 
-                var assets = context.assets
-                var modelDir = modelConfig.modelDir
-
-                // If we need to use dict (only for VITS Melo), copy files to external storage
-                if (!modelConfig.dictDir.isNullOrEmpty()) {
-                    val newDir = copyDataDir(context, modelConfig.modelDir)
-                    modelDir = "$newDir/${modelConfig.modelDir}"
-                    modelConfig.dictDir = "$modelDir/dict"
-                    modelConfig.ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
-                    assets = null
-                }
-
-                // Create TTS config
+                // Create TTS config with the appropriate paths
                 val config = getOfflineTtsConfig(
                     modelDir = modelDir,
-                    modelName = modelConfig.modelName,
-                    lexicon = modelConfig.lexicon ?: "",
-                    dataDir = modelConfig.dataDir ?: "",
-                    dictDir = modelConfig.dictDir ?: "",
-                    ruleFsts = modelConfig.ruleFsts ?: "",
-                    ruleFars = modelConfig.ruleFars ?: ""
+                    modelName = AppConstants.TTS_MODEL_FILE,
+                    lexicon = AppConstants.TTS_LEXICON_FILE,
+                    dataDir = "",  // Empty string for unused parameters
+                    dictDir = "",  // Empty string for unused parameters
+                    ruleFsts = "", // Empty string for unused parameters
+                    ruleFars = ""  // Empty string for unused parameters
                 )
 
                 Log.d(TAG, "Initializing TTS with config: $config")
-                val tts = OfflineTts(assets, config)
+                val tts = OfflineTts(if (useAssets) context.assets else null, config)
                 return SherpaTTS(tts, tts.sampleRate()).also {
                     it.isInitialized.set(true)
                     Log.d(TAG, "TTS initialization completed. Speakers: ${it.getNumSpeakers()}")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create SherpaTTS instance", e)
+                Log.e(TAG, "Failed to initialize TTS", e)
                 throw e
-            }
-        }
-
-        private fun copyDataDir(context: Context, dataDir: String): String {
-            Log.i(TAG, "Copying data dir: $dataDir")
-            copyAssets(context, dataDir)
-            val newDataDir = context.getExternalFilesDir(null)!!.absolutePath
-            Log.i(TAG, "New data dir: $newDataDir")
-            return newDataDir
-        }
-
-        private fun copyAssets(context: Context, path: String) {
-            try {
-                val assets = context.assets.list(path)
-                if (assets.isNullOrEmpty()) {
-                    copyFile(context, path)
-                } else {
-                    val fullPath = "${context.getExternalFilesDir(null)}/$path"
-                    File(fullPath).mkdirs()
-                    assets.forEach { asset ->
-                        val subPath = if (path.isEmpty()) asset else "$path/$asset"
-                        copyAssets(context, subPath)
-                    }
-                }
-            } catch (ex: IOException) {
-                Log.e(TAG, "Failed to copy $path", ex)
-            }
-        }
-
-        private fun copyFile(context: Context, filename: String) {
-            try {
-                context.assets.open(filename).use { input ->
-                    val newFilename = "${context.getExternalFilesDir(null)}/$filename"
-                    FileOutputStream(newFilename).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            } catch (ex: Exception) {
-                Log.e(TAG, "Failed to copy $filename", ex)
             }
         }
     }
@@ -231,8 +170,5 @@ data class ModelConfig(
     val modelDir: String,
     val modelName: String,
     val lexicon: String? = null,
-    val dataDir: String? = null,
-    var dictDir: String? = null,
-    var ruleFsts: String? = null,
-    val ruleFars: String? = null,
+    val dataDir: String? = null
 ) 
