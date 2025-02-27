@@ -53,25 +53,21 @@ public class AppConstants {
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";  // Legacy location
     public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
     public static final String LLM_TOKENIZER_FILE = "tokenizer.bin";  // Add tokenizer filename constant
-    public static final String LLM_TOKENIZER_PATH = "/data/user/0/com.mtkresearch.breeze_app.breeze/files/models/tokenizer.bin";  // Default to app's private storage
-    public static final String MODEL_PATH = "/data/user/0/com.mtkresearch.breeze_app.breeze/files/models/" + BREEZE_MODEL_FILE;  // Default to app's private storage
     
     // Get absolute path to the app's model directory
     public static String getAppModelDir(Context context) {
         return new File(context.getFilesDir(), APP_MODEL_DIR).getAbsolutePath();
     }
 
-    // Get the model path to use, prioritizing app's private storage
-    public static String getModelPath(Context context) {
-        // First check the app's private directory
-        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE);
-        Log.d("AppConstants", "Checking app model path: " + appModelFile.getAbsolutePath());
-        if (appModelFile.exists() && appModelFile.length() > 0) {
-            Log.d("AppConstants", "Found model in app directory: " + appModelFile.getAbsolutePath());
-            return appModelFile.getAbsolutePath();
-        }
+    // Check if model exists in legacy location
+    public static boolean isModelInLegacyLocation() {
+        File legacyModelFile = new File(LLAMA_MODEL_DIR, BREEZE_MODEL_FILE);
+        return legacyModelFile.exists() && legacyModelFile.length() > 0;
+    }
 
-        // Then check the legacy location
+    // Get the model path to use, prioritizing legacy location
+    public static String getModelPath(Context context) {
+        // First check the legacy location
         File legacyModelFile = new File(LLAMA_MODEL_DIR, BREEZE_MODEL_FILE);
         Log.d("AppConstants", "Checking legacy model path: " + legacyModelFile.getAbsolutePath());
         if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
@@ -79,56 +75,56 @@ public class AppConstants {
             return legacyModelFile.getAbsolutePath();
         }
 
-        // If neither exists, return the app's private path as default (for download dialog)
-        Log.d("AppConstants", "No model found, returning app path: " + appModelFile.getAbsolutePath());
+        // If not in legacy location, use app's private storage path
+        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE);
+        Log.d("AppConstants", "Using app model path: " + appModelFile.getAbsolutePath());
         return appModelFile.getAbsolutePath();
     }
 
     // Get the tokenizer path to use
     public static String getTokenizerPath(Context context) {
-        // First check the app's private directory
-        File appTokenizerFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), LLM_TOKENIZER_FILE);
-        if (appTokenizerFile.exists() && appTokenizerFile.length() > 0) {
-            return appTokenizerFile.getAbsolutePath();
-        }
-
-        // Then check the legacy location
+        // First check the legacy location
         File legacyTokenizerFile = new File(LLAMA_MODEL_DIR, LLM_TOKENIZER_FILE);
         if (legacyTokenizerFile.exists() && legacyTokenizerFile.length() > 0) {
             return legacyTokenizerFile.getAbsolutePath();
         }
 
-        // If neither exists, return the app's private path as default
+        // If not in legacy location, use app's private storage path
+        File appTokenizerFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), LLM_TOKENIZER_FILE);
         return appTokenizerFile.getAbsolutePath();
     }
 
-    // Get the model file, checking both app-specific and legacy locations
-    public static String findModelFile(Context context, String modelFileName) {
-        // First check the app's private directory
-        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
-        Log.d("AppConstants", "Checking app model path: " + appModelFile.getAbsolutePath());
-        if (appModelFile.exists() && appModelFile.length() > 0) {
-            Log.d("AppConstants", "Found model in app directory: " + appModelFile.getAbsolutePath());
-            return appModelFile.getAbsolutePath();
+    // Check if model needs to be downloaded
+    public static boolean needsModelDownload(Context context) {
+        // First check legacy location
+        if (isModelInLegacyLocation()) {
+            return false;
         }
 
-        // Then check the legacy location
-        File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
-        Log.d("AppConstants", "Checking legacy model path: " + legacyModelFile.getAbsolutePath());
-        if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
-            Log.d("AppConstants", "Found model in legacy directory: " + legacyModelFile.getAbsolutePath());
-            return legacyModelFile.getAbsolutePath();
-        }
-
-        // If neither exists, return the app's private path as default
-        Log.d("AppConstants", "No model found, returning app path: " + appModelFile.getAbsolutePath());
-        return appModelFile.getAbsolutePath();
+        // Then check app's private storage
+        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE);
+        return !appModelFile.exists() || appModelFile.length() == 0;
     }
 
-    // LLM Sequence Length Constants
-    public static final int LLM_MAX_SEQ_LENGTH = MODEL_PATH.contains("2048") ? 2048 : 128;
-    public static final int LLM_MIN_OUTPUT_LENGTH = MODEL_PATH.contains("2048") ? 512 : 32;
-    public static final int LLM_MAX_INPUT_LENGTH = LLM_MAX_SEQ_LENGTH - LLM_MIN_OUTPUT_LENGTH;
+    // Get the current effective model path (used for sequence length calculations)
+    private static String getCurrentModelPath(Context context) {
+        return isModelInLegacyLocation() ? 
+            new File(LLAMA_MODEL_DIR, BREEZE_MODEL_FILE).getAbsolutePath() :
+            new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE).getAbsolutePath();
+    }
+
+    // LLM Sequence Length Constants - these should be calculated based on the current model path
+    public static int getLLMMaxSeqLength(Context context) {
+        return getCurrentModelPath(context).contains("2048") ? 2048 : 128;
+    }
+
+    public static int getLLMMinOutputLength(Context context) {
+        return getCurrentModelPath(context).contains("2048") ? 512 : 32;
+    }
+
+    public static int getLLMMaxInputLength(Context context) {
+        return getLLMMaxSeqLength(context) - getLLMMinOutputLength(context);
+    }
     
     // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
@@ -145,7 +141,7 @@ public class AppConstants {
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Conversation History Constants
-    public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 10 : 3;
+    public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 2 : 2;
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
