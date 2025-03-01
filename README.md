@@ -14,19 +14,13 @@ This project aims to create a community-driven platform for running AI capabilit
 > Unreasonable or abnormal responses from <b>CPU</b> backend are known issues (see <a href="https://github.com/mtkresearch/BreezeApp/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
 
 ## Download & Try the App 🚀
-You can download the latest APK in two variants:
+You can download the latest APK here:
 
-1. [BreezeApp (breeze2)](https://huggingface.co/MediaTek-Research/BreezeApp/resolve/main/breeze-app-20250226_breeze2.apk)
-2. [BreezeApp (llama3_2)](https://huggingface.co/MediaTek-Research/BreezeApp/resolve/main/breeze2-android-demo-20250219_llama3_2.apk)
-
-Choose the APK based on your preferred default LLM model. Both versions support switching between models after installation.
+[BreezeApp](https://huggingface.co/MediaTek-Research/BreezeApp/resolve/main/BreezeApp.apk)
 
 > [!CAUTION]
-> After installing the APK, you'll need to download and set up the required model files:
-> 1. The app requires LLM model files that need to be downloaded separately and pushed to your device
-> 2. Please follow the model setup instructions in the [Download required model files](#setup) section below (Step 4)
-> 3. Without the model files, the app will not be able to function properly
-
+> The app includes an in-app model download feature that will automatically prompt you to download required models on first launch.
+> If you encounter any issues with the model download process, please refer to the manual setup instructions in the [Download required model files](#setup) section below (Step 4).
 
 ## Project Vision
 This app serves as an entry point for everyone, especially those not familiar with coding, to experience AI features directly on their phones. As MediaTek Research continues to develop and provide powerful AI models with various capabilities, this app will act as a carrier to showcase these models and make them accessible to users.
