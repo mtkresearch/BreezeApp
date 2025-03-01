@@ -11,7 +11,7 @@ This project aims to create a community-driven platform for running AI capabilit
 </p>
 
 > [!NOTE]
-> Unreasonable or abnormal responses from <b>CPU</b> backend are known issues (see <a href="https://github.com/mtkresearch/BreezeApp/issues/5">issue #5</a>). These issues are being investigated and will be fixed in future updates.
+> Previous issues with unreasonable responses from the <b>CPU</b> backend have been resolved in the latest version. For details about the fix, see the closed issue <a href="https://github.com/mtkresearch/BreezeApp/issues/5">here</a>.
 
 ## Download & Try the App 🚀
 You can download the latest APK here:
