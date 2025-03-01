@@ -2,6 +2,7 @@ package com.k2fsa.sherpa.onnx;
 
 import android.content.Context
 import android.util.Log
+import com.mtkresearch.breeze_app.utils.AppConstants
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -19,24 +20,11 @@ class SherpaTTS private constructor(
     companion object {
         private const val TAG = "SherpaTTS"
         
-        // Model configurations
-        private const val MR_TTS_DIR = "Breeze2-VITS-onnx"
-        private const val VITS_MELO_DIR = "vits-melo-tts-zh_en"
-        
-        private const val MR_TTS_MODEL = "breeze2-vits.onnx"
-        private const val VITS_MELO_MODEL = "model.onnx"
-        
-        private const val MR_TTS_LEXICON = "lexicon.txt"
-        private const val VITS_MELO_LEXICON = "lexicon.txt"
-        
-        private const val VITS_MELO_DICT = "$VITS_MELO_DIR/dict"
-        private const val VITS_MELO_RULES = "$VITS_MELO_DIR/date.fst,$VITS_MELO_DIR/new_heteronym.fst,$VITS_MELO_DIR/number.fst,$VITS_MELO_DIR/phone.fst"
-
         @Volatile
         private var instance: SherpaTTS? = null
         private val instanceLock = Any()
 
-        fun getInstance(context: Context, useVitsMelo: Boolean = false): SherpaTTS {
+        fun getInstance(context: Context): SherpaTTS {
             val currentInstance = instance
             if (currentInstance != null && !currentInstance.isReleased.get()) {
                 return currentInstance
@@ -45,43 +33,23 @@ class SherpaTTS private constructor(
             synchronized(instanceLock) {
                 var localInstance = instance
                 if (localInstance == null || localInstance.isReleased.get()) {
-                    localInstance = createInstance(context, useVitsMelo)
+                    localInstance = createInstance(context)
                     instance = localInstance
                 }
                 return localInstance
             }
         }
 
-        private fun createInstance(context: Context, useVitsMelo: Boolean): SherpaTTS {
+        private fun createInstance(context: Context): SherpaTTS {
             try {
-                val modelConfig = if (useVitsMelo) {
-                    ModelConfig(
-                        modelDir = VITS_MELO_DIR,
-                        modelName = VITS_MELO_MODEL,
-                        lexicon = VITS_MELO_LEXICON,
-                        dictDir = VITS_MELO_DICT,
-                        ruleFsts = VITS_MELO_RULES
-                    )
-                } else {
-                    // Default to MR TTS
-                    ModelConfig(
-                        modelDir = MR_TTS_DIR,
-                        modelName = MR_TTS_MODEL,
-                        lexicon = MR_TTS_LEXICON
-                    )
-                }
+                val modelConfig = ModelConfig(
+                    modelDir = AppConstants.TTS_MODEL_DIR,
+                    modelName = AppConstants.TTS_MODEL_FILE,
+                    lexicon = AppConstants.TTS_LEXICON_FILE
+                )
 
-                var assets = context.assets
-                var modelDir = modelConfig.modelDir
-
-                // If we need to use dict (only for VITS Melo), copy files to external storage
-                if (!modelConfig.dictDir.isNullOrEmpty()) {
-                    val newDir = copyDataDir(context, modelConfig.modelDir)
-                    modelDir = "$newDir/${modelConfig.modelDir}"
-                    modelConfig.dictDir = "$modelDir/dict"
-                    modelConfig.ruleFsts = "$modelDir/phone.fst,$modelDir/date.fst,$modelDir/number.fst"
-                    assets = null
-                }
+                val assets = context.assets
+                val modelDir = modelConfig.modelDir
 
                 // Create TTS config
                 val config = getOfflineTtsConfig(
@@ -89,9 +57,9 @@ class SherpaTTS private constructor(
                     modelName = modelConfig.modelName,
                     lexicon = modelConfig.lexicon ?: "",
                     dataDir = modelConfig.dataDir ?: "",
-                    dictDir = modelConfig.dictDir ?: "",
-                    ruleFsts = modelConfig.ruleFsts ?: "",
-                    ruleFars = modelConfig.ruleFars ?: ""
+                    dictDir = "",
+                    ruleFsts = "",
+                    ruleFars = ""
                 )
 
                 Log.d(TAG, "Initializing TTS with config: $config")

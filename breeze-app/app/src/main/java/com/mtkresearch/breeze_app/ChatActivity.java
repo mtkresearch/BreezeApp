@@ -136,6 +136,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private final Object initLock = new Object();
     private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
 
+    private boolean hasReceivedResponse = false;  // Add class field
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -240,6 +242,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         setupVoiceButton();
         setupSendButton();
         setupNewConversationButton();
+        
+        // Setup button vibration after all click listeners are set
+        if (uiHandler != null) {
+            uiHandler.setupButtonVibration();
+        }
     }
 
     private void setupNavigationButton() {
@@ -454,8 +461,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 Log.e(TAG, "Error during service initialization", e);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     if (!isFinishing()) {
-                        Toast.makeText(ChatActivity.this, 
-                            "Error initializing services: " + e.getMessage(), 
+                        Toast.makeText(ChatActivity.this,
+                                ChatActivity.this.getString(R.string.error_initializing_services) + e.getMessage(),
                             Toast.LENGTH_SHORT).show();
                         // Mark initialization as complete even on error
                         synchronized (initLock) {
@@ -475,15 +482,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", AppConstants.MODEL_PATH);
+        llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
         String preferredBackend = ModelUtils.getPreferredBackend();
         llmIntent.putExtra("preferred_backend", preferredBackend);
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
-                Toast.makeText(ChatActivity.this, 
-                    "Initializing model with " + preferredBackend.toUpperCase() + " backend...", 
+                Toast.makeText(ChatActivity.this,
+                        ChatActivity.this.getString(R.string.initializing_model_with) + preferredBackend.toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });
@@ -611,7 +618,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             startAudioChat();
         } else if (AppConstants.AUDIO_CHAT_ENABLED) {
             // Show a message if audio chat is enabled but ASR is disabled
-            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString( R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -632,7 +639,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         updateWatermarkVisibility();
         
         // Create empty AI message with loading indicator
-        ChatMessage aiMessage = new ChatMessage("Thinking...", false);
+        ChatMessage aiMessage = new ChatMessage(getString(R.string.thinking), false);
         aiMessage.setPromptId(promptId);
         chatAdapter.addMessage(aiMessage);
         
@@ -646,9 +653,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Set UI to generation state BEFORE starting generation
             setSendButtonsAsStop(true);
             
+            hasReceivedResponse = false;  // Reset at start of generation
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
-                private boolean hasReceivedResponse = false;
                 private boolean isGenerating = true;  // Track generation state
 
                 @Override
@@ -673,8 +680,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 runOnUiThread(() -> {
                     if (finalResponse != null && !finalResponse.equals(AppConstants.LLM_DEFAULT_ERROR_RESPONSE)) {
                         String response = finalResponse.trim();
-                        if (response.isEmpty() && !aiMessage.hasContent()) {
-                            aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
+                        if (response.isEmpty()) {
+                            // If we never received any valid tokens (still showing "thinking...")
+                            if (!hasReceivedResponse) {
+                                aiMessage.updateText(AppConstants.LLM_INVALID_TOKEN_ERROR);
+                            } else if (!aiMessage.hasContent()) {
+                                aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
+                            }
                         } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
                         }
@@ -701,7 +713,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         aiMessage.updateText("Error: Unable to generate response. Please try again later.");
                     }
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(ChatActivity.this, "Error generating response", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_generating_response), Toast.LENGTH_SHORT).show();
                     
                     setSendButtonsAsStop(false);
                 });
@@ -723,7 +735,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.messageInputExpanded.setAlpha(isStop ? DISABLED_ALPHA : ENABLED_ALPHA);
                 
                 // Update hint text
-                String hintText = isStop ? "Please wait for the response to finish" : "Type a message...";
+                String hintText = isStop ? this.getString(R.string.please_wait_for_the_response_to_finish) : this.getString(R.string.type_a_message);
                 binding.messageInput.setHint(hintText);
                 binding.messageInputExpanded.setHint(hintText);
                 
@@ -747,14 +759,20 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     View.OnClickListener stopListener = v -> {
                         if (llmService != null) {
                             // Show stopping feedback
-                            Toast.makeText(ChatActivity.this, "Stopping generation...", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.stopping_generation), Toast.LENGTH_SHORT).show();
                             
-                            // Stop generation
+                            // Stop generation and wait for completion
                             llmService.stopGeneration();
                             
-                            // Keep button enabled but update appearance
-                            binding.sendButton.setImageResource(R.drawable.ic_send);
-                            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+                            // Wait for a short delay to ensure generation has stopped
+                            new Handler().postDelayed(() -> {
+                                // Reset UI state after delay
+                                setSendButtonsAsStop(false);
+                                
+                                // Keep button enabled but update appearance
+                                binding.sendButton.setImageResource(R.drawable.ic_send);
+                                binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+                            }, 1000); // 1 second delay to ensure generation has stopped
                         }
                     };
                     binding.sendButton.setOnClickListener(stopListener);
@@ -814,7 +832,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 })
                 .exceptionally(throwable -> {
                     Log.e(TAG, "Error analyzing image", throwable);
-                    runOnUiThread(() -> Toast.makeText(this, "Error analyzing image", Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> Toast.makeText(this, this.getString(R.string.error_analyzing_image), Toast.LENGTH_SHORT).show());
                     return null;
                 });
         }
@@ -823,7 +841,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void toggleRecording() {
         // Skip if ASR is disabled
         if (!AppConstants.ASR_ENABLED) {
-            Toast.makeText(this, "Speech recognition is disabled", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -842,7 +860,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void startRecording() {
         if (asrService == null) {
-            Toast.makeText(this, "ASR service not ready", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.ASR_service_not_ready), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -917,14 +935,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
         } catch (IOException e) {
             Log.e(TAG, "Error creating camera intent", e);
-            Toast.makeText(this, "Error launching camera", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.error_launching_camera), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void showAudioList() {
         File[] files = FileUtils.getAudioRecordings(this);
         if (files == null || files.length == 0) {
-            Toast.makeText(this, "No recordings found", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.no_recordings_found), Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -940,7 +958,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             @Override
             public void onDeleteClick(File file) {
                 if (file.delete()) {
-                    Toast.makeText(ChatActivity.this, "Recording deleted", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.recording_deleted), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -1000,8 +1018,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             } else {
                 String message = permissions[0].equals(android.Manifest.permission.CAMERA) ?
-                    "Camera permission is required for taking photos" :
-                    "Microphone permission is required for voice input";
+                        getString(R.string.camera_permission_required) :
+                        getString(R.string.mic_permission_required);
                 Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
             }
         }
@@ -1010,17 +1028,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     public void onSpeakerClick(String messageText) {
         if (ttsService == null) {
-            Toast.makeText(this, "Text-to-speech service not available", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.text_to_speech_service_not_available), Toast.LENGTH_SHORT).show();
             return;
         }
 
         if (!ttsService.isReady()) {
-            Toast.makeText(this, "Text-to-speech is still initializing...", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.text_to_speech_is_still_initializing), Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Show loading state
-        Toast.makeText(this, "Converting text to speech...", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, this.getString(R.string.converting_text_to_speech), Toast.LENGTH_SHORT).show();
 
         // Run TTS in background
         CompletableFuture.runAsync(() -> {
@@ -1032,13 +1050,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     .exceptionally(throwable -> {
                         Log.e(TAG, "Error converting text to speech", throwable);
                         runOnUiThread(() -> Toast.makeText(this, 
-                            "Error playing audio", Toast.LENGTH_SHORT).show());
+                            this.getString(R.string.error_playing_audio), Toast.LENGTH_SHORT).show());
                         return null;
                     });
             } catch (Exception e) {
                 Log.e(TAG, "Error initiating text to speech", e);
                 runOnUiThread(() -> Toast.makeText(this, 
-                    "Error starting audio playback", Toast.LENGTH_SHORT).show());
+                    this.getString(R.string.error_starting_audio_playback), Toast.LENGTH_SHORT).show());
             }
         }).exceptionally(throwable -> {
             Log.e(TAG, "Error in TTS background task", throwable);
@@ -1107,7 +1125,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 .thenAccept(success -> {
                     if (!success) {
                         Log.e(TAG, "Failed to reinitialize LLM");
-                        runOnUiThread(() -> Toast.makeText(this, "Failed to reinitialize LLM", Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() -> Toast.makeText(this, this.getString(R.string.failed_to_reinitialize_llm), Toast.LENGTH_SHORT).show());
                     }
                 });
         }
@@ -1119,7 +1137,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         public void onServiceConnected(ComponentName name, IBinder service) {
             llmService = ((LLMEngineService.LocalBinder) service).getService();
             if (llmService != null) {
-                Toast.makeText(ChatActivity.this, "Initializing model...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.initializing_model) , Toast.LENGTH_SHORT).show();
                 
                 llmService.initialize().thenAccept(success -> {
                     llmServiceReady = success;
@@ -1132,15 +1150,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 binding.modelNameText.setText(displayText);
                                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
                             } else {
-                                binding.modelNameText.setText("Unknown model");
+                                binding.modelNameText.setText( ChatActivity.this.getString(R.string.unknown_model) );
                             }
                             updateInteractionState();
                         });
                     } else {
                         runOnUiThread(() -> {
-                            binding.modelNameText.setText("Model error");
+                            binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_error));
                             binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                            Toast.makeText(ChatActivity.this, "Failed to initialize model", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.failed_to_initialize_model), Toast.LENGTH_SHORT).show();
                             updateInteractionState();
                         });
                     }
@@ -1148,9 +1166,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Log.e(TAG, "Error initializing model", throwable);
                     llmServiceReady = false;
                     runOnUiThread(() -> {
-                        binding.modelNameText.setText("Model error");
+                        binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_error));
                         binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                        Toast.makeText(ChatActivity.this, "Error initializing model", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_initializing_model), Toast.LENGTH_SHORT).show();
                         updateInteractionState();
                     });
                     return null;
@@ -1163,9 +1181,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService = null;
             llmServiceReady = false;
             runOnUiThread(() -> {
-                binding.modelNameText.setText("Model disconnected");
+                binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_disconnected));
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                Toast.makeText(ChatActivity.this, "Model service disconnected", Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.model_service_disconnected) , Toast.LENGTH_SHORT).show();
                 updateInteractionState();
             });
         }
@@ -1197,15 +1215,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     asrServiceReady = success;
                     Log.d(TAG, "ASR initialization " + (success ? "successful" : "failed"));
                     if (!success) {
-                        runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                            "ASR initialization failed", Toast.LENGTH_SHORT).show());
+                        runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                                ChatActivity.this.getString(R.string.ars_initialization_failed), Toast.LENGTH_SHORT ).show());
                     }
                     updateInteractionState();
                 }).exceptionally(throwable -> {
                     Log.e(TAG, "Error initializing ASR", throwable);
                     asrServiceReady = false;
-                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                        "Error initializing ASR: " + throwable.getMessage(), 
+                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                            ChatActivity.this.getString(R.string.ars_initialization_failed) + throwable.getMessage(),
                         Toast.LENGTH_SHORT).show());
                     updateInteractionState();
                     return null;
@@ -1228,8 +1246,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             Log.d(TAG, "TTS service connected");
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
-                runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                    "Initializing text-to-speech...", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                        ChatActivity.this.getString(R.string.initializing_text_to_speech), Toast.LENGTH_SHORT).show());
                 
                 CompletableFuture.runAsync(() -> {
                     try {
@@ -1238,11 +1256,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 ttsServiceReady = success;
                                 Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
                                 if (success) {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                                        "Text-to-speech ready", Toast.LENGTH_SHORT).show());
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                                            ChatActivity.this.getString(R.string.text_to_speech_ready), Toast.LENGTH_SHORT).show());
                                 } else {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this, 
-                                        "Failed to initialize text-to-speech", Toast.LENGTH_SHORT).show());
+                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                                            ChatActivity.this.getString(R.string.failed_to_initialize_text_to_speech), Toast.LENGTH_SHORT).show());
                                 }
                                 updateInteractionState();
                             })
@@ -1250,8 +1268,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 Log.e(TAG, "Error initializing TTS", throwable);
                                 ttsServiceReady = false;
                                 runOnUiThread(() -> {
-                                    Toast.makeText(ChatActivity.this, 
-                                        "Error initializing text-to-speech: " + throwable.getMessage(), 
+                                    Toast.makeText(ChatActivity.this,
+                                            ChatActivity.this.getString(R.string.error_initialize_text_to_speech) + throwable.getMessage(),
                                         Toast.LENGTH_SHORT).show();
                                     updateInteractionState();
                                 });
@@ -1403,14 +1421,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private void showDeleteConfirmation() {
         Set<String> selectedIds = historyAdapter.getSelectedHistories();
         if (selectedIds.isEmpty()) {
-            Toast.makeText(this, "No histories selected", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.no_histories_selected), Toast.LENGTH_SHORT).show();
             return;
         }
 
         new AlertDialog.Builder(this)
-            .setTitle("Delete Selected Histories")
-            .setMessage("Are you sure you want to delete " + selectedIds.size() + " selected histories?")
-            .setPositiveButton("Delete", (dialog, which) -> {
+            .setTitle(this.getString(R.string.delete_selected_histories))
+            .setMessage(this.getString(R.string.check_delete, selectedIds.size() ) )
+            .setPositiveButton(this.getString(R.string.delete), (dialog, which) -> {
                 // Delete selected histories
                 for (String id : selectedIds) {
                     historyManager.deleteHistory(id);
@@ -1426,9 +1444,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 exitSelectionMode();
                 refreshHistoryList();
                 Toast.makeText(this, selectedIds.size() > 1 ? 
-                     "Selected histories deleted" : "History deleted", Toast.LENGTH_SHORT).show();
+                     this.getString(R.string.selected_histories_deleted) : this.getString(R.string.history_deleted), Toast.LENGTH_SHORT).show();
             })
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(this.getString(R.string.cancel), null)
             .show();
     }
 
@@ -1479,24 +1497,30 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private String getFormattedPrompt(String userMessage) {
-        // First try with full history
+        // If history lookback is 1, only use system prompt + current message
+        if (AppConstants.CONVERSATION_HISTORY_LOOKBACK == 1) {
+            return PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+        }
+        
+        // Otherwise use history as before
         List<ChatMessage> allMessages = conversationManager.getMessages();
         List<ChatMessage> historyMessages = new ArrayList<>();
         
         if (!allMessages.isEmpty()) {
             // Get messages up to but not including the last one (which would be the current query)
             int endIndex = allMessages.size() - 1;
-            int startIndex = Math.max(0, endIndex - (CONVERSATION_HISTORY_MESSAGE_LOOKBACK * 2));
+            int startIndex = Math.max(0, endIndex - AppConstants.CONVERSATION_HISTORY_LOOKBACK);
+            
             for (int i = startIndex; i < endIndex; i++) {
                 historyMessages.add(allMessages.get(i));
             }
         }
         
-        // First try formatting with history
+        // Format with history
         String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
         
         // Check if prompt might exceed max length (using conservative estimate)
-        if (fullPrompt.length() > AppConstants.LLM_MAX_INPUT_LENGTH * 3) { // Assuming average of 3 chars per token
+        if (fullPrompt.length() > AppConstants.getLLMMaxInputLength(this) * 3) { // Assuming average of 3 chars per token
             Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
             // Format prompt with empty history list to get just system prompt + user message
             String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
@@ -1524,8 +1548,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             } else if (titleTapCount >= TAPS_TO_SHOW_MAIN - 2) {
                 // Show feedback when close to activation
                 int remaining = TAPS_TO_SHOW_MAIN - titleTapCount;
-                Toast.makeText(this, remaining + " more tap" + (remaining == 1 ? "" : "s") + "...", 
-                    Toast.LENGTH_SHORT).show();
+                String message = this.getString(R.string.more_taps, remaining, (remaining == 1 ? "" : "s"));
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -1546,7 +1570,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     android.content.ClipData clip = 
                         android.content.ClipData.newPlainText("Message", message.getText());
                     clipboard.setPrimaryClip(clip);
-                    Toast.makeText(this, "Text copied to clipboard", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, this.getString(R.string.text_copied_to_clipboard), Toast.LENGTH_SHORT).show();
                     return true;
                 case 2:
                     // Save image
@@ -1588,13 +1612,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         while ((read = in.read(buffer)) != -1) {
                             out.write(buffer, 0, read);
                         }
-                        Toast.makeText(this, "Image saved to Pictures", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, this.getString(R.string.image_saved_to_pictures), Toast.LENGTH_SHORT).show();
                     }
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error saving image", e);
-            Toast.makeText(this, "Error saving image", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, this.getString(R.string.error_saving_image), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1615,7 +1639,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 disableAllInteractions();
                 
                 // Show initialization state in model name
-                binding.modelNameText.setText("Initializing...");
+                binding.modelNameText.setText(this.getString(R.string.initializing));
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
             } else {
                 // After initialization, enable components based on service flags
@@ -1738,10 +1762,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 binding.modelNameText.setText(displayText);
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
             } else {
-                binding.modelNameText.setText("Unknown model");
+                binding.modelNameText.setText(this.getString(R.string.unknown_model));
             }
         } else {
-            binding.modelNameText.setText("Model not available");
+            binding.modelNameText.setText(this.getString(R.string.model_not_available));
             binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
         }
     }
