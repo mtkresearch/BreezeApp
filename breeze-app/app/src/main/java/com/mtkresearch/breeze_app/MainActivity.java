@@ -146,12 +146,14 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        Context context = this.getBaseContext() ;
+
         // Load native libraries first
         try {
             NativeLibraryLoader.loadLibraries();
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, "Failed to load native libraries", e);
-            Toast.makeText(this, "Failed to initialize: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, context.getString( R.string.failed_to_initialize ) + e.getMessage(), Toast.LENGTH_LONG).show();
             finish();
             return;
         }
@@ -161,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Continue with normal initialization in background
         new Handler(getMainLooper()).post(() -> {
-            scanForModels();
+            scanForModels( context );
             setupUI();
             setupModelSpinners();
             setupServiceSwitches();
@@ -175,11 +177,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void scanForModels() {
+    private void scanForModels( Context context) {
         File modelDir = new File(AppConstants.LLAMA_MODEL_DIR);
         if (!modelDir.exists() || !modelDir.isDirectory()) {
             Log.e(TAG, "Model directory not found: " + AppConstants.LLAMA_MODEL_DIR);
-            Toast.makeText(this, "Model directory not found", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, context.getString( R.string.model_directory_not_found), Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -207,9 +209,7 @@ public class MainActivity extends AppCompatActivity {
         // Update UI based on available models
         runOnUiThread(() -> {
             if (llmModels.length == 0) {
-                Toast.makeText(this, "No LLM models found. Please ensure either " + 
-                    AppConstants.LLAMA_MODEL_FILE + " or " + 
-                    AppConstants.BREEZE_MODEL_FILE + " model is available.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, context.getString( R.string.no_llm_models_found, AppConstants.LLAMA_MODEL_FILE, AppConstants.BREEZE_MODEL_FILE ), Toast.LENGTH_LONG).show() ;
             }
             setupModelSpinners();
         });
@@ -302,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
 
         binding.llmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && selectedLlmModel == null) {
-                Toast.makeText(this, "Please select a model first", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString( R.string.please_select_a_model_first ), Toast.LENGTH_SHORT).show();
                 buttonView.setChecked(false);
                 return;
             }
@@ -322,7 +322,7 @@ public class MainActivity extends AppCompatActivity {
 
         binding.vlmSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked && selectedVlmModel == null) {
-                Toast.makeText(this, "Please select a model first", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, this.getString( R.string.please_select_a_model_first ), Toast.LENGTH_SHORT).show();
                 buttonView.setChecked(false);
                 return;
             }
@@ -512,7 +512,7 @@ public class MainActivity extends AppCompatActivity {
                 
                 // Show initialization status only if any service is enabled and initializing
                 if (anyServiceInitializing) {
-                    Toast.makeText(this, "Waiting for services to initialize", 
+                    Toast.makeText(this, this.getString( R.string.waiting_for_services_to_initialize),
                         Toast.LENGTH_SHORT).show();
                 }
             }
@@ -578,7 +578,7 @@ public class MainActivity extends AppCompatActivity {
                 startAndBindService(ASREngineService.class, asrConnection, null);
             } else {
                 Log.e(TAG, "RECORD_AUDIO permission denied");
-                Toast.makeText(this, "Speech recognition requires audio permission", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, this.getString( R.string.speech_recognition_requires_audio_permission ), Toast.LENGTH_LONG).show();
                 binding.asrSwitch.setChecked(false);
             }
         }

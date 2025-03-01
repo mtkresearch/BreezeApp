@@ -1,5 +1,289 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Breeze2-demo</string>
+    <string name="app_name">BreezeApp</string>
     <string name="file_provider_authority">${file_provider_authority}</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## IntroDialog.java -->
+    <!-- Intro Dialog Title -->
+    <string name="intro_dialog_title_warning">Demo Version Warning</string>
+    <string name="intro_dialog_title_current_features">Current Features</string>
+    <string name="intro_dialog_title_system_requirements">System Requirements</string>
+
+    <!-- Intro Dialog Page 1 : Demo Version Warning -->
+    <string name="intro_description">
+        <![CDATA[
+        This is a community-driven project aimed at bringing AI capabilities directly to your phone,
+        allowing you to experience <b>AI features completely offline</b> without privacy concerns.
+        <br/><br/>
+        As a kick-off project, we welcome developers and enthusiasts to join us in improving this app.
+        You may encounter some stability issues as we\'re continuously enhancing the experience.
+        <br/><br/>
+        Feel free to contribute, raise issues, or submit PRs on our GitHub repository:
+        <br/>
+        <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
+        ]]>
+    </string>
+
+    <!-- Intro Dialog Page 2 : Current Features -->
+    <string name="build_features_description">
+        <![CDATA[
+        • Local LLM Chat:<br/>
+        &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
+        &nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>
+        &nbsp;&nbsp;&nbsp;- All data stays on device<br/>
+        &nbsp;&nbsp;&nbsp;- Text-to-Speech support
+        <br/><br/>
+        • Future Features (Coming Soon):<br/>
+        &nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>
+        &nbsp;&nbsp;&nbsp;- Voice input support (ASR)
+        <br/><br/>
+        Join us in building a privacy-focused AI experience!
+        ]]>
+    </string>
+
+    <!-- Intro Dialog Page 3 : System Requirements -->
+    <!-- RAM status -->
+    <string name="ram_passed">✅ Passed</string>
+    <string name="ram_error">⛔️ Error: Insufficient RAM (%1$sGB &lt; %2$sGB required)</string>
+
+    <!-- memory status -->
+    <string name="storage_sufficient">✅ Sufficient (%1$sGB available)</string>
+    <string name="storage_error">⛔️ Error: Insufficient Space (only %1$sGB available)</string>
+
+    <!-- model status -->
+    <string name="model_found">✅ Model Found</string>
+    <string name="model_missing">⛔️ Model Missing</string>
+
+    <!-- warning message -->
+    <string name="warning_ram"><![CDATA[⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>]]></string>
+    <string name="warning_model_missing"><![CDATA[⚠️ WARNING: Required model files (%1$s or %2$s) are missing.<br/>]]></string>
+    <string name="warning_storage"><![CDATA[⚠️ WARNING: Insufficient storage space available (%1$sGB &lt; %2$sGB required).<br/>]]></string>
+    <string name="warning_footer"><![CDATA[The application may not function properly.<br/>]]></string>
+
+    <!-- status summary -->
+    <string name="status_summary">
+         <![CDATA[
+        • RAM Memory:<br/>
+        &nbsp;&nbsp;&nbsp;Required: %1$sGB+<br/>
+        &nbsp;&nbsp;&nbsp;Your Device: %2$sGB<br/>
+        &nbsp;&nbsp;&nbsp;Status: %3$s<br/><br/>
+
+        • Model Files:<br/>
+        &nbsp;&nbsp;&nbsp;Location: %4$s<br/>
+        &nbsp;&nbsp;&nbsp;Required: %5$s or %6$s<br/>
+        &nbsp;&nbsp;&nbsp;Status: %7$s<br/><br/>
+
+        • Storage Space:<br/>
+        &nbsp;&nbsp;&nbsp;Required: %8$sGB+ free space<br/>
+        &nbsp;&nbsp;&nbsp;Available: %9$sGB<br/>
+        &nbsp;&nbsp;&nbsp;Status: %10$s<br/><br/>
+
+        %11$s
+        <br/>
+        Please ensure all requirements are met for optimal performance.
+        ]]>
+    </string>
+
+    <!-- Intro Dialog util -->
+    <string name="next">Next</string>
+    <string name="got_it">Got it</string>
+    <string name="requirements_not_met">Requirements Not Met</string>
+    <string name="cannot_proceed">Cannot proceed:</string>
+    <string name="insufficient_ram">• Insufficient RAM (minimum %1$dGB required)</string>
+    <string name="insufficient_storage">• Insufficient storage space (minimum %1$dGB required)</string>
+    <string name="insufficient_storage_mb">• Insufficient storage space (minimum %1$dMB required)</string>
+    <string name="missing_models">• Required model files (%1$s or %2$s) are missing</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="thinking">Thinking...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="view_chat_history">View chat history</string>
+    <string name="loading">Loading...</string>
+    <string name="new_conversation">New conversation</string>
+    <string name="app_logo">App Logo</string>
+    <string name="how_can_i_help_you">How can I help you?</string>
+    <string name="type_in_here">Type in here...</string>
+    <string name="chat_history">Chat History</string>
+    <string name="send_message">Send message</string>
+    <string name="voice_input">Voice input</string>
+    <string name="add_attachments">Add attachments</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## intro_page_layout.xml -->
+    <string name="scroll_for_more">Scroll for more</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatMediaHandler.java -->
+    <string name="failed_to_start_recording">Failed to start recording</string>
+    <string name="failed_to_process_file">Failed to process file</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## UiUtils.java -->
+    <string name="error_showing_image_preview">Error showing image preview</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## AudioChatActivity.java -->
+    <string name="camera_switched">Switched to %1$s camera</string>
+    <string name="camera_front">front</string>
+    <string name="camera_back">back</string>
+    <string name="menu_options">Menu options</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## MainActivity.java -->
+    <string name="failed_to_initialize">Failed to initialize: </string>
+    <string name="model_directory_not_found">Model directory not found</string>
+    <string name="no_llm_models_found">No LLM models found. Please ensure either %1$s or %2$s model is available."</string>
+    <string name="please_select_a_model_first">Please select a model first</string>
+    <string name="waiting_for_services_to_initialize">Waiting for services to initialize</string>
+    <string name="speech_recognition_requires_audio_permission">Speech recognition requires audio permission</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <!-- Toast.makeText -->
+    <string name="error_initializing_services">Error initializing services: </string>
+    <string name="initializing_model_with">Initializing model with </string>
+    <string name="speech_recognition_is_disabled">Speech recognition is disabled</string>
+    <string name="error_generating_response">Error generating response</string>
+    <string name="stopping_generation">Stopping generation...</string>
+    <string name="error_analyzing_image">Error analyzing image</string>
+    <string name="ASR_service_not_ready">ASR service not ready</string>
+    <string name="error_launching_camera">Error launching camera</string>
+    <string name="no_recordings_found">No recordings found</string>
+    <string name="recording_deleted">Recording deleted</string>
+    <string name="camera_permission_required">Camera permission is required for taking photos</string>
+    <string name="mic_permission_required">Microphone permission is required for voice input</string>
+    <string name="text_to_speech_service_not_available">Text-to-speech service not available</string>
+    <string name="text_to_speech_is_still_initializing">Text-to-speech is still initializing...</string>
+    <string name="converting_text_to_speech">Converting text to speech...</string>
+    <string name="error_playing_audio">Error playing audio</string>
+    <string name="error_starting_audio_playback">Error starting audio playback</string>
+    <string name="failed_to_reinitialize_llm">Failed to reinitialize LLM</string>
+    <string name="initializing_model">Initializing model...</string>
+    <string name="failed_to_initialize_model">Failed to initialize model</string>
+    <string name="error_initializing_model">Error initializing model</string>
+    <string name="model_service_disconnected">Model service disconnected</string>
+    <string name="ars_initialization_failed">ASR initialization failed</string>
+    <string name="error_initializing_asr">Error initializing ASR: </string>
+    <string name="initializing_text_to_speech">Initializing text-to-speech...</string>
+    <string name="text_to_speech_ready">Text-to-speech ready</string>
+    <string name="failed_to_initialize_text_to_speech">Failed to initialize text-to-speech</string>
+    <string name="error_initialize_text_to_speech">Error initializing text-to-speech: </string>
+    <string name="no_histories_selected">No histories selected</string>
+    <string name="selected_histories_deleted">Selected histories deleted</string>
+    <string name="history_deleted">History deleted</string>
+    <string name="more_taps">%1$d more tap%2$s...</string>
+    <string name="text_copied_to_clipboard">Text copied to clipboard</string>
+    <string name="image_saved_to_pictures">Image saved to Pictures</string>
+    <string name="error_saving_image">Error saving image</string>
+
+    <!-- binding.modelNameText.setText -->
+    <string name="unknown_model">Unknown model</string>
+    <string name="model_error">Model error</string>
+    <string name="model_disconnected">Model disconnected</string>
+    <string name="initializing">Initializing...</string>
+    <string name="model_not_available">Model not available</string>
+
+    <string name="delete_selected_histories">Delete Selected Histories</string>
+    <string name="check_delete">Are you sure you want to delete %1$d selected histories?</string>
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="please_wait_for_the_response_to_finish">Please wait for the response to finish</string>
+    <string name="type_a_message">Type a message...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_audio_chat.xml -->
+    <string name="choose_voice">Choose voice</string>
+    <string name="toggle_camera">Toggle camera</string>
+    <string name="toggle_microphone">Toggle microphone</string>
+    <string name="more_options">More options</string>
+    <string name="close">Close</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="message">Message</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_main.xml -->
+    <string name="device_information">Device Information</string>
+    <string name="engine_status">Engine Status</string>
+    <string name="model_settings">Model Settings</string>
+    <string name="history_lookback">History Lookback:</string>
+    <string name="max_sequence_Length">Max Sequence Length:</string>
+    <string name="temperature">Temperature:</string>
+    <string name="llm_backend">LLM Backend:</string>
+    <string name="llm_engine">LLM Engine:</string>
+    <string name="vlm_engine">VLM Engine:</string>
+    <string name="asr_engine">ASR Engine:</string>
+    <string name="tts_engine">TTS Engine:</string>
+    <string name="start_chat">Start Chat</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## dialog_voice_selection.xml -->
+    <string name="start_new_chat">Start new chat</string>
+    <string name="choose_a_voice">Choose a voice</string>
+
+    <!-- ## ModelDownloadDialog -->
+    <string name="download_model">Download Model</string>
+    <string name="model_missing_message">Required model file is missing. Download size is approximately 6GB.</string>
+    <string name="model_missing_message_tts">Required TTS model files are missing. Download size is approximately 125MB.</string>
+    <string name="download">Download</string>
+    <string name="downloading">Downloading...</string>
+    <string name="download_progress">Download progress: %1$d%%</string>
+    <string name="download_complete">Download complete</string>
+    <string name="download_failed">Download failed: %1$s</string>
+    <string name="insufficient_storage_for_download">Insufficient storage space. Please free up at least %1$dGB.</string>
+    <string name="insufficient_storage_for_download_mb">Insufficient storage space. Please free up at least %1$dMB.</string>
+    <string name="error_creating_model_directory">Error creating model directory</string>
+    <string name="error_downloading_model">Error downloading model: %1$s</string>
+    <string name="download_cancelled">Download cancelled</string>
+    <string name="error_all_download_attempts_failed">All download attempts failed</string>
+
+    <!-- Model Status -->
+    <string name="model_status_llm_found">✅ Found</string>
+    <string name="model_status_llm_missing">⛔️ Missing</string>
+    <string name="model_status_vlm_not_implemented">⚠️ Not implemented yet</string>
+    <string name="model_status_asr_not_implemented">⚠️ Not implemented yet</string>
+    <string name="model_status_tts_found">✅ Found</string>
+    <string name="model_status_tts_missing">⛔️ Missing</string>
+
+    <string name="warning_tts_model_missing">⚠️ WARNING: Required TTS model files are missing.<br/></string>
+
+    <!-- Model Status Titles -->
+    <string name="model_status_llm_title">LLM Model Status: %1$s</string>
+    <string name="model_status_vlm_title">VLM Model Status: %1$s</string>
+    <string name="model_status_asr_title">ASR Model Status: %1$s</string>
+    <string name="model_status_tts_title">TTS Model Status: %1$s</string>
+
+    <!-- Requirements Description Section Headers -->
+    <string name="requirements_header_memory">Memory:</string>
+    <string name="requirements_header_model_status">Model Status:</string>
+    <string name="requirements_header_storage">Storage Space:</string>
+
+    <!-- Requirements Description Details -->
+    <string name="requirements_memory_required">Required: %1$dGB+</string>
+    <string name="requirements_memory_device">Your Device: %1$dGB</string>
+    <string name="requirements_memory_status">Status: %1$s</string>
+    
+    <string name="requirements_storage_required">Required: At least %1$dGB free space</string>
+    <string name="requirements_storage_available">Available: %1$dGB</string>
+    <string name="requirements_storage_status">Status: %1$s</string>
+
+    <string name="requirements_footer">Please ensure all requirements are met for optimal performance.</string>
+
+    <!-- HTML Formatting -->
+    <string name="html_bullet">•&#160;</string>
+    <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
+    <string name="html_linebreak">&lt;br/&gt;</string>
+
+    <!-- Download Progress Messages -->
+    <string name="download_progress_tts">Downloading TTS models: %1$d%%</string>
+    <string name="download_complete_tts">TTS models downloaded successfully</string>
+    <string name="download_failed_tts">Failed to download TTS models: %1$s</string>
+    <string name="error_downloading_tts_model">Error downloading TTS models: %1$s</string>
+    <string name="error_all_download_attempts_failed_tts">All TTS model download attempts failed</string>
+
 </resources>

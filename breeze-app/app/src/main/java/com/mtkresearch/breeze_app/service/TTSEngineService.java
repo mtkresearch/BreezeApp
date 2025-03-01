@@ -96,9 +96,7 @@ public class TTSEngineService extends BaseEngineService {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         try {
             Log.d(TAG, "Initializing Local TTS...");
-            localTTS = SherpaTTS.Companion.getInstance(
-                getApplicationContext(), false
-            );
+            localTTS = SherpaTTS.Companion.getInstance(getApplicationContext());
             future.complete(true);
             Log.d(TAG, "Local TTS initialized with " + localTTS.getNumSpeakers() + " speakers");
         } catch (Exception e) {

@@ -17,7 +17,7 @@
 *.jar
 *.aar
 *.ap_ 
-**/libs/
+*.sha256sums
 
 # Temporary files
 *.log
@@ -31,10 +31,10 @@ captures/
 *.dex
 
 # Other unimportant files
-Breeze2-android-demo/.gradle/
-Breeze2-android-demo/.idea/
-Breeze2-android-demo/app/libs/executorch.aar
-Breeze2-android-demo/app/libs/executorch.aar.sha256sums
+breeze-app/.gradle/
+breeze-app/.idea/
+breeze-app/app/libs/executorch.aar
+breeze-app/app/libs/executorch.aar.sha256sums
 
 # Model weight folder
 Breeze-Tiny-Instruct-v0_1-mobile
