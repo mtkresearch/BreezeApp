@@ -36,7 +36,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_history"
-                    android:contentDescription="View chat history"
+                    android:contentDescription="@string/view_chat_history"
                     android:padding="12dp"
                     android:layout_marginStart="4dp"
                     app:layout_constraintStart_toStartOf="parent"
@@ -49,7 +49,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="16sp"
                     android:textColor="@color/text_secondary"
-                    android:text="Loading..."
+                    android:text="@string/loading"
                     android:ellipsize="end"
                     android:maxLines="1"
                     app:layout_constraintStart_toStartOf="parent"
@@ -63,7 +63,7 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@drawable/ic_add_conversation"
-                    android:contentDescription="New conversation"
+                    android:contentDescription="@string/new_conversation"
                     android:padding="12dp"
                     android:layout_marginEnd="0dp"
                     app:layout_constraintEnd_toEndOf="parent"
@@ -101,14 +101,14 @@
                 android:layout_height="80dp"
                 android:src="@drawable/logo"
                 android:alpha="0.6"
-                android:contentDescription="App Logo"/>
+                android:contentDescription="@string/app_logo"/>
 
             <TextView
                 android:id="@+id/watermarkText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="How can I help you?"
+                android:text="@string/how_can_i_help_you"
                 android:textSize="18sp"
                 android:textColor="@color/text_secondary"
                 android:textStyle="italic"
@@ -144,7 +144,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Add attachments"
+                    android:contentDescription="@string/add_attachments"
                     android:padding="8dp"
                     android:src="@drawable/ic_add" />
 
@@ -156,7 +156,7 @@
                     android:layout_marginEnd="10dp"
                     android:layout_weight="10"
                     android:background="@null"
-                    android:hint="Type in here..."
+                    android:hint="@string/type_in_here"
                     android:inputType="textMultiLine|textCapSentences"
                     android:maxLines="4"
                     android:minHeight="32dp"
@@ -171,7 +171,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="Voice input"
+                    android:contentDescription="@string/voice_input"
                     android:padding="8dp"
                     android:src="@drawable/ic_mic" />
 
@@ -181,7 +181,7 @@
                     android:layout_height="32dp"
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_send_button"
-                    android:contentDescription="Send message"
+                    android:contentDescription="@string/send_message"
                     android:padding="8dp"
                     android:src="@drawable/ic_audio_wave" />
             </LinearLayout>
@@ -202,7 +202,7 @@
                     android:maxHeight="120dp"
                     android:gravity="top|start"
                     android:background="@null"
-                    android:hint="Message"
+                    android:hint="@string/message"
                     android:inputType="textMultiLine|textCapSentences"
                     android:scrollbars="vertical"
                     android:padding="4dp"
@@ -246,7 +246,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Add attachments"
+                        android:contentDescription="@string/add_attachments"
                         android:padding="8dp"
                         android:src="@drawable/ic_add"
                         android:layout_gravity="center_vertical"/>
@@ -261,7 +261,7 @@
                         android:layout_width="32dp"
                         android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="Voice input"
+                        android:contentDescription="@string/voice_input"
                         android:padding="8dp"
                         android:src="@drawable/ic_mic"
                         android:layout_gravity="center_vertical"/>
@@ -272,7 +272,7 @@
                         android:layout_height="32dp"
                         android:layout_marginStart="8dp"
                         android:background="@drawable/bg_send_button"
-                        android:contentDescription="Send message"
+                        android:contentDescription="@string/send_message"
                         android:padding="8dp"
                         android:src="@drawable/ic_audio_wave"
                         android:layout_gravity="center_vertical"/>
@@ -337,7 +337,7 @@
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="Chat History"
+                        android:text="@string/chat_history"
                         android:textStyle="bold"
                         android:textSize="16sp"
                         android:layout_marginStart="16dp"
