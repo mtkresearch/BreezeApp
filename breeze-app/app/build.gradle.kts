@@ -11,10 +11,10 @@ android {
 
     defaultConfig {
         applicationId = "com.mtkresearch.breeze_app"
-        minSdk = 31
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1"
+        versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -25,7 +25,7 @@ android {
             abiFilters.addAll(listOf("arm64-v8a"))
         }
 
-        manifestPlaceholders["app_name"] = "Breeze2-demo"
+        manifestPlaceholders["app_name"] = "BreezeApp"
     }
 
     buildTypes {
@@ -35,6 +35,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
