@@ -63,10 +63,97 @@ public class AppConstants {
     public static final String TTS_LEXICON_FILE = "lexicon.txt";
     public static final String TTS_TOKENS_FILE = "tokens.txt";
     
+    // Model Download Constants
+    private static final String MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/";
+    
+    // Model Download URLs - defined before usage in LLM_DOWNLOAD_FILES
+    public static final String[] MODEL_DOWNLOAD_URLS = {
+        // Tokenizer - small file, use regular URL
+        MODEL_BASE_URL + "tokenizer.bin?download=true",
+        // Model file - try multiple reliable sources
+        MODEL_BASE_URL + BREEZE_MODEL_FILE + "?download=true"
+    };
+    
     // TTS Model Download URLs
     private static final String TTS_MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx/resolve/main/";
     private static final String TTS_HF_MIRROR_URL = "https://hf-mirror.com/MediaTek-Research/Breeze2-VITS-onnx/resolve/main/";
     
+    // Download status constants
+    public static final int DOWNLOAD_STATUS_PENDING = 0;
+    public static final int DOWNLOAD_STATUS_IN_PROGRESS = 1;
+    public static final int DOWNLOAD_STATUS_PAUSED = 2;
+    public static final int DOWNLOAD_STATUS_COMPLETED = 3;
+    public static final int DOWNLOAD_STATUS_FAILED = 4;
+    
+    // File type constants
+    public static final String FILE_TYPE_LLM = "LLM Model";
+    public static final String FILE_TYPE_TOKENIZER = "Tokenizer";
+    public static final String FILE_TYPE_TTS_MODEL = "TTS Model";
+    public static final String FILE_TYPE_TTS_LEXICON = "TTS Lexicon";
+    public static final String FILE_TYPE_TTS_TOKENS = "TTS Tokens";
+    
+    
+    // Download file information
+    public static final class DownloadFileInfo {
+        public final String url;
+        public final String fileName;
+        public final String displayName;
+        public final String fileType;
+        public final long fileSize;
+        
+        public DownloadFileInfo(String url, String fileName, String displayName, String fileType, long fileSize) {
+            this.url = url;
+            this.fileName = fileName;
+            this.displayName = displayName;
+            this.fileType = fileType;
+            this.fileSize = fileSize;
+        }
+    }
+    
+    // LLM related download files
+    public static final DownloadFileInfo[] LLM_DOWNLOAD_FILES = {
+        new DownloadFileInfo(
+            MODEL_DOWNLOAD_URLS[0], // Using first URL from MODEL_DOWNLOAD_URLS
+            LLM_TOKENIZER_FILE,
+            "Tokenizer",
+            FILE_TYPE_TOKENIZER,
+            5 * 1024 * 1024 // ~5MB estimate
+        ),
+        new DownloadFileInfo(
+            MODEL_DOWNLOAD_URLS[1], // Using second URL from MODEL_DOWNLOAD_URLS 
+            BREEZE_MODEL_FILE,
+            "Language Model",
+            FILE_TYPE_LLM,
+            6 * 1024 * 1024 * 1024L // 6GB estimate
+        )
+    };
+    
+    // TTS related download files
+    public static final DownloadFileInfo[] TTS_DOWNLOAD_FILES = {
+        new DownloadFileInfo(
+            TTS_MODEL_BASE_URL + TTS_MODEL_FILE + "?download=true",
+            TTS_MODEL_FILE,
+            "TTS Model", 
+            FILE_TYPE_TTS_MODEL,
+            100 * 1024 * 1024 // ~100MB estimate
+        ),
+        new DownloadFileInfo(
+            TTS_MODEL_BASE_URL + TTS_LEXICON_FILE + "?download=true",
+            TTS_LEXICON_FILE,
+            "Lexicon",
+            FILE_TYPE_TTS_LEXICON,
+            1 * 1024 * 1024 // ~1MB estimate
+        ),
+        new DownloadFileInfo(
+            TTS_MODEL_BASE_URL + "tokens.txt?download=true",
+            "tokens.txt",
+            "Tokens",
+            FILE_TYPE_TTS_TOKENS,
+            100 * 1024 // ~100KB estimate
+        )
+    };
+    
+    // TTS Model Download URLs (keeping for backward compatibility)
     public static final String[] TTS_MODEL_DOWNLOAD_URLS = {
         // Primary TTS model files
         TTS_MODEL_BASE_URL + TTS_MODEL_FILE + "?download=true",
@@ -247,17 +334,7 @@ public class AppConstants {
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
     public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
 
-    // Model Download Constants
-    private static final String MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/";
-    private static final String HF_MIRROR_URL = "https://hf-mirror.com/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/";
-    
-    public static final String[] MODEL_DOWNLOAD_URLS = {
-        // Tokenizer - small file, use regular URL
-        MODEL_BASE_URL + "tokenizer.bin?download=true",
-        // Model file - try multiple reliable sources
-        MODEL_BASE_URL + BREEZE_MODEL_FILE + "?download=true",
-        HF_MIRROR_URL + BREEZE_MODEL_FILE + "?download=true"
-    };
+
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {
