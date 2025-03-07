@@ -22,10 +22,12 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
         private int status = AppConstants.DOWNLOAD_STATUS_PENDING;
         private int progress = 0;
         private long downloadedBytes = 0;
+        private long actualFileSize = 0; // Track the actual file size from server
         private String errorMessage = null;
 
         public FileDownloadStatus(AppConstants.DownloadFileInfo fileInfo) {
             this.fileInfo = fileInfo;
+            this.actualFileSize = fileInfo.fileSize; // Initialize with estimated size
         }
 
         public AppConstants.DownloadFileInfo getFileInfo() {
@@ -57,7 +59,11 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
         }
         
         public long getTotalBytes() {
-            return fileInfo.fileSize;
+            return actualFileSize > 0 ? actualFileSize : fileInfo.fileSize;
+        }
+        
+        public void setActualFileSize(long actualFileSize) {
+            this.actualFileSize = actualFileSize;
         }
         
         public String getErrorMessage() {
@@ -106,6 +112,17 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
             FileDownloadStatus file = files.get(position);
             file.setProgress(progress);
             file.setDownloadedBytes(downloadedBytes);
+            file.setStatus(AppConstants.DOWNLOAD_STATUS_IN_PROGRESS);
+            notifyItemChanged(position);
+        }
+    }
+
+    public void updateFileProgress(int position, int progress, long downloadedBytes, long actualFileSize) {
+        if (position >= 0 && position < files.size()) {
+            FileDownloadStatus file = files.get(position);
+            file.setProgress(progress);
+            file.setDownloadedBytes(downloadedBytes);
+            file.setActualFileSize(actualFileSize);
             file.setStatus(AppConstants.DOWNLOAD_STATUS_IN_PROGRESS);
             notifyItemChanged(position);
         }
