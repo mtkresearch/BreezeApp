@@ -268,21 +268,31 @@ public class ModelDownloadDialog extends Dialog {
         } else {
             // Add LLM model files to the list
             // First, add tokenizer (small file)
+            // Exact tokenizer size: 2.18MB
+            long tokenizerSize = 2_286_592L; // 2.18MB in bytes
+            
             downloadFiles.add(new AppConstants.DownloadFileInfo(
                 AppConstants.MODEL_DOWNLOAD_URLS[0],
-                "tokenizer.bin",
+                AppConstants.LLM_TOKENIZER_FILE,
                 "Tokenizer",
                 AppConstants.FILE_TYPE_TOKENIZER,
-                5 * 1024 * 1024 // Estimate 5MB for tokenizer
+                tokenizerSize
             ));
             
             // Then add the main model file
+            // Use the actual model name from AppConstants
+            String modelFileName = AppConstants.BREEZE_MODEL_FILE;
+            String modelDisplayName = "Breeze Tiny Instruct v0.1 (2048)"; // More user-friendly name
+            
+            // Exact LLM model size: 6.43GB
+            long modelFileSize = 6_903_029_760L; // 6.43GB in bytes
+            
             downloadFiles.add(new AppConstants.DownloadFileInfo(
                 AppConstants.MODEL_DOWNLOAD_URLS[1], // Use first model URL
-                AppConstants.BREEZE_MODEL_FILE,
-                "LLM Model",
+                modelFileName,
+                modelDisplayName,
                 AppConstants.FILE_TYPE_LLM,
-                4 * 1024 * 1024 * 1024L // Estimate 4GB for model
+                modelFileSize
             ));
         }
     }
@@ -295,14 +305,24 @@ public class ModelDownloadDialog extends Dialog {
     }
     
     private long estimateFileSize(String url) {
-        // This is just an estimate based on known file sizes
-        // In a production app, you might want to do a HEAD request to get the actual size
+        // Return exact file sizes for known files
         if (url.contains("tokenizer")) {
-            return 5 * 1024 * 1024; // 5MB for tokenizer
-        } else if (url.contains("tts")) {
-            return 40 * 1024 * 1024; // 40MB for TTS models
+            return 2_286_592L; // 2.18MB for tokenizer
+        } else if (url.contains("breeze2-vits.onnx")) {
+            return 41_943_040L; // 40MB for TTS model
+        } else if (url.contains("lexicon.txt")) {
+            return 2_097_152L; // 2MB for lexicon
+        } else if (url.contains("tokens.txt")) {
+            return 1_048_576L; // 1MB for tokens
+        } else if (url.contains(AppConstants.BREEZE_MODEL_FILE)) {
+            // Exact LLM model size: 6.43GB
+            return 6_903_029_760L; // 6.43GB in bytes
+        } else if (url.contains("128.pte")) {
+            // Small model variant (128 context window)
+            return 838_860_800L; // 800MB for small Breeze model
         } else {
-            return 4 * 1024 * 1024 * 1024L; // 4GB for LLM models
+            // Default fallback
+            return 4_294_967_296L; // 4GB default estimate
         }
     }
 
@@ -506,9 +526,16 @@ public class ModelDownloadDialog extends Dialog {
                 // Update file size in adapter if we get a better estimate
                 if (fileLength > 0 && fileLength != fileInfo.fileSize) {
                     final long updatedSize = fileLength;
+                    final long finalExistingLength = existingLength; // Make existingLength final for lambda
+                    Log.d(TAG, "Updating file size for " + fileInfo.fileName + " from " + 
+                          formatFileSize(fileInfo.fileSize) + " to " + formatFileSize(updatedSize));
                     mainHandler.post(() -> {
-                        int progressPercent = (int) (updatedSize * 100 / fileInfo.fileSize);
-                        fileAdapter.updateFileProgress(fileIndex, progressPercent, updatedSize);
+                        // Use the actual file length for progress calculation
+                        // without modifying the final fileSize field
+                        int progressPercent = (int) (finalExistingLength * 100 / updatedSize);
+                        fileAdapter.updateFileProgress(fileIndex, progressPercent, finalExistingLength, updatedSize);
+                        // Force update overall progress to reflect the new file size
+                        updateOverallProgress();
                     });
                 }
                 
@@ -533,9 +560,10 @@ public class ModelDownloadDialog extends Dialog {
                                 lastUIUpdateTime = currentTime;
                                 final int fileProgress = (int) (total * 100 / fileLength);
                                 final long downloadedBytes = total;
+                                final long actualFileLength = fileLength;
                                 mainHandler.post(() -> {
                                     fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_PAUSED);
-                                    fileAdapter.updateFileProgress(fileIndex, fileProgress, downloadedBytes);
+                                    fileAdapter.updateFileProgress(fileIndex, fileProgress, downloadedBytes, actualFileLength);
                                     updateOverallProgress();
                                 });
                             }
@@ -575,8 +603,9 @@ public class ModelDownloadDialog extends Dialog {
                         if (fileProgress > lastProgress || currentTime - lastUIUpdateTime > 1000) {
                             final int progress = fileProgress;
                             final long downloadedBytes = total;
+                            final long actualFileLength = fileLength; // Use actual file length from server
                             mainHandler.post(() -> {
-                                fileAdapter.updateFileProgress(fileIndex, progress, downloadedBytes);
+                                fileAdapter.updateFileProgress(fileIndex, progress, downloadedBytes, actualFileLength);
                                 // Also update overall progress
                                 updateOverallProgress();
                             });
@@ -630,24 +659,36 @@ public class ModelDownloadDialog extends Dialog {
          * Updates the overall progress in the UI based on individual file progress
          */
         private void updateOverallProgress() {
-            int totalProgress = 0;
             long totalSize = 0;
             long totalDownloaded = 0;
             boolean allComplete = true;
             
             List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
             for (FileDownloadAdapter.FileDownloadStatus file : files) {
-                totalProgress += file.getProgress();
-                totalSize += file.getTotalBytes();
-                totalDownloaded += file.getDownloadedBytes();
+                long fileSize = file.getTotalBytes();
+                long fileDownloaded = file.getDownloadedBytes();
+                totalSize += fileSize;
+                totalDownloaded += fileDownloaded;
+                
+                Log.d(TAG, "File: " + file.getFileInfo().fileName + 
+                      ", Size: " + formatFileSize(fileSize) + 
+                      ", Downloaded: " + formatFileSize(fileDownloaded) + 
+                      ", Status: " + file.getStatus());
                 
                 if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
                     allComplete = false;
                 }
             }
             
-            // Calculate average progress
-            int overallProgress = files.isEmpty() ? 0 : totalProgress / files.size();
+            Log.d(TAG, "Total size: " + formatFileSize(totalSize) + 
+                  ", Total downloaded: " + formatFileSize(totalDownloaded));
+            
+            // Calculate overall progress based on total downloaded bytes and total size
+            int overallProgress = 0;
+            if (totalSize > 0) {
+                overallProgress = (int) (totalDownloaded * 100 / totalSize);
+            }
+            
             progressBar.setProgress(overallProgress);
             
             // Update status message based on download state
