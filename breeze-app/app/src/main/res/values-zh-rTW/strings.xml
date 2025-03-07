@@ -178,6 +178,36 @@
     <string name="text_copied_to_clipboard">文字已複製到剪貼簿</string>
     <string name="image_saved_to_pictures">圖片已儲存至「圖片」資料夾</string>
     <string name="error_saving_image">儲存圖片時發生錯誤</string>
+    
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ModelDownloadDialog -->
+    <string name="download_model">下載模型</string>
+    <string name="model_missing_message">缺少所需的模型文件。下載大小約為 6GB。</string>
+    <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下載大小約為 125MB。</string>
+    <string name="download">下載</string>
+    <string name="downloading">下載中...</string>
+    <string name="downloading_file">下載 %1$s 中</string>
+    <string name="download_progress">下載進度：%1$d%%</string>
+    <string name="download_progress_tts">正在下載 TTS 模型：%1$d%%</string>
+    <string name="download_complete">下載完成</string>
+    <string name="download_complete_tts">TTS 模型下載完成</string>
+    <string name="download_failed">下載失敗：%1$s</string>
+    <string name="download_failed_tts">TTS 模型下載失敗：%1$s</string>
+    <string name="download_cancelled">下載已取消</string>
+    <string name="download_paused">下載已暫停</string>
+    <string name="download_resuming">恢復下載中…</string>
+    <string name="download_partially_complete">部分檔案已成功下載</string>
+    <string name="pause">暫停</string>
+    <string name="resume">繼續</string>
+    <string name="overall_progress">整體進度</string>
+    <string name="model_files">模型檔案</string>
+    <string name="error_preparing_download">準備下載時發生錯誤</string>
+    <string name="error_all_download_attempts_failed">所有下載嘗試均失敗</string>
+    <string name="error_downloading_model">下載模型時發生錯誤：%1$s</string>
+    <string name="error_downloading_tts_model">下載 TTS 模型時發生錯誤：%1$s</string>
+    <string name="error_creating_model_directory">建立模型目錄時發生錯誤</string>
+    <string name="insufficient_storage_for_download">存儲空間不足，無法下載。請釋放至少 %1$dGB 空間。</string>
+    <string name="insufficient_storage_for_download_mb">存儲空間不足，無法下載。請釋放至少 %1$dMB 空間。</string>
 
     <!-- binding.modelNameText.setText -->
     <string name="unknown_model">未知模型</string>
@@ -227,26 +257,7 @@
     <string name="start_new_chat">開始新聊天</string>
     <string name="choose_a_voice">選擇語音</string>
 
-    <!-- ## ModelDownloadDialog -->
-    <string name="download_model">下載模型</string>
-    <string name="model_missing_message">缺少所需的模型文件。下載大小約為 6GB。</string>
-    <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下載大小約為 125MB。</string>
-    <string name="download">下載</string>
-    <string name="downloading">下載中...</string>
-    <string name="download_progress">下載進度：%1$d%%</string>
-    <string name="download_progress_tts">正在下載 TTS 模型：%1$d%%</string>
-    <string name="download_complete">下載完成</string>
-    <string name="download_complete_tts">TTS 模型下載完成</string>
-    <string name="download_failed">下載失敗：%1$s</string>
-    <string name="download_failed_tts">TTS 模型下載失敗：%1$s</string>
-    <string name="insufficient_storage_for_download">存儲空間不足，無法下載。請釋放至少 %1$dGB 空間。</string>
-    <string name="insufficient_storage_for_download_mb">存儲空間不足，無法下載。請釋放至少 %1$dMB 空間。</string>
-    <string name="error_creating_model_directory">建立模型目錄時發生錯誤</string>
-    <string name="error_downloading_model">下載模型時發生錯誤：%1$s</string>
-    <string name="error_downloading_tts_model">下載 TTS 模型時發生錯誤：%1$s</string>
-    <string name="download_cancelled">下載已取消</string>
-    <string name="error_all_download_attempts_failed">所有下載嘗試均失敗</string>
-    <string name="error_all_download_attempts_failed_tts">所有 TTS 模型下載嘗試均失敗</string>
+
 
     <!-- Model Status -->
     <string name="model_status_llm_found">✅ 已找到</string>
@@ -283,5 +294,7 @@
     <string name="html_bullet">•&#160;</string>
     <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
     <string name="html_linebreak">&lt;br/&gt;</string>
+
+    <string name="retry">重試</string>
 
 </resources>

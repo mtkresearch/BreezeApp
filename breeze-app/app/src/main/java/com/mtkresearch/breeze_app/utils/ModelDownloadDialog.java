@@ -13,6 +13,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.mtkresearch.breeze_app.R;
@@ -24,6 +26,9 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
@@ -37,10 +42,18 @@ public class ModelDownloadDialog extends Dialog {
     private final DownloadMode downloadMode;
     private ProgressBar progressBar;
     private TextView statusText;
+    private TextView overallProgressText;
+    private TextView fileListTitle;
     private Button downloadButton;
     private Button cancelButton;
+    private Button pauseResumeButton;
+    private Button retryButton;
+    private RecyclerView fileRecyclerView;
+    private FileDownloadAdapter fileAdapter;
     private DownloadTask downloadTask;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private AtomicBoolean isPaused = new AtomicBoolean(false);
+    private List<AppConstants.DownloadFileInfo> downloadFiles = new ArrayList<>();
 
     public ModelDownloadDialog(Context context, IntroDialog parentDialog, DownloadMode mode) {
         super(context);
@@ -67,10 +80,17 @@ public class ModelDownloadDialog extends Dialog {
         
         setContentView(R.layout.model_download_dialog);
 
+        // Initialize UI components
         progressBar = findViewById(R.id.progressBar);
         statusText = findViewById(R.id.statusText);
+        TextView overallProgressLabel = findViewById(R.id.overallProgressLabel);
+        overallProgressText = overallProgressLabel; // Use the existing label as the text view
+        fileListTitle = findViewById(R.id.filesLabel);
         downloadButton = findViewById(R.id.downloadButton);
         cancelButton = findViewById(R.id.cancelButton);
+        pauseResumeButton = findViewById(R.id.pauseResumeButton);
+        retryButton = findViewById(R.id.retryButton);
+        fileRecyclerView = findViewById(R.id.filesList);
         TextView messageText = findViewById(R.id.messageText);
 
         // Set appropriate message based on download mode
@@ -78,6 +98,19 @@ public class ModelDownloadDialog extends Dialog {
             R.string.model_missing_message_tts : 
             R.string.model_missing_message);
 
+        // Initialize RecyclerView
+        fileRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+        fileAdapter = new FileDownloadAdapter(getContext());
+        fileRecyclerView.setAdapter(fileAdapter);
+        
+        // Hide file list initially
+        fileListTitle.setVisibility(View.GONE);
+        fileRecyclerView.setVisibility(View.GONE);
+        overallProgressText.setVisibility(View.GONE);
+        pauseResumeButton.setVisibility(View.GONE);
+        retryButton.setVisibility(View.GONE);
+
+        // Set up button click listeners
         downloadButton.setOnClickListener(v -> startDownload());
         cancelButton.setOnClickListener(v -> {
             if (downloadTask != null && downloadTask.getStatus() == AsyncTask.Status.RUNNING) {
@@ -85,6 +118,37 @@ public class ModelDownloadDialog extends Dialog {
                 Toast.makeText(getContext(), R.string.download_cancelled, Toast.LENGTH_SHORT).show();
             }
             dismiss();
+        });
+        
+        retryButton.setOnClickListener(v -> {
+            // Hide retry button and show download progress UI
+            retryButton.setVisibility(View.GONE);
+            progressBar.setProgress(0);
+            
+            // Reset file statuses
+            for (int i = 0; i < fileAdapter.getItemCount(); i++) {
+                fileAdapter.updateFileStatus(i, AppConstants.DOWNLOAD_STATUS_PENDING);
+            }
+            
+            // Start download again
+            startDownload();
+        });
+        
+        pauseResumeButton.setOnClickListener(v -> {
+            if (isPaused.get()) {
+                // Resume download
+                isPaused.set(false);
+                pauseResumeButton.setText(R.string.pause);
+                statusText.setText(R.string.download_resuming);
+                synchronized (downloadTask) {
+                    downloadTask.notifyAll(); // Notify waiting threads to continue
+                }
+            } else {
+                // Pause download
+                isPaused.set(true);
+                pauseResumeButton.setText(R.string.resume);
+                statusText.setText(R.string.download_paused);
+            }
         });
 
         setCancelable(false);
@@ -145,82 +209,175 @@ public class ModelDownloadDialog extends Dialog {
             return;
         }
 
-        // Disable UI elements
+        // Prepare download file list
+        prepareDownloadFileList();
+        if (downloadFiles.isEmpty()) {
+            Toast.makeText(getContext(), R.string.error_preparing_download, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Update UI for download start
         downloadButton.setEnabled(false);
-        downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);  // Visual feedback that button is disabled
+        downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
+        retryButton.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.VISIBLE);
-        statusText.setText(downloadMode == DownloadMode.TTS ? R.string.download_progress_tts : R.string.downloading);
+        fileListTitle.setVisibility(View.VISIBLE);
+        fileRecyclerView.setVisibility(View.VISIBLE);
+        overallProgressText.setVisibility(View.VISIBLE);
+        pauseResumeButton.setVisibility(View.VISIBLE);
+        overallProgressText.setText(R.string.overall_progress);
+        fileListTitle.setText(R.string.model_files);
+        pauseResumeButton.setText(R.string.pause);
+        
+        // Reset pause state
+        isPaused.set(false);
 
+        // Setup the files in the adapter
+        // Convert DownloadFileInfo objects to FileDownloadStatus objects
+        List<FileDownloadAdapter.FileDownloadStatus> fileStatusList = new ArrayList<>();
+        for (AppConstants.DownloadFileInfo fileInfo : downloadFiles) {
+            fileStatusList.add(new FileDownloadAdapter.FileDownloadStatus(fileInfo));
+        }
+        fileAdapter.setFiles(fileStatusList);
+        
+        // Display initial status
+        statusText.setText(downloadMode == DownloadMode.TTS ? R.string.download_progress_tts : R.string.downloading);
+        
+        // Start download task
         downloadTask = new DownloadTask(modelDir);
-        String[] urls = downloadMode == DownloadMode.TTS ? 
-            AppConstants.TTS_MODEL_DOWNLOAD_URLS : 
-            AppConstants.MODEL_DOWNLOAD_URLS;
-        downloadTask.execute(urls);
+        downloadTask.execute();
+    }
+    
+    private void prepareDownloadFileList() {
+        downloadFiles.clear();
+        
+        if (downloadMode == DownloadMode.TTS) {
+            // Add TTS model files to the list
+            for (int i = 0; i < AppConstants.TTS_MODEL_DOWNLOAD_URLS.length; i += 2) {
+                String url = AppConstants.TTS_MODEL_DOWNLOAD_URLS[i]; // Use primary URL
+                String fileName = getFileNameFromUrl(url);
+                downloadFiles.add(new AppConstants.DownloadFileInfo(
+                    url,
+                    fileName,
+                    "TTS Model: " + fileName,
+                    AppConstants.FILE_TYPE_TTS_MODEL,
+                    estimateFileSize(url)
+                ));
+            }
+        } else {
+            // Add LLM model files to the list
+            // First, add tokenizer (small file)
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                AppConstants.MODEL_DOWNLOAD_URLS[0],
+                "tokenizer.bin",
+                "Tokenizer",
+                AppConstants.FILE_TYPE_TOKENIZER,
+                5 * 1024 * 1024 // Estimate 5MB for tokenizer
+            ));
+            
+            // Then add the main model file
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                AppConstants.MODEL_DOWNLOAD_URLS[1], // Use first model URL
+                AppConstants.BREEZE_MODEL_FILE,
+                "LLM Model",
+                AppConstants.FILE_TYPE_LLM,
+                4 * 1024 * 1024 * 1024L // Estimate 4GB for model
+            ));
+        }
+    }
+    
+    private String getFileNameFromUrl(String url) {
+        String[] parts = url.split("/");
+        String lastPart = parts[parts.length - 1];
+        int queryIndex = lastPart.indexOf('?');
+        return queryIndex > 0 ? lastPart.substring(0, queryIndex) : lastPart;
+    }
+    
+    private long estimateFileSize(String url) {
+        // This is just an estimate based on known file sizes
+        // In a production app, you might want to do a HEAD request to get the actual size
+        if (url.contains("tokenizer")) {
+            return 5 * 1024 * 1024; // 5MB for tokenizer
+        } else if (url.contains("tts")) {
+            return 40 * 1024 * 1024; // 40MB for TTS models
+        } else {
+            return 4 * 1024 * 1024 * 1024L; // 4GB for LLM models
+        }
     }
 
-    private class DownloadTask extends AsyncTask<String[], Integer, Boolean> {
+    private class DownloadTask extends AsyncTask<Void, Integer, Boolean> {
         private Exception error;
         private final File modelDir;
-        private int totalFiles = 0;
-        private int currentFileIndex = 0;
         private volatile boolean isCancelled = false;
 
         public DownloadTask(File modelDir) {
             this.modelDir = modelDir;
         }
 
+        public boolean isDownloadCancelled() {
+            return super.isCancelled() || isCancelled;
+        }
+        
         @Override
-        protected Boolean doInBackground(String[]... params) {
-            String[] urls = params[0];
-            totalFiles = urls.length;
+        protected Boolean doInBackground(Void... params) {
+            boolean allFilesDownloaded = true;
             
-            if (downloadMode == DownloadMode.TTS) {
-                // Download all TTS model files
-                for (int i = 0; i < urls.length; i += 2) {  // Process in pairs (main URL + mirror)
-                    String fileName = getFileNameFromUrl(urls[i]);
-                    if (!tryDownloadFromUrl(urls[i], fileName) && !tryDownloadFromUrl(urls[i + 1], fileName)) {
-                        return false;
+            // Process each file in the download list
+            for (int i = 0; i < downloadFiles.size(); i++) {
+                AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
+                final int fileIndex = i;
+                
+                // Update UI to show which file is being downloaded
+                mainHandler.post(() -> {
+                    statusText.setText(getContext().getString(R.string.downloading_file, fileInfo.displayName));
+                    fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_IN_PROGRESS);
+                });
+                
+                if (!downloadFile(fileInfo, fileIndex)) {
+                    allFilesDownloaded = false;
+                    
+                    // Try alternative URL if available (for LLM models)
+                    if (downloadMode == DownloadMode.LLM && AppConstants.FILE_TYPE_LLM.equals(fileInfo.fileType)) {
+                        // Loop through alternative URLs
+                        for (int j = 2; j < AppConstants.MODEL_DOWNLOAD_URLS.length; j++) {
+                            AppConstants.DownloadFileInfo alternativeFile = new AppConstants.DownloadFileInfo(
+                                AppConstants.MODEL_DOWNLOAD_URLS[j],
+                                fileInfo.fileName,
+                                fileInfo.displayName + " (Alternative Source)",
+                                fileInfo.fileType,
+                                fileInfo.fileSize
+                            );
+                            
+                            if (downloadFile(alternativeFile, fileIndex)) {
+                                allFilesDownloaded = true;
+                                break;
+                            }
+                            
+                            if (isCancelled()) {
+                                return false;
+                            }
+                        }
                     }
-                    if (isCancelled()) {
-                        return false;
+                    
+                    // If still unsuccessful, mark as failed and continue to next file
+                    if (!allFilesDownloaded) {
+                        final String errorMsg = error != null ? error.getMessage() : "Unknown error";
+                        mainHandler.post(() -> {
+                            fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_FAILED, errorMsg);
+                        });
                     }
-                    currentFileIndex += 2;
-                }
-                return true;
-            } else {
-                // Download LLM files
-                // Download tokenizer first (small file)
-                if (!tryDownloadFromUrl(urls[0], "tokenizer.bin")) {
-                    return false;
                 }
                 
                 if (isCancelled()) {
                     return false;
                 }
-
-                // For the model file, try multiple URLs
-                for (int i = 1; i < urls.length; i++) {
-                    if (tryDownloadFromUrl(urls[i], AppConstants.BREEZE_MODEL_FILE)) {
-                        return true;
-                    }
-                    if (isCancelled()) {
-                        return false;
-                    }
-                }
             }
             
-            return false;
+            return allFilesDownloaded;
         }
-
-        private String getFileNameFromUrl(String url) {
-            String[] parts = url.split("/");
-            String lastPart = parts[parts.length - 1];
-            int queryIndex = lastPart.indexOf('?');
-            return queryIndex > 0 ? lastPart.substring(0, queryIndex) : lastPart;
-        }
-
-        private boolean tryDownloadFromUrl(String urlString, String fileName) {
+        
+        private boolean downloadFile(AppConstants.DownloadFileInfo fileInfo, int fileIndex) {
             InputStream input = null;
             FileOutputStream output = null;
             HttpURLConnection connection = null;
@@ -228,32 +385,36 @@ public class ModelDownloadDialog extends Dialog {
             try {
                 // Check available storage space first
                 long availableSpace = getContext().getFilesDir().getFreeSpace() / (1024 * 1024); // Convert to MB
-                long requiredSpace = downloadMode == DownloadMode.TTS ? 125 : AppConstants.MODEL_DOWNLOAD_MIN_SPACE_MB;
+                long requiredSpace = Math.max(fileInfo.fileSize / (1024 * 1024), 100); // At least 100MB or file size in MB
                 
                 Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
-                    urlString, fileName, availableSpace, requiredSpace));
+                    fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
 
                 if (availableSpace < requiredSpace) {
-                    if (downloadMode == DownloadMode.TTS) {
-                        throw new IOException("Insufficient storage space. Need " + requiredSpace + "MB free.");
-                    } else {
-                        int requiredGB = (int) Math.ceil(requiredSpace / 1024.0);
-                        throw new IOException("Insufficient storage space. Need " + requiredGB + "GB free.");
-                    }
+                    throw new IOException("Insufficient storage space. Need " + requiredSpace + "MB free.");
                 }
 
                 // Setup files
-                File outputFile = new File(modelDir, fileName);
-                File tempFile = new File(modelDir, fileName + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
+                File outputFile = new File(modelDir, fileInfo.fileName);
+                File tempFile = new File(modelDir, fileInfo.fileName + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
                 long existingLength = 0;
 
                 // Check for existing temporary file
                 if (tempFile.exists()) {
                     existingLength = tempFile.length();
                     Log.i(TAG, "Found existing partial download: " + existingLength + " bytes");
+                    
+                    // Update UI with existing progress
+                    if (fileInfo.fileSize > 0 && existingLength > 0) {
+                        final int progress = (int) (existingLength * 100 / fileInfo.fileSize);
+                        final long downloadedBytes = existingLength;
+                        mainHandler.post(() -> {
+                            fileAdapter.updateFileProgress(fileIndex, progress, downloadedBytes);
+                        });
+                    }
                 }
 
-                URL url = new URL(urlString);
+                URL url = new URL(fileInfo.url);
                 connection = (HttpURLConnection) url.openConnection();
                 
                 // Set all required headers
@@ -264,12 +425,14 @@ public class ModelDownloadDialog extends Dialog {
                 // Add Range header if we have partial file
                 if (existingLength > 0) {
                     connection.setRequestProperty("Range", "bytes=" + existingLength + "-");
+                    Log.d(TAG, "Resuming download from byte " + existingLength);
                 }
                 
                 // Set timeouts
                 connection.setConnectTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
                 connection.setReadTimeout((int) AppConstants.MODEL_DOWNLOAD_TIMEOUT_MS);
                 
+                // Connect to the URL
                 connection.connect();
                 
                 // Handle redirects
@@ -280,7 +443,7 @@ public class ModelDownloadDialog extends Dialog {
                     
                     String redirectUrl = connection.getHeaderField("Location");
                     if (redirectUrl == null) {
-                        Log.w(TAG, "Redirect URL is null for " + urlString);
+                        Log.w(TAG, "Redirect URL is null for " + fileInfo.url);
                         return false;
                     }
                     
@@ -321,7 +484,7 @@ public class ModelDownloadDialog extends Dialog {
                         errorMessage = e.getMessage();
                     }
                     Log.w(TAG, String.format("Failed to download from %s: HTTP %d %s", 
-                        urlString, responseCode, errorMessage));
+                        fileInfo.url, responseCode, errorMessage));
                     return false;
                 }
 
@@ -335,6 +498,18 @@ public class ModelDownloadDialog extends Dialog {
                             fileLength = Long.parseLong(parts[1]);
                         }
                     }
+                } else if (fileLength <= 0) {
+                    // If content length is not provided, use the estimated size
+                    fileLength = fileInfo.fileSize;
+                }
+                
+                // Update file size in adapter if we get a better estimate
+                if (fileLength > 0 && fileLength != fileInfo.fileSize) {
+                    final long updatedSize = fileLength;
+                    mainHandler.post(() -> {
+                        int progressPercent = (int) (updatedSize * 100 / fileInfo.fileSize);
+                        fileAdapter.updateFileProgress(fileIndex, progressPercent, updatedSize);
+                    });
                 }
                 
                 input = connection.getInputStream();
@@ -346,11 +521,45 @@ public class ModelDownloadDialog extends Dialog {
                 long total = existingLength;
                 int count;
                 int lastProgress = 0;
+                long lastUIUpdateTime = System.currentTimeMillis();
 
                 while ((count = input.read(data)) != -1) {
+                    // Handle pause/resume
+                    while (isPaused.get() && !isCancelled()) {
+                        try {
+                            // Update UI to show paused status periodically
+                            long currentTime = System.currentTimeMillis();
+                            if (currentTime - lastUIUpdateTime > 500) { // Update UI every 500ms while paused
+                                lastUIUpdateTime = currentTime;
+                                final int fileProgress = (int) (total * 100 / fileLength);
+                                final long downloadedBytes = total;
+                                mainHandler.post(() -> {
+                                    fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_PAUSED);
+                                    fileAdapter.updateFileProgress(fileIndex, fileProgress, downloadedBytes);
+                                    updateOverallProgress();
+                                });
+                            }
+                            
+                            synchronized (downloadTask) {
+                                downloadTask.wait(500); // Wait until resumed or every 500ms to check for cancel
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                    
+                    // If just resumed, update status to downloading
+                    if (!isPaused.get() && !isDownloadCancelled()) {
+                        mainHandler.post(() -> {
+                            fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_IN_PROGRESS);
+                        });
+                    }
+                    
                     if (isCancelled()) {
                         input.close();
                         output.close();
+                        Log.d(TAG, "Download cancelled for file " + fileInfo.fileName);
                         // Don't delete temp file to allow resume
                         return false;
                     }
@@ -359,20 +568,20 @@ public class ModelDownloadDialog extends Dialog {
                     output.write(data, 0, count);
 
                     if (fileLength > 0) {
-                        // Calculate combined progress across all files
                         int fileProgress = (int) (total * 100 / fileLength);
-                        int overallProgress;
-                        if (downloadMode == DownloadMode.TTS) {
-                            // For TTS, we have 3 pairs of URLs (primary + mirror), so divide currentFileIndex by 2
-                            overallProgress = ((currentFileIndex / 2) * 100 + fileProgress) / (totalFiles / 2);
-                        } else {
-                            overallProgress = (currentFileIndex * 100 + fileProgress) / totalFiles;
-                        }
-                        // Ensure progress doesn't exceed 100%
-                        overallProgress = Math.min(overallProgress, 100);
-                        if (overallProgress > lastProgress + AppConstants.MODEL_DOWNLOAD_PROGRESS_UPDATE_INTERVAL) {
-                            publishProgress(overallProgress);
-                            lastProgress = overallProgress;
+                        long currentTime = System.currentTimeMillis();
+                        
+                        // Update progress in UI if it has changed significantly or enough time has passed
+                        if (fileProgress > lastProgress || currentTime - lastUIUpdateTime > 1000) {
+                            final int progress = fileProgress;
+                            final long downloadedBytes = total;
+                            mainHandler.post(() -> {
+                                fileAdapter.updateFileProgress(fileIndex, progress, downloadedBytes);
+                                // Also update overall progress
+                                updateOverallProgress();
+                            });
+                            lastProgress = fileProgress;
+                            lastUIUpdateTime = currentTime;
                         }
                     }
                 }
@@ -384,8 +593,8 @@ public class ModelDownloadDialog extends Dialog {
                 input = null;
 
                 // Verify the downloaded file
-                if (!tempFile.exists() || tempFile.length() != fileLength) {
-                    throw new IOException("Download incomplete or file size mismatch");
+                if (!tempFile.exists()) {
+                    throw new IOException("Download failed - temporary file missing");
                 }
 
                 // Move temp file to final location
@@ -393,13 +602,19 @@ public class ModelDownloadDialog extends Dialog {
                     throw new IOException("Failed to move temporary file to final location");
                 }
 
+                // Update file status to complete
+                mainHandler.post(() -> {
+                    fileAdapter.updateFileStatus(fileIndex, AppConstants.DOWNLOAD_STATUS_COMPLETED);
+                    updateOverallProgress();
+                });
+
                 // Log successful download
-                Log.i(TAG, "Successfully downloaded " + fileName + " from " + urlString);
+                Log.i(TAG, "Successfully downloaded " + fileInfo.fileName + " from " + fileInfo.url);
                 return true;
 
             } catch (Exception e) {
                 error = e;
-                Log.e(TAG, "Error downloading from " + urlString + ": " + e.getMessage(), e);
+                Log.e(TAG, "Error downloading from " + fileInfo.url + ": " + e.getMessage(), e);
                 return false;
             } finally {
                 try {
@@ -411,13 +626,59 @@ public class ModelDownloadDialog extends Dialog {
             }
         }
 
+        /**
+         * Updates the overall progress in the UI based on individual file progress
+         */
+        private void updateOverallProgress() {
+            int totalProgress = 0;
+            long totalSize = 0;
+            long totalDownloaded = 0;
+            boolean allComplete = true;
+            
+            List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
+            for (FileDownloadAdapter.FileDownloadStatus file : files) {
+                totalProgress += file.getProgress();
+                totalSize += file.getTotalBytes();
+                totalDownloaded += file.getDownloadedBytes();
+                
+                if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
+                    allComplete = false;
+                }
+            }
+            
+            // Calculate average progress
+            int overallProgress = files.isEmpty() ? 0 : totalProgress / files.size();
+            progressBar.setProgress(overallProgress);
+            
+            // Update status message based on download state
+            if (isPaused.get()) {
+                statusText.setText(R.string.download_paused);
+            } else if (allComplete) {
+                statusText.setText(R.string.download_complete);
+            } else {
+                // Format downloaded/total size
+                String downloadedStr = formatFileSize(totalDownloaded);
+                String totalStr = formatFileSize(totalSize);
+                statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
+            }
+        }
+        
+        /**
+         * Formats file size in bytes to human-readable format
+         */
+        private String formatFileSize(long size) {
+            if (size <= 0) return "0 B";
+            
+            final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
+            int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+            return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+        }
+
         @Override
         protected void onProgressUpdate(Integer... values) {
             progressBar.setProgress(values[0]);
-            String progressText = downloadMode == DownloadMode.TTS ?
-                getContext().getString(R.string.download_progress_tts, values[0]) :
-                getContext().getString(R.string.download_progress, values[0]);
-            statusText.setText(progressText);
+            // We don't need to update statusText here as it's handled by updateOverallProgress
+            
             // Ensure button stays disabled during download
             downloadButton.setEnabled(false);
             downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
@@ -425,18 +686,24 @@ public class ModelDownloadDialog extends Dialog {
 
         @Override
         protected void onPostExecute(Boolean success) {
+            // Hide pause/resume button when download is complete
+            pauseResumeButton.setVisibility(View.GONE);
+            
             if (success) {
-                statusText.setText(downloadMode == DownloadMode.TTS ? 
-                    R.string.download_complete_tts : 
-                    R.string.download_complete);
+                statusText.setText(R.string.download_complete);
+                progressBar.setProgress(100);
+                
                 // Keep button disabled on success since download is complete
                 downloadButton.setEnabled(false);
                 downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
-                Toast.makeText(getContext(), 
-                    downloadMode == DownloadMode.TTS ? 
-                        R.string.download_complete_tts : 
-                        R.string.download_complete, 
-                    Toast.LENGTH_SHORT).show();
+                retryButton.setVisibility(View.GONE);
+                
+                // Update all file statuses to completed (in case any were missed)
+                for (int i = 0; i < fileAdapter.getItemCount(); i++) {
+                    fileAdapter.updateFileStatus(i, AppConstants.DOWNLOAD_STATUS_COMPLETED);
+                }
+                
+                Toast.makeText(getContext(), R.string.download_complete, Toast.LENGTH_SHORT).show();
                 
                 // Ensure we recheck system requirements before dismissing
                 if (getContext() instanceof android.app.Activity) {
@@ -460,30 +727,41 @@ public class ModelDownloadDialog extends Dialog {
                 }
                 
                 // Dismiss after a short delay to show completion
-                mainHandler.postDelayed(() -> dismiss(), 1000);
+                mainHandler.postDelayed(() -> dismiss(), 2000);
             } else {
                 // Only re-enable button if download failed
                 downloadButton.setEnabled(true);
                 downloadButton.setAlpha(AppConstants.ENABLED_ALPHA);
+                
+                // Show retry button when download fails
+                retryButton.setVisibility(View.VISIBLE);
+                
+                // Check if any files were successfully downloaded
+                boolean anySuccess = false;
+                for (FileDownloadAdapter.FileDownloadStatus file : fileAdapter.getFiles()) {
+                    if (file.getStatus() == AppConstants.DOWNLOAD_STATUS_COMPLETED) {
+                        anySuccess = true;
+                        break;
+                    }
+                }
+                
+                // Display appropriate error message
                 String errorMessage = error != null ? 
                     error.getMessage() : 
-                    getContext().getString(
-                        downloadMode == DownloadMode.TTS ? 
-                            R.string.error_all_download_attempts_failed_tts : 
-                            R.string.error_all_download_attempts_failed
-                    );
-                statusText.setText(getContext().getString(
-                    downloadMode == DownloadMode.TTS ? 
-                        R.string.download_failed_tts : 
-                        R.string.download_failed, 
-                    errorMessage));
-                Toast.makeText(getContext(), 
-                    getContext().getString(
-                        downloadMode == DownloadMode.TTS ? 
-                            R.string.error_downloading_tts_model : 
-                            R.string.error_downloading_model, 
-                        errorMessage), 
-                    Toast.LENGTH_LONG).show();
+                    getContext().getString(R.string.error_all_download_attempts_failed);
+                
+                if (downloadMode == DownloadMode.TTS) {
+                    statusText.setText(getContext().getString(R.string.download_failed_tts, ""));
+                } else {
+                    statusText.setText(getContext().getString(R.string.download_failed, ""));
+                }
+                
+                // Show toast with more details
+                String toastMessage = anySuccess ?
+                    getContext().getString(R.string.download_partially_complete) :
+                    getContext().getString(R.string.error_downloading_model, errorMessage);
+                    
+                Toast.makeText(getContext(), toastMessage, Toast.LENGTH_LONG).show();
             }
         }
     }
