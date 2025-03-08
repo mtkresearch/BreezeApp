@@ -74,7 +74,26 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
             this.errorMessage = errorMessage;
         }
 
+        public String getStatusText(android.content.Context context) {
+            switch (status) {
+                case AppConstants.DOWNLOAD_STATUS_PENDING:
+                    return context.getString(R.string.download_status_pending);
+                case AppConstants.DOWNLOAD_STATUS_IN_PROGRESS:
+                    return context.getString(R.string.download_status_in_progress, progress);
+                case AppConstants.DOWNLOAD_STATUS_PAUSED:
+                    return context.getString(R.string.download_status_paused);
+                case AppConstants.DOWNLOAD_STATUS_COMPLETED:
+                    return context.getString(R.string.download_status_completed);
+                case AppConstants.DOWNLOAD_STATUS_FAILED:
+                    return context.getString(R.string.download_status_failed);
+                default:
+                    return "";
+            }
+        }
+        
+        // For backward compatibility
         public String getStatusText() {
+            // Fallback to hardcoded strings if context is not available
             switch (status) {
                 case AppConstants.DOWNLOAD_STATUS_PENDING:
                     return "Pending";
@@ -176,13 +195,13 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
         if (file.getStatus() == AppConstants.DOWNLOAD_STATUS_IN_PROGRESS && file.getDownloadedBytes() > 0) {
             // Show downloaded / total size
             String formattedDownloaded = Formatter.formatFileSize(context, file.getDownloadedBytes());
-            holder.fileSize.setText(formattedDownloaded + " / " + formattedSize);
+            holder.fileSize.setText(context.getString(R.string.download_size_format, formattedDownloaded, formattedSize));
         } else {
             holder.fileSize.setText(formattedSize);
         }
         
         // Set the status text and color based on status
-        holder.downloadStatus.setText(file.getStatusText());
+        holder.downloadStatus.setText(file.getStatusText(context));
         int textColor;
         switch (file.getStatus()) {
             case AppConstants.DOWNLOAD_STATUS_COMPLETED:

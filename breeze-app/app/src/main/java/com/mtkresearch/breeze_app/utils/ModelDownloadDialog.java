@@ -331,17 +331,17 @@ public class ModelDownloadDialog extends Dialog {
             // Then add the main model file 
             String modelUrl = AppConstants.MODEL_DOWNLOAD_URLS[1];
             String modelFileName = AppConstants.BREEZE_MODEL_FILE;
-            String modelDisplayName = "Breeze Tiny Instruct v0.1 (2048)"; // More user-friendly name
+            String modelDisplayName = AppConstants.BREEZE_MODEL_DISPLAY_NAME; // Use constant
             
-            // Use a temporary size - will be updated asynchronously
-            long tempModelSize = 0L;
+            // Dynamically get file size from server
+            long modelFileSize = estimateFileSize(modelUrl);
             
             AppConstants.DownloadFileInfo modelInfo = new AppConstants.DownloadFileInfo(
                 modelUrl,
                 modelFileName,
                 modelDisplayName,
                 AppConstants.FILE_TYPE_LLM,
-                tempModelSize
+                modelFileSize
             );
             downloadFiles.add(modelInfo);
             
@@ -473,17 +473,16 @@ public class ModelDownloadDialog extends Dialog {
      * Format file size to human-readable format
      */
     private String formatFileSize(long size) {
-        if (size <= 0) return "Unknown size";
+        if (size <= 0) return getContext().getString(R.string.unknown_size);
         
-        final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
         // Use 1000 instead of 1024 for decimal SI units instead of binary units
         int digitGroups = (int) (Math.log10(size) / Math.log10(1000));
         
         // Keep digitGroups within the units array bounds
-        digitGroups = Math.min(digitGroups, units.length - 1);
+        digitGroups = Math.min(digitGroups, AppConstants.FILE_SIZE_UNITS.length - 1);
         
         // Use 1000 for division - SI decimal units
-        return String.format("%.2f %s", size / Math.pow(1000, digitGroups), units[digitGroups]);
+        return String.format("%.2f %s", size / Math.pow(1000, digitGroups), AppConstants.FILE_SIZE_UNITS[digitGroups]);
     }
     
     private String getFileNameFromUrl(String url) {
