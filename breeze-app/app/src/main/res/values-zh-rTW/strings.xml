@@ -297,4 +297,13 @@
 
     <string name="retry">重試</string>
 
+    <!-- File download status strings -->
+    <string name="download_status_pending">等待中</string>
+    <string name="download_status_in_progress">%1$d%%</string>
+    <string name="download_status_paused">已暫停</string>
+    <string name="download_status_completed">已完成</string>
+    <string name="download_status_failed">失敗</string>
+    <string name="download_size_format">%1$s / %2$s</string>
+    <string name="unknown_size">未知大小</string>
+
 </resources>

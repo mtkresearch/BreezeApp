@@ -53,6 +53,7 @@ public class AppConstants {
     // Model Files and Paths
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
+    public static final String BREEZE_MODEL_DISPLAY_NAME = "Breeze Tiny Instruct v0.1 (2048)";
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";  // Legacy location
     public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
     public static final String LLM_TOKENIZER_FILE = "tokenizer.bin";  // Add tokenizer filename constant
@@ -345,6 +346,9 @@ public class AppConstants {
 
     // Logging control for downloads
     public static final boolean ENABLE_DOWNLOAD_VERBOSE_LOGGING = false; // Set to true for debug builds, false for release
+    
+    // File size units
+    public static final String[] FILE_SIZE_UNITS = { "B", "KB", "MB", "GB", "TB" };
     
     // Optimize buffer size for large files (8MB buffer)
     public static final int MODEL_DOWNLOAD_BUFFER_SIZE = 8 * 1024 * 1024;
