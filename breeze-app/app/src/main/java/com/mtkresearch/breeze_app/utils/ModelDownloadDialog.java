@@ -256,6 +256,7 @@ public class ModelDownloadDialog extends Dialog {
         // Update UI for download start
         downloadButton.setEnabled(false);
         downloadButton.setAlpha(AppConstants.DISABLED_ALPHA);
+        downloadButton.setVisibility(View.GONE); // Hide the download button completely
         retryButton.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
         statusText.setVisibility(View.VISIBLE);
@@ -360,6 +361,43 @@ public class ModelDownloadDialog extends Dialog {
             
             // Process each file in the download list
             for (int i = 0; i < downloadFiles.size(); i++) {
+                // Skip detailed logging if verbose logging is disabled
+                if (!AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                    // Just get the file size without logging
+                    AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
+                    long fileSize = getFileSizeFromHeadRequest(fileInfo.url);
+                    
+                    // If we couldn't get size from server, use fallback estimates
+                    if (fileSize <= 0) {
+                        if (fileInfo.url.contains("tokenizer")) {
+                            fileSize = 2_500_000L; // ~2.5MB estimate
+                        } else if (fileInfo.url.contains("breeze") && fileInfo.url.contains(".pte")) {
+                            fileSize = 6_500_000_000L; // ~6.5GB estimate
+                        } else {
+                            fileSize = 50_000_000L; // 50MB default estimate
+                        }
+                    }
+                    
+                    // Create a new DownloadFileInfo with the updated size and replace the old one
+                    final int index = i;
+                    final long updatedSize = fileSize;
+                    
+                    // Create a new object with the updated size
+                    AppConstants.DownloadFileInfo updatedFileInfo = new AppConstants.DownloadFileInfo(
+                        fileInfo.url,
+                        fileInfo.fileName,
+                        fileInfo.displayName,
+                        fileInfo.fileType,
+                        updatedSize
+                    );
+                    
+                    // Replace the old object with the new one at the same index
+                    downloadFiles.set(index, updatedFileInfo);
+                    totalSize += updatedSize;
+                    continue;
+                }
+                
+                // Full verbose logging below this point
                 AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
                 
                 // Get size from server via HEAD request
@@ -413,12 +451,15 @@ public class ModelDownloadDialog extends Dialog {
                 if (messageText != null && downloadMode == DownloadMode.LLM) {
                     String message = getContext().getString(R.string.model_missing_message, formattedTotalSize);
                     messageText.setText(message);
-                    Log.d(TAG, "Updated dialog message with size from server: " + formattedTotalSize + 
-                          " (" + finalTotalSize + " bytes)");
+                    
+                    if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                        Log.d(TAG, "Updated dialog message with size from server: " + formattedTotalSize + 
+                              " (" + finalTotalSize + " bytes)");
+                    }
                 }
                 
                 // Log for debugging
-                if (downloadFiles.size() >= 2) {
+                if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING && downloadFiles.size() >= 2) {
                     Log.d(TAG, "Updated file sizes - Tokenizer: " + formatFileSize(downloadFiles.get(0).fileSize) + 
                           ", Model: " + formatFileSize(downloadFiles.get(1).fileSize) + 
                           ", Total: " + formattedTotalSize);
@@ -642,7 +683,10 @@ public class ModelDownloadDialog extends Dialog {
             try {
                 // Check for cancellation at the start
                 if (isDownloadCancelled()) {
-                    Log.d(TAG, "Download cancelled before starting file: " + fileInfo.fileName);
+                    // Only log if verbose logging is enabled
+                    if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                        Log.d(TAG, "Download cancelled before starting file: " + fileInfo.fileName);
+                    }
                     return false;
                 }
                 
@@ -650,8 +694,11 @@ public class ModelDownloadDialog extends Dialog {
                 long availableSpace = getContext().getFilesDir().getFreeSpace() / (1024 * 1024); // Convert to MB
                 long requiredSpace = Math.max(fileInfo.fileSize / (1024 * 1024), 100); // At least 100MB or file size in MB
                 
-                Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
-                    fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
+                // Only log if verbose logging is enabled
+                if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                    Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
+                        fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
+                }
 
                 if (availableSpace < requiredSpace) {
                     throw new IOException("Insufficient storage space. Need " + requiredSpace + "MB free.");
@@ -664,7 +711,10 @@ public class ModelDownloadDialog extends Dialog {
 
                 // Check for cancellation before network operations
                 if (isDownloadCancelled()) {
-                    Log.d(TAG, "Download cancelled before establishing connection: " + fileInfo.fileName);
+                    // Only log if verbose logging is enabled
+                    if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                        Log.d(TAG, "Download cancelled before establishing connection: " + fileInfo.fileName);
+                    }
                     return false;
                 }
 
@@ -929,6 +979,50 @@ public class ModelDownloadDialog extends Dialog {
          * Updates the overall progress in the UI based on individual file progress
          */
         private void updateOverallProgress() {
+            // Skip detailed logging if verbose logging is disabled
+            if (!AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
+                // Still calculate progress but skip logging
+                long totalSize = 0;
+                long totalDownloaded = 0;
+                boolean allComplete = true;
+                
+                List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
+                for (int i = 0; i < files.size(); i++) {
+                    FileDownloadAdapter.FileDownloadStatus file = files.get(i);
+                    long fileSize = file.getTotalBytes();
+                    long fileDownloaded = file.getDownloadedBytes();
+                    
+                    totalSize += fileSize;
+                    totalDownloaded += fileDownloaded;
+                    
+                    if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
+                        allComplete = false;
+                    }
+                }
+                
+                // Calculate overall progress based on total downloaded bytes and total size
+                int overallProgress = 0;
+                if (totalSize > 0) {
+                    overallProgress = (int) (totalDownloaded * 100 / totalSize);
+                }
+                
+                progressBar.setProgress(overallProgress);
+                
+                // Update status message based on download state
+                if (isPaused.get()) {
+                    statusText.setText(R.string.download_paused);
+                } else if (allComplete) {
+                    statusText.setText(R.string.download_complete);
+                } else {
+                    // Format downloaded/total size
+                    String downloadedStr = ModelDownloadDialog.this.formatFileSize(totalDownloaded);
+                    String totalStr = ModelDownloadDialog.this.formatFileSize(totalSize);
+                    statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
+                }
+                return;
+            }
+            
+            // Full verbose logging below this point
             long totalSize = 0;
             long totalDownloaded = 0;
             boolean allComplete = true;
@@ -983,8 +1077,6 @@ public class ModelDownloadDialog extends Dialog {
             } else {
                 // Format downloaded/total size
                 String downloadedStr = ModelDownloadDialog.this.formatFileSize(totalDownloaded);
-                
-                // Always use the calculated total size - no hardcoded values
                 String totalStr = ModelDownloadDialog.this.formatFileSize(totalSize);
                 
                 // Log the exact values that will be displayed
