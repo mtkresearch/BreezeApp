@@ -338,11 +338,14 @@ public class AppConstants {
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {
-        {"User-Agent", "BreezeApp/1.0"},
-        {"Accept", "application/octet-stream"},
+        {"User-Agent", "Mozilla/5.0 (Android) BreezeApp"},
+        {"Accept", "*/*"},
         {"Connection", "keep-alive"}
     };
 
+    // Logging control for downloads
+    public static final boolean ENABLE_DOWNLOAD_VERBOSE_LOGGING = false; // Set to true for debug builds, false for release
+    
     // Optimize buffer size for large files (8MB buffer)
     public static final int MODEL_DOWNLOAD_BUFFER_SIZE = 8 * 1024 * 1024;
     
