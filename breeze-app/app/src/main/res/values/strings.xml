@@ -211,6 +211,15 @@
     <string name="insufficient_storage_for_download">Insufficient storage space. Please free up at least %1$dGB.</string>
     <string name="insufficient_storage_for_download_mb">Insufficient storage space. Please free up at least %1$dMB.</string>
 
+    <!-- File download status strings -->
+    <string name="download_status_pending">Pending</string>
+    <string name="download_status_in_progress">%1$d%%</string>
+    <string name="download_status_paused">Paused</string>
+    <string name="download_status_completed">Completed</string>
+    <string name="download_status_failed">Failed</string>
+    <string name="download_size_format">%1$s / %2$s</string>
+    <string name="unknown_size">Unknown size</string>
+
     <!-- binding.modelNameText.setText -->
     <string name="unknown_model">Unknown model</string>
     <string name="model_error">Model error</string>
