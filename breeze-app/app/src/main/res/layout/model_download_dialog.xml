@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
@@ -22,6 +24,16 @@
         android:text="@string/model_missing_message"
         android:textSize="16sp"
         android:layout_marginBottom="16dp"/>
+    
+    <!-- Overall Progress Section -->
+    <TextView
+        android:id="@+id/overallProgressLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Overall Progress"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:visibility="gone"/>
 
     <ProgressBar
         android:id="@+id/progressBar"
@@ -38,9 +50,31 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="14sp"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="4dp"
         android:layout_marginBottom="16dp"
         android:visibility="gone"/>
+    
+    <!-- Model Files Section -->
+    <TextView
+        android:id="@+id/filesLabel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Model Files"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:layout_marginTop="8dp"
+        android:visibility="gone"/>
+        
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/filesList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp"
+        android:maxHeight="200dp"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        android:visibility="gone"
+        tools:listitem="@layout/item_download_file"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -59,10 +93,25 @@
             style="?android:attr/buttonBarButtonStyle"/>
 
         <Button
+            android:id="@+id/retryButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/retry"
+            android:visibility="gone"/>
+
+        <Button
             android:id="@+id/downloadButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/download"/>
+
+        <Button
+            android:id="@+id/pauseResumeButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pause"
+            android:layout_marginStart="8dp"
+            android:visibility="gone"/>
 
     </LinearLayout>
 
