@@ -169,8 +169,9 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
         
         holder.fileName.setText(file.getFileInfo().displayName);
         
-        // Format file size as human-readable (e.g., 5.8 GB)
-        String formattedSize = Formatter.formatFileSize(context, file.getFileInfo().fileSize);
+        // Use the actual file size if available, otherwise use the estimated size
+        long sizeToDisplay = file.getTotalBytes() > 0 ? file.getTotalBytes() : file.getFileInfo().fileSize;
+        String formattedSize = Formatter.formatFileSize(context, sizeToDisplay);
         
         if (file.getStatus() == AppConstants.DOWNLOAD_STATUS_IN_PROGRESS && file.getDownloadedBytes() > 0) {
             // Show downloaded / total size

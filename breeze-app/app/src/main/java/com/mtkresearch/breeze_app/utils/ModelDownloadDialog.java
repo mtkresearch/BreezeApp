@@ -297,6 +297,21 @@ public class ModelDownloadDialog extends Dialog {
         }
     }
     
+    /**
+     * Format file size to human-readable format
+     */
+    private String formatFileSize(long size) {
+        if (size <= 0) return "Unknown size";
+        
+        final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        
+        // Keep digitGroups within the units array bounds
+        digitGroups = Math.min(digitGroups, units.length - 1);
+        
+        return String.format("%.2f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+    }
+    
     private String getFileNameFromUrl(String url) {
         String[] parts = url.split("/");
         String lastPart = parts[parts.length - 1];
@@ -304,8 +319,21 @@ public class ModelDownloadDialog extends Dialog {
         return queryIndex > 0 ? lastPart.substring(0, queryIndex) : lastPart;
     }
     
+    /**
+     * Estimates or retrieves the file size for a given URL.
+     * First tries to get the size from the server using a HEAD request.
+     * Falls back to approximate sizes if that fails.
+     */
     private long estimateFileSize(String url) {
-        // Return exact file sizes for known files
+        // First try to get the actual file size from server via HEAD request
+        long size = getFileSizeFromHeadRequest(url);
+        if (size > 0) {
+            Log.d(TAG, "Got file size from HEAD request: " + formatFileSize(size) + " for " + url);
+            return size;
+        }
+
+        // Fall back to hardcoded sizes if HEAD request failed
+        Log.d(TAG, "Using hardcoded file size estimate for " + url);
         if (url.contains("tokenizer")) {
             return 2_286_592L; // 2.18MB for tokenizer
         } else if (url.contains("breeze2-vits.onnx")) {
@@ -324,6 +352,44 @@ public class ModelDownloadDialog extends Dialog {
             // Default fallback
             return 4_294_967_296L; // 4GB default estimate
         }
+    }
+    
+    /**
+     * Makes a HEAD request to get the file size from Content-Length header.
+     * @param urlString URL to check
+     * @return file size in bytes, or -1 if unable to determine
+     */
+    private long getFileSizeFromHeadRequest(String urlString) {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(urlString);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("HEAD");
+            connection.setConnectTimeout(3000); // 3 second timeout for quick check
+            connection.setReadTimeout(3000);
+            
+            // Set common headers
+            for (String[] header : AppConstants.DOWNLOAD_HEADERS) {
+                connection.setRequestProperty(header[0], header[1]);
+            }
+            
+            int responseCode = connection.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                long contentLength = connection.getContentLengthLong();
+                if (contentLength > 0) {
+                    return contentLength;
+                }
+            } else {
+                Log.w(TAG, "HEAD request failed with response code: " + responseCode);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to get file size from HEAD request: " + e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        return -1;
     }
 
     private class DownloadTask extends AsyncTask<Void, Integer, Boolean> {
@@ -515,28 +581,37 @@ public class ModelDownloadDialog extends Dialog {
                     if (contentRange != null) {
                         String[] parts = contentRange.split("/");
                         if (parts.length == 2) {
-                            fileLength = Long.parseLong(parts[1]);
+                            try {
+                                fileLength = Long.parseLong(parts[1]);
+                                Log.d(TAG, "Content-Range total size: " + ModelDownloadDialog.this.formatFileSize(fileLength));
+                            } catch (NumberFormatException e) {
+                                Log.e(TAG, "Failed to parse Content-Range: " + contentRange, e);
+                            }
                         }
                     }
-                } else if (fileLength <= 0) {
-                    // If content length is not provided, use the estimated size
-                    fileLength = fileInfo.fileSize;
                 }
                 
-                // Update file size in adapter if we get a better estimate
-                if (fileLength > 0 && fileLength != fileInfo.fileSize) {
+                // Log content length information for debugging
+                Log.d(TAG, String.format("Content-Length: %d, Estimated Size: %d, Resuming: %b", 
+                      fileLength, fileInfo.fileSize, isResuming));
+                
+                // Always update the file size if content length is available
+                if (fileLength > 0) {
                     final long updatedSize = fileLength;
                     final long finalExistingLength = existingLength; // Make existingLength final for lambda
                     Log.d(TAG, "Updating file size for " + fileInfo.fileName + " from " + 
-                          formatFileSize(fileInfo.fileSize) + " to " + formatFileSize(updatedSize));
+                          ModelDownloadDialog.this.formatFileSize(fileInfo.fileSize) + " to " + ModelDownloadDialog.this.formatFileSize(updatedSize));
                     mainHandler.post(() -> {
                         // Use the actual file length for progress calculation
-                        // without modifying the final fileSize field
                         int progressPercent = (int) (finalExistingLength * 100 / updatedSize);
                         fileAdapter.updateFileProgress(fileIndex, progressPercent, finalExistingLength, updatedSize);
                         // Force update overall progress to reflect the new file size
                         updateOverallProgress();
                     });
+                } else if (fileLength <= 0) {
+                    // If content length is not provided, use the estimated size
+                    fileLength = fileInfo.fileSize;
+                    Log.w(TAG, "No Content-Length header, using estimated size: " + ModelDownloadDialog.this.formatFileSize(fileLength));
                 }
                 
                 input = connection.getInputStream();
@@ -671,8 +746,8 @@ public class ModelDownloadDialog extends Dialog {
                 totalDownloaded += fileDownloaded;
                 
                 Log.d(TAG, "File: " + file.getFileInfo().fileName + 
-                      ", Size: " + formatFileSize(fileSize) + 
-                      ", Downloaded: " + formatFileSize(fileDownloaded) + 
+                      ", Size: " + ModelDownloadDialog.this.formatFileSize(fileSize) + 
+                      ", Downloaded: " + ModelDownloadDialog.this.formatFileSize(fileDownloaded) + 
                       ", Status: " + file.getStatus());
                 
                 if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
@@ -680,8 +755,8 @@ public class ModelDownloadDialog extends Dialog {
                 }
             }
             
-            Log.d(TAG, "Total size: " + formatFileSize(totalSize) + 
-                  ", Total downloaded: " + formatFileSize(totalDownloaded));
+            Log.d(TAG, "Total size: " + ModelDownloadDialog.this.formatFileSize(totalSize) + 
+                  ", Total downloaded: " + ModelDownloadDialog.this.formatFileSize(totalDownloaded));
             
             // Calculate overall progress based on total downloaded bytes and total size
             int overallProgress = 0;
@@ -698,21 +773,10 @@ public class ModelDownloadDialog extends Dialog {
                 statusText.setText(R.string.download_complete);
             } else {
                 // Format downloaded/total size
-                String downloadedStr = formatFileSize(totalDownloaded);
-                String totalStr = formatFileSize(totalSize);
+                String downloadedStr = ModelDownloadDialog.this.formatFileSize(totalDownloaded);
+                String totalStr = ModelDownloadDialog.this.formatFileSize(totalSize);
                 statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
             }
-        }
-        
-        /**
-         * Formats file size in bytes to human-readable format
-         */
-        private String formatFileSize(long size) {
-            if (size <= 0) return "0 B";
-            
-            final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
-            int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
-            return String.format("%.1f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
         }
 
         @Override
