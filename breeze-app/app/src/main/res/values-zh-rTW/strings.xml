@@ -182,7 +182,7 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ModelDownloadDialog -->
     <string name="download_model">下載模型</string>
-    <string name="model_missing_message">缺少所需的模型文件。下載大小約為 6GB。</string>
+    <string name="model_missing_message">缺少所需的模型文件。下載大小約為 %1$s。</string>
     <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下載大小約為 125MB。</string>
     <string name="download">下載</string>
     <string name="downloading">下載中...</string>
