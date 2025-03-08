@@ -29,6 +29,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
 
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
@@ -93,10 +94,32 @@ public class ModelDownloadDialog extends Dialog {
         fileRecyclerView = findViewById(R.id.filesList);
         TextView messageText = findViewById(R.id.messageText);
 
+        // Prepare download file list to calculate total size 
+        prepareDownloadFileList();
+        
+        // Calculate total download size for display
+        long totalSize = 0;
+        for (AppConstants.DownloadFileInfo fileInfo : downloadFiles) {
+            totalSize += fileInfo.fileSize;
+            Log.d(TAG, "Adding file to total: " + fileInfo.fileName + ", size: " + formatFileSize(fileInfo.fileSize) + " (" + fileInfo.fileSize + " bytes)");
+        }
+        String formattedSize = formatFileSize(totalSize);
+        Log.d(TAG, "Total download size: " + formattedSize + " (" + totalSize + " bytes) from " + downloadFiles.size() + " files");
+        
+        // Calculate SI unit GB for logging
+        double sizeInGb = totalSize / (1000.0 * 1000.0 * 1000.0);
+        Log.d(TAG, String.format("For confirmation - Total size in SI units: %.2f GB", sizeInGb));
+        
         // Set appropriate message based on download mode
-        messageText.setText(downloadMode == DownloadMode.TTS ? 
-            R.string.model_missing_message_tts : 
-            R.string.model_missing_message);
+        if (downloadMode == DownloadMode.TTS) {
+            messageText.setText(R.string.model_missing_message_tts);
+        } else {
+            // For LLM mode, first show a message indicating we're calculating the size
+            // The actual size will be updated by fetchFileSizesAsync() once available
+            String initialMessage = getContext().getString(R.string.model_missing_message, "...calculating...");
+            messageText.setText(initialMessage);
+            Log.d(TAG, "Set initial dialog message while fetching file sizes");
+        }
 
         // Initialize RecyclerView
         fileRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -113,10 +136,24 @@ public class ModelDownloadDialog extends Dialog {
         // Set up button click listeners
         downloadButton.setOnClickListener(v -> startDownload());
         cancelButton.setOnClickListener(v -> {
-            if (downloadTask != null && downloadTask.getStatus() == AsyncTask.Status.RUNNING) {
+            Log.d(TAG, "Cancel button clicked - attempting to stop download");
+            
+            // Properly cancel any running download task
+            if (downloadTask != null) {
+                // Set the cancellation flag first
+                downloadTask.isCancelled = true;
+                
+                // Then call AsyncTask's cancel method with interrupt flag
                 downloadTask.cancel(true);
+                
+                // Update UI immediately to provide feedback
+                statusText.setText(R.string.download_cancelled);
                 Toast.makeText(getContext(), R.string.download_cancelled, Toast.LENGTH_SHORT).show();
+                
+                Log.d(TAG, "Download task cancellation initiated");
             }
+            
+            // Dismiss the dialog
             dismiss();
         });
         
@@ -257,44 +294,138 @@ public class ModelDownloadDialog extends Dialog {
             for (int i = 0; i < AppConstants.TTS_MODEL_DOWNLOAD_URLS.length; i += 2) {
                 String url = AppConstants.TTS_MODEL_DOWNLOAD_URLS[i]; // Use primary URL
                 String fileName = getFileNameFromUrl(url);
+                
+                // Get dynamic file size from server first
+                long fileSize = estimateFileSize(url);
+                Log.d(TAG, "TTS model file: " + fileName + ", size: " + formatFileSize(fileSize));
+                
                 downloadFiles.add(new AppConstants.DownloadFileInfo(
                     url,
                     fileName,
                     "TTS Model: " + fileName,
                     AppConstants.FILE_TYPE_TTS_MODEL,
-                    estimateFileSize(url)
+                    fileSize
                 ));
             }
         } else {
-            // Add LLM model files to the list
-            // First, add tokenizer (small file)
-            // Exact tokenizer size: 2.18MB
-            long tokenizerSize = 2_286_592L; // 2.18MB in bytes
+            // Add LLM model files to the list with temporary file sizes
+            // We'll update these sizes asynchronously when we get the actual values
             
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                AppConstants.MODEL_DOWNLOAD_URLS[0],
-                AppConstants.LLM_TOKENIZER_FILE,
+            // First, add tokenizer
+            String tokenizerUrl = AppConstants.MODEL_DOWNLOAD_URLS[0];
+            String tokenizerFileName = AppConstants.LLM_TOKENIZER_FILE;
+            
+            // Use a temporary size - will be updated asynchronously
+            long tempTokenizerSize = 0L; 
+            
+            AppConstants.DownloadFileInfo tokenizerInfo = new AppConstants.DownloadFileInfo(
+                tokenizerUrl,
+                tokenizerFileName,
                 "Tokenizer",
                 AppConstants.FILE_TYPE_TOKENIZER,
-                tokenizerSize
-            ));
+                tempTokenizerSize
+            );
+            downloadFiles.add(tokenizerInfo);
             
-            // Then add the main model file
-            // Use the actual model name from AppConstants
+            // Then add the main model file 
+            String modelUrl = AppConstants.MODEL_DOWNLOAD_URLS[1];
             String modelFileName = AppConstants.BREEZE_MODEL_FILE;
             String modelDisplayName = "Breeze Tiny Instruct v0.1 (2048)"; // More user-friendly name
             
-            // Exact LLM model size: 6.43GB
-            long modelFileSize = 6_903_029_760L; // 6.43GB in bytes
+            // Use a temporary size - will be updated asynchronously
+            long tempModelSize = 0L;
             
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                AppConstants.MODEL_DOWNLOAD_URLS[1], // Use first model URL
+            AppConstants.DownloadFileInfo modelInfo = new AppConstants.DownloadFileInfo(
+                modelUrl,
                 modelFileName,
                 modelDisplayName,
                 AppConstants.FILE_TYPE_LLM,
-                modelFileSize
-            ));
+                tempModelSize
+            );
+            downloadFiles.add(modelInfo);
+            
+            // Request file sizes asynchronously
+            fetchFileSizesAsync();
         }
+    }
+    
+    /**
+     * Fetches file sizes asynchronously to avoid blocking the main thread
+     */
+    private void fetchFileSizesAsync() {
+        // Create a background thread for network operations
+        new Thread(() -> {
+            boolean allSizesUpdated = true;
+            long totalSize = 0;
+            
+            // Process each file in the download list
+            for (int i = 0; i < downloadFiles.size(); i++) {
+                AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
+                
+                // Get size from server via HEAD request
+                long fileSize = getFileSizeFromHeadRequest(fileInfo.url);
+                
+                // If we couldn't get size from server, use fallback estimates
+                if (fileSize <= 0) {
+                    Log.w(TAG, "Failed to get file size for: " + fileInfo.url);
+                    allSizesUpdated = false;
+                    
+                    // Fallback estimates
+                    if (fileInfo.url.contains("tokenizer")) {
+                        fileSize = 2_500_000L; // ~2.5MB estimate
+                        Log.d(TAG, "Using fallback size for tokenizer: " + formatFileSize(fileSize));
+                    } else if (fileInfo.url.contains("breeze") && fileInfo.url.contains(".pte")) {
+                        fileSize = 6_500_000_000L; // ~6.5GB estimate
+                        Log.d(TAG, "Using fallback size for model: " + formatFileSize(fileSize));
+                    } else {
+                        fileSize = 50_000_000L; // 50MB default estimate
+                    }
+                } else {
+                    Log.d(TAG, "Got file size from server for " + fileInfo.fileName + ": " + formatFileSize(fileSize));
+                }
+                
+                // Create a new DownloadFileInfo with the updated size and replace the old one
+                final int index = i;
+                final long updatedSize = fileSize;
+                
+                // Create a new object with the updated size
+                AppConstants.DownloadFileInfo updatedFileInfo = new AppConstants.DownloadFileInfo(
+                    fileInfo.url,
+                    fileInfo.fileName,
+                    fileInfo.displayName,
+                    fileInfo.fileType,
+                    updatedSize
+                );
+                
+                // Replace the old object with the new one at the same index
+                downloadFiles.set(index, updatedFileInfo);
+                totalSize += updatedSize;
+            }
+            
+            // Calculate and format the total size
+            final long finalTotalSize = totalSize;
+            final String formattedTotalSize = formatFileSize(totalSize);
+            
+            // Update UI on main thread
+            mainHandler.post(() -> {
+                // Update the dialog message with the new size
+                TextView messageText = findViewById(R.id.messageText);
+                if (messageText != null && downloadMode == DownloadMode.LLM) {
+                    String message = getContext().getString(R.string.model_missing_message, formattedTotalSize);
+                    messageText.setText(message);
+                    Log.d(TAG, "Updated dialog message with size from server: " + formattedTotalSize + 
+                          " (" + finalTotalSize + " bytes)");
+                }
+                
+                // Log for debugging
+                if (downloadFiles.size() >= 2) {
+                    Log.d(TAG, "Updated file sizes - Tokenizer: " + formatFileSize(downloadFiles.get(0).fileSize) + 
+                          ", Model: " + formatFileSize(downloadFiles.get(1).fileSize) + 
+                          ", Total: " + formattedTotalSize);
+                }
+            });
+            
+        }).start();
     }
     
     /**
@@ -304,12 +435,14 @@ public class ModelDownloadDialog extends Dialog {
         if (size <= 0) return "Unknown size";
         
         final String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
-        int digitGroups = (int) (Math.log10(size) / Math.log10(1024));
+        // Use 1000 instead of 1024 for decimal SI units instead of binary units
+        int digitGroups = (int) (Math.log10(size) / Math.log10(1000));
         
         // Keep digitGroups within the units array bounds
         digitGroups = Math.min(digitGroups, units.length - 1);
         
-        return String.format("%.2f %s", size / Math.pow(1024, digitGroups), units[digitGroups]);
+        // Use 1000 for division - SI decimal units
+        return String.format("%.2f %s", size / Math.pow(1000, digitGroups), units[digitGroups]);
     }
     
     private String getFileNameFromUrl(String url) {
@@ -325,37 +458,41 @@ public class ModelDownloadDialog extends Dialog {
      * Falls back to approximate sizes if that fails.
      */
     private long estimateFileSize(String url) {
-        // First try to get the actual file size from server via HEAD request
+        // Try to get the actual size from server via HEAD request first
+        // This is always the preferred method to ensure accurate size display
         long size = getFileSizeFromHeadRequest(url);
         if (size > 0) {
-            Log.d(TAG, "Got file size from HEAD request: " + formatFileSize(size) + " for " + url);
+            Log.d(TAG, "Using actual file size from HEAD request: " + formatFileSize(size) + " for " + url);
             return size;
         }
 
-        // Fall back to hardcoded sizes if HEAD request failed
-        Log.d(TAG, "Using hardcoded file size estimate for " + url);
+        // If HEAD request failed, use reasonable fallback estimates
+        // These are only used if the network request fails
+        Log.d(TAG, "HEAD request failed, using fallback file size estimate for " + url);
+        
+        // Fallback estimates only if server request fails
         if (url.contains("tokenizer")) {
-            return 2_286_592L; // 2.18MB for tokenizer
+            Log.d(TAG, "Using fallback size for tokenizer");
+            return 2_500_000L; // ~2.5MB estimate for tokenizer
+        } else if (url.contains("breeze") && url.contains(".pte")) {
+            Log.d(TAG, "Using fallback size for LLM model");
+            return 6_500_000_000L; // ~6.5GB estimate for main LLM
         } else if (url.contains("breeze2-vits.onnx")) {
-            return 41_943_040L; // 40MB for TTS model
+            return 41_943_040L; // ~40MB estimate for TTS model
         } else if (url.contains("lexicon.txt")) {
-            return 2_097_152L; // 2MB for lexicon
+            return 2_097_152L; // ~2MB estimate for lexicon
         } else if (url.contains("tokens.txt")) {
-            return 1_048_576L; // 1MB for tokens
-        } else if (url.contains(AppConstants.BREEZE_MODEL_FILE)) {
-            // Exact LLM model size: 6.43GB
-            return 6_903_029_760L; // 6.43GB in bytes
-        } else if (url.contains("128.pte")) {
-            // Small model variant (128 context window)
-            return 838_860_800L; // 800MB for small Breeze model
+            return 1_048_576L; // ~1MB estimate for tokens
         } else {
             // Default fallback
-            return 4_294_967_296L; // 4GB default estimate
+            return 50_000_000L; // 50MB default conservative estimate
         }
     }
     
     /**
      * Makes a HEAD request to get the file size from Content-Length header.
+     * Handles redirects and retries with proper error reporting.
+     * 
      * @param urlString URL to check
      * @return file size in bytes, or -1 if unable to determine
      */
@@ -365,19 +502,53 @@ public class ModelDownloadDialog extends Dialog {
             URL url = new URL(urlString);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("HEAD");
-            connection.setConnectTimeout(3000); // 3 second timeout for quick check
-            connection.setReadTimeout(3000);
+            connection.setConnectTimeout(5000); // 5 second timeout for network conditions
+            connection.setReadTimeout(5000);
             
-            // Set common headers
+            // Set common headers for better compatibility
             for (String[] header : AppConstants.DOWNLOAD_HEADERS) {
                 connection.setRequestProperty(header[0], header[1]);
             }
             
+            // Add a user agent to avoid server restrictions
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) BreezeApp");
+            
             int responseCode = connection.getResponseCode();
+            Log.d(TAG, "HEAD request for " + urlString + " responded with code: " + responseCode);
+            
+            // Handle redirects manually if needed
+            if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP || 
+                responseCode == HttpURLConnection.HTTP_MOVED_PERM || 
+                responseCode == HttpURLConnection.HTTP_SEE_OTHER) {
+                
+                String redirectUrl = connection.getHeaderField("Location");
+                if (redirectUrl != null) {
+                    connection.disconnect();
+                    Log.d(TAG, "Following redirect to: " + redirectUrl);
+                    return getFileSizeFromHeadRequest(redirectUrl);
+                }
+            }
+            
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 long contentLength = connection.getContentLengthLong();
+                
+                // Log all relevant headers for debugging
+                Map<String, List<String>> headers = connection.getHeaderFields();
+                StringBuilder headerLog = new StringBuilder("Response headers for ").append(urlString).append(":\n");
+                for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+                    if (entry.getKey() != null) {
+                        headerLog.append(" - ").append(entry.getKey()).append(": ")
+                                 .append(String.join(", ", entry.getValue())).append("\n");
+                    }
+                }
+                Log.d(TAG, headerLog.toString());
+                
                 if (contentLength > 0) {
+                    Log.d(TAG, "Content-Length: " + contentLength + " bytes (" + 
+                          formatFileSize(contentLength) + ") for " + urlString);
                     return contentLength;
+                } else {
+                    Log.w(TAG, "Server didn't provide Content-Length header for " + urlString);
                 }
             } else {
                 Log.w(TAG, "HEAD request failed with response code: " + responseCode);
@@ -469,6 +640,12 @@ public class ModelDownloadDialog extends Dialog {
             HttpURLConnection connection = null;
 
             try {
+                // Check for cancellation at the start
+                if (isDownloadCancelled()) {
+                    Log.d(TAG, "Download cancelled before starting file: " + fileInfo.fileName);
+                    return false;
+                }
+                
                 // Check available storage space first
                 long availableSpace = getContext().getFilesDir().getFreeSpace() / (1024 * 1024); // Convert to MB
                 long requiredSpace = Math.max(fileInfo.fileSize / (1024 * 1024), 100); // At least 100MB or file size in MB
@@ -484,6 +661,12 @@ public class ModelDownloadDialog extends Dialog {
                 File outputFile = new File(modelDir, fileInfo.fileName);
                 File tempFile = new File(modelDir, fileInfo.fileName + AppConstants.MODEL_DOWNLOAD_TEMP_EXTENSION);
                 long existingLength = 0;
+
+                // Check for cancellation before network operations
+                if (isDownloadCancelled()) {
+                    Log.d(TAG, "Download cancelled before establishing connection: " + fileInfo.fileName);
+                    return false;
+                }
 
                 // Check for existing temporary file
                 if (tempFile.exists()) {
@@ -627,7 +810,7 @@ public class ModelDownloadDialog extends Dialog {
 
                 while ((count = input.read(data)) != -1) {
                     // Handle pause/resume
-                    while (isPaused.get() && !isCancelled()) {
+                    while (isPaused.get() && !isDownloadCancelled()) {
                         try {
                             // Update UI to show paused status periodically
                             long currentTime = System.currentTimeMillis();
@@ -650,6 +833,12 @@ public class ModelDownloadDialog extends Dialog {
                             Thread.currentThread().interrupt();
                             break;
                         }
+                        
+                        // High priority cancellation check inside pause loop
+                        if (isDownloadCancelled()) {
+                            Log.d(TAG, "Download cancelled while paused for file: " + fileInfo.fileName);
+                            return false;
+                        }
                     }
                     
                     // If just resumed, update status to downloading
@@ -659,11 +848,17 @@ public class ModelDownloadDialog extends Dialog {
                         });
                     }
                     
-                    if (isCancelled()) {
-                        input.close();
-                        output.close();
-                        Log.d(TAG, "Download cancelled for file " + fileInfo.fileName);
-                        // Don't delete temp file to allow resume
+                    // High priority cancellation check
+                    if (isDownloadCancelled()) {
+                        Log.d(TAG, "Download cancelled during download loop for: " + fileInfo.fileName);
+                        try {
+                            input.close();
+                            output.close();
+                        } catch (IOException e) {
+                            Log.w(TAG, "Error closing streams during cancellation: " + e.getMessage());
+                        }
+                        // Important: Don't delete the temp file so download can be resumed later
+                        Log.d(TAG, "Preserving temp file for future resume: " + tempFile.getPath());
                         return false;
                     }
                     
@@ -738,25 +933,39 @@ public class ModelDownloadDialog extends Dialog {
             long totalDownloaded = 0;
             boolean allComplete = true;
             
+            // Log individual files details
+            Log.d(TAG, "--- Calculating overall progress ---");
             List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
-            for (FileDownloadAdapter.FileDownloadStatus file : files) {
+            for (int i = 0; i < files.size(); i++) {
+                FileDownloadAdapter.FileDownloadStatus file = files.get(i);
                 long fileSize = file.getTotalBytes();
                 long fileDownloaded = file.getDownloadedBytes();
+                
+                // Add logging for debugging
+                Log.d(TAG, String.format("File %d: %s - Size: %s (%d bytes), Downloaded: %s (%d bytes), Status: %d", 
+                      i+1,
+                      file.getFileInfo().fileName,
+                      ModelDownloadDialog.this.formatFileSize(fileSize),
+                      fileSize,
+                      ModelDownloadDialog.this.formatFileSize(fileDownloaded),
+                      fileDownloaded,
+                      file.getStatus()));
+                
                 totalSize += fileSize;
                 totalDownloaded += fileDownloaded;
-                
-                Log.d(TAG, "File: " + file.getFileInfo().fileName + 
-                      ", Size: " + ModelDownloadDialog.this.formatFileSize(fileSize) + 
-                      ", Downloaded: " + ModelDownloadDialog.this.formatFileSize(fileDownloaded) + 
-                      ", Status: " + file.getStatus());
                 
                 if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
                     allComplete = false;
                 }
             }
             
-            Log.d(TAG, "Total size: " + ModelDownloadDialog.this.formatFileSize(totalSize) + 
-                  ", Total downloaded: " + ModelDownloadDialog.this.formatFileSize(totalDownloaded));
+            // Log total download progress
+            Log.d(TAG, String.format("Overall - Total size: %s (%d bytes), Total downloaded: %s (%d bytes), Files: %d", 
+                  ModelDownloadDialog.this.formatFileSize(totalSize),
+                  totalSize,
+                  ModelDownloadDialog.this.formatFileSize(totalDownloaded),
+                  totalDownloaded,
+                  files.size()));
             
             // Calculate overall progress based on total downloaded bytes and total size
             int overallProgress = 0;
@@ -774,7 +983,13 @@ public class ModelDownloadDialog extends Dialog {
             } else {
                 // Format downloaded/total size
                 String downloadedStr = ModelDownloadDialog.this.formatFileSize(totalDownloaded);
+                
+                // Always use the calculated total size - no hardcoded values
                 String totalStr = ModelDownloadDialog.this.formatFileSize(totalSize);
+                
+                // Log the exact values that will be displayed
+                Log.d(TAG, String.format("Progress display: %s / %s (%d%%)", downloadedStr, totalStr, overallProgress));
+                
                 statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
             }
         }
@@ -868,6 +1083,31 @@ public class ModelDownloadDialog extends Dialog {
                     
                 Toast.makeText(getContext(), toastMessage, Toast.LENGTH_LONG).show();
             }
+        }
+
+        @Override
+        protected void onCancelled() {
+            Log.d(TAG, "Download task onCancelled called - performing cleanup");
+            
+            // Ensure our cancellation flag is set
+            isCancelled = true;
+            
+            // Update UI to show cancellation (in case dialog isn't dismissed yet)
+            mainHandler.post(() -> {
+                statusText.setText(R.string.download_cancelled);
+                progressBar.setProgress(0);
+                
+                // Update file statuses to show cancellation
+                for (int i = 0; i < fileAdapter.getItemCount(); i++) {
+                    FileDownloadAdapter.FileDownloadStatus status = fileAdapter.getItem(i);
+                    if (status != null && status.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
+                        fileAdapter.updateFileStatus(i, AppConstants.DOWNLOAD_STATUS_FAILED, "Download cancelled");
+                    }
+                }
+            });
+            
+            // Let the parent class handle any additional cleanup
+            super.onCancelled();
         }
     }
 } 
