@@ -49,7 +49,8 @@ public class AppConstants {
     public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
     public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
-    
+    public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
+
     // Model Files and Paths
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
