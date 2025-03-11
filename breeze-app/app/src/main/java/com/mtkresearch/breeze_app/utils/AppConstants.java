@@ -4,6 +4,8 @@ import android.content.Context;
 import java.io.File;
 import android.util.Log;
 import java.io.IOException;
+import android.app.ActivityManager;
+import android.content.SharedPreferences;
 
 public class AppConstants {
     private static final String TAG = "AppConstants";
@@ -55,6 +57,23 @@ public class AppConstants {
     public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
     public static final String BREEZE_MODEL_DISPLAY_NAME = "Breeze Tiny Instruct v0.1 (2048)";
+    
+    // LLM Model Size Options
+    public static final String LARGE_LLM_MODEL_FILE = "llama3_2.pte"; // 6GB model
+    public static final String SMALL_LLM_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048-spin.pte"; // Smaller model
+    public static final String LARGE_LLM_MODEL_DISPLAY_NAME = "Llama 3.2 (Large - 6GB)";
+    public static final String SMALL_LLM_MODEL_DISPLAY_NAME = "Breeze Tiny (Small)";
+    
+    // RAM Requirements
+    public static final long MIN_RAM_REQUIRED_GB = 7; // Minimum RAM for the app to run
+    public static final long LARGE_MODEL_MIN_RAM_GB = 10; // Minimum RAM for large model
+    
+    // Model Selection Key
+    public static final String KEY_MODEL_SIZE_PREFERENCE = "model_size_preference";
+    public static final String MODEL_SIZE_LARGE = "large";
+    public static final String MODEL_SIZE_SMALL = "small";
+    public static final String MODEL_SIZE_AUTO = "auto"; // Let the app decide based on available RAM
+    
     public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/";  // Legacy location
     public static final String APP_MODEL_DIR = "models";  // New path relative to app's private storage
     public static final String LLM_TOKENIZER_FILE = "tokenizer.bin";  // Add tokenizer filename constant
@@ -66,7 +85,7 @@ public class AppConstants {
     public static final String TTS_TOKENS_FILE = "tokens.txt";
     
     // Model Download Constants
-    private static final String MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/";
+    public static final String MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/";
     
     // Model Download URLs - defined before usage in LLM_DOWNLOAD_FILES
     public static final String[] MODEL_DOWNLOAD_URLS = {
@@ -241,8 +260,11 @@ public class AppConstants {
 
     // Get the model path to use, prioritizing legacy location
     public static String getModelPath(Context context) {
+        // Get the appropriate model file based on preferences and RAM
+        String modelFileName = getAppropriateModelFile(context);
+        
         // First check the legacy location
-        File legacyModelFile = new File(LLAMA_MODEL_DIR, BREEZE_MODEL_FILE);
+        File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
         Log.d("AppConstants", "Checking legacy model path: " + legacyModelFile.getAbsolutePath());
         if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
             Log.d("AppConstants", "Found model in legacy directory: " + legacyModelFile.getAbsolutePath());
@@ -250,7 +272,7 @@ public class AppConstants {
         }
 
         // If not in legacy location, use app's private storage path
-        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE);
+        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
         Log.d("AppConstants", "Using app model path: " + appModelFile.getAbsolutePath());
         return appModelFile.getAbsolutePath();
     }
@@ -270,13 +292,16 @@ public class AppConstants {
 
     // Check if model needs to be downloaded
     public static boolean needsModelDownload(Context context) {
-        // First check legacy location
-        if (isModelInLegacyLocation()) {
+        String modelFileName = getAppropriateModelFile(context);
+        
+        // First check if model exists in legacy location
+        File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
+        if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
             return false;
         }
 
         // Then check app's private storage
-        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE);
+        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
         return !appModelFile.exists() || appModelFile.length() == 0;
     }
 
@@ -298,6 +323,36 @@ public class AppConstants {
 
     public static int getLLMMaxInputLength(Context context) {
         return getLLMMaxSeqLength(context) - getLLMMinOutputLength(context);
+    }
+    
+    // Get the available RAM in GB
+    public static long getAvailableRamGB(Context context) {
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        activityManager.getMemoryInfo(memoryInfo);
+        
+        // Convert total memory from bytes to GB
+        return memoryInfo.totalMem / (1024 * 1024 * 1024);
+    }
+    
+    // Check if device has enough RAM for large model
+    public static boolean canUseLargeModel(Context context) {
+        return getAvailableRamGB(context) >= LARGE_MODEL_MIN_RAM_GB;
+    }
+    
+    // Get the appropriate model file based on user preference and RAM constraints
+    public static String getAppropriateModelFile(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String modelSizePreference = prefs.getString(KEY_MODEL_SIZE_PREFERENCE, MODEL_SIZE_AUTO);
+        
+        // If auto or user selected large but device doesn't have enough RAM, use small model
+        if (modelSizePreference.equals(MODEL_SIZE_AUTO) || 
+            (modelSizePreference.equals(MODEL_SIZE_LARGE) && !canUseLargeModel(context))) {
+            return SMALL_LLM_MODEL_FILE;
+        }
+        
+        // User explicitly selected a model size
+        return modelSizePreference.equals(MODEL_SIZE_LARGE) ? LARGE_LLM_MODEL_FILE : SMALL_LLM_MODEL_FILE;
     }
     
     // LLM Response Messages
