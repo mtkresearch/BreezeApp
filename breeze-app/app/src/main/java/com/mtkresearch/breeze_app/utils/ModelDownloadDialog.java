@@ -32,6 +32,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 
+import android.app.ActivityManager;
+
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
 
@@ -97,7 +99,7 @@ public class ModelDownloadDialog extends Dialog {
 
         // Prepare download file list with placeholder sizes
         prepareDownloadFileList();
-        
+
         // Set appropriate message based on download mode
         if (downloadMode == DownloadMode.TTS) {
             messageText.setText(R.string.model_missing_message_tts);
@@ -110,19 +112,19 @@ public class ModelDownloadDialog extends Dialog {
             String modelDisplayName;
             
             if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
-                modelDisplayName = "Breeze (High Performance)";
-                Log.d(TAG, "Using high performance model variant");
+                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
+                Log.d(TAG, "Using high performance model variant: " + modelDisplayName);
             } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
                 modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
-                Log.d(TAG, "Using standard model variant");
+                Log.d(TAG, "Using standard model variant: " + modelDisplayName);
             } else {
                 // Auto - select based on RAM
                 if (AppConstants.canUseLargeModel(getContext())) {
-                    modelDisplayName = "Breeze (High Performance)";
-                    Log.d(TAG, "Auto-selected high performance model based on RAM");
+                    modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
+                    Log.d(TAG, "Auto-selected high performance model based on RAM: " + modelDisplayName);
                 } else {
                     modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
-                    Log.d(TAG, "Auto-selected standard model based on RAM");
+                    Log.d(TAG, "Auto-selected standard model based on RAM: " + modelDisplayName);
                 }
             }
             
@@ -132,11 +134,20 @@ public class ModelDownloadDialog extends Dialog {
                 modelDisplayName,
                 getContext().getString(R.string.calculating_size));
                 
+            // Add quantization notice for small model
+            ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+            ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memoryInfo);
+            long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+            
+            if (modelDisplayName.equals(AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME) || totalRamGB < AppConstants.MIN_RAM_REQUIRED_GB) {
+                initialMessage += "\n\n" + getContext().getString(R.string.quantization_notice);
+            }
+            
             messageText.setText(initialMessage);
             
             Log.d(TAG, "Set initial dialog message while fetching total file sizes for all model files");
         }
-        
+
         // Initialize RecyclerView
         fileRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         fileAdapter = new FileDownloadAdapter(getContext());
@@ -148,7 +159,7 @@ public class ModelDownloadDialog extends Dialog {
         overallProgressText.setVisibility(View.GONE);
         pauseResumeButton.setVisibility(View.GONE);
         retryButton.setVisibility(View.GONE);
-        
+
         // Fetch accurate file sizes asynchronously
         fetchFileSizesAsync();
         
@@ -177,19 +188,19 @@ public class ModelDownloadDialog extends Dialog {
         });
         pauseResumeButton.setOnClickListener(v -> {
             if (downloadTask != null) {
-                if (isPaused.get()) {
-                    // Resume download
-                    isPaused.set(false);
-                    pauseResumeButton.setText(R.string.pause);
-                    statusText.setText(R.string.download_resuming);
-                    synchronized (downloadTask) {
-                        downloadTask.notifyAll(); // Notify waiting threads to continue
-                    }
-                } else {
-                    // Pause download
-                    isPaused.set(true);
-                    pauseResumeButton.setText(R.string.resume);
-                    statusText.setText(R.string.download_paused);
+            if (isPaused.get()) {
+                // Resume download
+                isPaused.set(false);
+                pauseResumeButton.setText(R.string.pause);
+                statusText.setText(R.string.download_resuming);
+                synchronized (downloadTask) {
+                    downloadTask.notifyAll(); // Notify waiting threads to continue
+                }
+            } else {
+                // Pause download
+                isPaused.set(true);
+                pauseResumeButton.setText(R.string.resume);
+                statusText.setText(R.string.download_paused);
                 }
             }
         });
@@ -206,7 +217,7 @@ public class ModelDownloadDialog extends Dialog {
             // Start download again
             startDownload();
         });
-        
+
         setCancelable(false);
     }
 
@@ -366,7 +377,7 @@ public class ModelDownloadDialog extends Dialog {
             
             if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
                 modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
-                modelDisplayName = "Breeze (High Performance)";
+                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                 Log.d(TAG, "Using high performance model: " + modelFileName);
             } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
                 modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
@@ -376,7 +387,7 @@ public class ModelDownloadDialog extends Dialog {
                 // Auto - select based on RAM
                 if (canUseLargeModel) {
                     modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
-                    modelDisplayName = "Breeze (High Performance)";
+                    modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                     Log.d(TAG, "Auto-selected high performance model based on RAM: " + modelFileName);
                 } else {
                     modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
@@ -435,20 +446,23 @@ public class ModelDownloadDialog extends Dialog {
             
             // Use the appropriate model file based on preference
             String modelDisplayName;
+            boolean isSmallModel = false;
             
             if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
-                modelDisplayName = "Breeze (High Performance)";
+                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                 Log.d(TAG, "Using large model based on explicit user preference");
             } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
                 modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                isSmallModel = true;
                 Log.d(TAG, "Using small model based on explicit user preference");
             } else {
                 // Auto - select based on RAM
                 if (AppConstants.canUseLargeModel(getContext())) {
-                    modelDisplayName = "Breeze (High Performance)";
+                    modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                     Log.d(TAG, "Auto-selected large model based on device RAM");
                 } else {
                     modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                    isSmallModel = true;
                     Log.d(TAG, "Auto-selected small model based on device RAM");
                 }
             }
@@ -458,6 +472,15 @@ public class ModelDownloadDialog extends Dialog {
                 modelDisplayName,
                 getContext().getString(R.string.calculating_size));
                 
+            // Add quantization notice for small model
+            ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+            ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memoryInfo);
+            long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+            
+            if (isSmallModel || totalRamGB < AppConstants.MIN_RAM_REQUIRED_GB) {
+                initialMessage += "\n\n" + getContext().getString(R.string.quantization_notice);
+            }
+            
             messageText.setText(initialMessage);
             Log.d(TAG, "Set initial dialog message while fetching total file sizes for all model files");
         }
@@ -534,19 +557,22 @@ public class ModelDownloadDialog extends Dialog {
                 if (messageText != null && downloadMode != DownloadMode.TTS) {
                     // Re-get the model display name to ensure consistency
                     String modelDisplayName;
+                    boolean isSmallModel = false;
                     SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
                     String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
                     
                     if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
-                        modelDisplayName = "Breeze (High Performance)";
+                        modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                     } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
                         modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                        isSmallModel = true;
                     } else {
                         // Auto - select based on RAM
                         if (AppConstants.canUseLargeModel(getContext())) {
-                            modelDisplayName = "Breeze (High Performance)";
+                            modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
                         } else {
                             modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                            isSmallModel = true;
                         }
                     }
                     
@@ -555,6 +581,15 @@ public class ModelDownloadDialog extends Dialog {
                         R.string.model_missing_message_variant, 
                         modelDisplayName,
                         finalFormattedTotalSize);
+                        
+                    // Add quantization notice if needed
+                    ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+                    ((ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memoryInfo);
+                    long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+                    
+                    if (isSmallModel || totalRamGB < AppConstants.MIN_RAM_REQUIRED_GB) {
+                        updatedMessage += "\n\n" + getContext().getString(R.string.quantization_notice);
+                    }
                         
                     messageText.setText(updatedMessage);
                     Log.d(TAG, "Updated download dialog message with accurate TOTAL file size: " + 
@@ -806,8 +841,8 @@ public class ModelDownloadDialog extends Dialog {
                 
                 // Only log if verbose logging is enabled
                 if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
-                    Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
-                        fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
+                Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
+                    fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
                 }
 
                 if (availableSpace < requiredSpace) {
@@ -925,7 +960,7 @@ public class ModelDownloadDialog extends Dialog {
                         String[] parts = contentRange.split("/");
                         if (parts.length == 2) {
                             try {
-                                fileLength = Long.parseLong(parts[1]);
+                            fileLength = Long.parseLong(parts[1]);
                                 Log.d(TAG, "Content-Range total size: " + ModelDownloadDialog.this.formatFileSize(fileLength));
                             } catch (NumberFormatException e) {
                                 Log.e(TAG, "Failed to parse Content-Range: " + contentRange, e);
@@ -1012,8 +1047,8 @@ public class ModelDownloadDialog extends Dialog {
                     if (isDownloadCancelled()) {
                         Log.d(TAG, "Download cancelled during download loop for: " + fileInfo.fileName);
                         try {
-                            input.close();
-                            output.close();
+                        input.close();
+                        output.close();
                         } catch (IOException e) {
                             Log.w(TAG, "Error closing streams during cancellation: " + e.getMessage());
                         }
@@ -1092,11 +1127,11 @@ public class ModelDownloadDialog extends Dialog {
             // Skip detailed logging if verbose logging is disabled
             if (!AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
                 // Still calculate progress but skip logging
-                long totalSize = 0;
-                long totalDownloaded = 0;
-                boolean allComplete = true;
-                
-                List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
+            long totalSize = 0;
+            long totalDownloaded = 0;
+            boolean allComplete = true;
+            
+            List<FileDownloadAdapter.FileDownloadStatus> files = fileAdapter.getFiles();
                 for (int i = 0; i < files.size(); i++) {
                     FileDownloadAdapter.FileDownloadStatus file = files.get(i);
                     long fileSize = file.getTotalBytes();
@@ -1104,31 +1139,31 @@ public class ModelDownloadDialog extends Dialog {
                     
                     totalSize += fileSize;
                     totalDownloaded += fileDownloaded;
-                    
-                    if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
-                        allComplete = false;
-                    }
-                }
                 
+                if (file.getStatus() != AppConstants.DOWNLOAD_STATUS_COMPLETED) {
+                    allComplete = false;
+                }
+            }
+            
                 // Calculate overall progress based on total downloaded bytes and total size
                 int overallProgress = 0;
                 if (totalSize > 0) {
                     overallProgress = (int) (totalDownloaded * 100 / totalSize);
                 }
                 
-                progressBar.setProgress(overallProgress);
-                
-                // Update status message based on download state
-                if (isPaused.get()) {
-                    statusText.setText(R.string.download_paused);
-                } else if (allComplete) {
-                    statusText.setText(R.string.download_complete);
-                } else {
-                    // Format downloaded/total size
+            progressBar.setProgress(overallProgress);
+            
+            // Update status message based on download state
+            if (isPaused.get()) {
+                statusText.setText(R.string.download_paused);
+            } else if (allComplete) {
+                statusText.setText(R.string.download_complete);
+            } else {
+                // Format downloaded/total size
                     String downloadedStr = ModelDownloadDialog.this.formatFileSize(totalDownloaded);
                     String totalStr = ModelDownloadDialog.this.formatFileSize(totalSize);
-                    statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
-                }
+                statusText.setText(downloadedStr + " / " + totalStr + " ("+overallProgress+"%)" );
+            }
                 return;
             }
             
@@ -1271,7 +1306,7 @@ public class ModelDownloadDialog extends Dialog {
                 String errorMessage = error != null ? 
                     error.getMessage() : 
                     getContext().getString(R.string.error_all_download_attempts_failed);
-                
+                    
                 if (downloadMode == DownloadMode.TTS) {
                     statusText.setText(getContext().getString(R.string.download_failed_tts, ""));
                 } else {

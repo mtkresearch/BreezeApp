@@ -330,6 +330,7 @@
     <string name="model_selection_description">Choose the Breeze model variant that best fits your device. %1$s</string>
     <string name="large_model_recommended">We recommend the High Performance variant for your device.</string>
     <string name="small_model_recommended">We recommend the Small variant for your device due to memory constraints.</string>
+    <string name="quantization_notice">⚠️ Important: On devices with less than 7GB RAM, a quantized model is used, which may occasionally produce less accurate responses compared to the full model.</string>
     <string name="large_model_option">%1$s (%2$s)\nBetter quality, more capabilities, but requires more memory</string>
     <string name="small_model_option">%1$s (%2$s)\nFaster startup, less memory usage, suitable for devices with limited resources</string>
     <string name="continue_button">Continue</string>
