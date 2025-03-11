@@ -54,15 +54,15 @@ public class AppConstants {
     public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
 
     // Model Files and Paths
-    public static final String LLAMA_MODEL_FILE = "llama3_2.pte";
+    public static final String LLAMA_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
     public static final String BREEZE_MODEL_DISPLAY_NAME = "Breeze Tiny Instruct v0.1 (2048)";
     
     // LLM Model Size Options
-    public static final String LARGE_LLM_MODEL_FILE = "llama3_2.pte"; // 6GB model
-    public static final String SMALL_LLM_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048-spin.pte"; // Smaller model
-    public static final String LARGE_LLM_MODEL_DISPLAY_NAME = "Llama 3.2 (Large - 6GB)";
-    public static final String SMALL_LLM_MODEL_DISPLAY_NAME = "Breeze Tiny (Small)";
+    public static final String LARGE_LLM_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
+    public static final String SMALL_LLM_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048-spin.pte";
+    public static final String LARGE_LLM_MODEL_DISPLAY_NAME = "Breeze2";
+    public static final String SMALL_LLM_MODEL_DISPLAY_NAME = "Breeze2-spinQuant";
     
     // RAM Requirements
     public static final long MIN_RAM_REQUIRED_GB = 7; // Minimum RAM for the app to run
@@ -345,14 +345,17 @@ public class AppConstants {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String modelSizePreference = prefs.getString(KEY_MODEL_SIZE_PREFERENCE, MODEL_SIZE_AUTO);
         
-        // If auto or user selected large but device doesn't have enough RAM, use small model
-        if (modelSizePreference.equals(MODEL_SIZE_AUTO) || 
-            (modelSizePreference.equals(MODEL_SIZE_LARGE) && !canUseLargeModel(context))) {
-            return SMALL_LLM_MODEL_FILE;
+        // For auto preference, choose based on available RAM
+        if (modelSizePreference.equals(MODEL_SIZE_AUTO)) {
+            return canUseLargeModel(context) ? LARGE_LLM_MODEL_FILE : SMALL_LLM_MODEL_FILE;
         }
         
-        // User explicitly selected a model size
-        return modelSizePreference.equals(MODEL_SIZE_LARGE) ? LARGE_LLM_MODEL_FILE : SMALL_LLM_MODEL_FILE;
+        // For explicit preferences, respect the user's choice between Breeze variants
+        if (modelSizePreference.equals(MODEL_SIZE_LARGE)) {
+            return LARGE_LLM_MODEL_FILE; // Breeze high performance variant
+        } else {
+            return SMALL_LLM_MODEL_FILE; // Breeze small variant
+        }
     }
     
     // LLM Response Messages
