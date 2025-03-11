@@ -2,6 +2,7 @@ package com.mtkresearch.breeze_app.utils;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
@@ -114,10 +115,41 @@ public class ModelDownloadDialog extends Dialog {
         if (downloadMode == DownloadMode.TTS) {
             messageText.setText(R.string.model_missing_message_tts);
         } else {
-            // For LLM mode, first show a message indicating we're calculating the size
-            // The actual size will be updated by fetchFileSizesAsync() once available
-            String initialMessage = getContext().getString(R.string.model_missing_message, "...calculating...");
-            messageText.setText(initialMessage);
+            // For LLM mode, check RAM constraints and show appropriate message
+            boolean canUseLargeModel = AppConstants.canUseLargeModel(getContext());
+            long availableRam = AppConstants.getAvailableRamGB(getContext());
+            
+            // Determine which model file to download based on RAM constraints
+            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+            String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
+            
+            boolean usingLargeModel = modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE) && canUseLargeModel;
+            
+            if (usingLargeModel) {
+                // Using large model
+                String initialMessage = getContext().getString(R.string.model_missing_message, 
+                    getContext().getString(R.string.calculating_size));
+                messageText.setText(initialMessage);
+            } else {
+                // Using small model due to RAM constraints or user preference
+                String initialMessage;
+                if (!canUseLargeModel && (modelSizePreference.equals(AppConstants.MODEL_SIZE_AUTO) || 
+                                         modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE))) {
+                    // Show message about RAM constraints
+                    initialMessage = getContext().getString(
+                        R.string.model_missing_message_ram_constraint, 
+                        getContext().getString(R.string.calculating_size),
+                        availableRam,
+                        AppConstants.LARGE_MODEL_MIN_RAM_GB,
+                        AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME);
+                } else {
+                    // User explicitly chose small model
+                    initialMessage = getContext().getString(R.string.model_missing_message, 
+                        getContext().getString(R.string.calculating_size));
+                }
+                messageText.setText(initialMessage);
+            }
+            
             Log.d(TAG, "Set initial dialog message while fetching file sizes");
         }
 
@@ -328,10 +360,28 @@ public class ModelDownloadDialog extends Dialog {
             );
             downloadFiles.add(tokenizerInfo);
             
-            // Then add the main model file 
-            String modelUrl = AppConstants.MODEL_DOWNLOAD_URLS[1];
-            String modelFileName = AppConstants.BREEZE_MODEL_FILE;
-            String modelDisplayName = AppConstants.BREEZE_MODEL_DISPLAY_NAME; // Use constant
+            // Then add the main model file based on user preference
+            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+            String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
+            
+            // Determine which model file to download based on preference
+            String modelFileName;
+            String modelDisplayName;
+            String modelUrl;
+            
+            if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE) && AppConstants.canUseLargeModel(getContext())) {
+                // User selected large model and device can handle it
+                modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
+                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
+                modelUrl = AppConstants.MODEL_BASE_URL + AppConstants.LARGE_LLM_MODEL_FILE + "?download=true";
+                Log.d(TAG, "Using large model based on user preference: " + modelFileName);
+            } else {
+                // User selected small model or device can't handle large model
+                modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
+                modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                modelUrl = AppConstants.MODEL_BASE_URL + AppConstants.SMALL_LLM_MODEL_FILE + "?download=true";
+                Log.d(TAG, "Using small model based on user preference or device constraints: " + modelFileName);
+            }
             
             // Dynamically get file size from server
             long modelFileSize = estimateFileSize(modelUrl);
@@ -359,113 +409,94 @@ public class ModelDownloadDialog extends Dialog {
             boolean allSizesUpdated = true;
             long totalSize = 0;
             
-            // Process each file in the download list
+            // Update file sizes for each file in the list
             for (int i = 0; i < downloadFiles.size(); i++) {
-                // Skip detailed logging if verbose logging is disabled
-                if (!AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
-                    // Just get the file size without logging
-                    AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
-                    long fileSize = getFileSizeFromHeadRequest(fileInfo.url);
-                    
-                    // If we couldn't get size from server, use fallback estimates
-                    if (fileSize <= 0) {
-                        if (fileInfo.url.contains("tokenizer")) {
-                            fileSize = 2_500_000L; // ~2.5MB estimate
-                        } else if (fileInfo.url.contains("breeze") && fileInfo.url.contains(".pte")) {
-                            fileSize = 6_500_000_000L; // ~6.5GB estimate
-                        } else {
-                            fileSize = 50_000_000L; // 50MB default estimate
-                        }
-                    }
-                    
-                    // Create a new DownloadFileInfo with the updated size and replace the old one
-                    final int index = i;
-                    final long updatedSize = fileSize;
-                    
-                    // Create a new object with the updated size
-                    AppConstants.DownloadFileInfo updatedFileInfo = new AppConstants.DownloadFileInfo(
-                        fileInfo.url,
-                        fileInfo.fileName,
-                        fileInfo.displayName,
-                        fileInfo.fileType,
-                        updatedSize
-                    );
-                    
-                    // Replace the old object with the new one at the same index
-                    downloadFiles.set(index, updatedFileInfo);
-                    totalSize += updatedSize;
+                AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
+                
+                // Skip if size is already set
+                if (fileInfo.fileSize > 0) {
+                    totalSize += fileInfo.fileSize;
                     continue;
                 }
                 
-                // Full verbose logging below this point
-                AppConstants.DownloadFileInfo fileInfo = downloadFiles.get(i);
-                
-                // Get size from server via HEAD request
+                // Get file size from server
                 long fileSize = getFileSizeFromHeadRequest(fileInfo.url);
-                
-                // If we couldn't get size from server, use fallback estimates
                 if (fileSize <= 0) {
-                    Log.w(TAG, "Failed to get file size for: " + fileInfo.url);
                     allSizesUpdated = false;
-                    
-                    // Fallback estimates
-                    if (fileInfo.url.contains("tokenizer")) {
-                        fileSize = 2_500_000L; // ~2.5MB estimate
-                        Log.d(TAG, "Using fallback size for tokenizer: " + formatFileSize(fileSize));
-                    } else if (fileInfo.url.contains("breeze") && fileInfo.url.contains(".pte")) {
-                        fileSize = 6_500_000_000L; // ~6.5GB estimate
-                        Log.d(TAG, "Using fallback size for model: " + formatFileSize(fileSize));
-                    } else {
-                        fileSize = 50_000_000L; // 50MB default estimate
-                    }
-                } else {
-                    Log.d(TAG, "Got file size from server for " + fileInfo.fileName + ": " + formatFileSize(fileSize));
+                    Log.w(TAG, "Failed to get file size for " + fileInfo.fileName);
+                    continue;
                 }
                 
-                // Create a new DownloadFileInfo with the updated size and replace the old one
-                final int index = i;
-                final long updatedSize = fileSize;
-                
-                // Create a new object with the updated size
-                AppConstants.DownloadFileInfo updatedFileInfo = new AppConstants.DownloadFileInfo(
+                // Create new DownloadFileInfo with updated size
+                AppConstants.DownloadFileInfo updatedInfo = new AppConstants.DownloadFileInfo(
                     fileInfo.url,
                     fileInfo.fileName,
                     fileInfo.displayName,
                     fileInfo.fileType,
-                    updatedSize
+                    fileSize
                 );
                 
-                // Replace the old object with the new one at the same index
-                downloadFiles.set(index, updatedFileInfo);
-                totalSize += updatedSize;
+                // Update the list
+                final int index = i;
+                downloadFiles.set(index, updatedInfo);
+                totalSize += fileSize;
             }
             
-            // Calculate and format the total size
-            final long finalTotalSize = totalSize;
-            final String formattedTotalSize = formatFileSize(totalSize);
+            // Format total size
+            final String formattedSize = formatFileSize(totalSize);
+            final boolean finalAllSizesUpdated = allSizesUpdated;
             
             // Update UI on main thread
             mainHandler.post(() -> {
-                // Update the dialog message with the new size
+                // Update message with actual size
                 TextView messageText = findViewById(R.id.messageText);
-                if (messageText != null && downloadMode == DownloadMode.LLM) {
-                    String message = getContext().getString(R.string.model_missing_message, formattedTotalSize);
-                    messageText.setText(message);
+                if (messageText != null) {
+                    if (downloadMode == DownloadMode.TTS) {
+                        // TTS message is static
+                        return;
+                    }
                     
-                    if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
-                        Log.d(TAG, "Updated dialog message with size from server: " + formattedTotalSize + 
-                              " (" + finalTotalSize + " bytes)");
+                    // For LLM, update with actual size
+                    boolean canUseLargeModel = AppConstants.canUseLargeModel(getContext());
+                    long availableRam = AppConstants.getAvailableRamGB(getContext());
+                    
+                    // Determine which model file to download based on RAM constraints
+                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
+                    
+                    boolean usingLargeModel = modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE) && canUseLargeModel;
+                    
+                    if (usingLargeModel) {
+                        // Using large model
+                        messageText.setText(getContext().getString(R.string.model_missing_message, formattedSize));
+                    } else {
+                        // Using small model due to RAM constraints or user preference
+                        if (!canUseLargeModel && (modelSizePreference.equals(AppConstants.MODEL_SIZE_AUTO) || 
+                                                modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE))) {
+                            // Show message about RAM constraints
+                            messageText.setText(getContext().getString(
+                                R.string.model_missing_message_ram_constraint, 
+                                formattedSize,
+                                availableRam,
+                                AppConstants.LARGE_MODEL_MIN_RAM_GB,
+                                AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME));
+                        } else {
+                            // User explicitly chose small model
+                            messageText.setText(getContext().getString(R.string.model_missing_message, formattedSize));
+                        }
                     }
                 }
                 
-                // Log for debugging
-                if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING && downloadFiles.size() >= 2) {
-                    Log.d(TAG, "Updated file sizes - Tokenizer: " + formatFileSize(downloadFiles.get(0).fileSize) + 
-                          ", Model: " + formatFileSize(downloadFiles.get(1).fileSize) + 
-                          ", Total: " + formattedTotalSize);
+                // Update file adapter if all sizes were updated
+                if (finalAllSizesUpdated && fileAdapter != null) {
+                    List<FileDownloadAdapter.FileDownloadStatus> statusList = new ArrayList<>();
+                    for (AppConstants.DownloadFileInfo info : downloadFiles) {
+                        FileDownloadAdapter.FileDownloadStatus status = new FileDownloadAdapter.FileDownloadStatus(info);
+                        statusList.add(status);
+                    }
+                    fileAdapter.setFiles(statusList);
                 }
             });
-            
         }).start();
     }
     
