@@ -331,6 +331,7 @@
     <string name="model_selection_description">選擇最適合您裝置的 Breeze 模型版本。%1$s</string>
     <string name="large_model_recommended">我們建議您的裝置使用高效能版本。</string>
     <string name="small_model_recommended">由於記憶體限制，我們建議您的裝置使用小型版本。</string>
+    <string name="quantization_notice">⚠️ 重要提示：在記憶體小於7GB的裝置上，將使用量化模型，與完整模型相比，此模型可能偶爾會產生較不精確的回應。</string>
     <string name="large_model_option">%1$s (%2$s)\n更好的品質和更多功能，但需要更多記憶體</string>
     <string name="small_model_option">%1$s (%2$s)\n啟動更快，使用更少記憶體，適合資源有限的裝置</string>
     <string name="continue_button">繼續</string>
