@@ -340,12 +340,26 @@ public class IntroDialog extends Dialog {
         String recommendedModel = canUselargeModel ? 
             context.getString(R.string.large_model_recommended) : 
             context.getString(R.string.small_model_recommended);
-            
-        descriptionText.setText(context.getString(R.string.model_selection_description, recommendedModel));
+        
+        // Build description with quantization notice
+        StringBuilder description = new StringBuilder();
+        description.append(context.getString(R.string.model_selection_description, recommendedModel));
+        
+        // Get available RAM
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        ((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memoryInfo);
+        long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
+        
+        // Add quantization notice for devices with less RAM
+        if (totalRamGB < AppConstants.MIN_RAM_REQUIRED_GB || !canUselargeModel) {
+            description.append("\n\n").append(context.getString(R.string.quantization_notice));
+        }
+        
+        descriptionText.setText(description.toString());
         
         // Rename the options to show Breeze model variants
         largeModelRadio.setText(context.getString(R.string.large_model_option, 
-            "Breeze (High Performance)", 
+            AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME, 
             formatStorageSize(2048L))); // ~2GB for high performance Breeze variant
             
         smallModelRadio.setText(context.getString(R.string.small_model_option, 
