@@ -23,6 +23,7 @@
         android:layout_height="wrap_content"
         android:text="@string/model_missing_message"
         android:textSize="16sp"
+        android:textIsSelectable="true"
         android:layout_marginBottom="16dp"/>
     
     <!-- Overall Progress Section -->

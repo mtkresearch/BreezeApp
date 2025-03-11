@@ -635,6 +635,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
         
+        // Scroll to show user message at the top of the visible area
+        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+        
         // Hide watermark when conversation starts
         updateWatermarkVisibility();
         
@@ -657,6 +660,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean isGenerating = true;  // Track generation state
+                private boolean hasScrolledOnce = false; // Track if we've scrolled for the first token
 
                 @Override
                 public void onToken(String token) {
@@ -673,7 +677,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         currentResponse.append(token);
                         aiMessage.updateText(currentResponse.toString());
                         chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), false);
+                        
+                        // Don't scroll during token generation
+                        // This allows the AI message to generate downward without auto-scrolling
                     });
                 }
             }).thenAccept(finalResponse -> {
@@ -698,6 +704,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     }
                     
                     chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                    // Only scroll to the latest message when the response is complete
                     UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
                     
                     // Re-enable input and restore send button AFTER response is complete
@@ -819,6 +826,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         userMessage.setImageUri(imageUri);
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
+        
+        // Scroll to show user message at the top of the visible area
+        UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
         
         if (vlmService != null) {
             vlmService.analyzeImage(imageUri, message)
