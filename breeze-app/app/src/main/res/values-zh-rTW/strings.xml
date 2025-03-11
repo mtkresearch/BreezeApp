@@ -183,6 +183,9 @@
     <!-- ## ModelDownloadDialog -->
     <string name="download_model">下載模型</string>
     <string name="model_missing_message">缺少所需的模型文件。下載大小約為 %1$s。</string>
+    <string name="model_missing_message_ram_constraint">缺少所需的模型文件。下載大小約為 %1$s。\n\n注意：由於您裝置的記憶體限制（可用 %2$d GB，大型模型建議 %3$d GB），我們建議使用較小的 %4$s 模型以獲得更好的效能。</string>
+    <string name="model_missing_message_variant">缺少所需的 %1$s 模型文件。下載大小約為 %2$s。</string>
+    <string name="calculating_size">...計算中...</string>
     <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下載大小約為 125MB。</string>
     <string name="download">下載</string>
     <string name="downloading">下載中...</string>
@@ -305,5 +308,32 @@
     <string name="download_status_failed">失敗</string>
     <string name="download_size_format">%1$s / %2$s</string>
     <string name="unknown_size">未知大小</string>
+
+    <string name="LLM_invalid_token_error">很抱歉，無法生成有效的回應。這可能是由於問題的複雜性或目前模型的限制。請嘗試重新表述您的問題。</string>
+    <string name="LLM_generation_timeout">很抱歉，回應生成時間過長，已被中斷。請嘗試提出不同的問題，或將此問題拆分為較小的部分。</string>
+
+    <!-- Model Size Selection Strings -->
+    <string name="model_size_preference_title">LLM 模型大小</string>
+    <string name="model_size_large">大型模型（高品質）</string>
+    <string name="model_size_small">小型模型（記憶體效率高）</string>
+    <string name="model_size_auto">自動（根據裝置選擇）</string>
+    <string name="model_size_warning_title">警告：記憶體不足</string>
+    <string name="model_size_warning_message">您的裝置記憶體不足，無法流暢運行大型模型（需要 %1$d GB，可用 %2$d GB）。使用大型模型可能導致崩潰或運行緩慢。確定要繼續嗎？</string>
+    <string name="model_size_warning_confirm">仍要使用</string>
+    <string name="model_size_warning_cancel">使用小型模型</string>
+    <string name="model_size_current">目前：%s</string>
+    <string name="ram_info">記憶體：%d GB 可用 / %d GB 需求</string>
+
+    <!-- Backend Selection Strings -->
+
+    <!-- Model Selection Dialog -->
+    <string name="model_selection_title">選擇 Breeze 模型版本</string>
+    <string name="model_selection_description">選擇最適合您裝置的 Breeze 模型版本。%1$s</string>
+    <string name="large_model_recommended">我們建議您的裝置使用高效能版本。</string>
+    <string name="small_model_recommended">由於記憶體限制，我們建議您的裝置使用小型版本。</string>
+    <string name="quantization_notice">⚠️ 重要提示：在記憶體小於7GB的裝置上，將使用量化模型，與完整模型相比，此模型可能偶爾會產生較不精確的回應。</string>
+    <string name="large_model_option">%1$s (%2$s)\n更好的品質和更多功能，但需要更多記憶體</string>
+    <string name="small_model_option">%1$s (%2$s)\n啟動更快，使用更少記憶體，適合資源有限的裝置</string>
+    <string name="continue_button">繼續</string>
 
 </resources>
