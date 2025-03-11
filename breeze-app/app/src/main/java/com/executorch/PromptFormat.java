@@ -8,12 +8,14 @@
 
 package com.executorch;
 
+import com.mtkresearch.breeze_app.utils.AppConstants;
+
 public class PromptFormat {
 
   public static final String SYSTEM_PLACEHOLDER = "{{ system_prompt }}";
   public static final String USER_PLACEHOLDER = "{{ user_prompt }}";
   public static final String ASSISTANT_PLACEHOLDER = "{{ assistant_response }}";
-  public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文回答以下問題";
+  public static final String DEFAULT_SYSTEM_PROMPT = AppConstants.DEFAULT_SYSTEM_PROMPT;
 
   public static String getSystemPromptTemplate(ModelType modelType) {
     switch (modelType) {
