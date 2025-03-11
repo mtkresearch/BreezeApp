@@ -115,43 +115,62 @@ public class ModelDownloadDialog extends Dialog {
         if (downloadMode == DownloadMode.TTS) {
             messageText.setText(R.string.model_missing_message_tts);
         } else {
-            // For LLM mode, check RAM constraints and show appropriate message
-            boolean canUseLargeModel = AppConstants.canUseLargeModel(getContext());
-            long availableRam = AppConstants.getAvailableRamGB(getContext());
-            
-            // Determine which model file to download based on RAM constraints
+            // Get the user's model preference
             SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
             String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
             
-            boolean usingLargeModel = modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE) && canUseLargeModel;
+            // Use the appropriate model file based on preference
+            String modelFileName;
+            String modelDisplayName;
             
-            if (usingLargeModel) {
-                // Using large model
-                String initialMessage = getContext().getString(R.string.model_missing_message, 
-                    getContext().getString(R.string.calculating_size));
-                messageText.setText(initialMessage);
+            if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
+                modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
+                modelDisplayName = "Breeze (High Performance)";
+                Log.d(TAG, "Using high performance model: " + modelFileName);
+            } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
+                modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
+                modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                Log.d(TAG, "Using standard model: " + modelFileName);
             } else {
-                // Using small model due to RAM constraints or user preference
-                String initialMessage;
-                if (!canUseLargeModel && (modelSizePreference.equals(AppConstants.MODEL_SIZE_AUTO) || 
-                                         modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE))) {
-                    // Show message about RAM constraints
-                    initialMessage = getContext().getString(
-                        R.string.model_missing_message_ram_constraint, 
-                        getContext().getString(R.string.calculating_size),
-                        availableRam,
-                        AppConstants.LARGE_MODEL_MIN_RAM_GB,
-                        AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME);
+                // Auto - select based on RAM
+                if (AppConstants.canUseLargeModel(getContext())) {
+                    modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
+                    modelDisplayName = "Breeze (High Performance)";
+                    Log.d(TAG, "Auto-selected high performance model based on RAM: " + modelFileName);
                 } else {
-                    // User explicitly chose small model
-                    initialMessage = getContext().getString(R.string.model_missing_message, 
-                        getContext().getString(R.string.calculating_size));
+                    modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
+                    modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                    Log.d(TAG, "Auto-selected standard model based on RAM: " + modelFileName);
                 }
-                messageText.setText(initialMessage);
             }
             
-            Log.d(TAG, "Set initial dialog message while fetching file sizes");
+            // Set the message based on the selected model variant
+            String initialMessage = getContext().getString(
+                R.string.model_missing_message_variant, 
+                modelDisplayName,
+                getContext().getString(R.string.calculating_size));
+                
+            messageText.setText(initialMessage);
+            
+            String modelUrl = AppConstants.MODEL_BASE_URL + modelFileName + "?download=true";
+            
+            // Dynamically get file size from server
+            long modelFileSize = estimateFileSize(modelUrl);
+            
+            AppConstants.DownloadFileInfo modelInfo = new AppConstants.DownloadFileInfo(
+                modelUrl,
+                modelFileName,
+                modelDisplayName,
+                AppConstants.FILE_TYPE_LLM,
+                modelFileSize
+            );
+            downloadFiles.add(modelInfo);
+            
+            // Request file sizes asynchronously
+            fetchFileSizesAsync();
         }
+        
+        Log.d(TAG, "Set initial dialog message while fetching file sizes");
 
         // Initialize RecyclerView
         fileRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
@@ -360,28 +379,36 @@ public class ModelDownloadDialog extends Dialog {
             );
             downloadFiles.add(tokenizerInfo);
             
-            // Then add the main model file based on user preference
+            // Get the user's model preference
             SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
             String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
             
-            // Determine which model file to download based on preference
+            // Use the appropriate model file based on preference
             String modelFileName;
             String modelDisplayName;
-            String modelUrl;
             
-            if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE) && AppConstants.canUseLargeModel(getContext())) {
-                // User selected large model and device can handle it
+            if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
                 modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
-                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
-                modelUrl = AppConstants.MODEL_BASE_URL + AppConstants.LARGE_LLM_MODEL_FILE + "?download=true";
-                Log.d(TAG, "Using large model based on user preference: " + modelFileName);
-            } else {
-                // User selected small model or device can't handle large model
+                modelDisplayName = "Breeze (High Performance)";
+                Log.d(TAG, "Using high performance model: " + modelFileName);
+            } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
                 modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
                 modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
-                modelUrl = AppConstants.MODEL_BASE_URL + AppConstants.SMALL_LLM_MODEL_FILE + "?download=true";
-                Log.d(TAG, "Using small model based on user preference or device constraints: " + modelFileName);
+                Log.d(TAG, "Using standard model: " + modelFileName);
+            } else {
+                // Auto - select based on RAM
+                if (AppConstants.canUseLargeModel(getContext())) {
+                    modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
+                    modelDisplayName = "Breeze (High Performance)";
+                    Log.d(TAG, "Auto-selected high performance model based on RAM: " + modelFileName);
+                } else {
+                    modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
+                    modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
+                    Log.d(TAG, "Auto-selected standard model based on RAM: " + modelFileName);
+                }
             }
+            
+            String modelUrl = AppConstants.MODEL_BASE_URL + modelFileName + "?download=true";
             
             // Dynamically get file size from server
             long modelFileSize = estimateFileSize(modelUrl);
