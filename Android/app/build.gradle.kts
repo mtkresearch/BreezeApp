@@ -47,6 +47,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 // Version constants
@@ -61,6 +65,10 @@ object Versions {
     const val JUNIT = "4.13.2"
     const val ANDROID_JUNIT = "1.1.5"
     const val ESPRESSO = "3.5.1"
+    const val MOCKITO = "5.2.0"
+    const val MOCKITO_KOTLIN = "5.2.1"
+    const val TURBINE = "1.0.0"
+    const val COROUTINES_TEST = "1.7.3"
 }
 
 dependencies {
@@ -84,6 +92,10 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:${Versions.JUNIT}")
+    testImplementation("org.mockito:mockito-core:${Versions.MOCKITO}")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:${Versions.MOCKITO_KOTLIN}")
+    testImplementation("app.cash.turbine:turbine:${Versions.TURBINE}")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:${Versions.COROUTINES_TEST}")
     androidTestImplementation("androidx.test.ext:junit:${Versions.ANDROID_JUNIT}")
     androidTestImplementation("androidx.test.espresso:espresso-core:${Versions.ESPRESSO}")
 }
