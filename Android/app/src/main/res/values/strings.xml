@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Breeze AI Chat</string>
+    
+    <!-- Main Screen -->
+    <string name="app_description">A showcase of AI capabilities including LLM, VLM, ASR, and TTS features in a mobile app.</string>
+    <string name="features_title">Features</string>
+    <string name="feature_llm">• LLM: Text generation with context-aware responses</string>
+    <string name="feature_vlm">• VLM: Vision understanding and image analysis</string>
+    <string name="feature_asr">• ASR: Speech-to-text for voice input</string>
+    <string name="feature_tts">• TTS: Text-to-speech for voice output</string>
+    <string name="start_chat">Start Chat</string>
+    <string name="version">Version 1.0.0</string>
+    
+    <!-- Chat Screen -->
+    <string name="chat_title">Breeze AI Chat</string>
+    <string name="message_hint">Type a message…</string>
+    <string name="clear_chat">Clear Chat</string>
+    <string name="clear_confirmation_title">Clear Conversation</string>
+    <string name="clear_confirmation_message">Are you sure you want to clear this conversation? This action cannot be undone.</string>
+    <string name="clear">Clear</string>
+    <string name="cancel">Cancel</string>
+    
+    <!-- Media Attachment -->
+    <string name="add_attachment">Add Attachment</string>
+    <string name="take_photo">Take Photo</string>
+    <string name="choose_from_gallery">Choose from Gallery</string>
+    
+    <!-- Permissions -->
+    <string name="camera_permission_required">Camera permission required</string>
+    <string name="microphone_permission_required">Microphone permission required</string>
+    
+    <!-- Features not implemented -->
+    <string name="tts_not_implemented">TTS not implemented yet</string>
+    <string name="voice_input_not_implemented">Voice input not implemented yet</string>
+    <string name="image_viewer_not_implemented">Image viewer not implemented yet</string>
+</resources>
