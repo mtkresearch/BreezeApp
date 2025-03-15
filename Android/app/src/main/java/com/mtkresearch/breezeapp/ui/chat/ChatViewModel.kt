@@ -25,31 +25,39 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.UUID
 
 /**
  * ViewModel for the chat interface
  */
-class ChatViewModel(application: Application) : AndroidViewModel(application) {
+open class ChatViewModel(application: Application) : AndroidViewModel(application) {
     companion object {
         private const val TAG = "ChatViewModel"
     }
     
     // Application context
-    private val context: Context = application.applicationContext
+    protected val context: Context = application.applicationContext
     
     // Repositories and managers
-    private val conversationRepository = ConversationRepository()
-    private val modelManager = ModelManager(context)
+    protected var conversationRepo = ConversationRepository()
+    protected var modelManager = ModelManager(context)
     
     // Services
-    private var llmService: LLMService? = null
+    protected var llmService: LLMService? = null
     
     // UI State
     private val _uiState = MutableStateFlow<ChatUiState>(ChatUiState.Loading)
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
     
     // Conversation state
-    val messages = conversationRepository.messages
+    val messages = conversationRepo.messages
+    
+    // Saved conversations from repository
+    val savedConversations = conversationRepo.savedConversations
     
     // Service connections
     private val llmConnection = object : ServiceConnection {
@@ -124,31 +132,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         
         // Add user message to conversation
         val userMessage = MessageFactory.createUserMessage(message)
-        conversationRepository.addMessage(userMessage)
+        conversationRepo.addMessage(userMessage)
         
         // Add a processing message
         val processingMessage = MessageFactory.createProcessingMessage()
-        conversationRepository.addMessage(processingMessage)
+        conversationRepo.addMessage(processingMessage)
         
         // Generate response
         llmService?.generateText(
-            prompt = conversationRepository.getFormattedConversationHistory(),
+            prompt = conversationRepo.getFormattedConversationHistory(),
             callback = object : LLMService.StreamingResponseCallback {
                 private val responseBuilder = StringBuilder()
                 
                 override fun onToken(token: String) {
                     responseBuilder.append(token)
-                    conversationRepository.replaceProcessingMessage(responseBuilder.toString())
+                    conversationRepo.replaceProcessingMessage(responseBuilder.toString())
                 }
                 
                 override fun onComplete(fullResponse: String) {
                     // Ensure the final response is set
-                    conversationRepository.replaceProcessingMessage(fullResponse)
+                    conversationRepo.replaceProcessingMessage(fullResponse)
                 }
                 
                 override fun onError(error: String) {
                     Log.e(TAG, "LLM error: $error")
-                    conversationRepository.replaceProcessingMessage(
+                    conversationRepo.replaceProcessingMessage(
                         AppConstants.LLM_ERROR_RESPONSE
                     )
                 }
@@ -157,57 +165,112 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * Send a message with media attachment
+     * Send a message with media
      */
     fun sendMessageWithMedia(message: String, mediaUri: Uri, mediaType: MediaType) {
-        // Add user message with media to conversation
-        val userMessage = MessageFactory.createUserMessage(message, mediaUri, mediaType)
-        conversationRepository.addMessage(userMessage)
-        
-        // Add a processing message
-        val processingMessage = MessageFactory.createProcessingMessage()
-        conversationRepository.addMessage(processingMessage)
-        
-        // In a real implementation, you would handle different types of media here
-        // For now, we'll just use the LLM service with a modified prompt
-        val prompt = "User sent a message with ${mediaType.name.lowercase()} attachment: $message"
-        
-        llmService?.generateText(
-            prompt = prompt,
-            callback = object : LLMService.StreamingResponseCallback {
-                private val responseBuilder = StringBuilder()
-                
-                override fun onToken(token: String) {
-                    responseBuilder.append(token)
-                    conversationRepository.replaceProcessingMessage(responseBuilder.toString())
-                }
-                
-                override fun onComplete(fullResponse: String) {
-                    conversationRepository.replaceProcessingMessage(fullResponse)
-                }
-                
-                override fun onError(error: String) {
-                    Log.e(TAG, "LLM error: $error")
-                    conversationRepository.replaceProcessingMessage(
-                        AppConstants.LLM_ERROR_RESPONSE
-                    )
-                }
-            }
+        // Add user message with media
+        val userMessage = MessageFactory.createUserMessage(
+            content = message,
+            mediaUri = mediaUri,
+            mediaType = mediaType
         )
+        conversationRepo.addMessage(userMessage)
+        
+        // Add processing message
+        val processingMessage = MessageFactory.createProcessingMessage()
+        conversationRepo.addMessage(processingMessage)
+        
+        // Generate response with context about the media
+        val mediaDescription = when (mediaType) {
+            MediaType.IMAGE -> "[User has attached an image]"
+            MediaType.AUDIO -> "[User has attached an audio file]"
+            MediaType.VIDEO -> "[User has attached a video]"
+            MediaType.DOCUMENT -> "[User has attached a document]"
+            MediaType.FILE -> "[User has attached a file]"
+            MediaType.NONE -> ""
+        }
+        
+        val prompt = "$mediaDescription\n\n${conversationRepo.getFormattedConversationHistory()}"
+        generateResponse(prompt)
     }
     
     /**
      * Clear the current conversation
      */
     fun clearConversation() {
-        conversationRepository.clearConversation()
+        conversationRepo.clearConversation()
     }
     
     /**
      * Update the system prompt
      */
     fun updateSystemPrompt(prompt: String) {
-        conversationRepository.setSystemPrompt(prompt)
+        conversationRepo.setSystemPrompt(prompt)
+    }
+    
+    /**
+     * Get the current system prompt
+     */
+    fun getSystemPrompt(): String {
+        return conversationRepo.getSystemPrompt()
+    }
+    
+    /**
+     * Save the current conversation
+     */
+    fun saveConversation(name: String): String {
+        return conversationRepo.saveConversation(name)
+    }
+    
+    /**
+     * Load a saved conversation
+     */
+    fun loadConversation(conversationId: String): Boolean {
+        return conversationRepo.loadSavedConversation(conversationId)
+    }
+    
+    /**
+     * Delete a specific message from the conversation
+     */
+    fun deleteMessage(message: ChatMessage) {
+        // Implementation would depend on how messages are stored
+        // This is a placeholder
+    }
+    
+    /**
+     * Access to repository for external components
+     */
+    fun getConversationRepository(): ConversationRepository {
+        return conversationRepo
+    }
+    
+    /**
+     * Generate a response from the LLM service
+     */
+    private fun generateResponse(prompt: String) {
+        llmService?.generateText(
+            prompt = prompt,
+            temperature = AppConstants.DEFAULT_TEMPERATURE,
+            callback = object : LLMService.StreamingResponseCallback {
+                private val responseBuilder = StringBuilder()
+                
+                override fun onToken(token: String) {
+                    responseBuilder.append(token)
+                    conversationRepo.replaceProcessingMessage(responseBuilder.toString())
+                }
+                
+                override fun onComplete(fullResponse: String) {
+                    conversationRepo.replaceProcessingMessage(fullResponse)
+                }
+                
+                override fun onError(error: String) {
+                    Log.e(TAG, "LLM error: $error")
+                    conversationRepo.replaceProcessingMessage(
+                        AppConstants.LLM_ERROR_RESPONSE
+                    )
+                }
+            }
+        )
     }
     
     override fun onCleared() {

@@ -34,4 +34,8 @@
     <string name="tts_not_implemented">TTS not implemented yet</string>
     <string name="voice_input_not_implemented">Voice input not implemented yet</string>
     <string name="image_viewer_not_implemented">Image viewer not implemented yet</string>
+    
+    <!-- Navigation Drawer -->
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
 </resources>

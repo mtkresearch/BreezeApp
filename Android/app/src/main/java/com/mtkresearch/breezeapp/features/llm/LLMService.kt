@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Service for handling Language Model operations
  */
-class LLMService : BaseEngineService() {
+open class LLMService : BaseEngineService() {
     companion object {
         private const val TAG = "LLMService"
     }
@@ -149,7 +149,7 @@ class LLMService : BaseEngineService() {
      * Simulate model text generation with streaming tokens
      * This is a placeholder for demonstration purposes
      */
-    private suspend fun simulateModelGeneration(prompt: String, temperature: Float): String {
+    protected open suspend fun simulateModelGeneration(prompt: String, temperature: Float): String {
         val response = StringBuilder()
         val words = listOf(
             "Hello! ", "I'm ", "your ", "AI ", "assistant. ", 

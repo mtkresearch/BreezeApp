@@ -42,14 +42,19 @@ class LLMServiceTest {
         fun simulateInitializationError() {
             updateState(ServiceState.Error("Simulated error"))
         }
+        
+        // Setter for modelPath
+        fun setupModelPath(path: String) {
+            modelPath = path
+        }
     }
     
     @Before
     fun setup() {
         llmService = spy(TestLLMService())
         
-        // Set model path
-        llmService.modelPath = mockModelPath
+        // Set model path using the setter
+        llmService.setupModelPath(mockModelPath)
     }
     
     @Test
@@ -84,7 +89,7 @@ class LLMServiceTest {
     fun `generateText calls callback with streaming output`() = runTest {
         // Given
         llmService.mockFileExists = true
-        await llmService.initialize()
+        llmService.initialize()
         
         val testPrompt = "Hello, how are you?"
         val expectedResponse = "Generated response"
@@ -149,7 +154,7 @@ class LLMServiceTest {
     fun `stopGeneration sets isGenerating to false`() = runTest {
         // Initialize service
         llmService.mockFileExists = true
-        await llmService.initialize()
+        llmService.initialize()
         
         // Start generation (would set isGenerating to true)
         val callback = mock<LLMService.StreamingResponseCallback>()
@@ -188,12 +193,24 @@ class LLMServiceTest {
     fun `getModelName returns display model name`() = runTest {
         // Given
         llmService.mockFileExists = true
-        await llmService.initialize()
+        llmService.initialize()
         
         // When
         val modelName = llmService.getModelName()
         
         // Then
         assertTrue(modelName.isNotEmpty())
+    }
+    
+    @Test
+    fun `service state emits error if initialization fails`() = runTest {
+        // Given
+        llmService.mockFileExists = false
+        
+        // When
+        llmService.initialize()
+        
+        // Then
+        assertTrue(llmService.serviceState.value is ServiceState.Error)
     }
 } 

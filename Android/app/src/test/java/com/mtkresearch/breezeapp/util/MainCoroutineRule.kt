@@ -40,5 +40,5 @@ class MainCoroutineRule(
     }
     
     fun runBlockingTest(block: suspend TestCoroutineScope.() -> Unit) = 
-        runBlockingTest(block)
+        kotlinx.coroutines.test.runBlockingTest(dispatcher, block)
 } 

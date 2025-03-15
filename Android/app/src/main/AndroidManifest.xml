@@ -59,6 +59,11 @@
         <service android:name=".features.asr.ASRService" />
         <service android:name=".features.tts.TTSService" />
         
+        <!-- Settings Activity -->
+        <activity android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.chat.ChatActivity" />
+        
     </application>
 
 </manifest>

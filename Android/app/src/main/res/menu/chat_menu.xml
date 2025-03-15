@@ -3,9 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     
     <item
-        android:id="@+id/action_clear"
-        android:title="Clear Chat"
-        android:icon="@android:drawable/ic_menu_delete"
-        app:showAsAction="ifRoom" />
+        android:id="@+id/action_save"
+        android:icon="@android:drawable/ic_menu_save"
+        android:title="Save Conversation"
+        app:showAsAction="never" />
     
+    <item
+        android:id="@+id/action_clear"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:title="Clear Conversation"
+        app:showAsAction="never" />
+    
+    <item
+        android:id="@+id/action_system_prompt"
+        android:icon="@android:drawable/ic_menu_edit"
+        android:title="Edit System Prompt"
+        app:showAsAction="never" />
 </menu> 

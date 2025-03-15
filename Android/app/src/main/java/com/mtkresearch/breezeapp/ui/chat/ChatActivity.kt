@@ -9,21 +9,33 @@ import android.provider.MediaStore
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.view.GravityCompat
 import androidx.core.widget.addTextChangedListener
+import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.navigation.NavigationView
 import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.data.models.ChatMessage
 import com.mtkresearch.breezeapp.data.models.MediaType
+import com.mtkresearch.breezeapp.data.models.SavedConversation
 import com.mtkresearch.breezeapp.databinding.ActivityChatBinding
+import com.mtkresearch.breezeapp.ui.history.ConversationHistoryFragment
+import com.mtkresearch.breezeapp.ui.settings.SettingsActivity
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -31,7 +43,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class ChatActivity : AppCompatActivity() {
+class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
     private lateinit var binding: ActivityChatBinding
     private val viewModel: ChatViewModel by viewModels()
     
@@ -70,18 +82,59 @@ class ChatActivity : AppCompatActivity() {
         }
     }
     
+    // Views
+    private lateinit var drawerLayout: DrawerLayout
+    private lateinit var navigationView: NavigationView
+    private lateinit var messagesRecyclerView: RecyclerView
+    private lateinit var messageEditText: EditText
+    private lateinit var sendButton: ImageButton
+    private lateinit var attachButton: ImageButton
+    private lateinit var voiceInputButton: ImageButton
+    private lateinit var attachmentPreviewLayout: LinearLayout
+    private lateinit var attachmentPreview: ImageView
+    private lateinit var removeAttachmentButton: ImageButton
+    
+    // History fragment
+    private var historyFragment: ConversationHistoryFragment? = null
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
         
+        // Initialize views
+        drawerLayout = findViewById(R.id.drawerLayout)
+        navigationView = findViewById(R.id.navigationView)
+        messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
+        messageEditText = findViewById(R.id.messageEditText)
+        sendButton = findViewById(R.id.sendButton)
+        attachButton = findViewById(R.id.attachButton)
+        voiceInputButton = findViewById(R.id.voiceInputButton)
+        attachmentPreviewLayout = findViewById(R.id.attachmentPreviewLayout)
+        attachmentPreview = findViewById(R.id.attachmentPreview)
+        removeAttachmentButton = findViewById(R.id.removeAttachmentButton)
+        
         // Setup toolbar
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         
+        // Setup drawer
+        val toggle = ActionBarDrawerToggle(
+            this, drawerLayout, binding.toolbar,
+            R.string.navigation_drawer_open,
+            R.string.navigation_drawer_close
+        )
+        drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+        
+        navigationView.setNavigationItemSelectedListener(this)
+        
         setupRecyclerView()
         setupClickListeners()
         observeViewModel()
+        
+        // Setup history fragment in drawer
+        setupHistoryFragment()
     }
     
     private fun setupRecyclerView() {
@@ -301,6 +354,14 @@ class ChatActivity : AppCompatActivity() {
                 showClearConfirmation()
                 true
             }
+            R.id.action_save -> {
+                showSaveDialog()
+                true
+            }
+            R.id.action_system_prompt -> {
+                showSystemPromptDialog()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -314,6 +375,109 @@ class ChatActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+    
+    private fun showSaveDialog() {
+        val input = EditText(this)
+        input.hint = "Conversation name"
+        
+        AlertDialog.Builder(this)
+            .setTitle("Save Conversation")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isNotEmpty()) {
+                    viewModel.saveConversation(name)
+                    Toast.makeText(this, "Conversation saved", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun showSystemPromptDialog() {
+        val input = EditText(this)
+        input.setText(viewModel.getSystemPrompt())
+        
+        AlertDialog.Builder(this)
+            .setTitle("System Prompt")
+            .setMessage("Edit the system instructions for the AI:")
+            .setView(input)
+            .setPositiveButton("Update") { _, _ ->
+                val newPrompt = input.text.toString().trim()
+                if (newPrompt.isNotEmpty()) {
+                    viewModel.updateSystemPrompt(newPrompt)
+                    Toast.makeText(this, "System prompt updated", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    override fun onNavigationItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.nav_new_chat -> {
+                viewModel.clearConversation()
+                drawerLayout.closeDrawer(GravityCompat.START)
+            }
+            R.id.nav_settings -> {
+                startActivity(Intent(this, SettingsActivity::class.java))
+            }
+            R.id.nav_about -> {
+                showAboutDialog()
+            }
+        }
+        return true
+    }
+    
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("About Breeze AI")
+            .setMessage("Version 1.0.0\n\nA cutting-edge AI chat application powered by on-device language models.")
+            .setPositiveButton("OK", null)
+            .show()
+    }
+    
+    override fun onBackPressed() {
+        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            drawerLayout.closeDrawer(GravityCompat.START)
+        } else {
+            super.onBackPressed()
+        }
+    }
+    
+    private fun setupHistoryFragment() {
+        historyFragment = ConversationHistoryFragment().apply {
+            setRepository(viewModel.getConversationRepository())
+            
+            // Set callbacks
+            onConversationSelected = { conversation ->
+                loadConversation(conversation)
+                drawerLayout.closeDrawer(GravityCompat.START)
+            }
+            
+            onConversationDeleted = { conversation ->
+                Toast.makeText(
+                    this@ChatActivity,
+                    "Deleted: ${conversation.title}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.navigationView, historyFragment!!)
+            .commit()
+    }
+    
+    private fun loadConversation(conversation: SavedConversation) {
+        // Load the conversation
+        viewModel.loadConversation(conversation.id)
+        Toast.makeText(
+            this,
+            "Loaded: ${conversation.title}",
+            Toast.LENGTH_SHORT
+        ).show()
     }
     
     companion object {

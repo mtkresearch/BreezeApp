@@ -4,10 +4,12 @@ import com.mtkresearch.breezeapp.core.utils.AppConstants
 import com.mtkresearch.breezeapp.data.models.ChatMessage
 import com.mtkresearch.breezeapp.data.models.MessageFactory
 import com.mtkresearch.breezeapp.data.models.MessageSender
+import com.mtkresearch.breezeapp.data.models.SavedConversation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.Date
+import java.util.UUID
 
 /**
  * Repository for managing conversations and chat history
@@ -17,6 +19,10 @@ class ConversationRepository {
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
     
     private var systemPrompt = AppConstants.DEFAULT_SYSTEM_PROMPT
+    
+    // Saved conversations list
+    private val _savedConversations = MutableStateFlow<List<SavedConversation>>(emptyList())
+    val savedConversations: StateFlow<List<SavedConversation>> = _savedConversations.asStateFlow()
     
     init {
         // Initialize with a system message
@@ -119,8 +125,47 @@ class ConversationRepository {
      */
     fun saveConversation(name: String? = null): String {
         val conversationName = name ?: "Chat ${Date()}"
-        // In a real implementation, this would save to a database
-        // For now, we just return the name
-        return conversationName
+        val id = UUID.randomUUID().toString()
+        val savedConversation = SavedConversation.fromMessages(
+            id = id,
+            messages = _messages.value,
+            title = conversationName
+        )
+        
+        // Add to saved conversations
+        _savedConversations.value = _savedConversations.value + savedConversation
+        
+        return id
+    }
+    
+    /**
+     * Load a previously saved conversation
+     * @return true if loaded successfully
+     */
+    fun loadSavedConversation(conversationId: String): Boolean {
+        // In a real app, this would load from storage/database
+        // For this example, we'll just mock it
+        
+        // Simulate loading - in a real app, we would load the actual messages
+        return true
+    }
+    
+    /**
+     * Delete a saved conversation
+     */
+    fun deleteSavedConversation(conversationId: String) {
+        _savedConversations.value = _savedConversations.value.filter { it.id != conversationId }
+    }
+    
+    /**
+     * Get all saved conversations
+     */
+    fun getSavedConversations(): List<SavedConversation> {
+        return _savedConversations.value
+    }
+    
+    // Extension function to capitalize first letter
+    private fun String.capitalize(): String {
+        return this.lowercase().replaceFirstChar { it.uppercase() }
     }
 } 

@@ -56,12 +56,12 @@ class ChatViewModelTest {
     ) : ChatViewModel(application) {
         init {
             // Replace dependencies with mocked ones
-            this.conversationRepository = repository
+            this.conversationRepo = repository
             this.modelManager = modelManager
         }
         
         // Setter for injecting mocked LLM service
-        fun setLlmService(llmService: LLMService) {
+        fun injectLlmService(llmService: LLMService) {
             this.llmService = llmService
         }
     }
@@ -86,7 +86,7 @@ class ChatViewModelTest {
         
         // Create ViewModel with mocked dependencies
         viewModel = TestChatViewModel(mockApplication, mockConversationRepository, mockModelManager)
-        viewModel.setLlmService(mockLlmService)
+        viewModel.injectLlmService(mockLlmService)
     }
     
     @After

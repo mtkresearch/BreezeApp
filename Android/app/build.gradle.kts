@@ -69,6 +69,7 @@ object Versions {
     const val MOCKITO_KOTLIN = "5.2.1"
     const val TURBINE = "1.0.0"
     const val COROUTINES_TEST = "1.7.3"
+    const val PREFERENCE_KTX = "1.2.1"
 }
 
 dependencies {
@@ -85,6 +86,9 @@ dependencies {
     
     // Fragment
     implementation("androidx.fragment:fragment-ktx:${Versions.FRAGMENT_KTX}")
+    
+    // Preferences
+    implementation("androidx.preference:preference-ktx:${Versions.PREFERENCE_KTX}")
     
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${Versions.COROUTINES}")

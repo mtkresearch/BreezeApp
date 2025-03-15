@@ -28,15 +28,6 @@ enum class MessageSender {
 }
 
 /**
- * Represents the type of media attached to a message
- */
-enum class MediaType {
-    IMAGE,
-    AUDIO,
-    FILE
-}
-
-/**
  * Extensions to create different types of messages
  */
 object MessageFactory {

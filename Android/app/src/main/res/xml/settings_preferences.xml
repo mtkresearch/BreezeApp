@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="Chat Settings"
+        app:iconSpaceReserved="false">
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="enable_sound"
+            android:summary="Play sounds when messages are sent or received"
+            android:title="Enable Sound Notifications"
+            app:iconSpaceReserved="false" />
+
+        <ListPreference
+            android:defaultValue="0.7"
+            android:entries="@array/temperature_entries"
+            android:entryValues="@array/temperature_values"
+            android:key="temperature"
+            android:summary="Control the creativity of responses"
+            android:title="Response Temperature"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Model Settings"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="model_info"
+            android:summary="View information about the current AI model"
+            android:title="Model Information"
+            app:iconSpaceReserved="false" />
+
+        <EditTextPreference
+            android:defaultValue="You are a helpful, friendly AI assistant."
+            android:key="system_prompt"
+            android:summary="Customize the AI's system prompt"
+            android:title="Default System Prompt"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Application"
+        app:iconSpaceReserved="false">
+
+        <Preference
+            android:key="clear_history"
+            android:summary="Remove all saved conversations"
+            android:title="Clear Conversation History"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="about"
+            android:summary="Version 1.0.0"
+            android:title="About Breeze AI"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen> 

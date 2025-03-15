@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="temperature_entries">
+        <item>Low (0.3) - More focused</item>
+        <item>Medium (0.7) - Balanced</item>
+        <item>High (1.0) - More creative</item>
+    </string-array>
+    
+    <string-array name="temperature_values">
+        <item>0.3</item>
+        <item>0.7</item>
+        <item>1.0</item>
+    </string-array>
+</resources> 
