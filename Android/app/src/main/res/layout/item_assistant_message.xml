@@ -4,43 +4,31 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="16dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="8dp"
-    android:paddingBottom="4dp">
+    android:paddingStart="@dimen/spacing_medium"
+    android:paddingTop="@dimen/spacing_tiny"
+    android:paddingBottom="@dimen/spacing_tiny">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/assistantAvatar"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginStart="8dp"
-        android:background="@color/primary"
-        android:padding="4dp"
-        app:layout_constraintBottom_toBottomOf="@+id/assistantMessageCard"
-        app:layout_constraintStart_toStartOf="parent"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
-        app:tint="@android:color/white" />
-
+    <!-- Message Card - grows with content, aligned to left -->
     <androidx.cardview.widget.CardView
         android:id="@+id/assistantMessageCard"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="48dp"
         app:cardBackgroundColor="@color/ai_message_bg"
         app:cardCornerRadius="16dp"
         app:cardElevation="1dp"
-        app:cardUseCompatPadding="true"
+        app:cardUseCompatPadding="false"
+        app:contentPadding="0dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toEndOf="@+id/assistantAvatar"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_max="@dimen/message_max_width">
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="260dp"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="@dimen/spacing_medium">
 
             <TextView
                 android:id="@+id/assistantMessageText"
@@ -48,44 +36,34 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/nunito"
                 android:textColor="@color/ai_message_text"
-                android:textSize="16sp"
-                tools:text="I'm your AI assistant. How can I help you today?" />
+                android:textSize="@dimen/text_size_subtitle"
+                tools:text="I'm your AI assistant. I can provide information on AI, machine learning, and many other topics. How can I help you today?" />
 
             <ProgressBar
                 android:id="@+id/typingIndicator"
                 style="?android:attr/progressBarStyleSmall"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="@dimen/spacing_small"
                 android:indeterminateTint="@color/primary"
                 android:visibility="gone"
                 tools:visibility="visible" />
-                
-            <TextView
-                android:id="@+id/messageTimestamp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="end"
-                android:layout_marginTop="4dp"
-                android:fontFamily="@font/nunito"
-                android:textAppearance="@style/TextAppearance.App.Caption"
-                android:textSize="10sp"
-                tools:text="10:31 AM" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <ImageButton
-        android:id="@+id/speakerButton"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:layout_marginTop="4dp"
-        android:layout_marginEnd="4dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="Read message aloud"
-        android:padding="4dp"
-        android:src="@android:drawable/ic_lock_silent_mode_off"
-        app:layout_constraintEnd_toEndOf="@+id/assistantMessageCard"
+    <!-- Timestamp below message -->
+    <TextView
+        android:id="@+id/messageTimestamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="2dp"
+        android:alpha="0.6"
+        android:fontFamily="@font/nunito"
+        android:textAppearance="@style/TextAppearance.App.Caption"
+        android:textSize="9sp"
+        app:layout_constraintStart_toStartOf="@+id/assistantMessageCard"
         app:layout_constraintTop_toBottomOf="@+id/assistantMessageCard"
-        app:tint="@color/primary" />
+        tools:text="10:31 AM" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

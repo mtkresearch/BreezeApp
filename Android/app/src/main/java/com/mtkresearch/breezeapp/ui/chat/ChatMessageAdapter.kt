@@ -112,16 +112,7 @@ class ChatMessageAdapter(
     ) : RecyclerView.ViewHolder(itemView) {
         
         private val messageText: TextView = itemView.findViewById(R.id.assistantMessageText)
-        private val speakerButton: ImageView? = itemView.findViewById(R.id.speakerButton)
         private var currentMessage: ChatMessage? = null
-        
-        init {
-            speakerButton?.setOnClickListener {
-                currentMessage?.let { message ->
-                    onTtsRequested?.invoke(message)
-                }
-            }
-        }
         
         fun bind(message: ChatMessage) {
             currentMessage = message

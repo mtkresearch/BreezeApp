@@ -4,10 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="16dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="16dp"
-    android:paddingBottom="4dp">
+    android:paddingStart="@dimen/spacing_medium"
+    android:paddingTop="@dimen/spacing_tiny"
+    android:paddingEnd="@dimen/spacing_medium"
+    android:paddingBottom="@dimen/spacing_tiny">
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/systemMessageCard"
@@ -21,18 +21,19 @@
         app:cardUseCompatPadding="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="0.9">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="8dp">
+            android:padding="@dimen/spacing_small">
 
             <ImageView
                 android:layout_width="24dp"
                 android:layout_height="24dp"
-                android:layout_marginEnd="8dp"
+                android:layout_marginEnd="@dimen/spacing_small"
                 android:src="@android:drawable/ic_dialog_info"
                 app:tint="@color/primary" />
 
@@ -42,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/nunito"
                 android:textColor="@color/text_secondary"
-                android:textSize="14sp"
+                android:textSize="@dimen/text_size_body"
                 android:textStyle="italic"
                 tools:text="System information message goes here" />
         </LinearLayout>
