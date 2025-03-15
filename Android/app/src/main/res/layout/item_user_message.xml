@@ -14,9 +14,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="48dp"
-        app:cardBackgroundColor="#E3F2FD"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/user_message_bg"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp"
         app:cardUseCompatPadding="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
@@ -34,7 +34,8 @@
                 android:id="@+id/userMessageText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/black"
+                android:fontFamily="@font/nunito"
+                android:textColor="@color/user_message_text"
                 android:textSize="16sp"
                 tools:text="Hello, I have a question about AI." />
 
@@ -43,22 +44,36 @@
                 android:layout_width="200dp"
                 android:layout_height="150dp"
                 android:layout_marginTop="8dp"
+                android:adjustViewBounds="true"
                 android:scaleType="centerCrop"
                 android:visibility="gone"
+                app:layout_constraintDimensionRatio="4:3"
                 tools:src="@tools:sample/backgrounds/scenic"
                 tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/messageTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/nunito"
+                android:textAppearance="@style/TextAppearance.App.Caption"
+                android:textSize="10sp"
+                tools:text="10:30 AM" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/userAvatar"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_marginEnd="8dp"
-        android:background="@android:color/darker_gray"
+        android:background="@color/primary"
         android:padding="4dp"
         app:layout_constraintBottom_toBottomOf="@+id/userMessageCard"
         app:layout_constraintEnd_toEndOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
         app:tint="@android:color/white" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

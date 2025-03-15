@@ -7,28 +7,34 @@
     android:gravity="bottom"
     android:orientation="vertical"
     android:padding="16dp"
-    android:theme="@style/ThemeOverlay.AppCompat.Dark">
+    android:theme="@style/ThemeOverlay.MaterialComponents.Dark">
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/ivHeaderIcon"
         android:layout_width="64dp"
         android:layout_height="64dp"
         android:contentDescription="@string/app_name"
-        android:src="@mipmap/ic_launcher" />
+        android:src="@mipmap/ic_launcher"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
+        app:strokeColor="@color/white"
+        app:strokeWidth="2dp" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:fontFamily="@font/nunito"
         android:text="Breeze AI"
-        android:textAppearance="@style/TextAppearance.AppCompat.Body1"
-        android:textSize="18sp"
+        android:textAppearance="@style/TextAppearance.App.Headline5"
+        android:textColor="@color/white"
         android:textStyle="bold" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/nunito"
         android:text="Conversation History"
-        android:textSize="14sp" />
+        android:textAppearance="@style/TextAppearance.App.Body2"
+        android:textColor="@color/white" />
 
 </LinearLayout> 

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    
+    <!-- Regular -->
+    <font
+        android:font="@font/nunito_regular"
+        android:fontStyle="normal"
+        android:fontWeight="400"
+        app:font="@font/nunito_regular"
+        app:fontStyle="normal"
+        app:fontWeight="400" />
+    
+    <!-- Light -->
+    <font
+        android:font="@font/nunito_light"
+        android:fontStyle="normal"
+        android:fontWeight="300"
+        app:font="@font/nunito_light"
+        app:fontStyle="normal"
+        app:fontWeight="300" />
+    
+    <!-- Medium -->
+    <font
+        android:font="@font/nunito_medium"
+        android:fontStyle="normal"
+        android:fontWeight="500"
+        app:font="@font/nunito_medium"
+        app:fontStyle="normal"
+        app:fontWeight="500" />
+    
+    <!-- Bold -->
+    <font
+        android:font="@font/nunito_bold"
+        android:fontStyle="normal"
+        android:fontWeight="700"
+        app:font="@font/nunito_bold"
+        app:fontStyle="normal"
+        app:fontWeight="700" />
+</font-family> 

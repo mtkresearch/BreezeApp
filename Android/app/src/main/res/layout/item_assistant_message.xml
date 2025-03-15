@@ -9,15 +9,16 @@
     android:paddingEnd="8dp"
     android:paddingBottom="4dp">
 
-    <ImageView
+    <com.google.android.material.imageview.ShapeableImageView
         android:id="@+id/assistantAvatar"
         android:layout_width="32dp"
         android:layout_height="32dp"
         android:layout_marginStart="8dp"
-        android:background="#4CAF50"
+        android:background="@color/primary"
         android:padding="4dp"
         app:layout_constraintBottom_toBottomOf="@+id/assistantMessageCard"
         app:layout_constraintStart_toStartOf="parent"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
         app:tint="@android:color/white" />
 
     <androidx.cardview.widget.CardView
@@ -25,9 +26,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="48dp"
-        app:cardBackgroundColor="#F5F5F5"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="2dp"
+        app:cardBackgroundColor="@color/ai_message_bg"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="1dp"
         app:cardUseCompatPadding="true"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
@@ -45,7 +46,8 @@
                 android:id="@+id/assistantMessageText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@android:color/black"
+                android:fontFamily="@font/nunito"
+                android:textColor="@color/ai_message_text"
                 android:textSize="16sp"
                 tools:text="I'm your AI assistant. How can I help you today?" />
 
@@ -55,21 +57,35 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_marginTop="8dp"
+                android:indeterminateTint="@color/primary"
                 android:visibility="gone"
                 tools:visibility="visible" />
+                
+            <TextView
+                android:id="@+id/messageTimestamp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/nunito"
+                android:textAppearance="@style/TextAppearance.App.Caption"
+                android:textSize="10sp"
+                tools:text="10:31 AM" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <ImageView
+    <ImageButton
         android:id="@+id/speakerButton"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
         android:layout_marginTop="4dp"
         android:layout_marginEnd="4dp"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="2dp"
+        android:contentDescription="Read message aloud"
+        android:padding="4dp"
         android:src="@android:drawable/ic_lock_silent_mode_off"
         app:layout_constraintEnd_toEndOf="@+id/assistantMessageCard"
-        app:layout_constraintTop_toBottomOf="@+id/assistantMessageCard" />
+        app:layout_constraintTop_toBottomOf="@+id/assistantMessageCard"
+        app:tint="@color/primary" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

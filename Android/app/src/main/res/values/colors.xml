@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_200">#FFBB86FC</color>
-    <color name="purple_500">#FF6200EE</color>
-    <color name="purple_700">#FF3700B3</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <!-- Primary Orange Colors -->
+    <color name="primary">#F99A1B</color>          <!-- Main Orange -->
+    <color name="primary_dark">#E07D00</color>     <!-- Darker Orange for status bar -->
+    <color name="primary_light">#FFB74D</color>    <!-- Lighter Orange for highlights -->
+    
+    <!-- Neutral Colors -->
+    <color name="background">#FFFFFF</color>       <!-- White Background -->
+    <color name="surface">#F5F5F5</color>          <!-- Light Gray Surface -->
+    <color name="text_primary">#212121</color>     <!-- Dark Text -->
+    <color name="text_secondary">#757575</color>   <!-- Secondary Text -->
+    
+    <!-- Message Colors -->
+    <color name="user_message_bg">#FFF3E0</color>  <!-- Light Orange Background -->
+    <color name="user_message_text">#212121</color><!-- Dark text for user messages -->
+    <color name="ai_message_bg">#FFFFFF</color>    <!-- White background for AI messages -->
+    <color name="ai_message_text">#757575</color>  <!-- Gray text for AI messages -->
+    <color name="error">#AF2316</color>            <!-- Error color -->
+    
+    <!-- Legacy colors (kept for backward compatibility) -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 </resources>

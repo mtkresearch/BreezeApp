@@ -29,6 +29,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.navigation.NavigationView
+import com.google.android.material.button.MaterialButton
 import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.data.models.ChatMessage
 import com.mtkresearch.breezeapp.data.models.MediaType
@@ -87,12 +88,12 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var navigationView: NavigationView
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageEditText: EditText
-    private lateinit var sendButton: ImageButton
-    private lateinit var attachButton: ImageButton
-    private lateinit var voiceInputButton: ImageButton
+    private lateinit var sendButton: MaterialButton
+    private lateinit var attachButton: MaterialButton
+    private lateinit var voiceInputButton: MaterialButton
     private lateinit var attachmentPreviewLayout: LinearLayout
     private lateinit var attachmentPreview: ImageView
-    private lateinit var removeAttachmentButton: ImageButton
+    private lateinit var removeAttachmentButton: MaterialButton
     
     // History fragment
     private var historyFragment: ConversationHistoryFragment? = null
@@ -214,11 +215,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             viewModel.sendMessage(message)
         }
         
-        binding.messageEditText.text.clear()
+        binding.messageEditText.text?.clear()
     }
     
     private fun updateSendButtonState() {
-        val hasText = binding.messageEditText.text.isNotEmpty()
+        val hasText = binding.messageEditText.text?.isNotEmpty() ?: false
         val hasAttachment = currentAttachmentUri != null
         
         binding.sendButton.isEnabled = hasText || hasAttachment
