@@ -30,7 +30,7 @@
                 android:layout_width="18dp"
                 android:layout_height="18dp"
                 android:layout_marginEnd="6dp"
-                android:src="@android:drawable/ic_menu_search"
+                android:src="@drawable/ic_search"
                 app:tint="@color/text_secondary" />
 
             <EditText

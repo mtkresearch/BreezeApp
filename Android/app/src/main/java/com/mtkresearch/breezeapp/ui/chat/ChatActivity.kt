@@ -143,6 +143,9 @@ class ChatActivity : AppCompatActivity() {
         setupRecyclerView()
         setupClickListeners()
         observeViewModel()
+        
+        // Setup search functionality
+        setupSearch()
     }
     
     private fun setupNavigation() {
@@ -163,6 +166,27 @@ class ChatActivity : AppCompatActivity() {
             R.string.navigation_drawer_close
         )
         drawerLayout.addDrawerListener(toggle)
+        drawerLayout.addDrawerListener(object : DrawerLayout.DrawerListener {
+            override fun onDrawerOpened(drawerView: View) {
+                Log.d("ChatActivity", "Drawer opened, refreshing conversations...")
+                // Clear any search text when drawer opens
+                searchConversations.text?.clear()
+                // Refresh the conversation list
+                historyFragment?.refreshConversations()
+            }
+            
+            override fun onDrawerClosed(drawerView: View) {
+                // Not needed for now
+            }
+            
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+                // Not needed for now
+            }
+            
+            override fun onDrawerStateChanged(newState: Int) {
+                // Not needed for now
+            }
+        })
         toggle.syncState()
         
         // Set up click listeners for drawer elements
@@ -181,17 +205,8 @@ class ChatActivity : AppCompatActivity() {
             drawerLayout.closeDrawer(GravityCompat.START)
         }
         
-        // Search functionality
-        searchConversations.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
-                val query = s.toString().trim()
-                historyFragment?.filterConversations(query)
-            }
-            
-            override fun afterTextChanged(s: Editable?) {}
-        })
+        // Setup search functionality
+        setupSearch()
         
         setupHistoryFragment()
     }
@@ -548,5 +563,28 @@ class ChatActivity : AppCompatActivity() {
             .setMessage("Version 1.0.0\n\nA cutting-edge AI chat application powered by on-device language models.")
             .setPositiveButton("OK", null)
             .show()
+    }
+    
+    // Setup search functionality in the drawer
+    private fun setupSearch() {
+        // Search functionality
+        searchConversations.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim()
+                Log.d(TAG, "Search query changed: '$query'")
+                
+                // Apply filter to history fragment
+                historyFragment?.filterConversations(query)
+            }
+            
+            override fun afterTextChanged(s: Editable?) {
+                if (s.isNullOrEmpty()) {
+                    Log.d(TAG, "Search cleared, refreshing conversations")
+                    historyFragment?.refreshConversations()
+                }
+            }
+        })
     }
 } 

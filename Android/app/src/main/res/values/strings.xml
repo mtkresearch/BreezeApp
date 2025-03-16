@@ -46,4 +46,7 @@
     <string name="drawer_search_hint">Search conversations</string>
     <string name="drawer_no_conversations">No saved conversations yet</string>
     <string name="drawer_conversation_history">Conversation History</string>
+    <string name="search_conversations">Search conversations</string>
+    <string name="search_icon">Search icon</string>
+    <string name="clear_search">Clear search</string>
 </resources>

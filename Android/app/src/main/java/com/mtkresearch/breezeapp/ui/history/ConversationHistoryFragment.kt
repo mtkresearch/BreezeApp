@@ -1,6 +1,7 @@
 package com.mtkresearch.breezeapp.ui.history
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -87,6 +88,12 @@ class ConversationHistoryFragment : Fragment() {
     // Helper method to observe conversations from the repository
     private fun observeConversations() {
         viewLifecycleOwner.lifecycleScope.launch {
+            // First, update the UI with current data immediately
+            val currentConversations = repository.getSavedConversations()
+            adapter.submitList(currentConversations)
+            updateEmptyView(currentConversations.isEmpty())
+            
+            // Then set up the ongoing observation for future updates
             repository.savedConversations.collectLatest { conversations ->
                 adapter.submitList(conversations)
                 updateEmptyView(conversations.isEmpty())
@@ -96,21 +103,39 @@ class ConversationHistoryFragment : Fragment() {
     
     // Method to filter conversations based on search query
     fun filterConversations(query: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            repository.savedConversations.collectLatest { allConversations ->
-                if (query.isEmpty()) {
-                    // If query is empty, show all conversations
-                    adapter.submitList(allConversations)
-                } else {
-                    // Filter conversations based on title or content
-                    val filteredList = allConversations.filter { conversation ->
-                        conversation.title.contains(query, ignoreCase = true) ||
-                                conversation.previewText.contains(query, ignoreCase = true)
-                    }
-                    adapter.submitList(filteredList)
-                }
-                updateEmptyView(adapter.itemCount == 0)
-            }
+        Log.d("ConversationHistory", "Filtering conversations with query: '$query'")
+        
+        // If query is empty, just refresh to show all conversations
+        if (query.isEmpty()) {
+            Log.d("ConversationHistory", "Empty query, showing all conversations")
+            refreshConversations()
+            return
         }
+        
+        // Get current conversations to filter
+        val allConversations = repository.getSavedConversations()
+        
+        // Filter conversations based on title or content
+        val filteredList = allConversations.filter { conversation ->
+            conversation.title.contains(query, ignoreCase = true) ||
+                    conversation.previewText.contains(query, ignoreCase = true)
+        }
+        
+        Log.d("ConversationHistory", "Found ${filteredList.size} conversations matching query")
+        
+        // Update UI with filtered results
+        adapter.submitList(filteredList)
+        updateEmptyView(filteredList.isEmpty())
+    }
+    
+    // Method to refresh the conversation list
+    fun refreshConversations() {
+        // Get current list of all conversations directly
+        val allConversations = repository.getSavedConversations()
+        Log.d("ConversationHistory", "Refreshing conversations: found ${allConversations.size} conversations")
+        
+        // Update the UI
+        adapter.submitList(allConversations)
+        updateEmptyView(allConversations.isEmpty())
     }
 } 
