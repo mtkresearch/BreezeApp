@@ -1,10 +1,15 @@
 package com.mtkresearch.breezeapp.ui.chat
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -12,6 +17,8 @@ import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.data.models.ChatMessage
 import com.mtkresearch.breezeapp.data.models.MediaType
 import com.mtkresearch.breezeapp.data.models.MessageSender
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Adapter for displaying chat messages in a RecyclerView
@@ -25,6 +32,7 @@ class ChatMessageAdapter(
         private const val VIEW_TYPE_USER = 0
         private const val VIEW_TYPE_ASSISTANT = 1
         private const val VIEW_TYPE_SYSTEM = 2
+        private val TIME_FORMATTER = SimpleDateFormat("h:mm a", Locale.getDefault())
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -41,7 +49,8 @@ class ChatMessageAdapter(
                 UserMessageViewHolder(
                     LayoutInflater.from(parent.context)
                         .inflate(R.layout.item_user_message, parent, false),
-                    onMediaClicked
+                    onMediaClicked,
+                    onTtsRequested
                 )
             }
             VIEW_TYPE_ASSISTANT -> {
@@ -74,11 +83,14 @@ class ChatMessageAdapter(
      */
     class UserMessageViewHolder(
         itemView: View,
-        private val onMediaClicked: ((ChatMessage) -> Unit)?
+        private val onMediaClicked: ((ChatMessage) -> Unit)?,
+        private val onTtsRequested: ((ChatMessage) -> Unit)?
     ) : RecyclerView.ViewHolder(itemView) {
         
         private val messageText: TextView = itemView.findViewById(R.id.userMessageText)
         private val mediaImageView: ImageView? = itemView.findViewById(R.id.userMediaImage)
+        private val copyButton: ImageButton = itemView.findViewById(R.id.copyButton)
+        private val speakerButton: ImageButton = itemView.findViewById(R.id.speakerButton)
         private var currentMessage: ChatMessage? = null
         
         init {
@@ -87,6 +99,25 @@ class ChatMessageAdapter(
                     onMediaClicked?.invoke(message)
                 }
             }
+            
+            copyButton.setOnClickListener {
+                currentMessage?.let { message ->
+                    copyToClipboard(message.content)
+                }
+            }
+            
+            speakerButton.setOnClickListener {
+                currentMessage?.let { message ->
+                    onTtsRequested?.invoke(message)
+                }
+            }
+        }
+        
+        private fun copyToClipboard(text: String) {
+            val clipboard = itemView.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Message", text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(itemView.context, "Message copied to clipboard", Toast.LENGTH_SHORT).show()
         }
         
         fun bind(message: ChatMessage) {
@@ -112,7 +143,30 @@ class ChatMessageAdapter(
     ) : RecyclerView.ViewHolder(itemView) {
         
         private val messageText: TextView = itemView.findViewById(R.id.assistantMessageText)
+        private val copyButton: ImageButton = itemView.findViewById(R.id.copyButton)
+        private val speakerButton: ImageButton = itemView.findViewById(R.id.speakerButton)
         private var currentMessage: ChatMessage? = null
+        
+        init {
+            copyButton.setOnClickListener {
+                currentMessage?.let { message ->
+                    copyToClipboard(message.content)
+                }
+            }
+            
+            speakerButton.setOnClickListener {
+                currentMessage?.let { message ->
+                    onTtsRequested?.invoke(message)
+                }
+            }
+        }
+        
+        private fun copyToClipboard(text: String) {
+            val clipboard = itemView.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("Message", text)
+            clipboard.setPrimaryClip(clip)
+            Toast.makeText(itemView.context, "Message copied to clipboard", Toast.LENGTH_SHORT).show()
+        }
         
         fun bind(message: ChatMessage) {
             currentMessage = message

@@ -51,19 +51,42 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Timestamp below message -->
-    <TextView
-        android:id="@+id/messageTimestamp"
+    <!-- Action buttons below message -->
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="2dp"
-        android:alpha="0.6"
-        android:fontFamily="@font/nunito"
-        android:textAppearance="@style/TextAppearance.App.Caption"
-        android:textSize="9sp"
+        android:layout_marginTop="4dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
         app:layout_constraintStart_toStartOf="@+id/assistantMessageCard"
-        app:layout_constraintTop_toBottomOf="@+id/assistantMessageCard"
-        tools:text="10:31 AM" />
+        app:layout_constraintTop_toBottomOf="@+id/assistantMessageCard">
+
+        <ImageButton
+            android:id="@+id/copyButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:minWidth="18dp"
+            android:minHeight="18dp"
+            android:alpha="0.6"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Copy message"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_content_copy"
+            app:tint="@color/primary" />
+
+        <ImageButton
+            android:id="@+id/speakerButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:minWidth="18dp"
+            android:minHeight="18dp"
+            android:alpha="0.6"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Read message aloud"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_speaker"
+            app:tint="@color/primary" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout> 
