@@ -6,6 +6,8 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -44,8 +46,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
+class ChatActivity : AppCompatActivity() {
+    
+    companion object {
+        private const val TAG = "ChatActivity"
+        private const val REQUEST_CAMERA = 100
+        private const val REQUEST_GALLERY = 101
+        private const val REQUEST_AUDIO = 102
+    }
+    
+    // ViewBinding instance
     private lateinit var binding: ActivityChatBinding
+    
+    // ViewModel
     private val viewModel: ChatViewModel by viewModels()
     
     // Adapter for chat messages
@@ -85,7 +98,10 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     
     // Views
     private lateinit var drawerLayout: DrawerLayout
-    private lateinit var navigationView: NavigationView
+    private lateinit var searchConversations: EditText
+    private lateinit var btnNewChat: MaterialButton
+    private lateinit var settingsOption: View
+    private lateinit var aboutOption: View
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageEditText: EditText
     private lateinit var sendButton: MaterialButton
@@ -105,7 +121,10 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         
         // Initialize views
         drawerLayout = findViewById(R.id.drawerLayout)
-        navigationView = findViewById(R.id.navigationView)
+        searchConversations = findViewById(R.id.searchConversations)
+        btnNewChat = findViewById(R.id.btnNewChat)
+        settingsOption = findViewById(R.id.settingsOption)
+        aboutOption = findViewById(R.id.aboutOption)
         messagesRecyclerView = findViewById(R.id.messagesRecyclerView)
         messageEditText = findViewById(R.id.messageEditText)
         sendButton = findViewById(R.id.sendButton)
@@ -119,7 +138,24 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         
-        // Setup drawer
+        setupNavigation()
+        setupRecyclerView()
+        setupClickListeners()
+        observeViewModel()
+    }
+    
+    private fun setupNavigation() {
+        // Initialize drawer components
+        drawerLayout = findViewById(R.id.drawerLayout)
+        
+        // Get references from the drawer layout
+        val drawerContent = findViewById<View>(R.id.drawerContent)
+        searchConversations = drawerContent.findViewById(R.id.searchConversations)
+        btnNewChat = drawerContent.findViewById(R.id.btnNewChat)
+        settingsOption = drawerContent.findViewById(R.id.settingsOption)
+        aboutOption = drawerContent.findViewById(R.id.aboutOption)
+
+        // Toggle button for drawer
         val toggle = ActionBarDrawerToggle(
             this, drawerLayout, binding.toolbar,
             R.string.navigation_drawer_open,
@@ -128,13 +164,34 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
         
-        navigationView.setNavigationItemSelectedListener(this)
+        // Set up click listeners for drawer elements
+        btnNewChat.setOnClickListener {
+            viewModel.clearConversation()
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
         
-        setupRecyclerView()
-        setupClickListeners()
-        observeViewModel()
+        settingsOption.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
         
-        // Setup history fragment in drawer
+        aboutOption.setOnClickListener {
+            showAboutDialog()
+            drawerLayout.closeDrawer(GravityCompat.START)
+        }
+        
+        // Search functionality
+        searchConversations.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s.toString().trim()
+                historyFragment?.filterConversations(query)
+            }
+            
+            override fun afterTextChanged(s: Editable?) {}
+        })
+        
         setupHistoryFragment()
     }
     
@@ -275,7 +332,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.CAMERA),
-                PERMISSION_CAMERA_REQUEST_CODE
+                REQUEST_CAMERA
             )
         } else {
             captureImage()
@@ -291,7 +348,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             ActivityCompat.requestPermissions(
                 this,
                 arrayOf(Manifest.permission.RECORD_AUDIO),
-                PERMISSION_AUDIO_REQUEST_CODE
+                REQUEST_AUDIO
             )
         } else {
             startVoiceInput()
@@ -329,14 +386,14 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
         when (requestCode) {
-            PERMISSION_CAMERA_REQUEST_CODE -> {
+            REQUEST_CAMERA -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     captureImage()
                 } else {
                     Toast.makeText(this, "Camera permission required", Toast.LENGTH_SHORT).show()
                 }
             }
-            PERMISSION_AUDIO_REQUEST_CODE -> {
+            REQUEST_AUDIO -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     startVoiceInput()
                 } else {
@@ -421,30 +478,6 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             .show()
     }
     
-    override fun onNavigationItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.nav_new_chat -> {
-                viewModel.clearConversation()
-                drawerLayout.closeDrawer(GravityCompat.START)
-            }
-            R.id.nav_settings -> {
-                startActivity(Intent(this, SettingsActivity::class.java))
-            }
-            R.id.nav_about -> {
-                showAboutDialog()
-            }
-        }
-        return true
-    }
-    
-    private fun showAboutDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("About Breeze AI")
-            .setMessage("Version 1.0.0\n\nA cutting-edge AI chat application powered by on-device language models.")
-            .setPositiveButton("OK", null)
-            .show()
-    }
-    
     override fun onBackPressed() {
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START)
@@ -473,7 +506,7 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
         
         supportFragmentManager.beginTransaction()
-            .replace(R.id.navigationView, historyFragment!!)
+            .replace(R.id.conversationListContainer, historyFragment!!)
             .commit()
     }
     
@@ -487,8 +520,11 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         ).show()
     }
     
-    companion object {
-        private const val PERMISSION_CAMERA_REQUEST_CODE = 101
-        private const val PERMISSION_AUDIO_REQUEST_CODE = 102
+    private fun showAboutDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("About Breeze AI")
+            .setMessage("Version 1.0.0\n\nA cutting-edge AI chat application powered by on-device language models.")
+            .setPositiveButton("OK", null)
+            .show()
     }
 } 

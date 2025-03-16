@@ -186,15 +186,12 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Drawer content -->
-    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/navigationView"
-        android:layout_width="wrap_content"
+    <include
+        android:id="@+id/drawerContent"
+        layout="@layout/drawer_layout"
+        android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:fitsSystemWindows="true"
-        app:headerLayout="@layout/nav_header_chat"
-        app:menu="@menu/drawer_menu"
-        app:itemTextAppearance="@style/TextAppearance.App.Subtitle1"
-        app:itemIconTint="@color/primary" />
+        android:fitsSystemWindows="true" />
 
 </androidx.drawerlayout.widget.DrawerLayout> 

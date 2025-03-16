@@ -5,28 +5,16 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/tvHistoryTitle"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
-        android:padding="16dp"
-        android:text="Your Conversations"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-        android:textColor="@android:color/white"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvConversationHistory"
         android:layout_width="0dp"
         android:layout_height="0dp"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvHistoryTitle"
+        app:layout_constraintTop_toTopOf="parent"
         tools:itemCount="5"
         tools:listitem="@layout/item_conversation_history" />
 
@@ -34,13 +22,14 @@
         android:id="@+id/tvEmptyHistory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="No saved conversations yet"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+        android:fontFamily="@font/nunito"
+        android:text="@string/drawer_no_conversations"
+        android:textAppearance="@style/TextAppearance.App.Body1"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvHistoryTitle"
+        app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
 </androidx.constraintlayout.widget.ConstraintLayout> 

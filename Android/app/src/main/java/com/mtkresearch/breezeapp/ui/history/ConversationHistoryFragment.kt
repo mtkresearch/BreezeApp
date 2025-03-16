@@ -80,4 +80,24 @@ class ConversationHistoryFragment : Fragment() {
     fun setRepository(conversationRepository: ConversationRepository) {
         this.repository = conversationRepository
     }
+    
+    // Method to filter conversations based on search query
+    fun filterConversations(query: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            repository.savedConversations.collectLatest { allConversations ->
+                if (query.isEmpty()) {
+                    // If query is empty, show all conversations
+                    adapter.submitList(allConversations)
+                } else {
+                    // Filter conversations based on title or content
+                    val filteredList = allConversations.filter { conversation ->
+                        conversation.title.contains(query, ignoreCase = true) ||
+                                conversation.previewText.contains(query, ignoreCase = true)
+                    }
+                    adapter.submitList(filteredList)
+                }
+                updateEmptyView(adapter.itemCount == 0)
+            }
+        }
+    }
 } 

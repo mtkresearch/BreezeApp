@@ -2,39 +2,51 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="176dp"
+    android:layout_height="wrap_content"
     android:background="?attr/colorPrimary"
-    android:gravity="bottom"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:paddingStart="16dp"
+    android:paddingTop="16dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="12dp"
     android:theme="@style/ThemeOverlay.MaterialComponents.Dark">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/ivHeaderIcon"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:contentDescription="@string/app_name"
-        android:src="@mipmap/ic_launcher"
-        app:shapeAppearanceOverlay="@style/ShapeAppearance.App.CircleImageView"
-        app:strokeColor="@color/white"
-        app:strokeWidth="2dp" />
-
-    <TextView
+    <!-- Search Box -->
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:fontFamily="@font/nunito"
-        android:text="Breeze AI"
-        android:textAppearance="@style/TextAppearance.App.Headline5"
-        android:textColor="@color/white"
-        android:textStyle="bold" />
+        android:layout_height="36dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="0dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/nunito"
-        android:text="Conversation History"
-        android:textAppearance="@style/TextAppearance.App.Body2"
-        android:textColor="@color/white" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp">
 
+            <ImageView
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="6dp"
+                android:src="@android:drawable/ic_menu_search"
+                app:tint="@color/text_secondary" />
+
+            <EditText
+                android:id="@+id/searchConversations"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@null"
+                android:fontFamily="@font/nunito"
+                android:hint="@string/drawer_search_hint"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </LinearLayout> 
