@@ -3,9 +3,11 @@ package com.mtkresearch.breezeapp.ui.chat
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -18,6 +20,7 @@ import com.mtkresearch.breezeapp.data.models.ChatMessage
 import com.mtkresearch.breezeapp.data.models.MediaType
 import com.mtkresearch.breezeapp.data.models.MessageSender
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -32,14 +35,20 @@ class ChatMessageAdapter(
         private const val VIEW_TYPE_USER = 0
         private const val VIEW_TYPE_ASSISTANT = 1
         private const val VIEW_TYPE_SYSTEM = 2
+        private const val VIEW_TYPE_MEDIA = 3
         private val TIME_FORMATTER = SimpleDateFormat("h:mm a", Locale.getDefault())
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (getItem(position).sender) {
-            MessageSender.USER -> VIEW_TYPE_USER
-            MessageSender.ASSISTANT -> VIEW_TYPE_ASSISTANT
-            MessageSender.SYSTEM -> VIEW_TYPE_SYSTEM
+        val message = getItem(position)
+        return when {
+            // If it's a user message with media but no text content, show it as a media message
+            message.sender == MessageSender.USER && 
+                message.mediaUri != null && 
+                message.content.isBlank() -> VIEW_TYPE_MEDIA
+            message.sender == MessageSender.USER -> VIEW_TYPE_USER
+            message.sender == MessageSender.ASSISTANT -> VIEW_TYPE_ASSISTANT
+            else -> VIEW_TYPE_SYSTEM
         }
     }
 
@@ -49,8 +58,8 @@ class ChatMessageAdapter(
                 UserMessageViewHolder(
                     LayoutInflater.from(parent.context)
                         .inflate(R.layout.item_user_message, parent, false),
-                    onMediaClicked,
-                    onTtsRequested
+                    onTtsRequested,
+                    onMediaClicked
                 )
             }
             VIEW_TYPE_ASSISTANT -> {
@@ -58,6 +67,13 @@ class ChatMessageAdapter(
                     LayoutInflater.from(parent.context)
                         .inflate(R.layout.item_assistant_message, parent, false),
                     onTtsRequested
+                )
+            }
+            VIEW_TYPE_MEDIA -> {
+                MediaMessageViewHolder(
+                    LayoutInflater.from(parent.context)
+                        .inflate(R.layout.item_media_message, parent, false),
+                    onMediaClicked
                 )
             }
             else -> {
@@ -74,7 +90,44 @@ class ChatMessageAdapter(
         when (holder) {
             is UserMessageViewHolder -> holder.bind(message)
             is AssistantMessageViewHolder -> holder.bind(message)
+            is MediaMessageViewHolder -> holder.bind(message)
             is SystemMessageViewHolder -> holder.bind(message)
+        }
+    }
+
+    /**
+     * ViewHolder for media-only messages
+     */
+    class MediaMessageViewHolder(
+        itemView: View,
+        private val onMediaClicked: ((ChatMessage) -> Unit)?
+    ) : RecyclerView.ViewHolder(itemView) {
+        
+        private val mediaImageView: ImageView = itemView.findViewById(R.id.mediaImage)
+        private val expandButton: ImageButton = itemView.findViewById(R.id.expandButton)
+        private var currentMessage: ChatMessage? = null
+        
+        init {
+            mediaImageView.setOnClickListener {
+                currentMessage?.let { message ->
+                    onMediaClicked?.invoke(message)
+                }
+            }
+            
+            expandButton.setOnClickListener {
+                currentMessage?.let { message ->
+                    onMediaClicked?.invoke(message)
+                }
+            }
+        }
+        
+        fun bind(message: ChatMessage) {
+            currentMessage = message
+            
+            // Set the media image
+            if (message.mediaUri != null && message.mediaType == MediaType.IMAGE) {
+                mediaImageView.setImageURI(message.mediaUri)
+            }
         }
     }
 
@@ -83,8 +136,8 @@ class ChatMessageAdapter(
      */
     class UserMessageViewHolder(
         itemView: View,
-        private val onMediaClicked: ((ChatMessage) -> Unit)?,
-        private val onTtsRequested: ((ChatMessage) -> Unit)?
+        private val onTtsRequested: ((ChatMessage) -> Unit)?,
+        private val onMediaClicked: ((ChatMessage) -> Unit)? = null
     ) : RecyclerView.ViewHolder(itemView) {
         
         private val messageText: TextView = itemView.findViewById(R.id.userMessageText)

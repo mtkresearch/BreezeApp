@@ -30,6 +30,20 @@
             android:orientation="vertical"
             android:padding="@dimen/spacing_medium">
 
+            <!-- Media attachment if present -->
+            <ImageView
+                android:id="@+id/userMediaImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:contentDescription="Attached media"
+                android:maxHeight="200dp"
+                android:visibility="gone"
+                android:layout_marginBottom="@dimen/spacing_small"
+                android:scaleType="fitCenter"
+                tools:src="@tools:sample/backgrounds/scenic"
+                tools:visibility="visible" />
+
             <TextView
                 android:id="@+id/userMessageText"
                 android:layout_width="wrap_content"
@@ -38,18 +52,6 @@
                 android:textColor="@color/user_message_text"
                 android:textSize="@dimen/text_size_subtitle"
                 tools:text="Hello, I have a question about AI and machine learning that needs a more detailed response." />
-
-            <ImageView
-                android:id="@+id/userMediaImage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="@dimen/spacing_small"
-                android:adjustViewBounds="true"
-                android:maxHeight="200dp"
-                android:scaleType="fitCenter"
-                android:visibility="gone"
-                tools:src="@tools:sample/backgrounds/scenic"
-                tools:visibility="visible" />
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 

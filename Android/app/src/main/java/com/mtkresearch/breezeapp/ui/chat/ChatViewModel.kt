@@ -195,6 +195,32 @@ open class ChatViewModel(application: Application) : AndroidViewModel(applicatio
     }
     
     /**
+     * Send a media-only message
+     */
+    fun sendMediaMessage(mediaUri: Uri, mediaType: MediaType) {
+        // Add media-only message
+        val mediaMessage = MessageFactory.createMediaMessage(mediaUri, mediaType)
+        conversationRepo.addMessage(mediaMessage)
+        
+        // Add processing message
+        val processingMessage = MessageFactory.createProcessingMessage()
+        conversationRepo.addMessage(processingMessage)
+        
+        // Generate response with context about the media
+        val mediaDescription = when (mediaType) {
+            MediaType.IMAGE -> "[User has attached an image]"
+            MediaType.AUDIO -> "[User has attached an audio file]"
+            MediaType.VIDEO -> "[User has attached a video]"
+            MediaType.DOCUMENT -> "[User has attached a document]"
+            MediaType.FILE -> "[User has attached a file]"
+            MediaType.NONE -> ""
+        }
+        
+        val prompt = "$mediaDescription\n\n${conversationRepo.getFormattedConversationHistory()}"
+        generateResponse(prompt)
+    }
+    
+    /**
      * Clear the current conversation
      */
     fun clearConversation() {

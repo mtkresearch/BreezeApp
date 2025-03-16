@@ -209,7 +209,13 @@ class ChatActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         if (message.isBlank() && currentAttachmentUri == null) return
         
         if (currentAttachmentUri != null && currentAttachmentType != null) {
-            viewModel.sendMessageWithMedia(message, currentAttachmentUri!!, currentAttachmentType!!)
+            // If we have media but no text, send as a media-only message
+            if (message.isBlank()) {
+                viewModel.sendMediaMessage(currentAttachmentUri!!, currentAttachmentType!!)
+            } else {
+                // Otherwise, send as a message with media
+                viewModel.sendMessageWithMedia(message, currentAttachmentUri!!, currentAttachmentType!!)
+            }
             clearAttachment()
         } else {
             viewModel.sendMessage(message)

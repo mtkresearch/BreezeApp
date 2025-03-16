@@ -45,6 +45,18 @@ object MessageFactory {
     }
     
     /**
+     * Create a media-only message
+     */
+    fun createMediaMessage(mediaUri: Uri, mediaType: MediaType): ChatMessage {
+        return ChatMessage(
+            content = "",  // Empty content for media-only messages
+            sender = MessageSender.USER,
+            mediaUri = mediaUri,
+            mediaType = mediaType
+        )
+    }
+    
+    /**
      * Create an assistant message
      */
     fun createAssistantMessage(content: String, isProcessing: Boolean = false): ChatMessage {
