@@ -143,11 +143,27 @@ class ConversationRepository {
      * @return true if loaded successfully
      */
     fun loadSavedConversation(conversationId: String): Boolean {
-        // In a real app, this would load from storage/database
-        // For this example, we'll just mock it
+        // Find the conversation with the given ID
+        val conversation = _savedConversations.value.find { it.id == conversationId }
         
-        // Simulate loading - in a real app, we would load the actual messages
-        return true
+        if (conversation != null) {
+            // In a real app, this would load the messages from storage/database
+            // For this example, we'll just create a new conversation with the title
+            
+            // Clear current messages first
+            _messages.value = listOf(MessageFactory.createSystemMessage(systemPrompt))
+            
+            // Add a system message indicating a loaded conversation
+            addMessage(MessageFactory.createSystemMessage("Loaded conversation: ${conversation.title}"))
+            
+            // Add a placeholder user and assistant message to simulate loading a conversation
+            addMessage(MessageFactory.createUserMessage(conversation.previewText))
+            addMessage(MessageFactory.createAssistantMessage("This is a simulated response for the loaded conversation."))
+            
+            return true
+        }
+        
+        return false
     }
     
     /**

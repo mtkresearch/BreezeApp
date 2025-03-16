@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -451,8 +452,18 @@ class ChatActivity : AppCompatActivity() {
             .setPositiveButton("Save") { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
-                    viewModel.saveConversation(name)
-                    Toast.makeText(this, "Conversation saved", Toast.LENGTH_SHORT).show()
+                    val conversationId = viewModel.saveConversation(name)
+                    
+                    // Log saved conversations for debugging
+                    Log.d(TAG, "Saved conversation with ID: $conversationId and name: $name")
+                    viewModel.getConversationRepository().getSavedConversations().forEach { conversation ->
+                        Log.d(TAG, "Saved conversation: ${conversation.id} - ${conversation.title}")
+                    }
+                    
+                    Toast.makeText(this, "Conversation saved as: $name", Toast.LENGTH_SHORT).show()
+                    
+                    // Update the history fragment
+                    historyFragment?.setRepository(viewModel.getConversationRepository())
                 }
             }
             .setNegativeButton("Cancel", null)
@@ -487,7 +498,14 @@ class ChatActivity : AppCompatActivity() {
     }
     
     private fun setupHistoryFragment() {
-        historyFragment = ConversationHistoryFragment().apply {
+        // Create a new instance if needed
+        if (historyFragment == null) {
+            historyFragment = ConversationHistoryFragment()
+        }
+        
+        // Set repository and callbacks
+        historyFragment?.apply {
+            // Set repository first so it's available before the fragment is attached
             setRepository(viewModel.getConversationRepository())
             
             // Set callbacks
@@ -505,9 +523,13 @@ class ChatActivity : AppCompatActivity() {
             }
         }
         
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.conversationListContainer, historyFragment!!)
-            .commit()
+        // Add the fragment to the UI only if it hasn't been added yet
+        val currentFragment = supportFragmentManager.findFragmentById(R.id.conversationListContainer)
+        if (currentFragment == null) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.conversationListContainer, historyFragment!!)
+                .commit()
+        }
     }
     
     private fun loadConversation(conversation: SavedConversation) {

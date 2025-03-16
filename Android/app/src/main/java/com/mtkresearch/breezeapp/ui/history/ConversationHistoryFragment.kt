@@ -54,22 +54,20 @@ class ConversationHistoryFragment : Fragment() {
         )
         recyclerView.adapter = adapter
         
-        // Get repository instance
-        repository = ConversationRepository()
+        // Only initialize a default repository if it hasn't been provided from outside
+        if (!::repository.isInitialized) {
+            repository = ConversationRepository()
+        }
         
         // Observe saved conversations
-        viewLifecycleOwner.lifecycleScope.launch {
-            repository.savedConversations.collectLatest { conversations ->
-                adapter.submitList(conversations)
-                updateEmptyView(conversations.isEmpty())
-            }
-        }
+        observeConversations()
     }
     
     private fun updateEmptyView(isEmpty: Boolean) {
         if (isEmpty) {
             emptyView.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
+            emptyView.text = "No saved conversations yet\nUse the menu option to save the current conversation"
         } else {
             emptyView.visibility = View.GONE
             recyclerView.visibility = View.VISIBLE
@@ -79,6 +77,21 @@ class ConversationHistoryFragment : Fragment() {
     // Method to set repository from outside
     fun setRepository(conversationRepository: ConversationRepository) {
         this.repository = conversationRepository
+        
+        // If the view is already created, update the observations
+        if (view != null && isAdded) {
+            observeConversations()
+        }
+    }
+    
+    // Helper method to observe conversations from the repository
+    private fun observeConversations() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            repository.savedConversations.collectLatest { conversations ->
+                adapter.submitList(conversations)
+                updateEmptyView(conversations.isEmpty())
+            }
+        }
     }
     
     // Method to filter conversations based on search query
