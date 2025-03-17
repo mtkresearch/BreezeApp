@@ -2,7 +2,8 @@
 
 [![License: Pending](https://img.shields.io/badge/License-Pending-yellow.svg)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/mtkresearch/BreezeApp)](https://github.com/mtkresearch/BreezeApp/issues)
-[![Discord](https://img.shields.io/discord/YOUR_DISCORD_ID?label=Discord&logo=discord)](https://discord.gg/YOUR_DISCORD_LINK)
+[![Google Play](https://img.shields.io/badge/Google_Play-Coming_Soon-green.svg?style=flat&logo=google-play)](https://play.google.com)
+[![App Store](https://img.shields.io/badge/App_Store-Coming_Soon-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com)
 
 [繁體中文](../../README.md) | [English](README_en.md)
 
