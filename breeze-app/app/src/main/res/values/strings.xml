@@ -30,7 +30,7 @@
         <![CDATA[
         • Local LLM Chat:<br/>
         &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
-        &nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>
+        &nbsp;&nbsp;&nbsp;- Optimized for CPU execution<br/>
         &nbsp;&nbsp;&nbsp;- All data stays on device<br/>
         &nbsp;&nbsp;&nbsp;- Text-to-Speech support
         <br/><br/>
@@ -257,6 +257,7 @@
     <string name="history_lookback">History Lookback:</string>
     <string name="max_sequence_Length">Max Sequence Length:</string>
     <string name="temperature">Temperature:</string>
+    <string name="llm_temperature">Temperature:</string>
     <string name="llm_backend">LLM Backend:</string>
     <string name="llm_engine">LLM Engine:</string>
     <string name="vlm_engine">VLM Engine:</string>
@@ -334,5 +335,18 @@
     <string name="large_model_option">%1$s (%2$s)\nBetter quality, more capabilities, but requires more memory</string>
     <string name="small_model_option">%1$s (%2$s)\nFaster startup, less memory usage, suitable for devices with limited resources</string>
     <string name="continue_button">Continue</string>
+
+    <string name="compatibility">
+        <![CDATA[
+        <h3>Compatibility</h3>
+        <p>
+        <strong>Minimum requirements:</strong><br/>
+        &nbsp;&nbsp;&nbsp;- Android 8.0+<br/>
+        &nbsp;&nbsp;&nbsp;- 6GB+ RAM<br/>
+        &nbsp;&nbsp;&nbsp;- 8GB+ free storage<br/>
+        &nbsp;&nbsp;&nbsp;- CPU support (ARMv8 processor)
+        </p>
+        ]]>
+    </string>
 
 </resources>

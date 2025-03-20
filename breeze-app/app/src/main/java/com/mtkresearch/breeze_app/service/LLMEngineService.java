@@ -25,7 +25,6 @@ public class LLMEngineService extends BaseEngineService {
     
     // Service state
     private String currentBackend = AppConstants.BACKEND_NONE;
-    private String preferredBackend = AppConstants.BACKEND_DEFAULT;
     private boolean hasSeenAssistantMarker = false;
     private final ConversationManager conversationManager;
     
@@ -39,52 +38,9 @@ public class LLMEngineService extends BaseEngineService {
     // CPU backend (LlamaModule)
     private LlamaModule mModule = null;
     private String modelPath = null;  // Set from intent
-    
-    // MTK backend state
-    private static final Object MTK_LOCK = new Object();
-    private static int mtkInitCount = 0;
-    private static boolean isCleaningUp = false;
-    private static final ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
-    
-    static {
-        // Only try to load MTK libraries if MTK backend is enabled
-        if (AppConstants.MTK_BACKEND_ENABLED) {
-            try {
-                // Load libraries in order
-                System.loadLibrary("sigchain");  // Load signal handler first
-                Thread.sleep(100);  // Give time for signal handlers to initialize
-                
-                System.loadLibrary("llm_jni");
-                AppConstants.MTK_BACKEND_AVAILABLE = true;
-                Log.d(TAG, "Successfully loaded llm_jni library");
-                
-                // Register shutdown hook for cleanup
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    try {
-                        cleanupMTKResources();
-                        cleanupExecutor.shutdownNow();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error in shutdown hook", e);
-                    }
-                }));
-            } catch (UnsatisfiedLinkError | Exception e) {
-                AppConstants.MTK_BACKEND_AVAILABLE = false;
-                Log.w(TAG, "Failed to load native libraries, MTK backend will be disabled", e);
-            }
-        } else {
-            Log.i(TAG, "MTK backend is disabled in AppConstants");
-        }
-    }
-
-    public static boolean isMTKBackendAvailable() {
-        return AppConstants.MTK_BACKEND_AVAILABLE && AppConstants.MTK_BACKEND_ENABLED;
-    }
 
     public String getModelName() {
         if (modelPath == null) {
-            if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                return "Breeze2";  // Default to Breeze2 for MTK backend
-            }
             return "Unknown";
         }
         return com.mtkresearch.breeze_app.utils.ModelUtils.getModelDisplayName(modelPath);
@@ -115,16 +71,6 @@ public class LLMEngineService extends BaseEngineService {
                 // Use AppConstants to get the correct model path
                 modelPath = AppConstants.getModelPath(this);
                 Log.d(TAG, "Using default model path: " + modelPath);
-            }
-            if (intent.hasExtra("preferred_backend")) {
-                String newBackend = intent.getStringExtra("preferred_backend");
-                if (!newBackend.equals(preferredBackend)) {
-                    preferredBackend = newBackend;
-                    // Force reinitialization if backend changed
-                    releaseResources();
-                    isInitialized = false;
-                }
-                Log.d(TAG, "Setting preferred backend to: " + preferredBackend);
             }
         }
         
@@ -160,37 +106,16 @@ public class LLMEngineService extends BaseEngineService {
                 // Always release existing resources before initialization
                 releaseResources();
                 
-                // Try MTK backend only if it's preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_MTK)) {
-                    // Add delay before trying MTK initialization
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
-                    
-                    if (initializeMTKBackend()) {
-                        currentBackend = AppConstants.BACKEND_MTK;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized MTK backend");
-                        future.complete(true);
-                        return true;
-                    }
-                    Log.w(TAG, "MTK backend initialization failed");
-                    
-                    // Add delay before trying fallback
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
+                // Only CPU backend is available
+                if (initializeLocalCPUBackend()) {
+                    currentBackend = AppConstants.BACKEND_CPU;
+                    isInitialized = true;
+                    Log.d(TAG, "Successfully initialized CPU backend");
+                    future.complete(true);
+                    return true;
                 }
-
-                // Try CPU backend if MTK failed or CPU is preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_CPU)) {
-                    if (initializeLocalCPUBackend()) {
-                        currentBackend = AppConstants.BACKEND_CPU;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized CPU backend");
-                        future.complete(true);
-                        return true;
-                    }
-                    Log.w(TAG, "CPU backend initialization failed");
-                }
-
-                Log.e(TAG, "All backend initialization attempts failed");
+                
+                Log.e(TAG, "CPU backend initialization failed");
                 future.complete(false);
                 return false;
             } catch (Exception e) {
@@ -203,419 +128,85 @@ public class LLMEngineService extends BaseEngineService {
         return future;
     }
 
-    private static void cleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d("LLMEngineService", "Performing emergency cleanup of MTK resources");
-                LLMEngineService tempInstance = new LLMEngineService();
-                
-                // Reset with timeout
-                Future<?> resetFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeResetLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency reset", e);
-                    }
-                });
-                
-                try {
-                    resetFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Reset operation timed out");
-                    resetFuture.cancel(true);
-                }
-                
-                Thread.sleep(100);
-                
-                // Release with timeout
-                Future<?> releaseFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeReleaseLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency release", e);
-                    }
-                });
-                
-                try {
-                    releaseFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Release operation timed out");
-                    releaseFuture.cancel(true);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(100);
-                
-            } catch (Exception e) {
-                Log.e("LLMEngineService", "Error during MTK cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
-    private void forceCleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d(TAG, "Forcing cleanup of MTK resources");
-                
-                // Multiple cleanup attempts with timeouts
-                for (int i = 0; i < 3; i++) {
-                    Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
-                        try {
-                            nativeResetLlm();
-                            Thread.sleep(100);
-                            nativeReleaseLlm();
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error during forced cleanup attempt", e);
-                        }
-                    });
-                    
-                    try {
-                        cleanupFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                    } catch (TimeoutException e) {
-                        Log.w(TAG, "Cleanup attempt " + (i+1) + " timed out");
-                        cleanupFuture.cancel(true);
-                    }
-                    
-                    Thread.sleep(200);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(200);
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error during forced cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
-    private boolean initializeMTKBackend() {
-        if (!AppConstants.MTK_BACKEND_AVAILABLE) {
-            Log.d(TAG, "MTK backend disabled, skipping");
-            return false;
-        }
-
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) {
-                Log.w(TAG, "Cannot initialize while cleanup is in progress");
-                return false;
-            }
-
-            try {
-                // Force cleanup if we've hit the max init attempts
-                if (mtkInitCount >= AppConstants.MAX_MTK_INIT_ATTEMPTS) {
-                    Log.w(TAG, "MTK init count exceeded limit, forcing cleanup");
-                    forceCleanupMTKResources();
-                    mtkInitCount = 0;
-                    Thread.sleep(1000);  // Wait for cleanup to complete
-                }
-
-                // Add delay before initialization
-                Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
-                
-                // Initialize signal handlers first
-                try {
-                    System.loadLibrary("sigchain");
-                    Thread.sleep(100);
-                } catch (UnsatisfiedLinkError e) {
-                    Log.w(TAG, "Failed to load sigchain library", e);
-                }
-
-                Log.d(TAG, "Attempting MTK backend initialization...");
-                
-                boolean success = false;
-                try {
-                    // Reset state before initialization
-                    nativeResetLlm();
-                    Thread.sleep(100);
-                    
-                    // Initialize with conservative settings
-                    success = nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", true);
-                    
-                    if (!success) {
-                        Log.e(TAG, "MTK initialization returned false");
-                        cleanupAfterError();
-                        return false;
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error during MTK initialization", e);
-                    cleanupAfterError();
-                    return false;
-                }
-                
-                if (success) {
-                    mtkInitCount++;
-                    Log.d(TAG, "MTK initialization successful. Init count: " + mtkInitCount);
-                    return true;
-                } else {
-                    Log.e(TAG, "MTK initialization failed");
-                    cleanupAfterError();
-                    return false;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing MTK backend", e);
-                cleanupAfterError();
-                return false;
-            }
-        }
-    }
-
-    private void cleanupAfterError() {
-        try {
-            // Force cleanup in a separate thread with timeout
-            Thread cleanupThread = new Thread(() -> {
-                try {
-                    nativeResetLlm();
-                    Thread.sleep(100);
-                    nativeReleaseLlm();
-                } catch (Exception e) {
-                    Log.w(TAG, "Error during error cleanup", e);
-                }
-            });
-            
-            cleanupThread.start();
-            cleanupThread.join(AppConstants.MTK_CLEANUP_TIMEOUT_MS);
-            
-            if (cleanupThread.isAlive()) {
-                Log.w(TAG, "Cleanup thread timed out, interrupting");
-                cleanupThread.interrupt();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error during cleanup after error", e);
-        }
-    }
-
     private boolean initializeLocalCPUBackend() {
         try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
-
-            if (mModule != null) {
-                mModule.resetNative();
-                mModule = null;
-            }
-
-            if (modelPath == null) {
-                Log.e(TAG, "Model path is null, cannot initialize");
-                return false;
-            }
-
-            // Initialize LlamaModule with model parameters
+            Log.d(TAG, "Initializing local CPU backend...");
+            String tokenizerPath = AppConstants.getTokenizerPath(this);
+            
+            Log.d(TAG, "Creating LlamaModule with model path: " + modelPath);
+            Log.d(TAG, "Tokenizer path: " + tokenizerPath);
+            
+            float temperature = AppConstants.LLM_TEMPERATURE;
+            
+            // Initialize LlamaModule with the model path, tokenizer path, and temperature
             mModule = new LlamaModule(
-                ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
+                LlamaModule.MODEL_TYPE_TEXT,
                 modelPath,
-                AppConstants.getTokenizerPath(this),
-                AppConstants.LLM_TEMPERATURE
+                tokenizerPath,
+                temperature
             );
-
-            // Load the model
+            
+            // Load model - returns 0 on success, not a boolean
             int loadResult = mModule.load();
             if (loadResult != 0) {
                 Log.e(TAG, "Failed to load model: " + loadResult);
                 return false;
             }
-
-            Log.d(TAG, "Local CPU backend initialized successfully");
+            
+            Log.i(TAG, "Successfully loaded model with LlamaModule");
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing Local CPU backend", e);
+            Log.e(TAG, "Error initializing CPU backend", e);
+            cleanupAfterError();
             return false;
         }
     }
 
-    public CompletableFuture<String> generateResponse(String prompt) {
-        if (!isInitialized) {
-            return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
-        }
-
-        return CompletableFuture.supplyAsync(() -> {
+    private void cleanupAfterError() {
+        if (mModule != null) {
             try {
-                switch (currentBackend) {
-                    case AppConstants.BACKEND_MTK:
-                        String response = nativeInference(prompt, 256, false);
-                        nativeResetLlm();
-                        nativeSwapModel(128);
-                        return response;
-                    case AppConstants.BACKEND_CPU:
-                        try {
-                            // Calculate sequence length based on prompt length, matching original implementation
-                            int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
-                            
-                            CompletableFuture<String> future = new CompletableFuture<>();
-                            currentResponse = future;
-                            
-                            executor.execute(() -> {
-                                try {
-                                    mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                        @Override
-                                        public void onResult(String result) {
-                                            if (!isGenerating.get() || 
-                                                result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                                return;
-                                            }
-                                            currentStreamingResponse.append(result);
-                                        }
-
-                                        @Override
-                                        public void onStats(float tps) {
-                                            Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
-                                        }
-                                    }, false);
-                                    
-                                    // Only complete if we haven't been stopped
-                                    if (isGenerating.get()) {
-                                        currentResponse.complete(currentStreamingResponse.toString());
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error in CPU generation", e);
-                                    if (!currentResponse.isDone()) {
-                                        currentResponse.completeExceptionally(e);
-                                    }
-                                } finally {
-                                    isGenerating.set(false);
-                                }
-                            });
-                            
-                            return future.get(60000, TimeUnit.MILLISECONDS);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error in CPU streaming response", e);
-                            throw e;
-                        }
-                    default:
-                        return AppConstants.LLM_ERROR_RESPONSE;
-                }
+                mModule.resetNative();
             } catch (Exception e) {
-                Log.e(TAG, "Error generating response", e);
-                return AppConstants.LLM_ERROR_RESPONSE;
+                Log.e(TAG, "Error during module reset", e);
             }
-        });
+            mModule = null;
+        }
     }
 
-    public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
-        if (!isInitialized) {
-            if (callback != null) {
-                callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
-            }
-            return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
+    public CompletableFuture<String> generateResponse(String prompt) {
+        if (!isInitialized || !isGenerating.compareAndSet(false, true)) {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            future.completeExceptionally(new IllegalStateException(
+                "Engine not initialized or generation already in progress"));
+            return future;
         }
-
-        hasSeenAssistantMarker = false;
-        currentCallback = callback;
-        currentResponse = new CompletableFuture<>();
-        currentStreamingResponse.setLength(0);
-        isGenerating.set(true);
         
-        CompletableFuture<String> resultFuture = new CompletableFuture<>();
-        
-        CompletableFuture.runAsync(() -> {
-            try {
-                switch (currentBackend) {
-                    case AppConstants.BACKEND_MTK:
-                        try {
-                            // MTK backend uses raw prompt without formatting
-                            executor.execute(() -> {
-                                try {
-                                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                                        @Override
-                                        public void onToken(String token) {
-                                            if (callback != null && isGenerating.get()) {
-                                                callback.onToken(token);
-                                                currentStreamingResponse.append(token);
-                                            }
-                                        }
-                                    });
-                                    
-                                    // Only complete if we haven't been stopped
-                                    if (isGenerating.get()) {
-                                        currentResponse.complete(response);
-                                        resultFuture.complete(response);
-                                    }
-                                    
-                                    // Clean up MTK state
-                                    try {
-                                        nativeResetLlm();
-                                        nativeSwapModel(128);
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Error resetting MTK state after generation", e);
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error in MTK streaming generation", e);
-                                    if (!currentResponse.isDone()) {
-                                        currentResponse.completeExceptionally(e);
-                                        resultFuture.completeExceptionally(e);
-                                    }
-                                } finally {
-                                    isGenerating.set(false);
-                                }
-                            });
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error in MTK streaming response", e);
-                            throw e;
-                        }
-                        break;
+        try {
+            // Reset state for new generation
+            currentStreamingResponse.setLength(0);
+            hasSeenAssistantMarker = false;
+            
+            Log.d(TAG, "Generating response using backend: " + currentBackend);
+            
+            switch (currentBackend) {
+                case AppConstants.BACKEND_CPU:
+                    try {
+                        // Calculate sequence length based on prompt length, matching original implementation
+                        int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
                         
-                    case AppConstants.BACKEND_CPU:
-                        // Only apply prompt formatting for local CPU backend
-                        Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
-                        
-                        // Calculate sequence length with more generous output space
-                        int seqLen = Math.min(
-                            AppConstants.getLLMMaxSeqLength(context),
-                            prompt.length() + AppConstants.getLLMMinOutputLength(context)
-                        );
+                        CompletableFuture<String> future = new CompletableFuture<>();
+                        currentResponse = future;
                         
                         executor.execute(() -> {
                             try {
                                 mModule.generate(prompt, seqLen, new LlamaCallback() {
                                     @Override
-                                    public void onResult(String token) {
-                                        if (!isGenerating.get()) {
+                                    public void onResult(String result) {
+                                        if (!isGenerating.get() || 
+                                            result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
                                             return;
                                         }
-
-                                        if (token == null || token.isEmpty()) {
-                                            return;
-                                        }
-
-                                        // Handle both stop tokens - filter out both EOS tokens
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                            Log.d(TAG, "Stop token detected: " + token);
-                                            String finalResponse = currentStreamingResponse.toString();
-                                            if (!currentResponse.isDone()) {
-                                                currentResponse.complete(finalResponse);
-                                                resultFuture.complete(finalResponse);
-                                            }
-                                            isGenerating.set(false);
-                                            // Explicitly stop the module when we detect a stop token
-                                            try {
-                                                mModule.stop();
-                                            } catch (Exception e) {
-                                                Log.e(TAG, "Error stopping module after stop token", e);
-                                            }
-                                            return;
-                                        }
-
-                                        // Handle streaming response
-                                        if (callback != null) {
-                                            callback.onToken(token);
-                                        }
-                                        currentStreamingResponse.append(token);
+                                        currentStreamingResponse.append(result);
                                     }
 
                                     @Override
@@ -624,186 +215,241 @@ public class LLMEngineService extends BaseEngineService {
                                     }
                                 }, false);
                                 
-                                // Only complete if we haven't been stopped and have a response
-                                if (!currentResponse.isDone() && currentStreamingResponse.length() > 0) {
-                                    String finalResponse = currentStreamingResponse.toString();
-                                    currentResponse.complete(finalResponse);
-                                    resultFuture.complete(finalResponse);
+                                // Only complete if we haven't been stopped
+                                if (isGenerating.get()) {
+                                    currentResponse.complete(currentStreamingResponse.toString());
                                 }
-                                
                             } catch (Exception e) {
-                                Log.e(TAG, "Error in CPU streaming generation", e);
+                                Log.e(TAG, "Error in CPU generation", e);
                                 if (!currentResponse.isDone()) {
                                     currentResponse.completeExceptionally(e);
-                                    resultFuture.completeExceptionally(e);
                                 }
                             } finally {
-                                isGenerating.set(false);
+                                completeGeneration();
                             }
                         });
-                        break;
                         
-                    default:
-                        String error = "Unsupported backend: " + currentBackend;
-                        Log.e(TAG, error);
-                        resultFuture.completeExceptionally(new IllegalStateException(error));
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error in streaming response", e);
-                resultFuture.completeExceptionally(e);
+                        return future;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting CPU generation", e);
+                        completeGeneration();
+                        throw e;
+                    }
+                default:
+                    completeGeneration();
+                    throw new IllegalStateException("Invalid backend: " + currentBackend);
             }
-        });
+        } catch (Exception e) {
+            completeGeneration();
+            CompletableFuture<String> errorFuture = new CompletableFuture<>();
+            errorFuture.completeExceptionally(e);
+            return errorFuture;
+        }
+    }
+
+    public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        if (!isInitialized || !isGenerating.compareAndSet(false, true) || callback == null) {
+            CompletableFuture<String> future = new CompletableFuture<>();
+            future.completeExceptionally(new IllegalStateException(
+                "Engine not initialized, generation already in progress, or callback is null"));
+            return future;
+        }
         
-        return resultFuture;
+        try {
+            // Store callback for token delivery
+            currentCallback = callback;
+            
+            // Reset state for new generation
+            currentStreamingResponse.setLength(0);
+            hasSeenAssistantMarker = false;
+            
+            CompletableFuture<String> future = new CompletableFuture<>();
+            currentResponse = future;
+            
+            Log.d(TAG, "Generating streaming response using backend: " + currentBackend);
+            
+            switch (currentBackend) {
+                case AppConstants.BACKEND_CPU:
+                    try {
+                        // Calculate sequence length based on prompt length
+                        int seqLen = Math.max((int)(prompt.length() * 0.75) + 256, 512);
+                        
+                        executor.execute(() -> {
+                            try {
+                                mModule.generate(prompt, seqLen, new LlamaCallback() {
+                                    public void onToken(String token) {
+                                        if (!isGenerating.get()) {
+                                            return;
+                                        }
+                                        
+                                        // Check for stop token
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
+                                            if (currentCallback != null) {
+                                                currentCallback.onToken(token);
+                                            }
+                                            
+                                            // Stop module and complete response
+                                            mModule.resetNative();
+                                            completeGeneration();
+                                            currentResponse.complete(currentStreamingResponse.toString());
+                                            return;
+                                        }
+                                        
+                                        // Skip special tokens for better UX
+                                        if (token.startsWith("<") && token.endsWith(">")) {
+                                            return;
+                                        }
+                                        
+                                        // Deliver token to callback
+                                        if (currentCallback != null) {
+                                            currentCallback.onToken(token);
+                                        }
+                                        
+                                        // Append to full response
+                                        currentStreamingResponse.append(token);
+                                    }
+
+                                    @Override
+                                    public void onResult(String token) {
+                                        if (!isGenerating.get()) {
+                                            return;
+                                        }
+                                        
+                                        // Check if this is a stop token
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
+                                            completeGeneration();
+                                            currentResponse.complete(currentStreamingResponse.toString());
+                                            return;
+                                        }
+                                        
+                                        // Skip special tokens
+                                        if (token.startsWith("<") && token.endsWith(">")) {
+                                            if (token.contains("assistant")) {
+                                                hasSeenAssistantMarker = true;
+                                            }
+                                            return;
+                                        }
+                                        
+                                        // Only add to response after seeing assistant marker
+                                        if (hasSeenAssistantMarker && currentCallback != null) {
+                                            currentCallback.onToken(token);
+                                            currentStreamingResponse.append(token);
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onStats(float tps) {
+                                        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                                    }
+                                }, true);
+                                
+                                // Only complete if we haven't been stopped already
+                                if (isGenerating.get()) {
+                                    completeGeneration();
+                                    currentResponse.complete(currentStreamingResponse.toString());
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error in CPU streaming generation", e);
+                                completeGeneration();
+                                if (!currentResponse.isDone()) {
+                                    currentResponse.completeExceptionally(e);
+                                }
+                            }
+                        });
+                        
+                        return future;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting CPU streaming generation", e);
+                        completeGeneration();
+                        throw e;
+                    }
+                default:
+                    completeGeneration();
+                    throw new IllegalStateException("Invalid backend: " + currentBackend);
+            }
+        } catch (Exception e) {
+            completeGeneration();
+            CompletableFuture<String> errorFuture = new CompletableFuture<>();
+            errorFuture.completeExceptionally(e);
+            return errorFuture;
+        }
     }
 
     private void completeGeneration() {
-        if (isGenerating.compareAndSet(true, false)) {
-            String finalResponse = currentStreamingResponse.toString();
-            if (currentResponse != null && !currentResponse.isDone()) {
-                currentResponse.complete(finalResponse);
-            }
-            // Clean up resources
-            currentCallback = null;
-            System.gc(); // Request garbage collection for any lingering resources
-        }
+        isGenerating.set(false);
+        currentCallback = null;
     }
 
     public void stopGeneration() {
-        isGenerating.set(false);
-        
-        if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-            try {
-                nativeResetLlm();
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping MTK generation", e);
+        if (isGenerating.getAndSet(false)) {
+            Log.d(TAG, "Stopping generation");
+            
+            // Cancel pending response if we were generating
+            if (!currentResponse.isDone()) {
+                currentResponse.cancel(true);
             }
-        } else if (mModule != null) {
+            
             try {
-                mModule.stop();
+                switch (currentBackend) {
+                    case AppConstants.BACKEND_CPU:
+                        if (mModule != null) {
+                            mModule.resetNative();
+                        }
+                        break;
+                }
             } catch (Exception e) {
-                Log.e(TAG, "Error stopping CPU generation", e);
+                Log.e(TAG, "Error stopping generation", e);
+            } finally {
+                currentCallback = null;
             }
         }
-
-        if (currentResponse != null && !currentResponse.isDone()) {
-            String finalResponse = currentStreamingResponse.toString();
-            if (finalResponse.isEmpty()) {
-                finalResponse = "[Generation stopped by user]";
-            }
-            currentResponse.complete(finalResponse);
-        }
-        
-        // Clean up resources
-        currentCallback = null;
-        System.gc();
     }
 
     public void releaseResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) {
-                Log.w(TAG, "Cleanup already in progress");
-                return;
-            }
-            
-            isCleaningUp = true;
-            try {
-                stopGeneration();
-                
-                // Release MTK resources if using MTK backend
-                if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                    try {
-                        // Add delay before cleanup
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeResetLlm();
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeReleaseLlm();
-                        mtkInitCount = 0; // Reset init count
-                        Log.d(TAG, "Released MTK resources");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error releasing MTK resources", e);
-                        cleanupAfterError();
-                    }
-                }
-                
-                // Release CPU resources if using CPU backend
-                if (mModule != null) {
-                    try {
+        // Stop any ongoing generation
+        stopGeneration();
+        
+        // Release resources based on current backend
+        try {
+            switch (currentBackend) {
+                case AppConstants.BACKEND_CPU:
+                    if (mModule != null) {
                         mModule.resetNative();
                         mModule = null;
-                        Log.d(TAG, "Released CPU resources");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error releasing CPU resources", e);
                     }
-                }
-                
-                // Reset state
-                currentBackend = AppConstants.BACKEND_NONE;
-                isInitialized = false;
-                System.gc(); // Request garbage collection
-                
-                Log.d(TAG, "All resources released");
-            } catch (Exception e) {
-                Log.e(TAG, "Error during cleanup", e);
-            } finally {
-                isCleaningUp = false;
+                    break;
             }
+            
+            // Reset backend state
+            currentBackend = AppConstants.BACKEND_NONE;
+            isInitialized = false;
+            
+            Log.d(TAG, "Successfully released resources");
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing resources", e);
         }
     }
 
     @Override
     public void onDestroy() {
-        super.onDestroy();
-        
-        // Run cleanup with timeout
-        Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
-            try {
-                cleanupMTKResources();
-                releaseResources();
-            } catch (Exception e) {
-                Log.e(TAG, "Error during service cleanup", e);
-            }
-        });
-        
-        try {
-            cleanupFuture.get(AppConstants.MTK_CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            Log.w(TAG, "Service cleanup timed out");
-            cleanupFuture.cancel(true);
-        } catch (Exception e) {
-            Log.e(TAG, "Error waiting for cleanup", e);
-        }
+        releaseResources();
         
         if (executor != null) {
-            executor.shutdown();
+            executor.shutdownNow();
             executor = null;
         }
+        
+        super.onDestroy();
     }
 
     public String getCurrentBackend() {
         return currentBackend;
     }
 
-    public String getPreferredBackend() {
-        return preferredBackend;
-    }
-
-    // Native methods for MTK backend
-    private native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
-    private native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
-    private native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
-    private native void nativeReleaseLlm();
-    private native boolean nativeResetLlm();
-    private native boolean nativeSwapModel(int tokenSize);
-
-    public interface TokenCallback {
-        void onToken(String token);
-    }
-
     private int getMaxSequenceLength() {
         return AppConstants.getLLMMaxSeqLength(this);
     }
-
+    
     private int getMinOutputLength() {
         return AppConstants.getLLMMinOutputLength(this);
     }

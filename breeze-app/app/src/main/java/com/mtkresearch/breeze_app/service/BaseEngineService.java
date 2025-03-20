@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 public abstract class BaseEngineService extends Service {
     protected static final String TAG = "BaseEngineService";
     protected Context context;
-    protected String backend = "mock"; // Default to mock backend
     protected boolean isInitialized = false;
 
     public class LocalBinder<T extends BaseEngineService> extends Binder {
@@ -25,9 +24,6 @@ public abstract class BaseEngineService extends Service {
     public void onCreate() {
         super.onCreate();
         context = this;
-        // Load backend preference from SharedPreferences if needed
-        // backend = PreferenceManager.getDefaultSharedPreferences(this)
-        //     .getString("engine_backend", "mock");
     }
 
     @Override
