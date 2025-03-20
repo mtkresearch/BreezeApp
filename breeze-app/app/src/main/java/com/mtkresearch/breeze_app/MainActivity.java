@@ -136,8 +136,6 @@ public class MainActivity extends AppCompatActivity {
     private EditText historyLookbackInput;
     private EditText sequenceLengthInput;
     private EditText temperatureInput;
-    private Spinner backendSpinner;
-    private ArrayAdapter<String> backendAdapter;
     private SharedPreferences settings;
 
     @Override
@@ -685,32 +683,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupBackendSpinner() {
-        // Initialize views
+        // Initialize temperature input - backend options have been removed
         temperatureInput = binding.settingsContainer.findViewById(R.id.temperatureInput);
-        backendSpinner = binding.settingsContainer.findViewById(R.id.backendSpinner);
         
-        // Setup backend spinner
-        List<String> backendOptions = new ArrayList<>();
-        backendOptions.add("cpu");  // CPU backend is always available
-        // Disable MTK backend option for now
-        // if (LLMEngineService.isMTKBackendAvailable()) {
-        //     backendOptions.add("mtk");
-        // }
-        
-        backendAdapter = new ArrayAdapter<>(this, 
-            android.R.layout.simple_spinner_item, backendOptions);
-        backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        backendSpinner.setAdapter(backendAdapter);
-
-        // Load saved settings
+        // Load saved temperature setting
         float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
-        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.DEFAULT_BACKEND);
-        
         temperatureInput.setText(String.valueOf(savedTemp));
-        int backendPosition = backendAdapter.getPosition(savedBackend);
-        if (backendPosition >= 0) {
-            backendSpinner.setSelection(backendPosition);
-        }
+        
+        // Always set CPU as the preferred backend
+        settings.edit().putString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.BACKEND_CPU).apply();
 
         setupSettingsListeners();
     }
@@ -734,17 +715,6 @@ public class MainActivity extends AppCompatActivity {
                     Log.w(TAG, "Invalid temperature value");
                 }
             }
-        });
-
-        backendSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedBackend = backendAdapter.getItem(position);
-                settings.edit().putString(AppConstants.KEY_PREFERRED_BACKEND, selectedBackend).apply();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
         });
     }
 } 

@@ -248,6 +248,7 @@
     <string name="history_lookback">歷史回溯：</string>
     <string name="max_sequence_Length">最大序列長度：</string>
     <string name="temperature">溫度：</string>
+    <string name="llm_temperature">溫度：</string>
     <string name="llm_backend">LLM 後端：</string>
     <string name="llm_engine">LLM 引擎：</string>
     <string name="vlm_engine">VLM 引擎：</string>
@@ -335,5 +336,18 @@
     <string name="large_model_option">%1$s (%2$s)\n更好的品質和更多功能，但需要更多記憶體</string>
     <string name="small_model_option">%1$s (%2$s)\n啟動更快，使用更少記憶體，適合資源有限的裝置</string>
     <string name="continue_button">繼續</string>
+
+    <string name="compatibility">
+        <![CDATA[
+        <h3>相容性</h3>
+        <p>
+        <strong>最低要求：</strong><br/>
+        &nbsp;&nbsp;&nbsp;- Android 8.0+<br/>
+        &nbsp;&nbsp;&nbsp;- 6GB+ RAM<br/>
+        &nbsp;&nbsp;&nbsp;- 8GB+ 可用儲存空間<br/>
+        &nbsp;&nbsp;&nbsp;- CPU 支援 (ARMv8 處理器)
+        </p>
+        ]]>
+    </string>
 
 </resources>

@@ -20,7 +20,7 @@ public class AppConstants {
     public static final String KEY_FIRST_LAUNCH = "first_launch";
     public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_PREFERRED_BACKEND = "preferred_backend";
-    public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
+    public static final String DEFAULT_BACKEND = "cpu";  // Always use CPU backend
     
     // Service Enable Flags
     public static final boolean LLM_ENABLED = true;  // LLM is essential
@@ -31,26 +31,16 @@ public class AppConstants {
     // Backend Constants
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend since MTK is experimental
-    
-    // Backend Enable Flags
-    public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
-    public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Only CPU backend
     
     // Backend Initialization Constants
-    public static final int MAX_MTK_INIT_ATTEMPTS = 5;
-    public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds timeout for cleanup
-    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds timeout for native operations
     public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     
     // LLM Service Constants
     public static final long LLM_INIT_TIMEOUT_MS = 300000;  // 5 minutes for initialization
     public static final long LLM_GENERATION_TIMEOUT_MS = Long.MAX_VALUE;  // No timeout for generation
-    public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
     public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
-    public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
 
     // Model Files and Paths
@@ -359,7 +349,7 @@ public class AppConstants {
     }
     
     // LLM Response Messages
-    public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
+    public static final String LLM_ERROR_RESPONSE = "I apologize, but I encountered an error. Please try again.";
     public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
     public static final String LLM_EMPTY_RESPONSE_ERROR = "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.";
     public static final String LLM_INPUT_TOO_LONG_ERROR = "I apologize, but your input is too long. Please try breaking it into smaller parts.";
@@ -393,8 +383,6 @@ public class AppConstants {
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
     public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
-
-
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {

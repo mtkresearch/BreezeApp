@@ -11,6 +11,7 @@ import org.pytorch.executorch.LlamaCallback;
 import org.pytorch.executorch.LlamaModule;
 import com.executorch.ETImage;
 import com.executorch.PromptFormat;
+import com.mtkresearch.breeze_app.utils.AppConstants;
 
 import java.io.File;
 
@@ -27,6 +28,8 @@ public class VLMEngineService extends BaseEngineService {
     
     private LlamaModule mModule;
     private long startPos = 0;
+    private String modelPath;
+    private String tokenizerPath;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -34,22 +37,37 @@ public class VLMEngineService extends BaseEngineService {
     }
 
     @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            if (intent.hasExtra("model_path")) {
+                modelPath = intent.getStringExtra("model_path");
+                Log.d(TAG, "Using model path: " + modelPath);
+            } else {
+                // Use default model path
+                modelPath = "/data/local/tmp/llava/llava.pte";
+                Log.d(TAG, "Using default model path: " + modelPath);
+            }
+            
+            if (intent.hasExtra("tokenizer_path")) {
+                tokenizerPath = intent.getStringExtra("tokenizer_path");
+            } else {
+                tokenizerPath = "/data/local/tmp/llava/tokenizer.bin";
+            }
+        }
+        
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                if (initializeMTKBackend()) {
-                    backend = "mtk";
-                    isInitialized = true;
-                    return true;
-                }
-
                 if (initializeLocalCPUBackend()) {
-                    backend = "local_cpu";
                     isInitialized = true;
                     return true;
                 }
 
-                Log.e(TAG, "All backend initialization attempts failed");
+                Log.e(TAG, "CPU backend initialization failed");
                 return false;
             } catch (Exception e) {
                 Log.e(TAG, "Error during initialization", e);
@@ -58,46 +76,32 @@ public class VLMEngineService extends BaseEngineService {
         });
     }
 
-    private boolean initializeMTKBackend() {
-        try {
-            Log.d(TAG, "Attempting MTK backend initialization...");
-            // TODO: Implement MTK backend initialization
-            return false; // For now, return false to fall back to local_cpu
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing MTK backend", e);
-            return false;
-        }
-    }
-
     private boolean initializeLocalCPUBackend() {
         try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
-            initializeLocalCpuModel();
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU backend", e);
-            return false;
-        }
-    }
-
-    private void initializeLocalCpuModel() {
-        try {
-            String modelPath = "/data/local/tmp/llava/llava.pte";
-            String tokenizerPath = "/data/local/tmp/llava/tokenizer.bin";
-
+            Log.d(TAG, "Initializing CPU backend...");
+            
             File modelFile = new File(modelPath);
             File tokenizerFile = new File(tokenizerPath);
 
             if (!modelFile.exists() || !tokenizerFile.exists()) {
-                throw new IllegalStateException("Model or tokenizer files not found");
+                Log.e(TAG, "Model or tokenizer files not found at paths: " + 
+                      modelPath + ", " + tokenizerPath);
+                return false;
             }
 
             mModule = new LlamaModule(MODEL_TYPE, modelPath, tokenizerPath, TEMPERATURE);
-            mModule.load();
-            Log.i(TAG, "Local CPU model initialized successfully");
+            int loadResult = mModule.load();
+            
+            if (loadResult != 0) {
+                Log.e(TAG, "Failed to load model: " + loadResult);
+                return false;
+            }
+            
+            Log.i(TAG, "CPU model initialized successfully");
+            return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU model", e);
-            throw e;
+            Log.e(TAG, "Failed to initialize CPU backend", e);
+            return false;
         }
     }
 
@@ -136,9 +140,9 @@ public class VLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> analyzeImage(Uri imageUri, String userPrompt) {
-        if (!isInitialized || !backend.equals("local_cpu")) {
+        if (!isInitialized) {
             CompletableFuture<String> future = new CompletableFuture<>();
-            future.completeExceptionally(new IllegalStateException("Engine not initialized or wrong backend"));
+            future.completeExceptionally(new IllegalStateException("Engine not initialized"));
             return future;
         }
 
@@ -157,8 +161,11 @@ public class VLMEngineService extends BaseEngineService {
                 CompletableFuture<String> resultFuture = new CompletableFuture<>();
                 StringBuilder result = new StringBuilder();
 
-//                String formattedPrompt = PromptFormat.getFormattedSystemAndUserPrompt(userPrompt);
-                String formattedPrompt = PromptFormat.getLlavaPresetPrompt(); // TODO: Add the user custom prompt field in app
+                // Format the prompt with user's question
+                String formattedPrompt = userPrompt != null && !userPrompt.isEmpty() 
+                    ? formatVisionPrompt(userPrompt)
+                    : PromptFormat.getLlavaPresetPrompt();
+                    
                 Log.d(TAG, "Using formatted prompt: " + formattedPrompt);
 
                 mModule.generateFromPos(formattedPrompt, SEQ_LEN, startPos, new LlamaCallback() {
@@ -187,18 +194,39 @@ public class VLMEngineService extends BaseEngineService {
         });
     }
 
-    private void resetModel() {
+    /**
+     * Helper method to format a vision prompt with user input
+     * This replaces the need for PromptFormat.formatVisionPrompt which doesn't exist
+     */
+    private String formatVisionPrompt(String userPrompt) {
+        // Use the LLaVA preset prompt and append the user's question
+        return PromptFormat.getLlavaPresetPrompt() + userPrompt + " ASSISTANT:";
+    }
+
+    public void resetModel() {
         if (mModule != null) {
             mModule.resetNative();
             startPos = 0;
         }
     }
+    
+    public void releaseResources() {
+        if (mModule != null) {
+            try {
+                mModule.resetNative();
+                mModule = null;
+                startPos = 0;
+                isInitialized = false;
+                Log.d(TAG, "Successfully released resources");
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing resources", e);
+            }
+        }
+    }
 
     @Override
-    protected void finalize() throws Throwable {
-        if (mModule != null) {
-            mModule.resetNative();
-        }
-        super.finalize();
+    public void onDestroy() {
+        releaseResources();
+        super.onDestroy();
     }
 } 
