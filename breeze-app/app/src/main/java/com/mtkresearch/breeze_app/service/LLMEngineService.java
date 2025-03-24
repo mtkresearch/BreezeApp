@@ -118,7 +118,7 @@ public class LLMEngineService extends BaseEngineService {
                 releaseResources();
                 
                 // Try CPU backend
-                if (initializeLocalCPUBackend()) {
+                if (initializeCPUBackend()) {
                     currentBackend = AppConstants.BACKEND_CPU;
                     isInitialized = true;
                     Log.d(TAG, "Successfully initialized CPU backend");
@@ -140,9 +140,9 @@ public class LLMEngineService extends BaseEngineService {
         return future;
     }
 
-    private boolean initializeLocalCPUBackend() {
+    private boolean initializeCPUBackend() {
         try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
+            Log.d(TAG, "Attempting CPU backend initialization...");
 
             if (mModule != null) {
                 mModule.resetNative();
@@ -169,10 +169,10 @@ public class LLMEngineService extends BaseEngineService {
                 return false;
             }
 
-            Log.d(TAG, "Local CPU backend initialized successfully");
+            Log.d(TAG, "CPU backend initialized successfully");
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Error initializing Local CPU backend", e);
+            Log.e(TAG, "Error initializing CPU backend", e);
             return false;
         }
     }
@@ -260,8 +260,8 @@ public class LLMEngineService extends BaseEngineService {
             try {
                 switch (currentBackend) {
                     case AppConstants.BACKEND_CPU:
-                        // Only apply prompt formatting for local CPU backend
-                        Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
+                        // Only apply prompt formatting for CPU backend
+                        Log.d(TAG, "Formatted prompt for CPU: " + prompt);
                         
                         // Calculate sequence length with more generous output space
                         int seqLen = Math.min(

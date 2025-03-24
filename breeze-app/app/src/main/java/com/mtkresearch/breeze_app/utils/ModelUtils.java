@@ -86,8 +86,6 @@ public class ModelUtils {
         if (backend == null) return "Unknown";
         switch (backend.toLowerCase()) {
             case "cpu":
-            case "localcpu":
-            case "local_cpu":
                 return "CPU";
             default:
                 return backend.toUpperCase();

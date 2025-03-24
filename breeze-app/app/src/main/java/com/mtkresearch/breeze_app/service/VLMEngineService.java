@@ -37,8 +37,8 @@ public class VLMEngineService extends BaseEngineService {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                if (initializeLocalCPUBackend()) {
-                    backend = "local_cpu";
+                if (initializeCPUBackend()) {
+                    backend = "cpu";
                     isInitialized = true;
                     return true;
                 }
@@ -52,18 +52,18 @@ public class VLMEngineService extends BaseEngineService {
         });
     }
 
-    private boolean initializeLocalCPUBackend() {
+    private boolean initializeCPUBackend() {
         try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
-            initializeLocalCpuModel();
+            Log.d(TAG, "Attempting CPU backend initialization...");
+            initializeCPUModel();
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU backend", e);
+            Log.e(TAG, "Failed to initialize CPU backend", e);
             return false;
         }
     }
 
-    private void initializeLocalCpuModel() {
+    private void initializeCPUModel() {
         try {
             String modelPath = "/data/local/tmp/llava/llava.pte";
             String tokenizerPath = "/data/local/tmp/llava/tokenizer.bin";
@@ -77,9 +77,9 @@ public class VLMEngineService extends BaseEngineService {
 
             mModule = new LlamaModule(MODEL_TYPE, modelPath, tokenizerPath, TEMPERATURE);
             mModule.load();
-            Log.i(TAG, "Local CPU model initialized successfully");
+            Log.i(TAG, "CPU model initialized successfully");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU model", e);
+            Log.e(TAG, "Failed to initialize CPU model", e);
             throw e;
         }
     }
@@ -119,7 +119,7 @@ public class VLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> analyzeImage(Uri imageUri, String userPrompt) {
-        if (!isInitialized || !backend.equals("local_cpu")) {
+        if (!isInitialized || !backend.equals("cpu")) {
             CompletableFuture<String> future = new CompletableFuture<>();
             future.completeExceptionally(new IllegalStateException("Engine not initialized or wrong backend"));
             return future;
