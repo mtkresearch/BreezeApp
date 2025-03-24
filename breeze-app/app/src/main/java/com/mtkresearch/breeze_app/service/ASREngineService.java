@@ -53,9 +53,7 @@ public class ASREngineService extends BaseEngineService {
     }
 
     private CompletableFuture<Boolean> initializeBackends() {
-        return tryInitializeBackend("MTK", this::initializeMTKASR)
-            .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
-                : tryInitializeBackend("Local", this::initializeLocalASR))
+        return tryInitializeBackend("CPU", this::initializeCPUASR)
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultASR));
     }
@@ -74,18 +72,14 @@ public class ASREngineService extends BaseEngineService {
             });
     }
 
-    private CompletableFuture<Boolean> initializeMTKASR() {
-        return CompletableFuture.completedFuture(false); // Placeholder
-    }
-
-    private CompletableFuture<Boolean> initializeLocalASR() {
+    private CompletableFuture<Boolean> initializeCPUASR() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         try {
             sherpaASR = new SherpaASR(getApplicationContext());
             sherpaASR.initialize();
             future.complete(true);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize Local ASR", e);
+            Log.e(TAG, "Failed to initialize CPU ASR", e);
             future.complete(false);
         }
         return future;
@@ -106,7 +100,7 @@ public class ASREngineService extends BaseEngineService {
 
     private CompletableFuture<Boolean> testASREngine() {
         Log.d(TAG, "Testing " + backend + " ASR engine...");
-        return (backend.equals("local") ? testLocalASR() : testDefaultASR())
+        return (backend.equals("cpu") ? testCPUASR() : testDefaultASR())
             .thenApply(result -> {
                 boolean success = result != null && result.toLowerCase().contains(TEST_PHRASE);
                 Log.d(TAG, String.format("%s ASR Test %s: %s",
@@ -117,7 +111,7 @@ public class ASREngineService extends BaseEngineService {
             });
     }
 
-    private CompletableFuture<String> testLocalASR() {
+    private CompletableFuture<String> testCPUASR() {
         CompletableFuture<String> future = new CompletableFuture<>();
         sherpaASR.transcribeAsset(TEST_AUDIO_PATH, new SherpaASR.ASRListener() {
             @Override public void onPartialResult(String text) {}
@@ -177,8 +171,8 @@ public class ASREngineService extends BaseEngineService {
         
         try {
             switch (backend) {
-                case "local":
-                    startLocalListening(callback);
+                case "cpu":
+                    startCPUListening(callback);
                     break;
                 case "default":
                     startDefaultListening(callback);
@@ -192,7 +186,7 @@ public class ASREngineService extends BaseEngineService {
         }
     }
 
-    private void startLocalListening(Consumer<String> callback) {
+    private void startCPUListening(Consumer<String> callback) {
         sherpaASR.startRecognition(new SherpaASR.ASRListener() {
             @Override
             public void onPartialResult(String text) {
@@ -257,7 +251,7 @@ public class ASREngineService extends BaseEngineService {
 
     public void stopListening() {
         if (isListening) {
-            if (backend.equals("local")) {
+            if (backend.equals("cpu")) {
                 sherpaASR.stopRecognition();
             } else if (backend.equals("default")) {
                 speechRecognizer.stopListening();
