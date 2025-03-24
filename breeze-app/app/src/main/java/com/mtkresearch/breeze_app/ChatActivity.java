@@ -133,6 +133,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     
     // Analytics
     private long sessionStartTime = 0;
+    
+    // Thread synchronization and state variables
+    private final Object initLock = new Object();
+    private boolean isInitializing = false;
+    private boolean hasReceivedResponse = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
