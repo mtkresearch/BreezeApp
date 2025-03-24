@@ -37,36 +37,19 @@ public class VLMEngineService extends BaseEngineService {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                if (initializeMTKBackend()) {
-                    backend = "mtk";
-                    isInitialized = true;
-                    return true;
-                }
-
                 if (initializeLocalCPUBackend()) {
                     backend = "local_cpu";
                     isInitialized = true;
                     return true;
                 }
 
-                Log.e(TAG, "All backend initialization attempts failed");
+                Log.e(TAG, "Backend initialization failed");
                 return false;
             } catch (Exception e) {
                 Log.e(TAG, "Error during initialization", e);
                 return false;
             }
         });
-    }
-
-    private boolean initializeMTKBackend() {
-        try {
-            Log.d(TAG, "Attempting MTK backend initialization...");
-            // TODO: Implement MTK backend initialization
-            return false; // For now, return false to fall back to local_cpu
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing MTK backend", e);
-            return false;
-        }
     }
 
     private boolean initializeLocalCPUBackend() {

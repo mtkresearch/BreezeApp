@@ -40,51 +40,8 @@ public class LLMEngineService extends BaseEngineService {
     private LlamaModule mModule = null;
     private String modelPath = null;  // Set from intent
     
-    // MTK backend state
-    private static final Object MTK_LOCK = new Object();
-    private static int mtkInitCount = 0;
-    private static boolean isCleaningUp = false;
-    private static final ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
-    
-    static {
-        // Only try to load MTK libraries if MTK backend is enabled
-        if (AppConstants.MTK_BACKEND_ENABLED) {
-            try {
-                // Load libraries in order
-                System.loadLibrary("sigchain");  // Load signal handler first
-                Thread.sleep(100);  // Give time for signal handlers to initialize
-                
-                System.loadLibrary("llm_jni");
-                AppConstants.MTK_BACKEND_AVAILABLE = true;
-                Log.d(TAG, "Successfully loaded llm_jni library");
-                
-                // Register shutdown hook for cleanup
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    try {
-                        cleanupMTKResources();
-                        cleanupExecutor.shutdownNow();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error in shutdown hook", e);
-                    }
-                }));
-            } catch (UnsatisfiedLinkError | Exception e) {
-                AppConstants.MTK_BACKEND_AVAILABLE = false;
-                Log.w(TAG, "Failed to load native libraries, MTK backend will be disabled", e);
-            }
-        } else {
-            Log.i(TAG, "MTK backend is disabled in AppConstants");
-        }
-    }
-
-    public static boolean isMTKBackendAvailable() {
-        return AppConstants.MTK_BACKEND_AVAILABLE && AppConstants.MTK_BACKEND_ENABLED;
-    }
-
     public String getModelName() {
         if (modelPath == null) {
-            if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                return "Breeze2";  // Default to Breeze2 for MTK backend
-            }
             return "Unknown";
         }
         return com.mtkresearch.breeze_app.utils.ModelUtils.getModelDisplayName(modelPath);
@@ -160,37 +117,17 @@ public class LLMEngineService extends BaseEngineService {
                 // Always release existing resources before initialization
                 releaseResources();
                 
-                // Try MTK backend only if it's preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_MTK)) {
-                    // Add delay before trying MTK initialization
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
-                    
-                    if (initializeMTKBackend()) {
-                        currentBackend = AppConstants.BACKEND_MTK;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized MTK backend");
-                        future.complete(true);
-                        return true;
-                    }
-                    Log.w(TAG, "MTK backend initialization failed");
-                    
-                    // Add delay before trying fallback
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
+                // Try CPU backend
+                if (initializeLocalCPUBackend()) {
+                    currentBackend = AppConstants.BACKEND_CPU;
+                    isInitialized = true;
+                    Log.d(TAG, "Successfully initialized CPU backend");
+                    future.complete(true);
+                    return true;
                 }
+                Log.w(TAG, "CPU backend initialization failed");
 
-                // Try CPU backend if MTK failed or CPU is preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_CPU)) {
-                    if (initializeLocalCPUBackend()) {
-                        currentBackend = AppConstants.BACKEND_CPU;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized CPU backend");
-                        future.complete(true);
-                        return true;
-                    }
-                    Log.w(TAG, "CPU backend initialization failed");
-                }
-
-                Log.e(TAG, "All backend initialization attempts failed");
+                Log.e(TAG, "Backend initialization failed");
                 future.complete(false);
                 return false;
             } catch (Exception e) {
@@ -201,205 +138,6 @@ public class LLMEngineService extends BaseEngineService {
         });
         
         return future;
-    }
-
-    private static void cleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d("LLMEngineService", "Performing emergency cleanup of MTK resources");
-                LLMEngineService tempInstance = new LLMEngineService();
-                
-                // Reset with timeout
-                Future<?> resetFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeResetLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency reset", e);
-                    }
-                });
-                
-                try {
-                    resetFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Reset operation timed out");
-                    resetFuture.cancel(true);
-                }
-                
-                Thread.sleep(100);
-                
-                // Release with timeout
-                Future<?> releaseFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeReleaseLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency release", e);
-                    }
-                });
-                
-                try {
-                    releaseFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Release operation timed out");
-                    releaseFuture.cancel(true);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(100);
-                
-            } catch (Exception e) {
-                Log.e("LLMEngineService", "Error during MTK cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
-    private void forceCleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d(TAG, "Forcing cleanup of MTK resources");
-                
-                // Multiple cleanup attempts with timeouts
-                for (int i = 0; i < 3; i++) {
-                    Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
-                        try {
-                            nativeResetLlm();
-                            Thread.sleep(100);
-                            nativeReleaseLlm();
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error during forced cleanup attempt", e);
-                        }
-                    });
-                    
-                    try {
-                        cleanupFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                    } catch (TimeoutException e) {
-                        Log.w(TAG, "Cleanup attempt " + (i+1) + " timed out");
-                        cleanupFuture.cancel(true);
-                    }
-                    
-                    Thread.sleep(200);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(200);
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error during forced cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
-    private boolean initializeMTKBackend() {
-        if (!AppConstants.MTK_BACKEND_AVAILABLE) {
-            Log.d(TAG, "MTK backend disabled, skipping");
-            return false;
-        }
-
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) {
-                Log.w(TAG, "Cannot initialize while cleanup is in progress");
-                return false;
-            }
-
-            try {
-                // Force cleanup if we've hit the max init attempts
-                if (mtkInitCount >= AppConstants.MAX_MTK_INIT_ATTEMPTS) {
-                    Log.w(TAG, "MTK init count exceeded limit, forcing cleanup");
-                    forceCleanupMTKResources();
-                    mtkInitCount = 0;
-                    Thread.sleep(1000);  // Wait for cleanup to complete
-                }
-
-                // Add delay before initialization
-                Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
-                
-                // Initialize signal handlers first
-                try {
-                    System.loadLibrary("sigchain");
-                    Thread.sleep(100);
-                } catch (UnsatisfiedLinkError e) {
-                    Log.w(TAG, "Failed to load sigchain library", e);
-                }
-
-                Log.d(TAG, "Attempting MTK backend initialization...");
-                
-                boolean success = false;
-                try {
-                    // Reset state before initialization
-                    nativeResetLlm();
-                    Thread.sleep(100);
-                    
-                    // Initialize with conservative settings
-                    success = nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", true);
-                    
-                    if (!success) {
-                        Log.e(TAG, "MTK initialization returned false");
-                        cleanupAfterError();
-                        return false;
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error during MTK initialization", e);
-                    cleanupAfterError();
-                    return false;
-                }
-                
-                if (success) {
-                    mtkInitCount++;
-                    Log.d(TAG, "MTK initialization successful. Init count: " + mtkInitCount);
-                    return true;
-                } else {
-                    Log.e(TAG, "MTK initialization failed");
-                    cleanupAfterError();
-                    return false;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing MTK backend", e);
-                cleanupAfterError();
-                return false;
-            }
-        }
-    }
-
-    private void cleanupAfterError() {
-        try {
-            // Force cleanup in a separate thread with timeout
-            Thread cleanupThread = new Thread(() -> {
-                try {
-                    nativeResetLlm();
-                    Thread.sleep(100);
-                    nativeReleaseLlm();
-                } catch (Exception e) {
-                    Log.w(TAG, "Error during error cleanup", e);
-                }
-            });
-            
-            cleanupThread.start();
-            cleanupThread.join(AppConstants.MTK_CLEANUP_TIMEOUT_MS);
-            
-            if (cleanupThread.isAlive()) {
-                Log.w(TAG, "Cleanup thread timed out, interrupting");
-                cleanupThread.interrupt();
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error during cleanup after error", e);
-        }
     }
 
     private boolean initializeLocalCPUBackend() {
@@ -447,11 +185,6 @@ public class LLMEngineService extends BaseEngineService {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 switch (currentBackend) {
-                    case AppConstants.BACKEND_MTK:
-                        String response = nativeInference(prompt, 256, false);
-                        nativeResetLlm();
-                        nativeSwapModel(128);
-                        return response;
                     case AppConstants.BACKEND_CPU:
                         try {
                             // Calculate sequence length based on prompt length, matching original implementation
@@ -526,50 +259,6 @@ public class LLMEngineService extends BaseEngineService {
         CompletableFuture.runAsync(() -> {
             try {
                 switch (currentBackend) {
-                    case AppConstants.BACKEND_MTK:
-                        try {
-                            // MTK backend uses raw prompt without formatting
-                            executor.execute(() -> {
-                                try {
-                                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
-                                        @Override
-                                        public void onToken(String token) {
-                                            if (callback != null && isGenerating.get()) {
-                                                callback.onToken(token);
-                                                currentStreamingResponse.append(token);
-                                            }
-                                        }
-                                    });
-                                    
-                                    // Only complete if we haven't been stopped
-                                    if (isGenerating.get()) {
-                                        currentResponse.complete(response);
-                                        resultFuture.complete(response);
-                                    }
-                                    
-                                    // Clean up MTK state
-                                    try {
-                                        nativeResetLlm();
-                                        nativeSwapModel(128);
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Error resetting MTK state after generation", e);
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error in MTK streaming generation", e);
-                                    if (!currentResponse.isDone()) {
-                                        currentResponse.completeExceptionally(e);
-                                        resultFuture.completeExceptionally(e);
-                                    }
-                                } finally {
-                                    isGenerating.set(false);
-                                }
-                            });
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error in MTK streaming response", e);
-                            throw e;
-                        }
-                        break;
-                        
                     case AppConstants.BACKEND_CPU:
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
@@ -672,13 +361,7 @@ public class LLMEngineService extends BaseEngineService {
     public void stopGeneration() {
         isGenerating.set(false);
         
-        if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-            try {
-                nativeResetLlm();
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping MTK generation", e);
-            }
-        } else if (mModule != null) {
+        if (mModule != null) {
             try {
                 mModule.stop();
             } catch (Exception e) {
@@ -700,79 +383,26 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public void releaseResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) {
-                Log.w(TAG, "Cleanup already in progress");
-                return;
+        try {
+            if (isGenerating.get()) {
+                stopGeneration();
             }
             
-            isCleaningUp = true;
-            try {
-                stopGeneration();
-                
-                // Release MTK resources if using MTK backend
-                if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                    try {
-                        // Add delay before cleanup
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeResetLlm();
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeReleaseLlm();
-                        mtkInitCount = 0; // Reset init count
-                        Log.d(TAG, "Released MTK resources");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error releasing MTK resources", e);
-                        cleanupAfterError();
-                    }
-                }
-                
-                // Release CPU resources if using CPU backend
-                if (mModule != null) {
-                    try {
-                        mModule.resetNative();
-                        mModule = null;
-                        Log.d(TAG, "Released CPU resources");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error releasing CPU resources", e);
-                    }
-                }
-                
-                // Reset state
-                currentBackend = AppConstants.BACKEND_NONE;
-                isInitialized = false;
-                System.gc(); // Request garbage collection
-                
-                Log.d(TAG, "All resources released");
-            } catch (Exception e) {
-                Log.e(TAG, "Error during cleanup", e);
-            } finally {
-                isCleaningUp = false;
+            if (mModule != null) {
+                mModule.resetNative();
+                mModule = null;
             }
+            
+            isInitialized = false;
+            currentBackend = AppConstants.BACKEND_NONE;
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing resources", e);
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        
-        // Run cleanup with timeout
-        Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
-            try {
-                cleanupMTKResources();
-                releaseResources();
-            } catch (Exception e) {
-                Log.e(TAG, "Error during service cleanup", e);
-            }
-        });
-        
-        try {
-            cleanupFuture.get(AppConstants.MTK_CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            Log.w(TAG, "Service cleanup timed out");
-            cleanupFuture.cancel(true);
-        } catch (Exception e) {
-            Log.e(TAG, "Error waiting for cleanup", e);
-        }
         
         if (executor != null) {
             executor.shutdown();
@@ -786,18 +416,6 @@ public class LLMEngineService extends BaseEngineService {
 
     public String getPreferredBackend() {
         return preferredBackend;
-    }
-
-    // Native methods for MTK backend
-    private native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
-    private native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
-    private native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
-    private native void nativeReleaseLlm();
-    private native boolean nativeResetLlm();
-    private native boolean nativeSwapModel(int tokenSize);
-
-    public interface TokenCallback {
-        void onToken(String token);
     }
 
     private int getMaxSequenceLength() {

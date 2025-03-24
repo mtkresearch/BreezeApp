@@ -127,16 +127,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private boolean asrServiceReady = false;
     private boolean ttsServiceReady = false;
 
-    // Add a flag to track MTK support status
-    private static boolean mtkBackendChecked = false;
-    private static boolean mtkBackendSupported = true;
-
-    // Add new fields for initialization state
-    private boolean isInitializing = false;
-    private final Object initLock = new Object();
-    private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
-
-    private boolean hasReceivedResponse = false;  // Add class field
+    // Model information
+    private String currentModelPath;
+    private String currentBackendType;
+    
+    // Analytics
+    private long sessionStartTime = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
