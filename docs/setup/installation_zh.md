@@ -90,18 +90,17 @@
 
 ## 變更預設後端或 LLM 模型
 
-要變更預設後端 (CPU) 或 LLM 模型 (Breeze)，請依照以下步驟：
+要變更預設 LLM 模型 (Breeze)，請依照以下步驟：
 
 1. 開啟 "AppConstants.java" 檔案，位於：
    ```bash
    cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/gai_android/utils/AppConstants.java
    ```
-2. 使用您偏好的程式設計工具修改以下常數並設定您想要的後端和模型：
+2. 使用您偏好的程式設計工具修改以下常數並設定您想要的模型：
    ```java
    // 後端常數
    public static final String BACKEND_CPU = "cpu" ;
-   public static final String BACKEND_MTK = "mtk" ;
-   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // 變更為所需後端
+   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // 這是唯一支援的後端
    ...
    // 模型檔案和路徑
    public static final String LLAMA_MODEL_FILE = "llama3_2.pte" ;
@@ -109,14 +108,6 @@
    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/" ;
    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE ; // 變更為所需模型
    ```
-   
-   - 變更後端：\
-      預設情況下，後端設定為 "CPU"。如果您想使用 "MTK" 作為應用程式後端，請修改以下行：
-      ```java
-      // 後端常數
-      ...
-      public static final String BACKEND_DEFAULT = BACKEND_MTK ; // 變更為所需後端
-      ```
 
    - 變更 LLM 模型：\
       預設情況下，模型設定為 "Breeze2"。如果您想使用 "Llama3_2"，請修改以下行：
@@ -126,4 +117,4 @@
       public static final String MODEL_PATH = LLAMA_MODEL_DIR + LLAMA_MODEL_FILE ; // 變更為所需模型
       ```
 
-3. 修改後端或 LLM 模型後，在 Android Studio 中 "重新建構" 專案以套用變更。 
+3. 修改 LLM 模型後，在 Android Studio 中 "重新建構" 專案以套用變更。 

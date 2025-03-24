@@ -90,18 +90,17 @@
 
 ## Changing Default Backend or LLM Model
 
-To change the default backend (CPU) or LLM model (Breeze), follow these steps:
+To change the default LLM model (Breeze), follow these steps:
 
 1. Open the "AppConstants.java" file, located at:
    ```bash
    cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/gai_android/utils/AppConstants.java
    ```
-2. Use your preferred programming tools to modify the following constants and set your desired backend and model:
+2. Use your preferred programming tools to modify the following constants and set your desired model:
    ```java
    // Backend Constants
    public static final String BACKEND_CPU = "cpu" ;
-   public static final String BACKEND_MTK = "mtk" ;
-   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // Change to desired backend
+   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // This is the only supported backend
    ...
    // Model Files and Paths
    public static final String LLAMA_MODEL_FILE = "llama3_2.pte" ;
@@ -109,14 +108,6 @@ To change the default backend (CPU) or LLM model (Breeze), follow these steps:
    public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/" ;
    public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE ; // Change to desired model
    ```
-   
-   - Changing the Backend:\
-      By default, the backend is set to "CPU". If you want to use "MTK" as the application backend, modify the following line:
-      ```java
-      // Backend Constants
-      ...
-      public static final String BACKEND_DEFAULT = BACKEND_MTK ; // Change to desired backend
-      ```
 
    - Changing the LLM Model:\
       By default, the model is set to "Breeze2". If you want to use "Llama3_2", modify the following line:
@@ -126,4 +117,4 @@ To change the default backend (CPU) or LLM model (Breeze), follow these steps:
       public static final String MODEL_PATH = LLAMA_MODEL_DIR + LLAMA_MODEL_FILE ; // Change to desired model
       ```
 
-3. After modifying the backend or LLM model, "rebuild" the project in Android Studio to apply the changes. 
+3. After modifying the LLM model, "rebuild" the project in Android Studio to apply the changes. 
