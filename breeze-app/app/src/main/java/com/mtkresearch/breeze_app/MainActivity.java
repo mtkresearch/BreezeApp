@@ -692,10 +692,6 @@ public class MainActivity extends AppCompatActivity {
         // Setup backend spinner
         List<String> backendOptions = new ArrayList<>();
         backendOptions.add("cpu");  // CPU backend is always available
-        // Disable MTK backend option for now
-        // if (LLMEngineService.isMTKBackendAvailable()) {
-        //     backendOptions.add("mtk");
-        // }
         
         backendAdapter = new ArrayAdapter<>(this, 
             android.R.layout.simple_spinner_item, backendOptions);

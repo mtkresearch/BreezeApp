@@ -31,17 +31,11 @@ public class AppConstants {
     // Backend Constants
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend since MTK is experimental
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend
     
-    // Backend Enable Flags
-    public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
-    public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
+    // Backend Enable Flags - MTK related flags removed
     
-    // Backend Initialization Constants
-    public static final int MAX_MTK_INIT_ATTEMPTS = 5;
-    public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;  // 5 seconds timeout for cleanup
-    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000;  // 2 seconds timeout for native operations
+    // Backend Initialization Constants - MTK related constants removed
     public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     
@@ -50,7 +44,6 @@ public class AppConstants {
     public static final long LLM_GENERATION_TIMEOUT_MS = Long.MAX_VALUE;  // No timeout for generation
     public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
     public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
-    public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
 
     // Model Files and Paths
@@ -368,10 +361,6 @@ public class AppConstants {
     // LLM Configuration
     public static final float LLM_TEMPERATURE = 0.0f;
     
-    // When false: Send button always shows send icon and only sends messages
-    // When true: Send button toggles between send and audio chat mode
-    public static final boolean AUDIO_CHAT_ENABLED = false;
-
     // Conversation History Constants
     public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
 
@@ -392,9 +381,6 @@ public class AppConstants {
     // Activity Tags
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
-    public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
-
-
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {
@@ -426,4 +412,14 @@ public class AppConstants {
     
     // Temporary extension for partial downloads
     public static final String MODEL_DOWNLOAD_TEMP_EXTENSION = ".part";
+
+    // ## Feature Flags
+    // Show the image selection button
+    public static final boolean IMAGE_ENABLED = true;
+    // Show the speech-to-text and text-to-speech buttons
+    public static final boolean SPEECH_ENABLED = true;
+    // Enable expanding the send button when typing
+    public static final boolean EXPANDED_INPUT_ENABLED = true;
+    // Enable downloading models
+    public static final boolean DOWNLOAD_ENABLED = true;
 } 

@@ -37,19 +37,13 @@ public class VLMEngineService extends BaseEngineService {
     public CompletableFuture<Boolean> initialize() {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                if (initializeMTKBackend()) {
-                    backend = "mtk";
+                if (initializeCPUBackend()) {
+                    backend = "cpu";
                     isInitialized = true;
                     return true;
                 }
 
-                if (initializeLocalCPUBackend()) {
-                    backend = "local_cpu";
-                    isInitialized = true;
-                    return true;
-                }
-
-                Log.e(TAG, "All backend initialization attempts failed");
+                Log.e(TAG, "Backend initialization failed");
                 return false;
             } catch (Exception e) {
                 Log.e(TAG, "Error during initialization", e);
@@ -58,29 +52,18 @@ public class VLMEngineService extends BaseEngineService {
         });
     }
 
-    private boolean initializeMTKBackend() {
+    private boolean initializeCPUBackend() {
         try {
-            Log.d(TAG, "Attempting MTK backend initialization...");
-            // TODO: Implement MTK backend initialization
-            return false; // For now, return false to fall back to local_cpu
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing MTK backend", e);
-            return false;
-        }
-    }
-
-    private boolean initializeLocalCPUBackend() {
-        try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
-            initializeLocalCpuModel();
+            Log.d(TAG, "Attempting CPU backend initialization...");
+            initializeCPUModel();
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU backend", e);
+            Log.e(TAG, "Failed to initialize CPU backend", e);
             return false;
         }
     }
 
-    private void initializeLocalCpuModel() {
+    private void initializeCPUModel() {
         try {
             String modelPath = "/data/local/tmp/llava/llava.pte";
             String tokenizerPath = "/data/local/tmp/llava/tokenizer.bin";
@@ -94,9 +77,9 @@ public class VLMEngineService extends BaseEngineService {
 
             mModule = new LlamaModule(MODEL_TYPE, modelPath, tokenizerPath, TEMPERATURE);
             mModule.load();
-            Log.i(TAG, "Local CPU model initialized successfully");
+            Log.i(TAG, "CPU model initialized successfully");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize local CPU model", e);
+            Log.e(TAG, "Failed to initialize CPU model", e);
             throw e;
         }
     }
@@ -136,7 +119,7 @@ public class VLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> analyzeImage(Uri imageUri, String userPrompt) {
-        if (!isInitialized || !backend.equals("local_cpu")) {
+        if (!isInitialized || !backend.equals("cpu")) {
             CompletableFuture<String> future = new CompletableFuture<>();
             future.completeExceptionally(new IllegalStateException("Engine not initialized or wrong backend"));
             return future;
