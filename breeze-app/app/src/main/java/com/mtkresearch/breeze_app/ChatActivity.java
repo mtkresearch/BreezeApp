@@ -304,20 +304,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.sendButton.setBackgroundResource(R.drawable.bg_send_button);
         binding.sendButtonExpanded.setBackgroundResource(R.drawable.bg_send_button);
         
-        // Always use send icon when AUDIO_CHAT_ENABLED is false
-        if (!AppConstants.AUDIO_CHAT_ENABLED) {
-            binding.sendButton.setImageResource(R.drawable.ic_send);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
-            // Hide voice buttons when audio chat is disabled
-            binding.voiceButton.setVisibility(View.GONE);
-            binding.voiceButtonExpanded.setVisibility(View.GONE);
-        } else {
-            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
-            // Show voice buttons when audio chat is enabled
-            binding.voiceButton.setVisibility(View.VISIBLE);
-            binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
-        }
+        // Always use send icon
+        binding.sendButton.setImageResource(R.drawable.ic_send);
+        binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
+        // Hide voice buttons
+        binding.voiceButton.setVisibility(View.GONE);
+        binding.voiceButtonExpanded.setVisibility(View.GONE);
 
         // Initial button state (only if uiHandler is initialized)
         if (uiHandler != null) {
@@ -347,7 +339,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         boolean hasText = !uiHandler.getCurrentInputText().trim().isEmpty();
         boolean hasImage = uiHandler.getPendingImageUri() != null;
-        boolean shouldEnable = hasText || hasImage || AppConstants.AUDIO_CHAT_ENABLED;
+        boolean shouldEnable = hasText || hasImage;
 
         // Update button state
         binding.sendButton.setEnabled(shouldEnable);
@@ -358,14 +350,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.sendButton.setAlpha(alpha);
         binding.sendButtonExpanded.setAlpha(alpha);
 
-        // Update icon based on content
-        if (!AppConstants.AUDIO_CHAT_ENABLED || hasText || hasImage) {
-            binding.sendButton.setImageResource(R.drawable.ic_send);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
-        } else {
-            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
-        }
+        // Always show as send icon
+        binding.sendButton.setImageResource(R.drawable.ic_send);
+        binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
     }
 
     private void setupNewConversationButton() {
@@ -614,12 +601,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 handleTextMessage(message);
             }
             uiHandler.clearInput();
-        } else if (AppConstants.AUDIO_CHAT_ENABLED && AppConstants.ASR_ENABLED) {
-            // Only start audio chat if both AUDIO_CHAT_ENABLED and ASR_ENABLED are true
-            startAudioChat();
-        } else if (AppConstants.AUDIO_CHAT_ENABLED) {
-            // Show a message if audio chat is enabled but ASR is disabled
-            Toast.makeText(this, this.getString( R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -980,11 +961,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(intent);
         finish();
-    }
-
-    private void startAudioChat() {
-        Intent intent = new Intent(this, AudioChatActivity.class);
-        startActivity(intent);
     }
 
     @Override

@@ -238,11 +238,13 @@ public class ChatUIStateHandler {
             return;
         }
         
-        // Normal mode icon selection
-        int iconRes = hasContent || !AppConstants.AUDIO_CHAT_ENABLED ? 
-            R.drawable.ic_send : R.drawable.ic_audio_wave;
-        binding.sendButton.setImageResource(iconRes);
-        binding.sendButtonExpanded.setImageResource(iconRes);
+        float alpha = hasContent ? AppConstants.ENABLED_ALPHA : AppConstants.DISABLED_ALPHA;
+        binding.sendButton.setAlpha(alpha);
+        binding.sendButtonExpanded.setAlpha(alpha);
+        
+        // Always use send icon
+        binding.sendButton.setImageResource(R.drawable.ic_send);
+        binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
     }
 
     public void updateRecordingState(boolean isRecording) {

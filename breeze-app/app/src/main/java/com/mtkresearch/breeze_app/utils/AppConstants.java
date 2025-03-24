@@ -361,10 +361,6 @@ public class AppConstants {
     // LLM Configuration
     public static final float LLM_TEMPERATURE = 0.0f;
     
-    // When false: Send button always shows send icon and only sends messages
-    // When true: Send button toggles between send and audio chat mode
-    public static final boolean AUDIO_CHAT_ENABLED = false;
-
     // Conversation History Constants
     public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
 
@@ -385,9 +381,6 @@ public class AppConstants {
     // Activity Tags
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
-    public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
-
-
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {
@@ -419,4 +412,14 @@ public class AppConstants {
     
     // Temporary extension for partial downloads
     public static final String MODEL_DOWNLOAD_TEMP_EXTENSION = ".part";
+
+    // ## Feature Flags
+    // Show the image selection button
+    public static final boolean IMAGE_ENABLED = true;
+    // Show the speech-to-text and text-to-speech buttons
+    public static final boolean SPEECH_ENABLED = true;
+    // Enable expanding the send button when typing
+    public static final boolean EXPANDED_INPUT_ENABLED = true;
+    // Enable downloading models
+    public static final boolean DOWNLOAD_ENABLED = true;
 } 
