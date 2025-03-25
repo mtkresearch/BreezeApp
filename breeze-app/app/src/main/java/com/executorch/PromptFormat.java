@@ -67,6 +67,7 @@ public class PromptFormat {
       case LLAMA_3:
       case LLAMA_3_1:
       case LLAMA_3_2:
+        return "<|end_of_text|>";
       case LLAMA_GUARD_3:
         return "<|eot_id|>";
       case LLAVA_1_5:

@@ -2,6 +2,7 @@ package com.mtkresearch.breeze_app.service;
 
 import android.content.Intent;
 import android.os.IBinder;
+import android.os.Process;
 import android.util.Log;
 
 import org.pytorch.executorch.LlamaModule;
@@ -16,17 +17,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class LLMEngineService extends BaseEngineService {
+public class LLMEngineService extends BaseEngineService implements LlamaCallback {
     private static final String TAG = "LLMEngineService";
     
     // Service state
     private String currentBackend = AppConstants.BACKEND_NONE;
     private String preferredBackend = AppConstants.BACKEND_DEFAULT;
-    private boolean hasSeenAssistantMarker = false;
     private final ConversationManager conversationManager;
     
     // Generation state
@@ -93,12 +91,64 @@ public class LLMEngineService extends BaseEngineService {
     public LLMEngineService() {
         this.conversationManager = new ConversationManager();
     }
+    
+    @Override
+    public void onResult(String result) {
+        if (result == null || result.isEmpty() || !isGenerating.get()) {
+            return;
+        }
+        
+        // Check for stop token
+        if (result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) || result.equals("<|eot_id|>") || result.equals("<|end_of_text|>")) {
+            Log.d(TAG, "Stop token detected: " + result);
+            
+            // First mark that we're no longer generating to prevent more tokens from being processed
+            isGenerating.set(false);
+            
+            // Stop the model in a standalone thread to ensure it's not blocked
+            if (mModule != null) {
+                try {
+                    new Thread(() -> {
+                        try {
+                            Log.d(TAG, "Forcefully stopping LlamaModule after stop token");
+                            mModule.stop();
+                            
+                            // Sleep briefly to give the module time to process the stop command
+                            Thread.sleep(100);
+                            
+                            // Call stop again to ensure it takes effect
+                            mModule.stop();
+                            Log.d(TAG, "Second stop call completed after stop token");
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in forceful stopping thread after stop token", e);
+                        }
+                    }).start();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initiating stop process after stop token", e);
+                }
+            }
+            
+            // Then complete the generation
+            completeGeneration();
+            return;
+        }
+        
+        // Directly append token to the response without UTF-8 checking
+        // Log.d(TAG, "Received token: \"" + result + "\"");
+        currentStreamingResponse.append(result);
+        
+        // Send token to callback if streaming
+        if (currentCallback != null) {
+            currentCallback.onToken(result);
+        }
+    }
+
+    @Override
+    public void onStats(float tps) {
+        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+    }
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
-
-    public interface StreamingResponseCallback {
-        void onToken(String token);
-    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -116,6 +166,7 @@ public class LLMEngineService extends BaseEngineService {
                 modelPath = AppConstants.getModelPath(this);
                 Log.d(TAG, "Using default model path: " + modelPath);
             }
+            
             if (intent.hasExtra("preferred_backend")) {
                 String newBackend = intent.getStringExtra("preferred_backend");
                 if (!newBackend.equals(preferredBackend)) {
@@ -138,6 +189,7 @@ public class LLMEngineService extends BaseEngineService {
         if (executor == null) {
             executor = Executors.newSingleThreadExecutor();
         }
+        
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -407,28 +459,39 @@ public class LLMEngineService extends BaseEngineService {
             Log.d(TAG, "Attempting Local CPU backend initialization...");
 
             if (mModule != null) {
+                Log.d(TAG, "Start deallocating existing module instance");
                 mModule.resetNative();
                 mModule = null;
+                Log.d(TAG, "Completed deallocating existing module instance");
             }
-
+            
             if (modelPath == null) {
                 Log.e(TAG, "Model path is null, cannot initialize");
-                return false;
+                return;
             }
-
+            
+            // Get temperature from constants
+            float temperature = AppConstants.LLM_TEMPERATURE;
+            
+            long runStartTime = System.currentTimeMillis();
+            
             // Initialize LlamaModule with model parameters
             mModule = new LlamaModule(
                 ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
                 modelPath,
                 AppConstants.getTokenizerPath(this),
-                AppConstants.LLM_TEMPERATURE
+                temperature
             );
-
+            
             // Load the model
             int loadResult = mModule.load();
+            
+            modelLoadTime = System.currentTimeMillis() - runStartTime;
+            
             if (loadResult != 0) {
                 Log.e(TAG, "Failed to load model: " + loadResult);
-                return false;
+                mModule = null;
+                return;
             }
 
             Log.d(TAG, "Local CPU backend initialized successfully");
@@ -440,7 +503,7 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public CompletableFuture<String> generateResponse(String prompt) {
-        if (!isInitialized) {
+        if (!isInitialized || mModule == null) {
             return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
         }
 
@@ -500,22 +563,20 @@ public class LLMEngineService extends BaseEngineService {
                     default:
                         return AppConstants.LLM_ERROR_RESPONSE;
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "Error generating response", e);
-                return AppConstants.LLM_ERROR_RESPONSE;
             }
         });
+        
+        return future;
     }
-
+    
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
-        if (!isInitialized) {
+        if (!isInitialized || mModule == null) {
             if (callback != null) {
                 callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
             }
             return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
         }
-
-        hasSeenAssistantMarker = false;
+        
         currentCallback = callback;
         currentResponse = new CompletableFuture<>();
         currentStreamingResponse.setLength(0);
@@ -523,7 +584,7 @@ public class LLMEngineService extends BaseEngineService {
         
         CompletableFuture<String> resultFuture = new CompletableFuture<>();
         
-        CompletableFuture.runAsync(() -> {
+        executor.execute(() -> {
             try {
                 switch (currentBackend) {
                     case AppConstants.BACKEND_MTK:
@@ -656,20 +717,11 @@ public class LLMEngineService extends BaseEngineService {
         
         return resultFuture;
     }
-
-    private void completeGeneration() {
-        if (isGenerating.compareAndSet(true, false)) {
-            String finalResponse = currentStreamingResponse.toString();
-            if (currentResponse != null && !currentResponse.isDone()) {
-                currentResponse.complete(finalResponse);
-            }
-            // Clean up resources
-            currentCallback = null;
-            System.gc(); // Request garbage collection for any lingering resources
-        }
-    }
-
+    
     public void stopGeneration() {
+        Log.d(TAG, "Manual stopping of generation requested");
+        
+        // First, mark that we're no longer generating to prevent further tokens from being processed
         isGenerating.set(false);
         
         if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
@@ -680,25 +732,45 @@ public class LLMEngineService extends BaseEngineService {
             }
         } else if (mModule != null) {
             try {
-                mModule.stop();
+                // Use a separate thread to ensure the stop command is sent immediately
+                // and doesn't get blocked by other operations
+                new Thread(() -> {
+                    try {
+                        Log.d(TAG, "Forcefully stopping LlamaModule");
+                        mModule.stop();
+                        
+                        // Sleep briefly to give the module time to process the stop command
+                        Thread.sleep(100);
+                        
+                        // Call stop again to ensure it takes effect
+                        mModule.stop();
+                        Log.d(TAG, "Second stop call completed");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in forceful stopping thread", e);
+                    }
+                }).start();
             } catch (Exception e) {
-                Log.e(TAG, "Error stopping CPU generation", e);
+                Log.e(TAG, "Error initiating stop process", e);
             }
-        }
-
-        if (currentResponse != null && !currentResponse.isDone()) {
-            String finalResponse = currentStreamingResponse.toString();
-            if (finalResponse.isEmpty()) {
-                finalResponse = "[Generation stopped by user]";
-            }
-            currentResponse.complete(finalResponse);
         }
         
-        // Clean up resources
+        // Complete any pending futures
+        String finalResponse = currentStreamingResponse.toString();
+        if (finalResponse.isEmpty()) {
+            finalResponse = "[Generation stopped by user]";
+        }
+        
+        // Ensure callback is cleared
         currentCallback = null;
-        System.gc();
+        
+        // Complete the response future if it's still pending
+        if (currentResponse != null && !currentResponse.isDone()) {
+            final String responseToComplete = finalResponse;
+            Log.d(TAG, "Completing response with length: " + responseToComplete.length());
+            currentResponse.complete(responseToComplete);
+        }
     }
-
+    
     public void releaseResources() {
         synchronized (MTK_LOCK) {
             if (isCleaningUp) {
@@ -750,7 +822,7 @@ public class LLMEngineService extends BaseEngineService {
             }
         }
     }
-
+    
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -779,11 +851,11 @@ public class LLMEngineService extends BaseEngineService {
             executor = null;
         }
     }
-
+    
     public String getCurrentBackend() {
         return currentBackend;
     }
-
+    
     public String getPreferredBackend() {
         return preferredBackend;
     }
