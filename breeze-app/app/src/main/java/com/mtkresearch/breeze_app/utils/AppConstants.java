@@ -359,7 +359,7 @@ public class AppConstants {
     public static final String LLM_INVALID_TOKEN_ERROR = "I apologize, but I was unable to generate a valid response. This might be due to the complexity of the question or current model limitations. Please try rephrasing your question.";
     
     // LLM Configuration
-    public static final float LLM_TEMPERATURE = 0.0f;
+    public static final float LLM_TEMPERATURE = 0.2f;
     
     // Conversation History Constants
     public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
