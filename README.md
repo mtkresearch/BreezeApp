@@ -22,17 +22,17 @@ Text-to-Speech
 
 Image QA
 
-BreezeAPP是一個 Android 以及 iOS 的純手機 AI 應用程式。從 App Store 直接下載後，使用者可以不須連網，就享受語音轉文字，文字轉語音，文字聊天機器人，以及對影像問問題的功能。目前 BreezeApp 支援聯發創新基地的 Breeze 2 系列的模型，未來會支援更新更好的模型。
+BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程式。用戶只需從 App Store 直接下載，即可在不須連網的離線狀態下享受多項功能，包含了語音轉文字、文字轉語音、文字聊天機器人，以及對圖像進行問答。目前，BreezeApp 支援聯發科技創新基地開發的 Breeze 2 系列模型，未來還會持續更新支援更新、更好的模型。
 
-## 您與我
+## 📧 與我們合作
 
 我們是[聯發創新基地](https://i.mediatek.com/mediatekresearch) ([MediaTek Research](https://i.mediatek.com/mediatekresearch))。聯發創新基地是[AI Alliance](https://thealliance.ai/) 的成員。
 
-我們開發這個應用的主要目的，是鑒於目前一般大眾，普遍認為 LLM的功能，受制於總之是有很貴的設備的人，他給出什麼，才用的到什麼。我們想要提升與散播，任何人都可以決定在他的手機上跑哪款 LLM 的認知。
+我們開發這個應用的主要目的，是為了改變大眾對運行大型語言模型(LLM) 的普遍認知。目前，許多人認為LLM的功能只能在昂貴的設備上使用，而且受限於設備提供商的選擇。我們希望提升大眾意識並推廣這樣一個概念：任何人都可以在自己的手機上自由選擇並運行不同的LLM。
 
-我們開發這個應用的另一個主要目的，是希望藉由我們將 Kotlin 的源碼開源後，我們能夠移除 app 開發者建立手機 AI APP 所有的門檻，讓 app開發者能夠做出更多有創意的手機應用。我們期待未來能與 app 開發者協作。
+我們開發這個應用的另一個主要目的，是通過開源我們的 Kotlin 源代碼，來消除 app 開發者在創建手機 AI 應用時可能遇到的障礙，藉此激發app開發者做出更多有創意的手機應用。我們期待未來能與 app 開發者展開更多合作。
 
-您可以聯繫我們於 info 在於 mtkresearch.com.
+如果您有任何合作意向，歡迎通過以下郵箱與我們聯繫：[info@mtkresearch.com](info@mtkresearch.com)
 
 ## 🚀 快速開始
 
@@ -54,17 +54,18 @@ BreezeAPP是一個 Android 以及 iOS 的純手機 AI 應用程式。從 App Sto
     | ASR       |     🚧     |    ❌    |    -    |
     | TTS       |     ✅     |    ❌    |    -    |
 
-## Compatible models
+## 支持模型
 
-    | 模型類型 | |
-    |:---------:|:--------:|
-    | LLM       |  Breeze 2   |
-    | VLM       |  Breeze 2   |   
-    | ASR       |  Breeze 2   |    
-    | TTS       |  Breeze 2   |   
+| 模型類型 | 可用模型 |
+|:---------:|:--------:|
+| LLM       | Breeze 2 |
+| VLM       | Breeze 2 |
+| ASR       | Breeze 2 |
+| TTS       | Breeze 2 |
 
-## Compatible devices
-目前僅在 Pixel 7a (8GB) 和 Samsung Flip 4 上測試通過，希望能得到更多的實測回報
+
+## 支持設備
+目前僅在 Pixel 7a (8GB) 和 Samsung Flip 4 上測試通過，我們希望能收到更多用戶在不同設備上的實際使用反饋。
 
 ### 開發者設定
 想要建構和貢獻程式碼？查看我們的[安裝指南](docs/setup/installation_zh.md)獲取詳細說明。
@@ -74,8 +75,8 @@ BreezeAPP是一個 Android 以及 iOS 的純手機 AI 應用程式。從 App Sto
 我們正在尋找貢獻者協助以下任務：
 
 1. **推廣**
-   - 能見度
-   - 多語言
+   - 擴大BreezeApp的能見度
+   - 多語言支持
     
 2. **效能優化**
    - 分析應用程式並加強記憶體管理
