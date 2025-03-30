@@ -32,7 +32,7 @@ BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程�
 
 我們開發這個應用的另一個主要目的，是通過開源我們的 Kotlin 源代碼，來消除 app 開發者在創建手機 AI 應用時可能遇到的障礙，藉此激發app開發者做出更多有創意的手機應用。我們期待未來能與 app 開發者展開更多合作。
 
-如果您有任何合作意向，歡迎通過以下郵箱與我們聯繫：[info@mtkresearch.com](info@mtkresearch.com)
+如果您對 BreezeApp 有興趣，歡迎通過以下郵箱與我們聯繫：[info@mtkresearch.com](info@mtkresearch.com)
 
 ## 🚀 快速開始
 
