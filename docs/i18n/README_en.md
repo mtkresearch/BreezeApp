@@ -22,21 +22,17 @@ Text-to-Speech
 
 Image QA
 
-BreezeAPP is a mobile AI application developed for both Android and iOS platforms. Users can download it directly from the App Store and enjoy a range of features without an internet connection. These offline capabilities include speech-to-text, text-to-speech, text-based chatbot interactions, and image question-answering. Currently, BreezeApp supports the Breeze 2 series of models developed by MediaTek Research. Newer and improved models will be supported in future updates.
+BreezeAPP is a mobile AI application developed for both Android and iOS platforms. Users can download it directly from the App Store and enjoy a variety of features offline, including speech-to-text, text-to-speech, text-based chatbot interactions, and image question-answering. Currently, BreezeApp supports the Breeze 2 series of models developed by MediaTek Research. Newer and better models will be supported in future updates.
 
-
-
-
-
-## 📧 Collaborate with Us
+## 📧 The intention of open source
 
 We are [MediaTek Research](https://i.mediatek.com/mediatekresearch). MediaTek Research is a member of the [AI Alliance](https://thealliance.ai/).
 
-The primary purpose of developing this application is to challenge the common perception about running Large Language Models (LLMs). Currently, many people believe that LLM functionalities are only available on expensive devices and are limited by the choices of device providers. We aim to raise public awareness and promote the concept that anyone can freely choose and run different LLMs on their own smartphones.
+The primary purpose of developing this application is to challenge the common perception about running Large Language Models (LLMs). Currently, many people believe that LLM can only run on super expensive computers, and large cloud service providers dictate what LLM functionalities are offered. We aim to raise public awareness about the capability of a smartphone to run an entire AI suite, LLM included, and to promote the concept that anyone should and indeed can freely choose what AI to run on their mobile devices. 
 
-Another key objective in developing this application is to remove barriers for app developers in creating mobile AI applications by open-sourcing our Kotlin code. Through this, we hope to inspire app developers to create more innovative mobile applications. We look forward to future collaborations with app developers.
+Another key objective in open sourcing the Kotlin portion of this application is to minimize the entry barriers for app developers in creating mobile AI applications. Through this, we hope to inspire app developers to create more innovative mobile AI applications. We look forward to future collaborations with app developers.
 
-If you have any interest in collaboration, please feel free to contact us: [info@mtkresearch.com](info@mtkresearch.com)
+If you are interested in the BreezeApp, please feel free to contact us: [info@mtkresearch.com](info@mtkresearch.com)
 
 ## 🚀 Quick Start 
 
