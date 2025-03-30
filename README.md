@@ -24,7 +24,7 @@ Image QA
 
 BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程式。用戶只需從 App Store 直接下載，即可在不須連網的離線狀態下享受多項功能，包含了語音轉文字、文字轉語音、文字聊天機器人，以及對圖像進行問答。目前，BreezeApp 支援聯發科技創新基地開發的 Breeze 2 系列模型，未來還會持續更新支援更新、更好的模型。
 
-## 📧 與我們合作
+## 📧 開源的用意
 
 我們是[聯發創新基地](https://i.mediatek.com/mediatekresearch) ([MediaTek Research](https://i.mediatek.com/mediatekresearch))。聯發創新基地是[AI Alliance](https://thealliance.ai/) 的成員。
 
