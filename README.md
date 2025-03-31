@@ -20,24 +20,10 @@ Speech-to-Text
 
 Text-to-Speech
 <p align="center">
-  <img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>
-</p>
-<p align="center">
-  <em>中文語音合成示範</em>
-</p>
-
-<p align="center">
-  <strong>範例一</strong><br/>
-  『你可以簡短的介紹台灣夜市特色嗎？』<br/>
-  🔊 <a href="assets/tts_zh_1.mp3">直接下載</a>
-  
-  https://github.com/user-attachments/assets/1ff7c884-425c-4f3e-b9db-2ed571b84758
-</p>
-
-<p align="center">
-  <strong>範例二</strong><br/>
-  『台灣夜市特色包括多樣的小吃、．．．』<br/>
-  🔊 <a href="assets/tts_zh_2.mp3">直接下載</a>
+  <img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>&nbsp;&nbsp;&nbsp;&nbsp;
+  <span style="display: inline-block; vertical-align: top;">
+    <strong>範例一</strong><br/>『你可以簡短的介紹台灣夜市特色嗎？』<br/>🔊 <a href="assets/tts_zh_1.mp3">直接下載</a><br/><br/><strong>範例二</strong><br/>『台灣夜市特色包括多樣的小吃、．．．』<br/>🔊 <a href="assets/tts_zh_2.mp3">直接下載</a>
+  </span>
 </p>
 
 Image QA
