@@ -19,12 +19,25 @@ Text chatbot
 Speech-to-Text
 
 Text-to-Speech
-<p align="center">
-  <img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>&nbsp;&nbsp;&nbsp;&nbsp;
-  <span style="display: inline-block; vertical-align: top;">
-    <strong>範例一</strong><br/>『你可以簡短的介紹台灣夜市特色嗎？』<br/>🔊 <a href="assets/tts_zh_1.mp3">直接下載</a><br/><br/><strong>範例二</strong><br/>『台灣夜市特色包括多樣的小吃、．．．』<br/>🔊 <a href="assets/tts_zh_2.mp3">直接下載</a>
-  </span>
+<table align="center" border="0">
+<tr>
+<td width="300" valign="middle">
+<img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>
+</td>
+<td width="350" valign="middle">
+<p>
+<strong>範例一</strong><br/>
+『你可以簡短的介紹台灣夜市特色嗎？』<br/>
+🎧 <a href="assets/tts_zh_1.mp3">直接下載</a>
 </p>
+<p>
+<strong>範例二</strong><br/>
+『台灣夜市特色包括多樣的小吃、．．．』<br/>
+🎧 <a href="assets/tts_zh_2.mp3">直接下載</a>
+</p>
+</td>
+</tr>
+</table>
 
 Image QA
 
