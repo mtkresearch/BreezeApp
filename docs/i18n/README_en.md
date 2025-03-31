@@ -19,8 +19,32 @@ This project aims to create a community-driven platform for running AI capabilit
   <em>Left: NPU Backend &nbsp;&nbsp;&nbsp;&nbsp; Right: CPU Backend</em>
 </p>
 
-> [!NOTE]
-> Previous issues with unreasonable responses from the <b>CPU</b> backend have been resolved in the latest version. For details about the fix, see the closed issue <a href="https://github.com/mtkresearch/BreezeApp/issues/5">here</a>.
+Speech-to-Text
+
+(In preparation)
+
+Text-to-Speech
+<p align="center">
+  <img src="../../assets/tts_en.png" width="300" alt="Text-to-Speech Demo"/>
+</p>
+
+Example here
+
+Image QA
+
+(In preparation)
+
+BreezeAPP is a mobile AI application developed for both Android and iOS platforms. Users can download it directly from the App Store and enjoy a variety of features offline, including speech-to-text, text-to-speech, text-based chatbot interactions, and image question-answering. Currently, BreezeApp supports the Breeze 2 series of models developed by MediaTek Research. Newer and better models will be supported in future updates.
+
+## 📧 The intention of open source
+
+We are [MediaTek Research](https://i.mediatek.com/mediatekresearch). MediaTek Research is a member of the [AI Alliance](https://thealliance.ai/).
+
+The primary purpose of developing this application is to challenge the common perception about running Large Language Models (LLMs). Currently, many people believe that LLM can only run on super expensive computers, and large cloud service providers dictate what LLM functionalities are offered. We aim to raise public awareness about the capability of a smartphone to run an entire AI suite, LLM included, and to promote the concept that anyone should and indeed can freely choose what AI to run on their mobile devices. 
+
+Another key objective in open sourcing the Kotlin portion of this application is to minimize the entry barriers for app developers in creating mobile AI applications. Through this, we hope to inspire app developers to create more innovative mobile AI applications. We look forward to future collaborations with app developers.
+
+If you are interested in the BreezeApp, please feel free to contact us: [info@mtkresearch.com](info@mtkresearch.com)
 
 ## 🚀 Quick Start 
 

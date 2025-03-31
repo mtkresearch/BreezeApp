@@ -7,10 +7,7 @@
 
 [繁體中文](README.md) | [English](docs/i18n/README_en.md)
 
-## 概述
-
-本專案旨在創建一個社區驅動的平台，用於在 Android 裝置上本地運行 AI 功能。我們的目標是提供一個注重隱私的解決方案，所有 AI 功能完全離線工作（支援飛行模式），確保您的資料永遠不會離開您的裝置。
-
+聊天機器人
 <p align="center">
   <img src="assets/BreezeApp_npu.gif" width="300" alt="NPU 後端展示"/>&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="assets/BreezeApp_cpu.gif" width="300" alt="CPU 後端展示"/>
@@ -19,8 +16,47 @@
   <em>左：NPU 後端 &nbsp;&nbsp;&nbsp;&nbsp; 右：CPU 後端</em>
 </p>
 
-> [!NOTE]
-> 最新版本中已解決了 <b>CPU</b> 後端的不合理回應問題。有關修復的詳細資訊，請參見<a href="https://github.com/mtkresearch/BreezeApp/issues/5">此處</a>的已關閉問題。
+語音轉文字
+
+(準備中)
+
+文字轉語音
+<table align="center" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+<tr style="border: none;">
+<td width="300" valign="middle" style="border: none;">
+<img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>
+</td>
+<td width="350" valign="middle" style="border: none;">
+<p>
+<strong>範例一</strong><br/>
+『你可以簡短的介紹台灣夜市特色嗎？』<br/>
+🎧 <a href="assets/tts_zh_1.mp3">直接下載</a>
+</p>
+<p>
+<strong>範例二</strong><br/>
+『台灣夜市特色包括多樣的小吃、．．．』<br/>
+🎧 <a href="assets/tts_zh_2.mp3">直接下載</a>
+</p>
+</td>
+</tr>
+</table>
+
+對圖詢問
+
+(準備中)
+
+
+BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程式。用戶只需從 App Store 直接下載，即可在不須連網的離線狀態下享受多項功能，包含了語音轉文字、文字轉語音、文字聊天機器人，以及對圖像進行問答。目前，BreezeApp 支援聯發科技創新基地開發的 Breeze 2 系列模型，未來還會持續更新支援更新、更好的模型。
+
+## 📧 開源的用意
+
+我們是[聯發創新基地](https://i.mediatek.com/mediatekresearch) ([MediaTek Research](https://i.mediatek.com/mediatekresearch))。聯發創新基地是[AI Alliance](https://thealliance.ai/) 的成員。
+
+我們開發這個應用的主要目的，是為了改變大眾對運行大型語言模型(LLM) 的普遍認知。目前，許多人認為LLM的功能只能在昂貴的設備上使用，而且受限於設備提供商的選擇。我們希望提升大眾意識並推廣這樣一個概念：任何人都可以在自己的手機上自由選擇並運行不同的LLM。
+
+我們開發這個應用的另一個主要目的，是通過開源我們的 Kotlin 源代碼，來消除 app 開發者在創建手機 AI 應用時可能遇到的障礙，藉此激發app開發者做出更多有創意的手機應用。我們期待未來能與 app 開發者展開更多合作。
+
+如果您對 BreezeApp 有興趣，歡迎通過以下郵箱與我們聯繫：[info@mtkresearch.com](info@mtkresearch.com)
 
 ## 🚀 快速開始
 
