@@ -18,9 +18,15 @@ Text chatbot
 
 Speech-to-Text
 
+(In preparation)
+
 Text-to-Speech
 
+Example here
+
 Image QA
+
+(In preparation)
 
 BreezeAPP is a mobile AI application developed for both Android and iOS platforms. Users can download it directly from the App Store and enjoy a variety of features offline, including speech-to-text, text-to-speech, text-based chatbot interactions, and image question-answering. Currently, BreezeApp supports the Breeze 2 series of models developed by MediaTek Research. Newer and better models will be supported in future updates.
 
