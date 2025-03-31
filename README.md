@@ -28,10 +28,7 @@ Text-to-Speech
 
 <p align="center">
   <strong>範例一 『你可以簡短的介紹台灣夜市特色嗎？』</strong><br/>
-  <audio controls>
-    <source src="assets/audio/tts_zh_1.mp3" type="audio/mpeg">
-    您的瀏覽器不支援音訊播放元素。<a href="assets/audio/tts_zh_1.mp3">下載音訊</a>
-  </audio>
+  https://github.com/mtkresearch/BreezeApp/blob/d73e5c1b01f254d0cbe275c74d8da3550fd41719/assets/tts_zh_1.mp3
 </p>
 
 <p align="center">
