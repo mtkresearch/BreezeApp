@@ -30,6 +30,8 @@ Text-to-Speech
   <strong>範例一</strong><br/>
   『你可以簡短的介紹台灣夜市特色嗎？』<br/>
   🔊 <a href="assets/tts_zh_1.mp3">直接下載</a>
+  
+  https://github.com/user-attachments/assets/1ff7c884-425c-4f3e-b9db-2ed571b84758
 </p>
 
 <p align="center">
