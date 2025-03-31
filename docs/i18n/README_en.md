@@ -9,8 +9,8 @@
 
 Text chatbot
 <p align="center">
-  <img src="../..//assets/BreezeApp_npu.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="../..//assets/BreezeApp_cpu.gif" width="300" alt="CPU Backend Demo"/>
+  <img src="../../assets/BreezeApp_npu_en.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="../../assets/BreezeApp_cpu_en.gif" width="300" alt="CPU Backend Demo"/>
 </p>
 <p align="center">
   <em>Left: NPU Backend &nbsp;&nbsp;&nbsp;&nbsp; Right: CPU Backend</em>
