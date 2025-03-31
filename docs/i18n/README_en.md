@@ -25,8 +25,6 @@ Text-to-Speech
   <img src="../../assets/tts_en.png" width="300" alt="Text-to-Speech Demo"/>
 </p>
 
-Example here
-
 Image QA
 
 (In preparation)
