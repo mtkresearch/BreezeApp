@@ -29,16 +29,16 @@ Text-to-Speech
 <p align="center">
   <strong>範例一 『你可以簡短的介紹台灣夜市特色嗎？』</strong><br/>
   <audio controls>
-    <source src="assets/audio/tts_zh_1.aac" type="audio/aac">
-    您的瀏覽器不支援音訊播放元素。<a href="assets/audio/tts_zh_1.aac">下載音訊</a>
+    <source src="assets/audio/tts_zh_1.mp3" type="audio/mpeg">
+    您的瀏覽器不支援音訊播放元素。<a href="assets/audio/tts_zh_1.mp3">下載音訊</a>
   </audio>
 </p>
 
 <p align="center">
   <strong>範例二 『台灣夜市特色包括多樣的小吃、．．．』</strong><br/>
   <audio controls>
-    <source src="assets/audio/tts_zh_2.aac" type="audio/aac">
-    您的瀏覽器不支援音訊播放元素。<a href="assets/audio/tts_zh_2.aac">下載音訊</a>
+    <source src="assets/audio/tts_zh_2.mp3" type="audio/mpeg">
+    您的瀏覽器不支援音訊播放元素。<a href="assets/audio/tts_zh_2.mp3">下載音訊</a>
   </audio>
 </p>
 
