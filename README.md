@@ -19,12 +19,12 @@ Text chatbot
 Speech-to-Text
 
 Text-to-Speech
-<table align="center" border="0">
-<tr>
-<td width="300" valign="middle">
+<table align="center" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+<tr style="border: none;">
+<td width="300" valign="middle" style="border: none;">
 <img src="assets/tts_zh.png" width="300" alt="中文語音合成展示"/>
 </td>
-<td width="350" valign="middle">
+<td width="350" valign="middle" style="border: none;">
 <p>
 <strong>範例一</strong><br/>
 『你可以簡短的介紹台灣夜市特色嗎？』<br/>
