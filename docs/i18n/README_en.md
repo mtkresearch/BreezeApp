@@ -19,6 +19,9 @@ Text chatbot
 Speech-to-Text
 
 Text-to-Speech
+<p align="center">
+  <img src="../../assets/tts_en.png" width="300" alt="Text-to-Speech Demo"/>
+</p>
 
 Image QA
 
