@@ -7,7 +7,7 @@
 
 [繁體中文](README.md) | [English](docs/i18n/README_en.md)
 
-Text chatbot
+聊天機器人
 <p align="center">
   <img src="assets/BreezeApp_npu.gif" width="300" alt="NPU 後端展示"/>&nbsp;&nbsp;&nbsp;&nbsp;
   <img src="assets/BreezeApp_cpu.gif" width="300" alt="CPU 後端展示"/>
@@ -16,9 +16,13 @@ Text chatbot
   <em>左：NPU 後端 &nbsp;&nbsp;&nbsp;&nbsp; 右：CPU 後端</em>
 </p>
 
-Speech-to-Text
+語音轉文字
 
-Text-to-Speech
+<p align="center">
+  <img src="assets/404.gif" width="300" alt="語音轉文字"/>
+</p>
+
+文字轉語音
 <table align="center" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
 <tr style="border: none;">
 <td width="300" valign="middle" style="border: none;">
@@ -39,7 +43,12 @@ Text-to-Speech
 </tr>
 </table>
 
-Image QA
+對圖詢問
+
+<p align="center">
+  <img src="assets/404.gif" width="300" alt="對圖詢問"/>
+</p>
+
 
 BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程式。用戶只需從 App Store 直接下載，即可在不須連網的離線狀態下享受多項功能，包含了語音轉文字、文字轉語音、文字聊天機器人，以及對圖像進行問答。目前，BreezeApp 支援聯發科技創新基地開發的 Breeze 2 系列模型，未來還會持續更新支援更新、更好的模型。
 
