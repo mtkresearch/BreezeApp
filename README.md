@@ -27,13 +27,17 @@ Text-to-Speech
 </p>
 
 <p align="center">
-  <strong>範例一 『你可以簡短的介紹台灣夜市特色嗎？』</strong><br/>
-  https://github.com/mtkresearch/BreezeApp/blob/d73e5c1b01f254d0cbe275c74d8da3550fd41719/assets/tts_zh_1.mp3
+  <strong>範例一</strong><br/>
+  『你可以簡短的介紹台灣夜市特色嗎？』<br/>
+  🔊 <a href="https://github.com/mtkresearch/BreezeApp/raw/main/assets/audio/tts_zh_1.mp3">直接下載</a> | 
+  <a href="https://gabalpha.github.io/read-audio/?p=https://github.com/mtkresearch/BreezeApp/raw/main/assets/audio/tts_zh_1.mp3">線上播放</a>
 </p>
 
 <p align="center">
-  <strong>範例二 『台灣夜市特色包括多樣的小吃、．．．』</strong><br/>
-  [範例二](https://gabalpha.github.io/read-audio/?p=https://github.com/mtkresearch/BreezeApp/blob/chore/readme_update/assets/tts_zh_2.mp3)
+  <strong>範例二</strong><br/>
+  『台灣夜市特色包括多樣的小吃、．．．』<br/>
+  🔊 <a href="https://github.com/mtkresearch/BreezeApp/raw/main/assets/audio/tts_zh_2.mp3">直接下載</a> | 
+  <a href="https://gabalpha.github.io/read-audio/?p=https://github.com/mtkresearch/BreezeApp/raw/main/assets/audio/tts_zh_2.mp3">線上播放</a>
 </p>
 
 Image QA
