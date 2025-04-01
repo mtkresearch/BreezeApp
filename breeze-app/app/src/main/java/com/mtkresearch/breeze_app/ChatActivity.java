@@ -1875,10 +1875,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void enableTTSComponents() {
-        chatAdapter.setTTSEnabled(true);
+        if (chatAdapter != null) {
+            chatAdapter.setTTSEnabled(true);
+        } else {
+            Log.w(TAG, "Cannot enable TTS components: chatAdapter is null");
+        }
     }
 
     private void disableTTSComponents() {
-        chatAdapter.setTTSEnabled(false);
+        if (chatAdapter != null) {
+            chatAdapter.setTTSEnabled(false);
+        } else {
+            Log.w(TAG, "Cannot disable TTS components: chatAdapter is null");
+        }
     }
 }
