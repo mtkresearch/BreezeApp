@@ -14,6 +14,10 @@ import android.widget.PopupMenu;
 import android.widget.Toast;
 import android.widget.ImageButton;
 import android.widget.CheckBox;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.view.ViewGroup;
+import android.view.Gravity;
 import android.app.AlertDialog;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -151,6 +155,28 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         setupHistoryDrawer();
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
+        
+        // Firebase Crashlytics test button
+        Button crashButton = new Button(this);
+        crashButton.setText("Test Crash");
+        crashButton.setBackgroundColor(Color.RED);
+        crashButton.setTextColor(Color.WHITE);
+        crashButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                throw new RuntimeException("Test Crash for Firebase Crashlytics"); // Force a crash
+            }
+        });
+        
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        params.gravity = Gravity.BOTTOM | Gravity.END;
+        params.bottomMargin = 100; // Margin from bottom in pixels
+        params.rightMargin = 100; // Margin from right in pixels
+        
+        // Add button to root view
+        ((ViewGroup) findViewById(android.R.id.content)).addView(crashButton, params);
     }
 
     @Override

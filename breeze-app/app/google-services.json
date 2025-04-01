@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "267736696360",
+    "project_id": "breezeapp-87636",
+    "storage_bucket": "breezeapp-87636.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267736696360:android:617776831841b8fabf571d",
+        "android_client_info": {
+          "package_name": "com.mtkresearch.breeze_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPTXiLqkmYSChCqkumdOssSgzJUp8k47c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267736696360:android:37393ef249367f65bf571d",
+        "android_client_info": {
+          "package_name": "com.mtkresearch.breeze_app.breeze"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPTXiLqkmYSChCqkumdOssSgzJUp8k47c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
