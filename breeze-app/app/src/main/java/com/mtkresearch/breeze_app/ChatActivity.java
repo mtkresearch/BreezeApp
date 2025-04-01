@@ -32,6 +32,7 @@ import com.mtkresearch.breeze_app.utils.ChatMediaHandler;
 import com.mtkresearch.breeze_app.utils.ChatMessageAdapter;
 import com.mtkresearch.breeze_app.databinding.ActivityChatBinding;
 import com.mtkresearch.breeze_app.utils.ChatMessage;
+import com.mtkresearch.breeze_app.BuildConfig;
 
 import java.io.File;
 
@@ -156,27 +157,32 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
         
-        // Firebase Crashlytics test button
-        Button crashButton = new Button(this);
-        crashButton.setText("Test Crash");
-        crashButton.setBackgroundColor(Color.RED);
-        crashButton.setTextColor(Color.WHITE);
-        crashButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                throw new RuntimeException("Test Crash for Firebase Crashlytics"); // Force a crash
-            }
-        });
-        
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        params.gravity = Gravity.BOTTOM | Gravity.END;
-        params.bottomMargin = 100; // Margin from bottom in pixels
-        params.rightMargin = 100; // Margin from right in pixels
-        
-        // Add button to root view
-        ((ViewGroup) findViewById(android.R.id.content)).addView(crashButton, params);
+        // Firebase Crashlytics test button - only in debug builds
+        if (BuildConfig.DEBUG) {
+            Button crashButton = new Button(this);
+            crashButton.setText("Test Crash");
+            crashButton.setBackgroundColor(Color.RED);
+            crashButton.setTextColor(Color.WHITE);
+            crashButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    throw new RuntimeException("Test Crash for Firebase Crashlytics"); // Force a crash
+                }
+            });
+            
+            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            params.gravity = Gravity.BOTTOM | Gravity.END;
+            params.bottomMargin = 100; // Margin from bottom in pixels
+            params.rightMargin = 100; // Margin from right in pixels
+            
+            // Add button to root view
+            ((ViewGroup) findViewById(android.R.id.content)).addView(crashButton, params);
+            
+            // Add a small log to indicate that the crash button has been added
+            Log.d(TAG, "Crashlytics test button added to UI (DEBUG build)");
+        }
     }
 
     @Override
