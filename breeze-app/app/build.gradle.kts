@@ -28,6 +28,13 @@ android {
         }
 
         manifestPlaceholders["app_name"] = "BreezeApp"
+
+        externalNativeBuild {
+            cmake {
+                arguments += "-DANDROID_STL=c++_shared"
+                cppFlags += "-fsanitize-hwaddress"
+            }
+        }
     }
 
     buildTypes {
@@ -38,10 +45,22 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("debug")
+
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                nativeSymbolUploadEnabled = true
+                mappingFileUploadEnabled = true
+            }
         }
         
         debug {
-            // Debug configuration
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                nativeSymbolUploadEnabled = true
+                mappingFileUploadEnabled = true
+            }
+            
+            ndk {
+                debugSymbolLevel = "FULL"
+            }
         }
     }
 
@@ -127,9 +146,8 @@ dependencies {
     // Import the BoM for the Firebase platform
     implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
     
-    // Add the dependencies for the Crashlytics and Analytics libraries
-    // When using the BoM, you don't specify versions in Firebase library dependencies
-    implementation("com.google.firebase:firebase-crashlytics")
+    // Add the dependencies for the Crashlytics NDK and Analytics libraries
+    implementation("com.google.firebase:firebase-crashlytics-ndk")
     implementation("com.google.firebase:firebase-analytics")
 
     // Executorch dependencies
