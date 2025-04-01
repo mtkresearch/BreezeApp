@@ -320,7 +320,7 @@
     <string name="model_size_warning_confirm">Use Anyway</string>
     <string name="model_size_warning_cancel">Use Small Model</string>
     <string name="model_size_current">Current: %s</string>
-    <string name="ram_info">RAM: %d GB Available / %d GB Required</string>
+    <string name="ram_info" formatted="false">RAM: %d GB Available / %d GB Required</string>
     
     <!-- Backend Selection Strings -->
 

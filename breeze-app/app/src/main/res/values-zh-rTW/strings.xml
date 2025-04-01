@@ -321,7 +321,7 @@
     <string name="model_size_warning_confirm">仍要使用</string>
     <string name="model_size_warning_cancel">使用小型模型</string>
     <string name="model_size_current">目前：%s</string>
-    <string name="ram_info">記憶體：%d GB 可用 / %d GB 需求</string>
+    <string name="ram_info" formatted="false">記憶體：%d GB 可用 / %d GB 需求</string>
 
     <!-- Backend Selection Strings -->
 
