@@ -353,10 +353,7 @@ public class AppConstants {
     
     // LLM Response Messages
     public static final String LLM_ERROR_RESPONSE = "[!!!] LLM engine backend failed";
-    public static final String LLM_DEFAULT_ERROR_RESPONSE = "I apologize, but I encountered an error generating a response. Please try again.";
-    public static final String LLM_EMPTY_RESPONSE_ERROR = "I apologize, but I couldn't generate a proper response. Please try rephrasing your question.";
-    public static final String LLM_INPUT_TOO_LONG_ERROR = "I apologize, but your input is too long. Please try breaking it into smaller parts.";
-    public static final String LLM_INVALID_TOKEN_ERROR = "I apologize, but I was unable to generate a valid response. This might be due to the complexity of the question or current model limitations. Please try rephrasing your question.";
+    // Other error messages are moved to strings.xml for localization
     
     // LLM Configuration
     public static final float LLM_TEMPERATURE = 0.0f;
@@ -422,4 +419,9 @@ public class AppConstants {
     public static final boolean EXPANDED_INPUT_ENABLED = true;
     // Enable downloading models
     public static final boolean DOWNLOAD_ENABLED = true;
+
+    // Resource Monitoring Constants
+    public static final int MEMORY_CHECK_INTERVAL = 10000; // 10 seconds
+    public static final float MEMORY_THRESHOLD = 0.85f; // 85% of max memory
+    public static final float TEMPERATURE_THRESHOLD = 45.0f; // 45°C
 } 

@@ -15,8 +15,8 @@ android {
         applicationId = "com.mtkresearch.breeze_app"
         minSdk = 32
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.3.1"
+        versionCode = 6
+        versionName = "0.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -103,7 +103,7 @@ android {
             dimension = "version"
             applicationIdSuffix = ".breeze"
             versionNameSuffix = "-breeze"
-            resValue("string", "app_name", "Breeze2-demo")
+            resValue("string", "app_name", "BreezeApp")
             buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
             manifestPlaceholders["file_provider_authority"] = 
                 "com.mtkresearch.breeze_app.breeze.fileprovider"

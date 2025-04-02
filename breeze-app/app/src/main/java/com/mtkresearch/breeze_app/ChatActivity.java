@@ -81,6 +81,11 @@ import android.os.Looper;
 
 import com.mtkresearch.breeze_app.utils.ModelUtils;
 
+import android.app.ActivityManager;
+import android.os.BatteryManager;
+import android.content.IntentFilter;
+import android.os.Process;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
 
@@ -144,6 +149,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private boolean isInitializing = false;
     private boolean hasReceivedResponse = false;
 
+    private Handler memoryCheckHandler;
+    private boolean isHighMemoryUsage = false;
+    private boolean isHighTemperature = false;
+
+    private final Runnable memoryCheckRunnable = new Runnable() {
+        @Override
+        public void run() {
+            checkSystemResources();
+            memoryCheckHandler.postDelayed(this, AppConstants.MEMORY_CHECK_INTERVAL);
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -183,6 +200,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Add a small log to indicate that the crash button has been added
             Log.d(TAG, "Crashlytics test button added to UI (DEBUG build)");
         }
+
+        // Initialize resource monitoring
+        initializeResourceMonitoring();
     }
 
     @Override
@@ -200,13 +220,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
-        // Ensure services are unbound and cleaned up
-        try {
-            cleanup();
-        } catch (Exception e) {
-            Log.e(TAG, "Error during cleanup", e);
+        // Remove memory check callbacks
+        if (memoryCheckHandler != null) {
+            memoryCheckHandler.removeCallbacks(memoryCheckRunnable);
         }
+        
+        // Clean up all resources
+        cleanup();
+        
+        super.onDestroy();
     }
 
     private void initializeViews() {
@@ -698,14 +720,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }).thenAccept(finalResponse -> {
                 runOnUiThread(() -> {
-                    if (finalResponse != null && !finalResponse.equals(AppConstants.LLM_DEFAULT_ERROR_RESPONSE)) {
+                    if (finalResponse != null && !finalResponse.equals(getString(R.string.LLM_default_error))) {
                         String response = finalResponse.trim();
                         if (response.isEmpty()) {
                             // If we never received any valid tokens (still showing "thinking...")
                             if (!hasReceivedResponse) {
-                                aiMessage.updateText(AppConstants.LLM_INVALID_TOKEN_ERROR);
+                                aiMessage.updateText(getString(R.string.LLM_invalid_token_error));
                             } else if (!aiMessage.hasContent()) {
-                                aiMessage.updateText(AppConstants.LLM_EMPTY_RESPONSE_ERROR);
+                                aiMessage.updateText(getString(R.string.LLM_empty_response_error));
                             }
                         } else if (!response.isEmpty()) {
                             aiMessage.updateText(finalResponse);
@@ -713,7 +735,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         promptId++;
                     } else {
                         if (!aiMessage.hasContent()) {
-                            aiMessage.updateText(AppConstants.LLM_DEFAULT_ERROR_RESPONSE);
+                            aiMessage.updateText(getString(R.string.LLM_default_error));
                         }
                     }
                     
@@ -1090,6 +1112,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 // Save current chat before cleanup
                 saveCurrentChat();
                 
+                // Stop any ongoing operations
+                if (llmService != null) {
+                    llmService.stopGeneration();
+                }
+                
+                if (ttsService != null) {
+                    ttsService.stopSpeaking();
+                }
+                
                 // Unbind services with timeout
                 ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
                 Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
@@ -1101,9 +1132,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 } catch (TimeoutException e) {
                     Log.w(TAG, "Service unbinding timed out", e);
                     cleanupFuture.cancel(true);
+                } finally {
+                    cleanupExecutor.shutdownNow();
                 }
-                
-                cleanupExecutor.shutdownNow();
                 
                 // Release other resources
                 mediaHandler.release();
@@ -1112,6 +1143,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 historyManager = null;
                 historyAdapter = null;
                 drawerLayout = null;
+                
+                // Clear any pending handlers
+                if (memoryCheckHandler != null) {
+                    memoryCheckHandler.removeCallbacksAndMessages(null);
+                    memoryCheckHandler = null;
+                }
                 
                 // Force garbage collection
                 System.gc();
@@ -1920,5 +1957,101 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         } else {
             Log.w(TAG, "Cannot disable TTS components: chatAdapter is null");
         }
+    }
+
+    private void initializeResourceMonitoring() {
+        memoryCheckHandler = new Handler();
+        memoryCheckHandler.post(memoryCheckRunnable);
+    }
+
+    private void checkSystemResources() {
+        // Check memory usage
+        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
+        ActivityManager activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+        activityManager.getMemoryInfo(memoryInfo);
+        
+        float memoryUsagePercent = (float) (memoryInfo.totalMem - memoryInfo.availMem) / memoryInfo.totalMem;
+        
+        // Check device temperature using system files
+        float temperature = 0.0f;
+        try {
+            String tempPath = "/sys/class/thermal/thermal_zone0/temp";
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.FileReader(tempPath));
+            String line = reader.readLine();
+            if (line != null) {
+                // Convert to Celsius (usually reported in milliCelsius)
+                temperature = Float.parseFloat(line) / 1000.0f;
+            }
+            reader.close();
+        } catch (Exception e) {
+            Log.e(TAG, "Error reading device temperature", e);
+        }
+
+        // Update states
+        boolean wasHighMemory = isHighMemoryUsage;
+        boolean wasHighTemp = isHighTemperature;
+        
+        isHighMemoryUsage = memoryUsagePercent > AppConstants.MEMORY_THRESHOLD;
+        isHighTemperature = temperature > AppConstants.TEMPERATURE_THRESHOLD;
+
+        // Log to Crashlytics
+        if (isHighMemoryUsage || isHighTemperature) {
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().setCustomKey("memory_usage", memoryUsagePercent);
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().setCustomKey("temperature", temperature);
+            com.google.firebase.crashlytics.FirebaseCrashlytics.getInstance().log(
+                String.format("High resource usage - Memory: %.1f%%, Temp: %.1f°C", 
+                    memoryUsagePercent * 100, temperature));
+        }
+
+        // Handle resource issues
+        handleResourceIssues(wasHighMemory, wasHighTemp);
+    }
+
+    private void handleResourceIssues(boolean wasHighMemory, boolean wasHighTemp) {
+        if (isHighMemoryUsage && !wasHighMemory) {
+            // Memory usage just became high
+            runOnUiThread(() -> {
+                Toast.makeText(this, getString(R.string.high_memory_warning), Toast.LENGTH_LONG).show();
+                // Reduce memory usage
+                reduceMemoryUsage();
+            });
+        }
+
+        if (isHighTemperature && !wasHighTemp) {
+            // Temperature just became high
+            runOnUiThread(() -> {
+                Toast.makeText(this, getString(R.string.high_temperature_warning), Toast.LENGTH_LONG).show();
+                // Reduce processing load
+                reduceProcessingLoad();
+            });
+        }
+    }
+
+    private void reduceMemoryUsage() {
+        // Clear non-essential caches
+        if (chatAdapter != null) {
+            chatAdapter.notifyDataSetChanged(); // Force refresh instead of non-existent clearCache
+        }
+        
+        // Suggest garbage collection
+        System.gc();
+        
+        // Note: Cannot modify CONVERSATION_HISTORY_LOOKBACK as it's final
+        // Instead, we'll just work with the current value
+    }
+
+    private void reduceProcessingLoad() {
+        // Reduce processing intensity by stopping non-essential features
+        if (ttsService != null) {
+            ttsService.stopSpeaking();
+        }
+        
+        // Clear non-essential caches
+        if (chatAdapter != null) {
+            chatAdapter.notifyDataSetChanged(); // Force refresh instead of non-existent clearCache
+        }
+        
+        // Suggest garbage collection
+        System.gc();
     }
 }

@@ -308,8 +308,6 @@
     <string name="download_size_format">%1$s / %2$s</string>
     <string name="unknown_size">未知大小</string>
 
-    <string name="LLM_invalid_token_error">很抱歉，無法生成有效的回應。這可能是由於問題的複雜性或目前模型的限制。請嘗試重新表述您的問題。</string>
-    <string name="LLM_generation_timeout">很抱歉，回應生成時間過長，已被中斷。請嘗試提出不同的問題，或將此問題拆分為較小的部分。</string>
 
     <!-- Model Size Selection Strings -->
     <string name="model_size_preference_title">LLM 模型大小</string>
@@ -334,5 +332,13 @@
     <string name="large_model_option">%1$s (%2$s)\n更好的品質和更多功能，但需要更多記憶體</string>
     <string name="small_model_option">%1$s (%2$s)\n啟動更快，使用更少記憶體，適合資源有限的裝置</string>
     <string name="continue_button">繼續</string>
+
+    <!-- LLM Error Messages -->
+    <string name="LLM_default_error">很抱歉，生成回應時發生錯誤。請再試一次。</string>
+    <string name="LLM_empty_response_error">很抱歉，無法生成適當的回應。請嘗試重新表述您的問題。</string>
+    <string name="LLM_input_too_long_error">很抱歉，您的輸入太長。請嘗試將其分成較小的部分。</string>
+    <string name="LLM_invalid_token_error">### 因ExecuTorch已知問題，導致語言模型無法針對上述內容進行回應 ###</string>
+
+    <!-- Resource monitoring messages -->
 
 </resources>
