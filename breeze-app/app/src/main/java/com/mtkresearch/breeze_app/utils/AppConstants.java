@@ -40,7 +40,7 @@ public class AppConstants {
     public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
     public static final int MAX_MTK_INIT_ATTEMPTS = 5;       // Maximum attempts to initialize MTK backend
-    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000; // 2 seconds timeout for native operations
+    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 10000;
     public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;   // 5 seconds timeout for cleanup
     
     // MTK Backend Constants
@@ -49,7 +49,8 @@ public class AppConstants {
     public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
     public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
-    public static final int MTK_TOKEN_SIZE = 128;      // Default token size for model swapping
+    public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
+    public static final int MTK_PROMPT_TOKEN_SIZE = 128; // Token size for prompt processing
     public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Flag to track if MTK backend libraries loaded successfully
     public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts
     public static volatile boolean isCleaningUp = false; // Flag to track MTK cleanup state

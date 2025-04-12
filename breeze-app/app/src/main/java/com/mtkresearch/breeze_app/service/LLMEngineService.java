@@ -537,8 +537,14 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         // Handle MTK backend stop
         if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
             try {
-                nativeResetLlm();
-                Log.d(TAG, "Stopped MTK generation");
+                // When stopping, always reset and restore to prompt mode
+                safeNativeResetLlm();
+                Log.d(TAG, "Stopping MTK generation and restoring to prompt mode");
+                try {
+                    safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error swapping to prompt token size after stopping", e);
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping MTK generation", e);
             }
@@ -748,6 +754,17 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                         cleanupAfterError();
                         return false;
                     }
+                    
+                    // After successful initialization, set the prompt token size
+                    Log.d(TAG, "Setting initial prompt token size: " + AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                    try {
+                        safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                        Thread.sleep(100); // Brief delay after model swap
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error setting initial token size", e);
+                        // Continue anyway since initialization was successful
+                    }
+                    
                 } catch (Exception e) {
                     Log.e(TAG, "Error during MTK initialization", e);
                     cleanupAfterError();
@@ -1036,6 +1053,17 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             // Run in executor to keep UI responsive
             executor.execute(() -> {
                 try {
+                    // Always ensure we're using the PROMPT token size before processing a new prompt
+                    Log.d(TAG, "Setting model to prompt processing mode with token size: " + AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                    try {
+                        safeNativeResetLlm();
+                        safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                        Thread.sleep(100); // Brief delay after model swap
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error swapping to prompt model", e);
+                    }
+                    
+                    // Now perform the streaming inference
                     String response = nativeStreamingInference(context, maxTokens, false, new TokenCallback() {
                         @Override
                         public void onToken(String token) {
@@ -1051,10 +1079,12 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                         resultFuture.complete(response);
                     }
                     
-                    // Clean up MTK state
+                    // Always swap back to PROMPT token size after generation
+                    // This ensures we're ready for the next prompt
                     try {
+                        Log.d(TAG, "Resetting model back to prompt mode with token size: " + AppConstants.MTK_PROMPT_TOKEN_SIZE);
                         safeNativeResetLlm();
-                        safeNativeSwapModel(AppConstants.MTK_TOKEN_SIZE);
+                        safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
                     } catch (Exception e) {
                         Log.e(TAG, "Error resetting MTK state after generation", e);
                     }
@@ -1090,6 +1120,17 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     // Reset state before generation
     private void resetState() {
         currentStreamingResponse.setLength(0);
+        
+        // Ensure we're in PROMPT mode
+        if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
+            try {
+                Log.d(TAG, "Resetting to prompt processing mode");
+                safeNativeResetLlm();
+                safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
+            } catch (Exception e) {
+                Log.e(TAG, "Error resetting to prompt mode", e);
+            }
+        }
     }
     
     private ExecutorService generationExecutor = Executors.newSingleThreadExecutor();
