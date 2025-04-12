@@ -20,8 +20,7 @@ public class AppConstants {
     public static final String KEY_FIRST_LAUNCH = "first_launch";
     public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_PREFERRED_BACKEND = "preferred_backend";
-    public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
-    
+
     // Service Enable Flags
     public static final boolean LLM_ENABLED = true;  // LLM is essential
     public static final boolean VLM_ENABLED = false; // VLM is experimental
@@ -31,13 +30,33 @@ public class AppConstants {
     // Backend Constants
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend
+    public static final String BACKEND_MTK = "mtk";
+    public static final String BACKEND_DEFAULT = BACKEND_MTK;  // Default to MTK backend
     
-    // Backend Enable Flags - MTK related flags removed
+    // Backend Enable Flags
+    public static final boolean MTK_BACKEND_ENABLED = true;
     
-    // Backend Initialization Constants - MTK related constants removed
+    // Backend Initialization Constants
     public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
+    public static final int MAX_MTK_INIT_ATTEMPTS = 5;       // Maximum attempts to initialize MTK backend
+    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 2000; // 2 seconds timeout for native operations
+    public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;   // 5 seconds timeout for cleanup
+    
+    // MTK Backend Constants
+    public static final String MTK_CONFIG_PATH = "/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml";
+    public static final String MTK_SERVICE_TAG = "LLMEngineService";
+    public static final Object MTK_LOCK = new Object();
+    public static final boolean MTK_VALIDATE_UTF8 = false;
+    public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
+    public static final int MTK_TOKEN_SIZE = 128;      // Default token size for model swapping
+    public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Flag to track if MTK backend libraries loaded successfully
+    public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts
+    public static volatile boolean isCleaningUp = false; // Flag to track MTK cleanup state
+    
+    // LLM Stop Tokens
+    public static final String LLM_STOP_TOKEN_EOT = "<|eot_id|>";
+    public static final String LLM_STOP_TOKEN_EOT_ALT = "<|end_of_text|>";
     
     // LLM Service Constants
     public static final long LLM_INIT_TIMEOUT_MS = 300000;  // 5 minutes for initialization

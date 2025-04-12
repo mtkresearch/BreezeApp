@@ -700,7 +700,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Load saved settings
         float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
-        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.DEFAULT_BACKEND);
+        String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.BACKEND_DEFAULT);
         
         temperatureInput.setText(String.valueOf(savedTemp));
         int backendPosition = backendAdapter.getPosition(savedBackend);
