@@ -1,15 +1,22 @@
 package com.mtkresearch.breeze_app.service.llm.backends;
 
+import android.content.Context;
 import android.os.Process;
 import android.util.Log;
 
 import com.mtkresearch.breeze_app.service.llm.LLMBackend;
 import com.mtkresearch.breeze_app.utils.AppConstants;
+import org.pytorch.executorch.LlamaModule;
+import org.pytorch.executorch.LlamaCallback;
+import com.executorch.ModelType;
+import com.executorch.PromptFormat;
+import com.executorch.ModelUtils;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.io.File;
 
 /**
  * CPU-based backend implementation for LLM inference.
@@ -18,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class CPUBackend implements LLMBackend {
     private static final String TAG = "CPUBackend";
     private static final String BACKEND_NAME = "CPU";
+    private static final float TEMPERATURE = 0.2f; // Default temperature
     
     private final String modelPath;
     private final ExecutorService executorService;
@@ -25,9 +33,10 @@ public class CPUBackend implements LLMBackend {
     private final AtomicBoolean isGenerating = new AtomicBoolean(false);
     private final AtomicBoolean isInitialized = new AtomicBoolean(false);
     private final AtomicBoolean shouldStop = new AtomicBoolean(false);
+    private final Context context;
     
-    // Placeholder for the actual backend implementation
-    private final StubCPUBackend cpuBackend;
+    // Actual LlamaModule implementation
+    private LlamaModule mModule = null;
     
     /**
      * Create a new CPUBackend instance.
@@ -35,10 +44,24 @@ public class CPUBackend implements LLMBackend {
      * @param modelPath Path to the model file
      * @param executorService Executor service to run tasks on
      */
+    public CPUBackend(String modelPath, ExecutorService executorService, Context context) {
+        this.modelPath = modelPath;
+        this.executorService = executorService;
+        this.context = context;
+        Log.d(TAG, "CPU backend created with model path: " + modelPath);
+    }
+    
+    /**
+     * Create a new CPUBackend instance (legacy constructor).
+     *
+     * @param modelPath Path to the model file
+     * @param executorService Executor service to run tasks on
+     */
     public CPUBackend(String modelPath, ExecutorService executorService) {
         this.modelPath = modelPath;
         this.executorService = executorService;
-        this.cpuBackend = new StubCPUBackend();
+        this.context = null;
+        Log.d(TAG, "CPU backend created with model path: " + modelPath);
     }
     
     @Override
@@ -56,19 +79,61 @@ public class CPUBackend implements LLMBackend {
                 }
                 
                 Log.d(TAG, "Initializing CPU backend with model at " + modelPath);
-                boolean success = cpuBackend.initialize(modelPath);
                 
-                if (success) {
+                try {
+                    // Get tokenizer path - first try AppConstants if context is available
+                    String tokenizerPath;
+                    if (context != null) {
+                        tokenizerPath = AppConstants.getTokenizerPath(context);
+                        Log.d(TAG, "Using tokenizer path from AppConstants: " + tokenizerPath);
+                    } else {
+                        // Fall back to checking common locations
+                        File legacyTokenizer = new File("/data/local/tmp/llama/tokenizer.bin");
+                        if (legacyTokenizer.exists() && legacyTokenizer.isFile()) {
+                            tokenizerPath = legacyTokenizer.getAbsolutePath();
+                        } else {
+                            // Try to infer from model path
+                            File modelDir = new File(modelPath).getParentFile();
+                            File inferredTokenizer = new File(modelDir, "tokenizer.bin");
+                            if (inferredTokenizer.exists() && inferredTokenizer.isFile()) {
+                                tokenizerPath = inferredTokenizer.getAbsolutePath();
+                            } else {
+                                Log.e(TAG, "Could not find tokenizer.bin in any location");
+                                return false;
+                            }
+                        }
+                        Log.d(TAG, "Using inferred tokenizer path: " + tokenizerPath);
+                    }
+                    
+                    // Check if tokenizer file exists
+                    File tokenizerFile = new File(tokenizerPath);
+                    if (!tokenizerFile.exists() || !tokenizerFile.isFile()) {
+                        Log.e(TAG, "Tokenizer file not found at: " + tokenizerPath);
+                        return false;
+                    }
+                    
+                    // Initialize LlamaModule with the correct parameters
+                    mModule = new LlamaModule(
+                        ModelUtils.getModelCategory(ModelType.LLAMA_3_2),  // Using LLAMA_3_2 model type
+                        modelPath,
+                        tokenizerPath,
+                        TEMPERATURE
+                    );
+                    
+                    // Load the model
+                    int loadResult = mModule.load();
+                    if (loadResult != 0) {
+                        Log.e(TAG, "Failed to load model: " + loadResult);
+                        return false;
+                    }
+                    
                     isInitialized.set(true);
                     Log.d(TAG, "CPU backend initialization successful");
-                } else {
-                    Log.e(TAG, "CPU backend initialization failed");
+                    return true;
+                } catch (Exception e) {
+                    Log.e(TAG, "Error initializing CPU backend", e);
+                    return false;
                 }
-                
-                return success;
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing CPU backend", e);
-                return false;
             } finally {
                 lock.unlock();
             }
@@ -99,16 +164,61 @@ public class CPUBackend implements LLMBackend {
     }
     
     private CompletableFuture<String> doGenerateResponse(String prompt) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        
         return CompletableFuture.supplyAsync(() -> {
             if (!tryStartGeneration()) {
                 throw new IllegalStateException("Generation already in progress");
             }
             
             try {
-                Log.d(TAG, "Generating response with CPU backend");
+                Log.d(TAG, "Generating response with CPU backend for prompt: " + prompt);
                 shouldStop.set(false);
-                String response = cpuBackend.generateResponse(prompt);
-                return response != null ? response : "";
+                StringBuilder responseBuilder = new StringBuilder();
+                CompletableFuture<String> responseFuture = new CompletableFuture<>();
+                
+                // Calculate sequence length based on prompt length
+                int seqLen = (int)(prompt.length() * 0.75) + 256;
+                
+                mModule.generate(prompt, seqLen, new LlamaCallback() {
+                    @Override
+                    public void onResult(String token) {
+                        if (shouldStop.get()) {
+                            return;
+                        }
+                        
+                        if (token == null || token.isEmpty()) {
+                            return;
+                        }
+                        
+                        // Check for stop tokens
+                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
+                            token.equals(AppConstants.LLM_STOP_TOKEN_EOT) ||
+                            token.equals(AppConstants.LLM_STOP_TOKEN_EOT_ALT)) {
+                            Log.d(TAG, "Stop token detected: " + token);
+                            if (!responseFuture.isDone()) {
+                                responseFuture.complete(responseBuilder.toString());
+                            }
+                            return;
+                        }
+                        
+                        responseBuilder.append(token);
+                    }
+                    
+                    @Override
+                    public void onStats(float tps) {
+                        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
+                    }
+                }, false);
+                
+                // Wait for the response future to complete
+                String response = responseFuture.getNow(responseBuilder.toString());
+                if (response.isEmpty()) {
+                    // If response is empty, there might be an issue
+                    Log.w(TAG, "Empty response from CPU backend");
+                }
+                
+                return response;
             } catch (Exception e) {
                 Log.e(TAG, "Error generating response with CPU backend", e);
                 throw e;
@@ -136,9 +246,12 @@ public class CPUBackend implements LLMBackend {
     }
     
     private CompletableFuture<String> doGenerateStreamingResponse(String prompt, TokenCallback callback) {
-        return CompletableFuture.supplyAsync(() -> {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        
+        executorService.submit(() -> {
             if (!tryStartGeneration()) {
-                throw new IllegalStateException("Generation already in progress");
+                future.completeExceptionally(new IllegalStateException("Generation already in progress"));
+                return;
             }
             
             try {
@@ -147,26 +260,57 @@ public class CPUBackend implements LLMBackend {
                 
                 StringBuilder fullResponse = new StringBuilder();
                 
-                cpuBackend.generateStreamingResponse(prompt, token -> {
-                    if (shouldStop.get()) {
-                        return false; // Signal to stop generation
+                // Calculate sequence length based on prompt length
+                int seqLen = (int)(prompt.length() * 0.75) + 256;
+                
+                mModule.generate(prompt, seqLen, new LlamaCallback() {
+                    @Override
+                    public void onResult(String token) {
+                        if (shouldStop.get()) {
+                            return;
+                        }
+                        
+                        if (token == null || token.isEmpty()) {
+                            return;
+                        }
+                        
+                        // Check for stop tokens
+                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) ||
+                            token.equals(AppConstants.LLM_STOP_TOKEN_EOT) ||
+                            token.equals(AppConstants.LLM_STOP_TOKEN_EOT_ALT)) {
+                            Log.d(TAG, "Stop token detected: " + token);
+                            if (!future.isDone()) {
+                                future.complete(fullResponse.toString());
+                            }
+                            return;
+                        }
+                        
+                        // Process token
+                        fullResponse.append(token);
+                        if (callback != null) {
+                            callback.onToken(token);
+                        }
                     }
                     
-                    fullResponse.append(token);
-                    if (callback != null) {
-                        callback.onToken(token);
+                    @Override
+                    public void onStats(float tps) {
+                        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
                     }
-                    return true; // Continue generation
-                });
+                }, false);
                 
-                return fullResponse.toString();
+                // If the future hasn't been completed by a stop token, complete it now
+                if (!future.isDone()) {
+                    future.complete(fullResponse.toString());
+                }
             } catch (Exception e) {
                 Log.e(TAG, "Error generating streaming response with CPU backend", e);
-                throw e;
+                future.completeExceptionally(e);
             } finally {
                 isGenerating.set(false);
             }
-        }, executorService);
+        });
+        
+        return future;
     }
     
     @Override
@@ -174,7 +318,13 @@ public class CPUBackend implements LLMBackend {
         if (isGenerating.get()) {
             Log.d(TAG, "Stopping CPU backend generation");
             shouldStop.set(true);
-            cpuBackend.stopGeneration();
+            if (mModule != null) {
+                try {
+                    mModule.stop();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error stopping CPU generation", e);
+                }
+            }
         }
     }
     
@@ -191,7 +341,18 @@ public class CPUBackend implements LLMBackend {
                 stopGeneration();
             }
             
-            return cpuBackend.reset();
+            if (mModule != null) {
+                try {
+                    // Reset the module state
+                    mModule.resetNative();
+                    return true;
+                } catch (Exception e) {
+                    Log.e(TAG, "Error resetting CPU module", e);
+                    return false;
+                }
+            }
+            
+            return false;
         } finally {
             lock.unlock();
         }
@@ -207,7 +368,14 @@ public class CPUBackend implements LLMBackend {
             
             if (isInitialized.get()) {
                 Log.d(TAG, "Releasing CPU backend resources");
-                cpuBackend.releaseResources();
+                if (mModule != null) {
+                    try {
+                        mModule.resetNative();
+                        mModule = null;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error releasing CPU resources", e);
+                    }
+                }
                 isInitialized.set(false);
             }
         } finally {
@@ -222,64 +390,11 @@ public class CPUBackend implements LLMBackend {
     
     @Override
     public long getMemoryUsage() {
-        if (!isInitialized.get()) {
-            return 0;
-        }
-        return cpuBackend.getMemoryUsage();
+        // TODO: Implement actual memory usage calculation
+        return 0;
     }
     
     private boolean tryStartGeneration() {
         return !isGenerating.getAndSet(true);
-    }
-    
-    /**
-     * Stub implementation until real backend is available
-     */
-    private static class StubCPUBackend {
-        public boolean initialize(String modelPath) {
-            Log.d(TAG, "Stub initialization for CPU backend with model: " + modelPath);
-            return true;
-        }
-        
-        public String generateResponse(String prompt) {
-            Log.d(TAG, "Stub generate response for prompt: " + prompt);
-            return "This is a stub response from the CPU backend";
-        }
-        
-        public void generateStreamingResponse(String prompt, StreamingCallback callback) {
-            Log.d(TAG, "Stub streaming response for prompt: " + prompt);
-            String[] tokens = {"This ", "is ", "a ", "stub ", "response ", "from ", "the ", "CPU ", "backend"};
-            for (String token : tokens) {
-                if (!callback.onToken(token)) {
-                    break;
-                }
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    break;
-                }
-            }
-        }
-        
-        public void stopGeneration() {
-            Log.d(TAG, "Stub stop generation called");
-        }
-        
-        public boolean reset() {
-            Log.d(TAG, "Stub reset called");
-            return true;
-        }
-        
-        public void releaseResources() {
-            Log.d(TAG, "Stub release resources called");
-        }
-        
-        public long getMemoryUsage() {
-            return 0;
-        }
-        
-        public interface StreamingCallback {
-            boolean onToken(String token);
-        }
     }
 } 

@@ -575,17 +575,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             }
         });
         
-        // Wait with timeout
-        if (!latch.await(5, TimeUnit.SECONDS)) {
-            throw new TimeoutException("TTS service binding timed out");
+        // Wait with a shorter timeout for binding (binding happens quickly)
+        if (!latch.await(2, TimeUnit.SECONDS)) {
+            Log.w(TAG, "TTS service binding took longer than expected, continuing without waiting");
+            // Don't throw exception - the connection callback might still come through later
+            return;
         }
         
         if (!success.get()) {
             throw new Exception("TTS service binding failed");
         }
-        
-        // Add delay to allow service to start
-        Thread.sleep(500);
     }
 
     private void handleSendAction() {
@@ -1238,32 +1237,38 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 
                 CompletableFuture.runAsync(() -> {
                     try {
-                        ttsService.initialize()
-                            .thenAccept(success -> {
-                                ttsServiceReady = success;
-                                Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
-                                if (success) {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.text_to_speech_ready), Toast.LENGTH_SHORT).show());
+                        // Add timeout handling for initialization
+                        CompletableFuture<Boolean> ttsInitFuture = ttsService.initialize();
+                        CompletableFuture<Boolean> timeoutFuture = new CompletableFuture<>();
+                        
+                        // Set timeout for 10 seconds
+                        new Handler(Looper.getMainLooper()).postDelayed(
+                            () -> timeoutFuture.complete(false), 10000);
+                        
+                        // Use whichever completes first
+                        CompletableFuture.anyOf(ttsInitFuture, timeoutFuture)
+                            .thenAccept(result -> {
+                                if (timeoutFuture.isDone() && !ttsInitFuture.isDone()) {
+                                    // If we timed out and the original future is still running
+                                    Log.w(TAG, "TTS initialization timed out, continuing anyway");
+                                    ttsServiceReady = false;
                                 } else {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.failed_to_initialize_text_to_speech), Toast.LENGTH_SHORT).show());
+                                    // If the actual initialization completed
+                                    boolean success = (Boolean) result;
+                                    ttsServiceReady = success;
+                                    Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
+                                    if (success) {
+                                        runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                                                ChatActivity.this.getString(R.string.text_to_speech_ready), Toast.LENGTH_SHORT).show());
+                                    } else {
+                                        runOnUiThread(() -> Toast.makeText(ChatActivity.this,
+                                                ChatActivity.this.getString(R.string.failed_to_initialize_text_to_speech), Toast.LENGTH_SHORT).show());
+                                    }
                                 }
                                 updateInteractionState();
-                            })
-                            .exceptionally(throwable -> {
-                                Log.e(TAG, "Error initializing TTS", throwable);
-                                ttsServiceReady = false;
-                                runOnUiThread(() -> {
-                                    Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.error_initialize_text_to_speech) + throwable.getMessage(),
-                                        Toast.LENGTH_SHORT).show();
-                                    updateInteractionState();
-                                });
-                                return null;
                             });
                     } catch (Exception e) {
-                        Log.e(TAG, "Error starting TTS initialization", e);
+                        Log.e(TAG, "Error initializing TTS", e);
                         ttsServiceReady = false;
                         updateInteractionState();
                     }

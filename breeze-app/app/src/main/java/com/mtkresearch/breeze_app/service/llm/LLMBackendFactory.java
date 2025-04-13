@@ -51,7 +51,8 @@ public interface LLMBackendFactory {
         
         @Override
         public LLMBackend createCPUBackend(String modelPath) {
-            return new CPUBackend(modelPath, executorService);
+            android.util.Log.d("LLMBackendFactory", "Creating CPU backend with model path: " + modelPath);
+            return new CPUBackend(modelPath, executorService, context);
         }
         
         @Override
