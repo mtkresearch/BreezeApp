@@ -5,6 +5,7 @@ import android.util.Log;
 import com.mtkresearch.breeze_app.service.llm.LLMBackend;
 import com.mtkresearch.breeze_app.utils.AppConstants;
 
+import java.io.File;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,8 +26,8 @@ public class MTKBackend implements LLMBackend {
     private final AtomicBoolean isInitialized = new AtomicBoolean(false);
     private final AtomicBoolean shouldStop = new AtomicBoolean(false);
     
-    // Placeholder for the actual backend implementation
-    private final StubMTKBackend mtkBackend;
+    // Real implementation that interfaces with the native bridge
+    private final NativeMTKBackend mtkBackend;
     
     /**
      * Create a new MTKBackend instance.
@@ -37,7 +38,10 @@ public class MTKBackend implements LLMBackend {
     public MTKBackend(String modelPath, ExecutorService executorService) {
         this.modelPath = modelPath;
         this.executorService = executorService;
-        this.mtkBackend = new StubMTKBackend();
+        this.mtkBackend = new NativeMTKBackend();
+        
+        Log.d(TAG, "Created MTKBackend with native bridge support. MTK backend available: " + 
+              AppConstants.MTK_BACKEND_AVAILABLE);
     }
     
     @Override
@@ -143,20 +147,29 @@ public class MTKBackend implements LLMBackend {
                 Log.d(TAG, "Generating streaming response with MTK backend");
                 shouldStop.set(false);
                 
-                StringBuilder fullResponse = new StringBuilder();
+                final StringBuilder fullResponse = new StringBuilder();
                 
-                mtkBackend.generateStreamingResponse(prompt, token -> {
-                    if (shouldStop.get()) {
-                        return false; // Signal to stop generation
+                // Create a special adapter class that will notify both our callback
+                // and check for stop conditions
+                class MTKBridgeAdapter implements NativeMTKBackend.StreamingCallback {
+                    @Override
+                    public void onToken(String token) {
+                        if (shouldStop.get()) {
+                            return;
+                        }
+                        fullResponse.append(token);
+                        if (callback != null) {
+                            callback.onToken(token);
+                        }
                     }
-                    
-                    fullResponse.append(token);
-                    if (callback != null) {
-                        callback.onToken(token);
-                    }
-                    return true; // Continue generation
-                });
+                }
                 
+                MTKBridgeAdapter bridgeAdapter = new MTKBridgeAdapter();
+                
+                // Generate the response
+                mtkBackend.generateStreamingResponse(prompt, bridgeAdapter);
+                
+                // Return the full accumulated response
                 return fullResponse.toString();
             } catch (Exception e) {
                 Log.e(TAG, "Error generating streaming response with MTK backend", e);
@@ -231,53 +244,159 @@ public class MTKBackend implements LLMBackend {
     }
     
     /**
-     * Stub implementation until real backend is available
+     * Implementation that connects to the native MTK libraries through the bridge
      */
-    private static class StubMTKBackend {
+    private static class NativeMTKBackend {
+        // Reference to the MTK native bridge
+        private final com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge mtkBridge;
+        
+        public NativeMTKBackend() {
+            // Get the singleton instance of the bridge
+            this.mtkBridge = com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge.getInstance();
+        }
+        
         public boolean initialize(String modelPath) {
-            Log.d(TAG, "Stub initialization for MTK backend with model: " + modelPath);
-            return AppConstants.MTK_BACKEND_AVAILABLE;
+            Log.d(TAG, "Initializing MTK backend with native bridge");
+            
+            // First check if the MTK backend is available
+            if (!AppConstants.MTK_BACKEND_AVAILABLE) {
+                Log.e(TAG, "MTK backend not available - native libraries failed to load");
+                return false;
+            }
+            
+            try {
+                // Log both paths for debugging
+                Log.d(TAG, "Model path provided: " + modelPath);
+                Log.d(TAG, "Config path from constants: " + AppConstants.MTK_CONFIG_PATH);
+                
+                // Check if config file exists
+                File configFile = new File(AppConstants.MTK_CONFIG_PATH);
+                if (!configFile.exists() || !configFile.isFile()) {
+                    Log.e(TAG, "MTK config file does not exist at path: " + AppConstants.MTK_CONFIG_PATH);
+                    return false;
+                }
+                
+                Log.d(TAG, "MTK config file exists and is readable");
+                
+                // Initialize the LLM with the config path
+                // Note: The MTK backend uses the config path rather than the model path directly
+                boolean initSuccess = mtkBridge.initLlm(AppConstants.MTK_CONFIG_PATH, true);
+                
+                if (initSuccess) {
+                    Log.d(TAG, "Successfully initialized MTK native backend");
+                    return true;
+                } else {
+                    Log.e(TAG, "Failed to initialize MTK native backend");
+                    return false;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Exception during MTK backend initialization", e);
+                return false;
+            }
         }
         
         public String generateResponse(String prompt) {
-            Log.d(TAG, "Stub generate response for prompt: " + prompt);
-            return "This is a stub response from the MTK backend";
+            Log.d(TAG, "Generate response using MTK native bridge for prompt: " + prompt);
+            
+            try {
+                // Use a reasonable token size for generation
+                int maxResponseTokens = AppConstants.MTK_TOKEN_SIZE;
+                Log.d(TAG, "Using max response tokens: " + maxResponseTokens);
+                
+                return mtkBridge.inference(prompt, maxResponseTokens, true);
+            } catch (Exception e) {
+                Log.e(TAG, "Error during MTK inference", e);
+                return AppConstants.LLM_ERROR_RESPONSE;
+            }
         }
         
         public void generateStreamingResponse(String prompt, StreamingCallback callback) {
-            Log.d(TAG, "Stub streaming response for prompt: " + prompt);
-            String[] tokens = {"This ", "is ", "a ", "stub ", "response ", "from ", "the ", "MTK ", "backend"};
-            for (String token : tokens) {
-                if (!callback.onToken(token)) {
-                    break;
+            Log.d(TAG, "Generate streaming response using MTK native bridge for prompt: " + prompt);
+            
+            try {
+                // Use a reasonable token size for generation
+                int maxResponseTokens = AppConstants.MTK_TOKEN_SIZE;
+                Log.d(TAG, "Using max response tokens (streaming): " + maxResponseTokens);
+                
+                // Create a special adapter class that will notify both our callback
+                // and check for stop conditions
+                class MTKBridgeAdapter implements com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge.TokenCallback {
+                    private final AtomicBoolean shouldStop = new AtomicBoolean(false);
+                    
+                    public void requestStop() {
+                        shouldStop.set(true);
+                    }
+                    
+                    @Override
+                    public void onToken(String token) {
+                        if (callback != null && !shouldStop.get()) {
+                            callback.onToken(token);
+                        }
+                    }
                 }
+                
+                MTKBridgeAdapter bridgeAdapter = new MTKBridgeAdapter();
+                
+                // Start generation in a separate thread so we can monitor for stop requests
+                Thread generationThread = new Thread(() -> {
+                    mtkBridge.streamingInference(prompt, maxResponseTokens, true, bridgeAdapter);
+                });
+                generationThread.start();
+                
+                // Wait for generation to complete or be stopped
                 try {
-                    Thread.sleep(100);
+                    generationThread.join(30000); // 30 second timeout
+                    if (generationThread.isAlive()) {
+                        Log.w(TAG, "Generation thread timed out, forcing stop");
+                        bridgeAdapter.requestStop();
+                        generationThread.interrupt();
+                    }
                 } catch (InterruptedException e) {
-                    break;
+                    Log.w(TAG, "Generation thread interrupted");
+                    bridgeAdapter.requestStop();
+                    generationThread.interrupt();
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "Error during MTK streaming inference", e);
+                callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
             }
         }
         
         public void stopGeneration() {
-            Log.d(TAG, "Stub stop generation called");
+            Log.d(TAG, "Stopping MTK generation through native bridge");
+            try {
+                mtkBridge.resetLlm();
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping MTK generation", e);
+            }
         }
         
         public boolean reset() {
-            Log.d(TAG, "Stub reset called");
-            return true;
+            Log.d(TAG, "Resetting MTK backend through native bridge");
+            try {
+                return mtkBridge.resetLlm();
+            } catch (Exception e) {
+                Log.e(TAG, "Error resetting MTK backend", e);
+                return false;
+            }
         }
         
         public void releaseResources() {
-            Log.d(TAG, "Stub release resources called");
+            Log.d(TAG, "Releasing MTK resources through native bridge");
+            try {
+                mtkBridge.releaseLlm();
+            } catch (Exception e) {
+                Log.e(TAG, "Error releasing MTK resources", e);
+            }
         }
         
         public long getMemoryUsage() {
+            // Not implemented in the native bridge, return a placeholder value
             return 0;
         }
         
         public interface StreamingCallback {
-            boolean onToken(String token);
+            void onToken(String token);
         }
     }
 } 

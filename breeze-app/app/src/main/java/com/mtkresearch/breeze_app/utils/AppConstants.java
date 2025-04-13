@@ -49,7 +49,7 @@ public class AppConstants {
     public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
     public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
-    public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
+    public static final int MTK_TOKEN_SIZE = 1024; // Token size for generation
     public static final int MTK_PROMPT_TOKEN_SIZE = 128; // Token size for prompt processing
     public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Flag to track if MTK backend libraries loaded successfully
     public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts

@@ -45,6 +45,7 @@ public interface LLMBackendFactory {
         @Override
         public LLMBackend createMTKBackend() {
             String configPath = AppConstants.MTK_CONFIG_PATH;
+            android.util.Log.d("LLMBackendFactory", "Creating MTK backend with config path: " + configPath);
             return new MTKBackend(configPath, executorService);
         }
         

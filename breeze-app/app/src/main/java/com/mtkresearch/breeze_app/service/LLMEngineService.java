@@ -30,6 +30,7 @@ import com.mtkresearch.breeze_app.service.llm.backends.CPUBackend;
 import com.mtkresearch.breeze_app.service.llm.backends.MTKBackend;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ExecutionException;
 
 public class LLMEngineService extends BaseEngineService implements LlamaCallback {
     private static final String TAG = AppConstants.MTK_SERVICE_TAG;
@@ -53,6 +54,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         try {
             // Initialize the MTK native bridge
             boolean success = MTKNativeBridge.initialize();
+            Log.d(TAG, "MTK Native Bridge initialization result: " + success + 
+                  ", MTK_BACKEND_AVAILABLE=" + AppConstants.MTK_BACKEND_AVAILABLE);
             
             // Register shutdown hook for cleanup
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -240,19 +243,41 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 
                 // Try MTK backend first if it's preferred and available
                 if (AppConstants.MTK_BACKEND_AVAILABLE && preferredBackend.equals(AppConstants.BACKEND_MTK)) {
-                    currentBackend = backendFactory.createMTKBackend();
-                    CompletableFuture<Boolean> initResult = currentBackend.initialize();
+                    Log.d(TAG, "Attempting to initialize MTK backend (MTK_BACKEND_AVAILABLE=" + 
+                          AppConstants.MTK_BACKEND_AVAILABLE + ")");
+                          
+                    // Check if MTK config path exists
+                    File configFile = new File(AppConstants.MTK_CONFIG_PATH);
+                    if (!configFile.exists() || !configFile.isFile()) {
+                        Log.e(TAG, "MTK config file not found at: " + AppConstants.MTK_CONFIG_PATH + 
+                              ". Falling back to CPU backend.");
+                        AppConstants.MTK_BACKEND_AVAILABLE = false;
+                    } else {
+                        Log.d(TAG, "MTK config file exists at " + AppConstants.MTK_CONFIG_PATH);
                     
-                    boolean success = initResult.get(AppConstants.LLM_INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                    if (success) {
-                        currentBackendName = AppConstants.BACKEND_MTK;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized MTK backend");
-                        future.complete(true);
-                        return true;
+                        currentBackend = backendFactory.createMTKBackend();
+                        CompletableFuture<Boolean> initResult = currentBackend.initialize();
+                        
+                        try {
+                            boolean success = initResult.get(AppConstants.LLM_INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                            if (success) {
+                                currentBackendName = AppConstants.BACKEND_MTK;
+                                isInitialized = true;
+                                Log.d(TAG, "Successfully initialized MTK backend, setting current backend name to: " + 
+                                      currentBackendName);
+                                future.complete(true);
+                                return true;
+                            }
+                            
+                            Log.w(TAG, "MTK backend initialization failed, falling back to CPU");
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error waiting for MTK backend initialization", e);
+                            Log.w(TAG, "MTK backend initialization error, falling back to CPU");
+                        }
                     }
-                    
-                    Log.w(TAG, "MTK backend initialization failed, falling back to CPU");
+                } else {
+                    Log.d(TAG, "Skipping MTK backend initialization. MTK_BACKEND_AVAILABLE=" +
+                          AppConstants.MTK_BACKEND_AVAILABLE + ", preferredBackend=" + preferredBackend);
                 }
 
                 // If MTK failed or wasn't preferred, try CPU backend
@@ -360,27 +385,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             return "Unknown";
         }
         return com.mtkresearch.breeze_app.utils.ModelUtils.getModelDisplayName(modelPath);
-    }
-    
-    public CompletableFuture<String> generateResponse(String prompt) {
-        if (!isInitialized || currentBackend == null) {
-            return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
-        }
-        
-        currentStreamingResponse.setLength(0);
-        isGenerating.set(true);
-        
-        // Delegate to the current backend
-        return currentBackend.generateResponse(prompt)
-            .thenApply(response -> {
-                isGenerating.set(false);
-                return response;
-            })
-            .exceptionally(e -> {
-                Log.e(TAG, "Error during response generation", e);
-                isGenerating.set(false);
-                return AppConstants.LLM_ERROR_RESPONSE;
-            });
     }
     
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
