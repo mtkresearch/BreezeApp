@@ -31,7 +31,7 @@ public class AppConstants {
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
     public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_MTK;  // Default to MTK backend
+    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to MTK backend
     
     // Backend Enable Flags
     public static final boolean MTK_BACKEND_ENABLED = true;
@@ -49,9 +49,9 @@ public class AppConstants {
     public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
     public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
-    public static final int MTK_TOKEN_SIZE = 1024; // Token size for generation
+    public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
     public static final int MTK_PROMPT_TOKEN_SIZE = 128; // Token size for prompt processing
-    public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Flag to track if MTK backend libraries loaded successfully
+    public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Re-enable MTK backend
     public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts
     public static volatile boolean isCleaningUp = false; // Flag to track MTK cleanup state
     
@@ -442,4 +442,20 @@ public class AppConstants {
     public static final boolean EXPANDED_INPUT_ENABLED = true;
     // Enable downloading models
     public static final boolean DOWNLOAD_ENABLED = true;
+
+    // Check if MTK backend is truly available
+    public static boolean isMTKBackendAvailable() {
+        return MTK_BACKEND_ENABLED && MTK_BACKEND_AVAILABLE && 
+               com.mtkresearch.gai_android.service.LLMEngineService.isMTKBackendAvailable();
+    }
+    
+    // Safely get a working executor or create one if needed
+    public static java.util.concurrent.ExecutorService ensureExecutor(
+            java.util.concurrent.ExecutorService executor, String logTag) {
+        if (executor == null || executor.isShutdown()) {
+            android.util.Log.w(logTag, "Executor null or shutdown, creating new one");
+            return java.util.concurrent.Executors.newSingleThreadExecutor();
+        }
+        return executor;
+    }
 } 

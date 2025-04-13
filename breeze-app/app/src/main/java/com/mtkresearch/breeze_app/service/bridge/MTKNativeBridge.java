@@ -2,218 +2,371 @@ package com.mtkresearch.breeze_app.service.bridge;
 
 import android.util.Log;
 import com.mtkresearch.breeze_app.utils.AppConstants;
+import com.mtkresearch.gai_android.service.LLMEngineService;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Bridge class to handle all native method calls to the MTK backend.
- * This isolates the bridging logic from the main service implementation.
+ * Bridge to MTK native LLM implementation.
+ * This class provides a friendly interface to the native methods implemented in the NDK.
  */
-public class MTKNativeBridge {
+public class MTKNativeBridge implements JNIBridge {
     private static final String TAG = AppConstants.MTK_SERVICE_TAG;
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
     
-    // Bridge instance from the gai_android package that the native library expects
-    private static com.mtkresearch.gai_android.service.LLMEngineService bridgeInstance = null;
-    
-    // Interface that mirrors the callback in the LLMEngineService
-    public interface TokenCallback {
-        void onToken(String token);
-    }
-    
-    // Singleton instance to ensure we only have one bridge
-    private static MTKNativeBridge instance;
+    // Singleton instance
+    private static MTKNativeBridge instance = null;
     
     /**
-     * Get the singleton instance of the bridge
+     * Get the singleton instance of MTKNativeBridge
+     * @return The singleton instance
      */
     public static synchronized MTKNativeBridge getInstance() {
         if (instance == null) {
             instance = new MTKNativeBridge();
+            Log.d(TAG, "Created new MTKNativeBridge instance");
         }
         return instance;
     }
     
     /**
-     * Private constructor to prevent direct instantiation
-     */
-    private MTKNativeBridge() {
-        // Initialize bridgeInstance if not already created during static initialization
-        if (bridgeInstance == null) {
-            try {
-                bridgeInstance = com.mtkresearch.gai_android.service.LLMEngineService.class.newInstance();
-                Log.d(TAG, "Created bridge instance in constructor");
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to create bridge instance in constructor", e);
-            }
-        }
-    }
-    
-    /**
-     * Initialize the bridge by loading native libraries
+     * Initialize the native library
      * @return true if initialization was successful
      */
     public static boolean initialize() {
-        try {
-            // Load libraries in order
-            System.loadLibrary("sigchain");  // Load signal handler first
-            Thread.sleep(100);  // Give time for signal handlers to initialize
-            
-            System.loadLibrary("llm_jni");
-            
-            // Create a bridge instance - this will create the class with the package name the native code expects
+        boolean isAvailable = LLMEngineService.isMTKBackendAvailable();
+        Log.d(TAG, "MTK library available: " + isAvailable + 
+              " (loaded: " + isLibraryLoaded() + ")");
+        
+        if (isAvailable) {
             try {
-                bridgeInstance = com.mtkresearch.gai_android.service.LLMEngineService.class.newInstance();
-                
-                // Test if native methods work by trying to call one
-                boolean nativeMethodsAvailable = false;
-                try {
-                    // Try calling nativeResetLlm to verify it exists
-                    bridgeInstance.nativeResetLlm();
-                    nativeMethodsAvailable = true;
-                    Log.d(TAG, "Successfully verified native methods through bridge");
-                } catch (UnsatisfiedLinkError e) {
-                    Log.e(TAG, "Native methods implemented incorrectly: " + e.getMessage());
-                    nativeMethodsAvailable = false;
-                }
-                
-                AppConstants.MTK_BACKEND_AVAILABLE = nativeMethodsAvailable;
-                Log.d(TAG, "Successfully loaded llm_jni library, native methods available: " + nativeMethodsAvailable);
-                return nativeMethodsAvailable;
-            } catch (Exception e) {
-                Log.e(TAG, "Error creating bridge instance: " + e.getMessage(), e);
-                AppConstants.MTK_BACKEND_AVAILABLE = false;
-                return false;
+                // Force load of some classes that might be needed by the JNI code
+                Class.forName("com.mtkresearch.gai_android.service.LLMEngineService$TokenCallback");
+                Log.d(TAG, "Successfully loaded required classes for JNI");
+            } catch (ClassNotFoundException e) {
+                Log.w(TAG, "Could not preload classes: " + e.getMessage());
             }
-        } catch (UnsatisfiedLinkError | Exception e) {
-            AppConstants.MTK_BACKEND_AVAILABLE = false;
-            Log.w(TAG, "Failed to load native libraries, MTK backend will be disabled", e);
-            return false;
         }
+        
+        return isAvailable;
     }
     
     /**
-     * Register a service instance with the bridge
-     * @param service The LLMEngineService instance to register
-     * @return true if registration was successful
+     * Check if the native library is loaded
+     * @return true if the library is loaded
      */
-    public boolean registerService(com.mtkresearch.breeze_app.service.LLMEngineService service) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot register service");
+    public static boolean isLibraryLoaded() {
+        return LLMEngineService.isMTKBackendAvailable();
+    }
+
+    public MTKNativeBridge() {
+        Log.d(TAG, "MTKNativeBridge created, library loaded: " + isLibraryLoaded());
+    }
+
+    /**
+     * Register the service with the native bridge
+     * @param service The service to register
+     */
+    public void registerService(com.mtkresearch.breeze_app.service.LLMEngineService service) {
+        // No operation needed - JNI functions are static
+        Log.d(TAG, "Service registration not needed with direct JNI approach");
+    }
+
+    /**
+     * Unregister the service from the native bridge
+     * @param service The service to unregister
+     */
+    public void unregisterService(com.mtkresearch.breeze_app.service.LLMEngineService service) {
+        // No operation needed - JNI functions are static
+        Log.d(TAG, "Service unregistration not needed with direct JNI approach");
+    }
+
+    /**
+     * Callback interface for receiving tokens during streaming inference
+     */
+    public interface TokenCallback {
+        /**
+         * Called when a new token is generated
+         * @param token The token text
+         */
+        void onToken(String token);
+    }
+
+    /**
+     * Initialize the LLM with the given configuration
+     * @param configPath Path to the YAML configuration file
+     * @param preloadSharedWeights Whether to preload shared weights
+     * @return true if initialization was successful
+     */
+    @Override
+    public boolean nativeInitLlm(String configPath, boolean preloadSharedWeights) {
+        if (!isLibraryLoaded()) {
+            Log.e(TAG, "Cannot initialize LLM - library not loaded");
+            return false;
+        }
+        
+        boolean result = false;
+        try {
+            // Call the safer native method using the compatibility class
+            result = LLMEngineService.safeInitLlm(configPath, preloadSharedWeights);
+            initialized.set(result);
+            Log.d(TAG, "LLM initialization " + (result ? "successful" : "failed") + " with config: " + configPath);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during LLM initialization: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
+    /**
+     * Run inference with the given input
+     * @param promptText The input text
+     * @param maxResponseTokens Maximum number of tokens to generate
+     * @param parsePromptTokens Whether to parse prompt tokens
+     * @return The generated text
+     */
+    @Override
+    public String nativeInference(String promptText, int maxResponseTokens, boolean parsePromptTokens) {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot run inference - library not loaded or LLM not initialized");
+            return "";
+        }
+        
+        try {
+            // Call the native method using the compatibility class
+            return LLMEngineService.nativeInference(promptText, maxResponseTokens, parsePromptTokens);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during inference: " + e.getMessage(), e);
+            return "";
+        }
+    }
+
+    /**
+     * Run streaming inference with the given input
+     * @param promptText The input text
+     * @param maxResponseTokens Maximum number of tokens to generate
+     * @param parsePromptTokens Whether to parse prompt tokens
+     * @param callback The callback for receiving tokens
+     * @return The final generated text
+     */
+    public String streamingInference(String promptText, int maxResponseTokens, boolean parsePromptTokens,
+                                    TokenCallback callback) {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot run streaming inference - library not loaded or LLM not initialized");
+            return "";
+        }
+        
+        if (promptText == null || promptText.isEmpty()) {
+            Log.e(TAG, "Empty prompt provided to streaming inference");
+            return "";
+        }
+        
+        Log.d(TAG, "Starting streaming inference with prompt length: " + promptText.length() + 
+              ", max tokens: " + maxResponseTokens);
+        
+        try {
+            // Create an adapter that converts our callback to the native library's callback
+            LLMEngineService.TokenCallback nativeCallback = new LLMEngineService.TokenCallback() {
+                @Override
+                public void onToken(String token) {
+                    if (callback != null) {
+                        try {
+                            callback.onToken(token);
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error in token callback: " + e.getMessage(), e);
+                            // Continue despite callback error
+                        }
+                    }
+                }
+            };
+            
+            // Call the native method using the compatibility class with the adapter
+            String result = LLMEngineService.nativeStreamingInference(
+                promptText, maxResponseTokens, parsePromptTokens, nativeCallback);
+            
+            Log.d(TAG, "Streaming inference completed, result length: " + 
+                  (result != null ? result.length() : 0));
+            
+            return result != null ? result : "";
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during streaming inference: " + e.getMessage(), e);
+            return "";
+        }
+    }
+
+    /**
+     * Run streaming inference with the given input and use the LLMEngineService for callbacks
+     * @param promptText The input text
+     * @param callback The callback for receiving tokens
+     * @return true if the streaming inference started successfully
+     */
+    @Override
+    public boolean nativeRunStreamingInference(String promptText, StreamingCallback callback) {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot run streaming inference - library not loaded or LLM not initialized");
+            return false;
+        }
+        
+        if (promptText == null || promptText.isEmpty()) {
+            Log.e(TAG, "Empty prompt provided to streaming inference");
+            return false;
+        }
+        
+        Log.d(TAG, "Starting streaming inference with prompt length: " + promptText.length());
+        
+        try {
+            // First ensure we're using token size 128 for prompt parsing
+            try {
+                if (!nativeSetTokenSize(128)) {
+                    Log.e(TAG, "Failed to set token size to 128 for prompt parsing, attempting to continue anyway");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Exception while setting token size to 128 before inference", e);
+                // Continue despite error - the native layer might still work
+            }
+            
+            // Create an adapter that converts our callback to the native library's callback
+            LLMEngineService.TokenCallback nativeCallback = token -> {
+                if (callback != null) {
+                    try {
+                        callback.onToken(token);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error in token callback: " + e.getMessage(), e);
+                        // Continue despite callback error
+                    }
+                }
+            };
+            
+            // Call the native method with error handling
+            try {
+                // Call the native method using the compatibility class with the adapter
+                LLMEngineService.nativeStreamingInference(
+                    promptText, 
+                    256, // Max response tokens - hardcoded to avoid dependency
+                    false, // Don't parse prompt tokens by default
+                    nativeCallback);
+                    
+                // After generation, ensure we switch back to token size 128
+                try {
+                    Log.d(TAG, "Streaming inference completed, switching back to token size 128");
+                    if (!nativeSetTokenSize(128)) {
+                        Log.w(TAG, "Failed to reset token size to 128 after successful inference");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception while resetting token size after inference", e);
+                    // Continue despite error in token size reset
+                }
+                    
+                return true;
+            } catch (Exception e) {
+                Log.e(TAG, "Exception during native streaming inference call", e);
+                // Continue to cleanup
+                throw e; // Rethrow to outer handler
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during streaming inference: " + e.getMessage(), e);
+            try {
+                // Try to reset the LLM state after error
+                if (initialized.get()) {
+                    try {
+                        Log.d(TAG, "Attempting to reset LLM after inference error");
+                        nativeResetLlm();
+                    } catch (Exception resetEx) {
+                        Log.e(TAG, "Failed to reset LLM after inference error", resetEx);
+                    }
+                }
+                
+                // Ensure we switch back to token size 128 even after error
+                try {
+                    Log.d(TAG, "Attempting to set token size back to 128 after inference error");
+                    nativeSetTokenSize(128);
+                } catch (Exception tokenEx) {
+                    Log.e(TAG, "Error setting token size back to 128 after failure", tokenEx);
+                }
+            } catch (Exception cleanup) {
+                Log.e(TAG, "Critical error during cleanup after inference failure", cleanup);
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Release the LLM resources
+     */
+    @Override
+    public void nativeReleaseLlm() {
+        if (!isLibraryLoaded()) {
+            Log.e(TAG, "Cannot release LLM - library not loaded");
+            return;
+        }
+        
+        try {
+            // Call the native method using the compatibility class
+            LLMEngineService.nativeReleaseLlm();
+            initialized.set(false);
+            Log.d(TAG, "LLM resources released");
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during LLM release: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Reset the LLM state
+     * @return true if reset was successful
+     */
+    @Override
+    public boolean nativeResetLlm() {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot reset LLM - library not loaded or LLM not initialized");
             return false;
         }
         
         try {
-            // The registerInstance method expects a com.mtkresearch.breeze_app.service.LLMEngineService
-            // We pass the service parameter, which is of the expected type
-            com.mtkresearch.gai_android.service.LLMEngineService.registerInstance(service);
-            Log.d(TAG, "Registered service instance with the JNI bridge");
-            return true;
+            // Call the safer native method using the compatibility class
+            return LLMEngineService.safeResetLlm();
         } catch (Exception e) {
-            Log.e(TAG, "Failed to register service instance with bridge", e);
+            Log.e(TAG, "Exception during LLM reset: " + e.getMessage(), e);
             return false;
         }
     }
-    
+
     /**
-     * Initialize the LLM with the given configuration
+     * Swap to a different model size
+     * @param tokenSize The token size to swap to (1 or 128)
+     * @return true if swap was successful
      */
-    public boolean initLlm(String yamlConfigPath, boolean preloadSharedWeights) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeInitLlm");
+    @Override
+    public boolean nativeSwapModel(int tokenSize) {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot swap model - library not loaded or LLM not initialized");
             return false;
         }
+        
         try {
-            return bridgeInstance.nativeInitLlm(yamlConfigPath, preloadSharedWeights);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeInitLlm() not available: " + e.getMessage());
-            return false;
-        }
-    }
-    
-    /**
-     * Run inference with the given input
-     */
-    public String inference(String inputString, int maxResponse, boolean parsePromptTokens) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeInference");
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-        try {
-            return bridgeInstance.nativeInference(inputString, maxResponse, parsePromptTokens);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeInference() not available: " + e.getMessage());
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-    }
-    
-    /**
-     * Run streaming inference with the given input and callback
-     */
-    public String streamingInference(String inputString, int maxResponse, boolean parsePromptTokens, 
-                                    final TokenCallback callback) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeStreamingInference");
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-        try {
-            // Create adapter for the callback
-            com.mtkresearch.gai_android.service.LLMEngineService.TokenCallback bridgeCallback = 
-                new com.mtkresearch.gai_android.service.LLMEngineService.TokenCallback() {
-                    @Override
-                    public void onToken(String token) {
-                        if (callback != null) {
-                            callback.onToken(token);
-                        }
-                    }
-                };
-            return bridgeInstance.nativeStreamingInference(inputString, maxResponse, parsePromptTokens, bridgeCallback);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeStreamingInference() not available: " + e.getMessage());
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-    }
-    
-    /**
-     * Release the LLM resources
-     */
-    public void releaseLlm() {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeReleaseLlm");
-            return;
-        }
-        try {
-            bridgeInstance.nativeReleaseLlm();
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeReleaseLlm() not available: " + e.getMessage());
-        }
-    }
-    
-    /**
-     * Reset the LLM state
-     */
-    public boolean resetLlm() {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeResetLlm");
-            return false;
-        }
-        try {
-            return bridgeInstance.nativeResetLlm();
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeResetLlm() not available: " + e.getMessage());
+            // Call the native method using the compatibility class
+            return LLMEngineService.nativeSwapModel(tokenSize);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during model swap: " + e.getMessage(), e);
             return false;
         }
     }
-    
+
     /**
-     * Swap the model with the given token size
+     * Set the token size
+     * @param tokenSize The token size to set (1 or 128)
+     * @return true if setting token size was successful
      */
-    public boolean swapModel(int tokenSize) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeSwapModel");
+    @Override
+    public boolean nativeSetTokenSize(int tokenSize) {
+        if (!isLibraryLoaded() || !initialized.get()) {
+            Log.e(TAG, "Cannot set token size - library not loaded or LLM not initialized");
             return false;
         }
+        
         try {
-            return bridgeInstance.nativeSwapModel(tokenSize);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeSwapModel() not available: " + e.getMessage());
+            // Use the swap model method since no direct token size method exists
+            return LLMEngineService.nativeSwapModel(tokenSize);
+        } catch (Exception e) {
+            Log.e(TAG, "Exception during setting token size: " + e.getMessage(), e);
             return false;
         }
     }

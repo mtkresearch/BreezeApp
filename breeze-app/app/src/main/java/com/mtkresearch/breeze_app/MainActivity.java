@@ -693,6 +693,11 @@ public class MainActivity extends AppCompatActivity {
         List<String> backendOptions = new ArrayList<>();
         backendOptions.add("cpu");  // CPU backend is always available
         
+        // Add MTK backend if it's available
+        if (AppConstants.MTK_BACKEND_AVAILABLE) {
+            backendOptions.add("mtk");
+        }
+        
         backendAdapter = new ArrayAdapter<>(this, 
             android.R.layout.simple_spinner_item, backendOptions);
         backendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);

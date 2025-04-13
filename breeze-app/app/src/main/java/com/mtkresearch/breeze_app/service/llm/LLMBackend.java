@@ -1,6 +1,7 @@
 package com.mtkresearch.breeze_app.service.llm;
 
 import java.util.concurrent.CompletableFuture;
+import com.mtkresearch.breeze_app.service.LLMEngineService;
 
 /**
  * Interface for LLM backends that can perform text generation.
@@ -43,7 +44,8 @@ public interface LLMBackend {
      * @param callback Callback to receive tokens as they're generated
      * @return Future with the complete generated response
      */
-    CompletableFuture<String> generateStreamingResponse(String prompt, TokenCallback callback);
+    CompletableFuture<String> generateStreamingResponse(String prompt, 
+                                                      LLMEngineService.StreamingResponseCallback callback);
     
     /**
      * Stop ongoing generation

@@ -229,7 +229,8 @@ public class CPUBackend implements LLMBackend {
     }
     
     @Override
-    public CompletableFuture<String> generateStreamingResponse(String prompt, TokenCallback callback) {
+    public CompletableFuture<String> generateStreamingResponse(String prompt, 
+                                                            com.mtkresearch.breeze_app.service.LLMEngineService.StreamingResponseCallback callback) {
         if (!isInitialized.get()) {
             return initialize().thenCompose(initialized -> {
                 if (initialized) {
@@ -245,20 +246,19 @@ public class CPUBackend implements LLMBackend {
         return doGenerateStreamingResponse(prompt, callback);
     }
     
-    private CompletableFuture<String> doGenerateStreamingResponse(String prompt, TokenCallback callback) {
+    private CompletableFuture<String> doGenerateStreamingResponse(String prompt, 
+                                                               com.mtkresearch.breeze_app.service.LLMEngineService.StreamingResponseCallback callback) {
         CompletableFuture<String> future = new CompletableFuture<>();
         
-        executorService.submit(() -> {
+        return CompletableFuture.supplyAsync(() -> {
             if (!tryStartGeneration()) {
-                future.completeExceptionally(new IllegalStateException("Generation already in progress"));
-                return;
+                throw new IllegalStateException("Generation already in progress");
             }
             
             try {
-                Log.d(TAG, "Generating streaming response with CPU backend");
+                Log.d(TAG, "Generating streaming response with CPU backend for prompt: " + prompt);
                 shouldStop.set(false);
-                
-                StringBuilder fullResponse = new StringBuilder();
+                StringBuilder responseBuilder = new StringBuilder();
                 
                 // Calculate sequence length based on prompt length
                 int seqLen = (int)(prompt.length() * 0.75) + 256;
@@ -279,16 +279,25 @@ public class CPUBackend implements LLMBackend {
                             token.equals(AppConstants.LLM_STOP_TOKEN_EOT) ||
                             token.equals(AppConstants.LLM_STOP_TOKEN_EOT_ALT)) {
                             Log.d(TAG, "Stop token detected: " + token);
-                            if (!future.isDone()) {
-                                future.complete(fullResponse.toString());
+                            try {
+                                future.complete(responseBuilder.toString());
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error completing future", e);
                             }
                             return;
                         }
                         
-                        // Process token
-                        fullResponse.append(token);
+                        // Add token to the response
+                        responseBuilder.append(token);
+                        
+                        // Send token to callback
                         if (callback != null) {
-                            callback.onToken(token);
+                            try {
+                                callback.onToken(token);
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error in token callback", e);
+                                // Don't let callback exceptions crash the generation thread
+                            }
                         }
                     }
                     
@@ -298,19 +307,23 @@ public class CPUBackend implements LLMBackend {
                     }
                 }, false);
                 
-                // If the future hasn't been completed by a stop token, complete it now
+                // If we get here, the generation completed normally
                 if (!future.isDone()) {
-                    future.complete(fullResponse.toString());
+                    future.complete(responseBuilder.toString());
                 }
+                
+                Log.d(TAG, "Streaming generation completed successfully");
+                return responseBuilder.toString();
             } catch (Exception e) {
                 Log.e(TAG, "Error generating streaming response with CPU backend", e);
-                future.completeExceptionally(e);
+                if (!future.isDone()) {
+                    future.completeExceptionally(e);
+                }
+                throw e;
             } finally {
                 isGenerating.set(false);
             }
-        });
-        
-        return future;
+        }, executorService);
     }
     
     @Override

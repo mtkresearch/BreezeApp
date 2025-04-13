@@ -5,6 +5,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import com.mtkresearch.breeze_app.service.llm.backends.CPUBackend;
 import com.mtkresearch.breeze_app.service.llm.backends.MTKBackend;
+import com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge;
 import com.mtkresearch.breeze_app.utils.AppConstants;
 
 /**
@@ -44,9 +45,17 @@ public interface LLMBackendFactory {
         
         @Override
         public LLMBackend createMTKBackend() {
+            // Check if MTK backend is available
+            if (!AppConstants.isMTKBackendAvailable()) {
+                android.util.Log.w("LLMBackendFactory", "MTK backend is not available, returning null");
+                return null;
+            }
+            
             String configPath = AppConstants.MTK_CONFIG_PATH;
-            android.util.Log.d("LLMBackendFactory", "Creating MTK backend with config path: " + configPath);
-            return new MTKBackend(configPath, executorService);
+            String modelPath = AppConstants.getModelPath(context);
+            // Get MTKNativeBridge instance
+            MTKNativeBridge mtkBridge = MTKNativeBridge.getInstance();
+            return new MTKBackend(mtkBridge, modelPath, configPath);
         }
         
         @Override
@@ -57,11 +66,21 @@ public interface LLMBackendFactory {
         
         @Override
         public LLMBackend[] getAllBackends() {
-            // Create all backends but don't initialize them
-            return new LLMBackend[] {
-                createMTKBackend(),
-                createCPUBackend(AppConstants.getModelPath(context))
-            };
+            // Try to use MTK backend first, fall back to CPU if not available
+            java.util.List<LLMBackend> backends = new java.util.ArrayList<>();
+            
+            // Try MTK backend first if available
+            if (AppConstants.isMTKBackendAvailable()) {
+                LLMBackend mtkBackend = createMTKBackend();
+                if (mtkBackend != null) {
+                    backends.add(mtkBackend);
+                }
+            }
+            
+            // Always include CPU backend as fallback
+            backends.add(createCPUBackend(AppConstants.getModelPath(context)));
+            
+            return backends.toArray(new LLMBackend[0]);
         }
     }
 } 

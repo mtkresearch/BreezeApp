@@ -93,12 +93,18 @@ public class ModelUtils {
     }
 
     /**
-     * Determines the preferred backend based on device hardware capabilities.
-     * @return The preferred backend identifier ("cpu")
+     * Determines the preferred backend based on device hardware capabilities and user preferences.
+     * @return The preferred backend identifier ("mtk" or "cpu")
      */
     public static String getPreferredBackend() {
-        Log.i(TAG, "Using CPU backend");
-        return "cpu";
+        // Check if MTK backend is available
+        if (AppConstants.isMTKBackendAvailable()) {
+            Log.i(TAG, "Using MTK backend");
+            return AppConstants.BACKEND_MTK;
+        } else {
+            Log.i(TAG, "MTK backend not available, using CPU backend");
+            return AppConstants.BACKEND_CPU;
+        }
     }
 
     /**

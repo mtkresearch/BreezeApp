@@ -2,228 +2,531 @@ package com.mtkresearch.breeze_app.service.llm.backends;
 
 import android.util.Log;
 
+import com.mtkresearch.breeze_app.service.LLMEngineService;
+import com.mtkresearch.breeze_app.service.LLMEngineService.StreamingResponseCallback;
+import com.mtkresearch.breeze_app.service.bridge.JNIBridge.StreamingCallback;
+import com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge;
 import com.mtkresearch.breeze_app.service.llm.LLMBackend;
 import com.mtkresearch.breeze_app.utils.AppConstants;
 
 import java.io.File;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * MTK-accelerated backend implementation for LLM inference.
  * This backend uses MTK's hardware acceleration capabilities.
  */
-public class MTKBackend implements LLMBackend {
+public class MTKBackend implements LLMBackend, StreamingCallback {
     private static final String TAG = "MTKBackend";
     private static final String BACKEND_NAME = "MTK";
     
-    private final String modelPath;
-    private final ExecutorService executorService;
+    private final ExecutorService nativeExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+    private final AtomicBoolean initializing = new AtomicBoolean(false);
+    private final AtomicBoolean generating = new AtomicBoolean(false);
     private final ReentrantLock lock = new ReentrantLock();
-    private final AtomicBoolean isGenerating = new AtomicBoolean(false);
-    private final AtomicBoolean isInitialized = new AtomicBoolean(false);
-    private final AtomicBoolean shouldStop = new AtomicBoolean(false);
+    private CompletableFuture<Boolean> initializationFuture = null;
+    private MTKNativeBridge mtkBridge;
+    private String modelPath;
+    private String configPath;
     
-    // Real implementation that interfaces with the native bridge
-    private final NativeMTKBackend mtkBackend;
+    // Constants for token sizes
+    private static final int PROMPT_TOKEN_SIZE = 128; // For parsing prompts
+    private static final int GENERATION_TOKEN_SIZE = 1; // For generating responses
+    private static final int MAX_RESPONSE_TOKENS = 256; // Default max response tokens
+    
+    // Add token size tracking - start with prompt token size for parsing
+    private boolean usingPromptTokenSize = true; // Starts as true since we initialize with prompt token size
+    
+    // Store the current callback
+    private StreamingResponseCallback currentCallback;
+    private StringBuilder responseBuffer = new StringBuilder();
     
     /**
      * Create a new MTKBackend instance.
      *
+     * @param mtkBridge MTK native bridge
      * @param modelPath Path to the model file
-     * @param executorService Executor service to run tasks on
+     * @param configPath Path to the configuration file
      */
-    public MTKBackend(String modelPath, ExecutorService executorService) {
+    public MTKBackend(MTKNativeBridge mtkBridge, String modelPath, String configPath) {
+        this.mtkBridge = mtkBridge;
         this.modelPath = modelPath;
-        this.executorService = executorService;
-        this.mtkBackend = new NativeMTKBackend();
-        
-        Log.d(TAG, "Created MTKBackend with native bridge support. MTK backend available: " + 
-              AppConstants.MTK_BACKEND_AVAILABLE);
+        this.configPath = configPath;
     }
     
     @Override
     public CompletableFuture<Boolean> initialize() {
-        return CompletableFuture.supplyAsync(() -> {
-            if (isInitialized.get()) {
+        lock.lock();
+        try {
+            if (initialized.get()) {
                 Log.d(TAG, "MTK backend already initialized");
-                return true;
+                return CompletableFuture.completedFuture(true);
             }
-            
-            lock.lock();
-            try {
-                if (isInitialized.get()) {
-                    return true;
+
+            if (initializing.getAndSet(true)) {
+                Log.d(TAG, "MTK backend already initializing");
+                if (initializationFuture != null) {
+                    return initializationFuture;
                 }
-                
-                Log.d(TAG, "Initializing MTK backend with model at " + modelPath);
-                boolean success = mtkBackend.initialize(modelPath);
-                
-                if (success) {
-                    isInitialized.set(true);
-                    Log.d(TAG, "MTK backend initialization successful");
+                return CompletableFuture.completedFuture(false);
+            }
+
+            Log.d(TAG, "Starting MTK backend initialization");
+            initializationFuture = new CompletableFuture<>();
+
+            // Validate MTK bridge
+            if (mtkBridge == null) {
+                String error = "MTK Bridge is null";
+                Log.e(TAG, error);
+                initializing.set(false);
+                initializationFuture.completeExceptionally(new IllegalStateException(error));
+                return initializationFuture;
+            }
+
+            // Validate config file
+            File configFile = new File(configPath);
+            if (!configFile.exists() || !configFile.canRead()) {
+                String error = "Config file at " + configPath + " does not exist or cannot be read";
+                Log.e(TAG, error);
+                initializing.set(false);
+                initializationFuture.completeExceptionally(new IllegalStateException(error));
+                return initializationFuture;
+            }
+
+            // Submit initialization task to executor with timeout
+            CompletableFuture.runAsync(() -> {
+                try {
+                    Log.d(TAG, "Attempting to initialize MTK LLM with " + configPath);
+                    boolean initSuccess = mtkBridge.nativeInitLlm(configPath, true);
+
+                    if (initSuccess) {
+                        Log.d(TAG, "MTK LLM initialization successful");
+                        
+                        // Set initial token size to prompt token size
+                        boolean tokenSizeSuccess = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                        if (tokenSizeSuccess) {
+                            Log.d(TAG, "Successfully set initial token size to " + PROMPT_TOKEN_SIZE);
+                            usingPromptTokenSize = true;
+                        } else {
+                            Log.e(TAG, "Failed to set initial token size to " + PROMPT_TOKEN_SIZE);
+                            // Continue anyway as we'll try again during inference
+                        }
+                        
+                        initialized.set(true);
+                        initializing.set(false);
+                        initializationFuture.complete(true);
+                    } else {
+                        String error = "MTK LLM initialization failed";
+                        Log.e(TAG, error);
+                        initializing.set(false);
+                        initializationFuture.completeExceptionally(new IllegalStateException(error));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception during MTK LLM initialization", e);
+                    initializing.set(false);
+                    initializationFuture.completeExceptionally(e);
+                }
+            }, nativeExecutor).orTimeout(30, TimeUnit.SECONDS).exceptionally(e -> {
+                if (e instanceof TimeoutException) {
+                    Log.e(TAG, "Timeout during MTK LLM initialization");
                 } else {
-                    Log.e(TAG, "MTK backend initialization failed");
+                    Log.e(TAG, "Exception during MTK LLM initialization", e);
                 }
-                
-                return success;
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing MTK backend", e);
-                return false;
-            } finally {
-                lock.unlock();
-            }
-        }, executorService);
+                initializing.set(false);
+                initializationFuture.completeExceptionally(e);
+                return null;
+            });
+
+            return initializationFuture;
+        } finally {
+            lock.unlock();
+        }
     }
     
     @Override
     public boolean isAvailable() {
-        return AppConstants.MTK_BACKEND_AVAILABLE;
+        return mtkBridge != null && mtkBridge.isLibraryLoaded();
     }
     
     @Override
     public CompletableFuture<String> generateResponse(String prompt) {
-        if (!isInitialized.get()) {
-            return initialize().thenCompose(initialized -> {
-                if (initialized) {
-                    return doGenerateResponse(prompt);
-                } else {
-                    CompletableFuture<String> future = new CompletableFuture<>();
-                    future.completeExceptionally(new IllegalStateException("Failed to initialize MTK backend"));
-                    return future;
-                }
-            });
-        }
+        CompletableFuture<String> future = new CompletableFuture<>();
         
-        return doGenerateResponse(prompt);
-    }
-    
-    private CompletableFuture<String> doGenerateResponse(String prompt) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (!tryStartGeneration()) {
-                throw new IllegalStateException("Generation already in progress");
-            }
-            
-            try {
-                Log.d(TAG, "Generating response with MTK backend");
-                shouldStop.set(false);
-                String response = mtkBackend.generateResponse(prompt);
-                return response != null ? response : "";
-            } catch (Exception e) {
-                Log.e(TAG, "Error generating response with MTK backend", e);
-                throw e;
-            } finally {
-                isGenerating.set(false);
-            }
-        }, executorService);
-    }
-    
-    @Override
-    public CompletableFuture<String> generateStreamingResponse(String prompt, TokenCallback callback) {
-        if (!isInitialized.get()) {
-            return initialize().thenCompose(initialized -> {
-                if (initialized) {
-                    return doGenerateStreamingResponse(prompt, callback);
-                } else {
-                    CompletableFuture<String> future = new CompletableFuture<>();
-                    future.completeExceptionally(new IllegalStateException("Failed to initialize MTK backend"));
-                    return future;
-                }
-            });
+        if (!initialized.get()) {
+            Log.e(TAG, "Cannot generate response - MTK backend not initialized");
+            future.completeExceptionally(new IllegalStateException("MTK backend not initialized"));
+            return future;
         }
+
+        if (generating.getAndSet(true)) {
+            Log.e(TAG, "MTK backend already generating");
+            future.completeExceptionally(new IllegalStateException("MTK backend already generating"));
+            return future;
+        }
+
+        Log.d(TAG, "Starting response generation with prompt length: " + prompt.length());
         
-        return doGenerateStreamingResponse(prompt, callback);
-    }
-    
-    private CompletableFuture<String> doGenerateStreamingResponse(String prompt, TokenCallback callback) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (!tryStartGeneration()) {
-                throw new IllegalStateException("Generation already in progress");
-            }
-            
+        CompletableFuture.runAsync(() -> {
             try {
-                Log.d(TAG, "Generating streaming response with MTK backend");
-                shouldStop.set(false);
-                
-                final StringBuilder fullResponse = new StringBuilder();
-                
-                // Create a special adapter class that will notify both our callback
-                // and check for stop conditions
-                class MTKBridgeAdapter implements NativeMTKBackend.StreamingCallback {
-                    @Override
-                    public void onToken(String token) {
-                        if (shouldStop.get()) {
-                            return;
-                        }
-                        fullResponse.append(token);
-                        if (callback != null) {
-                            callback.onToken(token);
-                        }
+                // First ensure we're using prompt token size 128 for parsing
+                if (!usingPromptTokenSize) {
+                    boolean swapSuccess = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                    Log.d(TAG, "Setting prompt token size (" + PROMPT_TOKEN_SIZE + 
+                          ") for prompt parsing: " + swapSuccess);
+                    usingPromptTokenSize = swapSuccess;
+                    
+                    if (!swapSuccess) {
+                        Log.e(TAG, "Failed to set prompt token size for parsing");
+                        future.completeExceptionally(new RuntimeException("Failed to set prompt token size"));
+                        generating.set(false);
+                        return;
                     }
                 }
                 
-                MTKBridgeAdapter bridgeAdapter = new MTKBridgeAdapter();
+                // For regular inference, the native side handles everything, we don't need to swap
+                String result = mtkBridge.nativeInference(prompt, MAX_RESPONSE_TOKENS, false);
+                Log.d(TAG, "MTK response generation completed");
                 
-                // Generate the response
-                mtkBackend.generateStreamingResponse(prompt, bridgeAdapter);
+                // Reset LLM state after generation
+                try {
+                    mtkBridge.nativeResetLlm();
+                    
+                    // Ensure we're using prompt token size 128 after generation
+                    if (!usingPromptTokenSize) {
+                        boolean swapBackSuccess = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                        usingPromptTokenSize = swapBackSuccess;
+                        Log.d(TAG, "Reset and switched back to prompt token size (" + 
+                              PROMPT_TOKEN_SIZE + ") after generation: " + swapBackSuccess);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error resetting state after generation", e);
+                    // Continue anyway to deliver result
+                }
                 
-                // Return the full accumulated response
-                return fullResponse.toString();
+                future.complete(result);
             } catch (Exception e) {
-                Log.e(TAG, "Error generating streaming response with MTK backend", e);
-                throw e;
+                Log.e(TAG, "Exception during MTK response generation", e);
+                
+                // Attempt to reset state even after error
+                try {
+                    mtkBridge.nativeResetLlm();
+                    
+                    // Ensure we're back at prompt token size 128 after error
+                    if (!usingPromptTokenSize) {
+                        boolean swapBackSuccess = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                        usingPromptTokenSize = swapBackSuccess;
+                        Log.d(TAG, "Reset state after error and switched back to prompt token size: " + swapBackSuccess);
+                    }
+                } catch (Exception resetError) {
+                    Log.e(TAG, "Error resetting state after generation error", resetError);
+                }
+                
+                future.completeExceptionally(e);
             } finally {
-                isGenerating.set(false);
+                generating.set(false);
             }
-        }, executorService);
+        }, nativeExecutor);
+        
+        return future;
+    }
+    
+    @Override
+    public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
+        lock.lock();
+        try {
+            if (!initialized.get()) {
+                return CompletableFuture.failedFuture(
+                        new IllegalStateException("MTK backend not initialized"));
+            }
+
+            if (generating.getAndSet(true)) {
+                String error = "MTK backend is already generating";
+                Log.e(TAG, error);
+                return CompletableFuture.failedFuture(new IllegalStateException(error));
+            }
+
+            Log.d(TAG, "MTK backend generating streaming response");
+            CompletableFuture<String> resultFuture = new CompletableFuture<>();
+            
+            // Store the callback for use in onToken
+            this.currentCallback = callback;
+            this.responseBuffer.setLength(0);
+
+            CompletableFuture.runAsync(() -> {
+                try {
+                    // The MTKNativeBridge.nativeRunStreamingInference handles token size management:
+                    // 1. It ensures token size 128 for prompt parsing
+                    // 2. Native code then swaps to token size 1 for generation
+                    // 3. It also ensures we return to token size 128 after generation
+                    boolean inferenceSuccess = mtkBridge.nativeRunStreamingInference(prompt, this);
+                    
+                    if (inferenceSuccess) {
+                        Log.d(TAG, "MTK streaming inference completed successfully");
+                        String finalResponse = responseBuffer.toString();
+                        resultFuture.complete(finalResponse);
+                    } else {
+                        String error = "MTK streaming inference failed";
+                        Log.e(TAG, error);
+                        resultFuture.completeExceptionally(new RuntimeException(error));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception during MTK streaming inference", e);
+                    resultFuture.completeExceptionally(e);
+                } finally {
+                    // Reset LLM state for next use
+                    try {
+                        boolean resetSuccess = mtkBridge.nativeResetLlm();
+                        if (!resetSuccess) {
+                            Log.e(TAG, "Failed to reset LLM state after streaming inference");
+                        }
+                        
+                        // MTKNativeBridge already ensures we're back at token size 128,
+                        // but we update our tracking flag to match
+                        usingPromptTokenSize = true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Exception during LLM reset after streaming inference", e);
+                    }
+                    
+                    generating.set(false);
+                    currentCallback = null; // Clear the callback reference
+                }
+            }, nativeExecutor).exceptionally(e -> {
+                Log.e(TAG, "Exception during streaming generation", e);
+                resultFuture.completeExceptionally(e);
+                generating.set(false);
+                currentCallback = null; // Clear the callback reference
+                return null;
+            });
+
+            return resultFuture;
+        } finally {
+            lock.unlock();
+        }
     }
     
     @Override
     public void stopGeneration() {
-        if (isGenerating.get()) {
-            Log.d(TAG, "Stopping MTK backend generation");
-            shouldStop.set(true);
-            mtkBackend.stopGeneration();
+        if (!initialized.get() || !generating.get()) {
+            return;
+        }
+
+        Log.d(TAG, "Stopping MTK generation");
+        
+        // Set generating flag to false early to prevent further token processing
+        generating.set(false);
+        
+        // Use try-finally to ensure we always update flags even if an exception occurs
+        try {
+            if (lock.tryLock(500, TimeUnit.MILLISECONDS)) {
+                try {
+                    if (mtkBridge != null) {
+                        // First reset the LLM
+                        try {
+                            boolean resetSuccess = mtkBridge.nativeResetLlm();
+                            Log.d(TAG, "Reset LLM during stop generation: " + resetSuccess);
+                            
+                            // Give a small pause before trying to swap token size to let reset complete
+                            try {
+                                Thread.sleep(50);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                            }
+                            
+                            // Only try to swap token size back if we successfully reset
+                            if (resetSuccess && !usingPromptTokenSize) {
+                                try {
+                                    boolean swapBackSuccess = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                                    usingPromptTokenSize = swapBackSuccess;
+                                    Log.d(TAG, "Reset and swapped back to prompt token size after stopping generation: " + swapBackSuccess);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error swapping back to prompt token size", e);
+                                    // Continue without failing - we'll try again later
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error resetting LLM during stop generation", e);
+                            // Continue despite error - we need to ensure flags are reset
+                        }
+                    }
+                } finally {
+                    currentCallback = null; // Clear the callback when stopping
+                    lock.unlock();
+                }
+            } else {
+                Log.w(TAG, "Could not acquire lock for stopGeneration - continuing without reset");
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while trying to acquire lock for stopGeneration", e);
+            Thread.currentThread().interrupt();
+        } finally {
+            // Ensure callback is cleared even if we couldn't get the lock
+            currentCallback = null;
         }
     }
     
     @Override
     public boolean reset() {
-        lock.lock();
+        Log.d(TAG, "Resetting MTK backend");
+        boolean success = false;
+        
         try {
-            if (!isInitialized.get()) {
+            if (lock.tryLock(500, TimeUnit.MILLISECONDS)) {
+                try {
+                    if (!initialized.get()) {
+                        Log.d(TAG, "Backend not initialized, nothing to reset");
+                        return true; // Nothing to reset
+                    }
+                    
+                    // Reset native state
+                    try {
+                        boolean resetSuccess = mtkBridge.nativeResetLlm();
+                        Log.d(TAG, "LLM native reset result: " + resetSuccess);
+                        success = resetSuccess;
+                        
+                        // Give a small delay for the reset to take effect
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                        }
+                        
+                        // Always ensure we're back to prompt token size after reset
+                        if (!usingPromptTokenSize) {
+                            try {
+                                Log.d(TAG, "Switching back to prompt token size after reset");
+                                boolean swapped = mtkBridge.nativeSetTokenSize(PROMPT_TOKEN_SIZE);
+                                usingPromptTokenSize = swapped;
+                                if (!swapped) {
+                                    Log.w(TAG, "Failed to switch back to prompt token size after reset");
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error switching token size after reset", e);
+                                // Don't set success to false if only token size switching failed
+                            }
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error during reset", e);
+                        success = false;
+                    }
+                    
+                    // Reset state flags regardless of success
+                    generating.set(false);
+                    currentCallback = null;
+                    
+                    return success;
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                Log.w(TAG, "Could not acquire lock for reset - skipping");
                 return false;
             }
-            
-            Log.d(TAG, "Resetting MTK backend");
-            if (isGenerating.get()) {
-                stopGeneration();
-            }
-            
-            return mtkBackend.reset();
-        } finally {
-            lock.unlock();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while waiting for lock during reset", e);
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
     
     @Override
     public void releaseResources() {
-        lock.lock();
+        Log.d(TAG, "Starting to release MTK backend resources");
+        
         try {
-            if (isGenerating.get()) {
-                stopGeneration();
+            if (lock.tryLock(1000, TimeUnit.MILLISECONDS)) {
+                try {
+                    // First ensure no generation is running
+                    if (generating.get()) {
+                        Log.d(TAG, "Stopping active generation before releasing resources");
+                        try {
+                            stopGeneration();
+                            
+                            // Small delay to let stop take effect
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error stopping generation during resource release", e);
+                            // Continue with release anyway
+                        }
+                    }
+                    
+                    if (initialized.get()) {
+                        Log.d(TAG, "Releasing MTK backend resources");
+                        
+                        // First try to reset the LLM to ensure clean state
+                        try {
+                            boolean resetSuccess = mtkBridge.nativeResetLlm();
+                            Log.d(TAG, "Reset LLM before resource release: " + resetSuccess);
+                            
+                            // Small delay to let reset take effect
+                            try {
+                                Thread.sleep(100);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error resetting LLM before resource release", e);
+                            // Continue with release anyway
+                        }
+                        
+                        // Then release resources
+                        try {
+                            mtkBridge.nativeReleaseLlm();
+                            Log.d(TAG, "MTK backend resources released successfully");
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error releasing MTK backend resources", e);
+                            
+                            // Try one more time if the first attempt failed
+                            try {
+                                Thread.sleep(200); // Longer delay before retry
+                                mtkBridge.nativeReleaseLlm();
+                                Log.d(TAG, "MTK backend resources released on second attempt");
+                            } catch (Exception e2) {
+                                Log.e(TAG, "Failed to release MTK backend resources on second attempt", e2);
+                            }
+                        } finally {
+                            // Always mark as uninitialized, even if exceptions occurred
+                            initialized.set(false);
+                            generating.set(false);
+                            currentCallback = null;
+                        }
+                    } else {
+                        Log.d(TAG, "Backend not initialized, nothing to release");
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            } else {
+                Log.w(TAG, "Could not acquire lock for releaseResources - proceeding without lock");
+                // Even without lock, try to release resources as best we can
+                try {
+                    if (mtkBridge != null && initialized.get()) {
+                        mtkBridge.nativeReleaseLlm();
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error releasing resources without lock", e);
+                } finally {
+                    initialized.set(false);
+                    generating.set(false);
+                    currentCallback = null;
+                }
             }
-            
-            if (isInitialized.get()) {
-                Log.d(TAG, "Releasing MTK backend resources");
-                mtkBackend.releaseResources();
-                isInitialized.set(false);
-            }
-        } finally {
-            lock.unlock();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while waiting for lock during releaseResources", e);
+            Thread.currentThread().interrupt();
         }
+        
+        Log.d(TAG, "MTK backend resource release process completed");
     }
     
     @Override
@@ -233,170 +536,25 @@ public class MTKBackend implements LLMBackend {
     
     @Override
     public long getMemoryUsage() {
-        if (!isInitialized.get()) {
+        if (!initialized.get()) {
             return 0;
         }
-        return mtkBackend.getMemoryUsage();
-    }
-    
-    private boolean tryStartGeneration() {
-        return !isGenerating.getAndSet(true);
+        // No memory usage method available in MTKNativeBridge
+        return 0;
     }
     
     /**
-     * Implementation that connects to the native MTK libraries through the bridge
+     * Called by the native bridge when a token is generated
      */
-    private static class NativeMTKBackend {
-        // Reference to the MTK native bridge
-        private final com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge mtkBridge;
-        
-        public NativeMTKBackend() {
-            // Get the singleton instance of the bridge
-            this.mtkBridge = com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge.getInstance();
-        }
-        
-        public boolean initialize(String modelPath) {
-            Log.d(TAG, "Initializing MTK backend with native bridge");
-            
-            // First check if the MTK backend is available
-            if (!AppConstants.MTK_BACKEND_AVAILABLE) {
-                Log.e(TAG, "MTK backend not available - native libraries failed to load");
-                return false;
-            }
-            
+    @Override
+    public void onToken(String token) {
+        if (currentCallback != null) {
             try {
-                // Log both paths for debugging
-                Log.d(TAG, "Model path provided: " + modelPath);
-                Log.d(TAG, "Config path from constants: " + AppConstants.MTK_CONFIG_PATH);
-                
-                // Check if config file exists
-                File configFile = new File(AppConstants.MTK_CONFIG_PATH);
-                if (!configFile.exists() || !configFile.isFile()) {
-                    Log.e(TAG, "MTK config file does not exist at path: " + AppConstants.MTK_CONFIG_PATH);
-                    return false;
-                }
-                
-                Log.d(TAG, "MTK config file exists and is readable");
-                
-                // Initialize the LLM with the config path
-                // Note: The MTK backend uses the config path rather than the model path directly
-                boolean initSuccess = mtkBridge.initLlm(AppConstants.MTK_CONFIG_PATH, true);
-                
-                if (initSuccess) {
-                    Log.d(TAG, "Successfully initialized MTK native backend");
-                    return true;
-                } else {
-                    Log.e(TAG, "Failed to initialize MTK native backend");
-                    return false;
-                }
+                currentCallback.onToken(token);
+                responseBuffer.append(token); // Collect tokens for final response
             } catch (Exception e) {
-                Log.e(TAG, "Exception during MTK backend initialization", e);
-                return false;
+                Log.e(TAG, "Error in token callback", e);
             }
-        }
-        
-        public String generateResponse(String prompt) {
-            Log.d(TAG, "Generate response using MTK native bridge for prompt: " + prompt);
-            
-            try {
-                // Use a reasonable token size for generation
-                int maxResponseTokens = AppConstants.MTK_TOKEN_SIZE;
-                Log.d(TAG, "Using max response tokens: " + maxResponseTokens);
-                
-                return mtkBridge.inference(prompt, maxResponseTokens, true);
-            } catch (Exception e) {
-                Log.e(TAG, "Error during MTK inference", e);
-                return AppConstants.LLM_ERROR_RESPONSE;
-            }
-        }
-        
-        public void generateStreamingResponse(String prompt, StreamingCallback callback) {
-            Log.d(TAG, "Generate streaming response using MTK native bridge for prompt: " + prompt);
-            
-            try {
-                // Use a reasonable token size for generation
-                int maxResponseTokens = AppConstants.MTK_TOKEN_SIZE;
-                Log.d(TAG, "Using max response tokens (streaming): " + maxResponseTokens);
-                
-                // Create a special adapter class that will notify both our callback
-                // and check for stop conditions
-                class MTKBridgeAdapter implements com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge.TokenCallback {
-                    private final AtomicBoolean shouldStop = new AtomicBoolean(false);
-                    
-                    public void requestStop() {
-                        shouldStop.set(true);
-                    }
-                    
-                    @Override
-                    public void onToken(String token) {
-                        if (callback != null && !shouldStop.get()) {
-                            callback.onToken(token);
-                        }
-                    }
-                }
-                
-                MTKBridgeAdapter bridgeAdapter = new MTKBridgeAdapter();
-                
-                // Start generation in a separate thread so we can monitor for stop requests
-                Thread generationThread = new Thread(() -> {
-                    mtkBridge.streamingInference(prompt, maxResponseTokens, true, bridgeAdapter);
-                });
-                generationThread.start();
-                
-                // Wait for generation to complete or be stopped
-                try {
-                    generationThread.join(30000); // 30 second timeout
-                    if (generationThread.isAlive()) {
-                        Log.w(TAG, "Generation thread timed out, forcing stop");
-                        bridgeAdapter.requestStop();
-                        generationThread.interrupt();
-                    }
-                } catch (InterruptedException e) {
-                    Log.w(TAG, "Generation thread interrupted");
-                    bridgeAdapter.requestStop();
-                    generationThread.interrupt();
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error during MTK streaming inference", e);
-                callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
-            }
-        }
-        
-        public void stopGeneration() {
-            Log.d(TAG, "Stopping MTK generation through native bridge");
-            try {
-                mtkBridge.resetLlm();
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping MTK generation", e);
-            }
-        }
-        
-        public boolean reset() {
-            Log.d(TAG, "Resetting MTK backend through native bridge");
-            try {
-                return mtkBridge.resetLlm();
-            } catch (Exception e) {
-                Log.e(TAG, "Error resetting MTK backend", e);
-                return false;
-            }
-        }
-        
-        public void releaseResources() {
-            Log.d(TAG, "Releasing MTK resources through native bridge");
-            try {
-                mtkBridge.releaseLlm();
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing MTK resources", e);
-            }
-        }
-        
-        public long getMemoryUsage() {
-            // Not implemented in the native bridge, return a placeholder value
-            return 0;
-        }
-        
-        public interface StreamingCallback {
-            void onToken(String token);
         }
     }
 } 
