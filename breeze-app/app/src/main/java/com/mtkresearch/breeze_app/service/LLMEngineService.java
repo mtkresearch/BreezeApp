@@ -13,6 +13,7 @@ import com.executorch.PromptFormat;
 import com.executorch.ModelType;
 import com.mtkresearch.breeze_app.utils.ConversationManager;
 import com.mtkresearch.breeze_app.utils.AppConstants;
+import com.mtkresearch.breeze_app.service.bridge.MTKNativeBridge;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -34,40 +35,13 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     // Add Handler for UI thread operations
     private final Handler handler = new Handler();
     
-    // Add bridge instance for JNI calls
-    private static com.mtkresearch.gai_android.service.LLMEngineService bridgeInstance = null;
+    // The bridge for native method calls
+    private MTKNativeBridge mtkBridge;
     
     static {
         try {
-            // Load libraries in order
-            System.loadLibrary("sigchain");  // Load signal handler first
-            Thread.sleep(100);  // Give time for signal handlers to initialize
-            
-            System.loadLibrary("breeze_llm_jni");
-            
-            // Try to initialize the bridge for JNI calls
-            try {
-                // Create a bridge instance - this will create the class with the package name the native code expects
-                bridgeInstance = com.mtkresearch.gai_android.service.LLMEngineService.class.newInstance();
-                
-                // Test if native methods work by trying to call one
-                boolean nativeMethodsAvailable = false;
-                try {
-                    // Try calling nativeResetLlm to verify it exists
-                    bridgeInstance.nativeResetLlm();
-                    nativeMethodsAvailable = true;
-                    Log.d(TAG, "Successfully verified native methods through bridge");
-                } catch (UnsatisfiedLinkError e) {
-                    Log.e(TAG, "Native methods implemented incorrectly: " + e.getMessage());
-                    nativeMethodsAvailable = false;
-                }
-                
-                AppConstants.MTK_BACKEND_AVAILABLE = nativeMethodsAvailable;
-                Log.d(TAG, "Successfully loaded llm_jni library, native methods available: " + nativeMethodsAvailable);
-            } catch (Exception e) {
-                Log.e(TAG, "Error creating bridge instance: " + e.getMessage(), e);
-                AppConstants.MTK_BACKEND_AVAILABLE = false;
-            }
+            // Initialize the MTK native bridge
+            boolean success = MTKNativeBridge.initialize();
             
             // Register shutdown hook for cleanup
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -78,9 +52,9 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     Log.e(TAG, "Error in shutdown hook", e);
                 }
             }));
-        } catch (UnsatisfiedLinkError | Exception e) {
+        } catch (Exception e) {
             AppConstants.MTK_BACKEND_AVAILABLE = false;
-            Log.w(TAG, "Failed to load native libraries, MTK backend will be disabled", e);
+            Log.w(TAG, "Failed to initialize MTK native bridge, MTK backend will be disabled", e);
         }
     }
     
@@ -118,14 +92,12 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     public LLMEngineService() {
         this.conversationManager = new ConversationManager();
         
-        // Register this instance with the bridge if available
-        if (bridgeInstance != null) {
-            try {
-                com.mtkresearch.gai_android.service.LLMEngineService.registerInstance(this);
-                Log.d(TAG, "Registered this instance with the JNI bridge");
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to register instance with bridge", e);
-            }
+        // Initialize the MTK bridge
+        this.mtkBridge = MTKNativeBridge.getInstance();
+        
+        // Register this instance with the bridge
+        if (AppConstants.MTK_BACKEND_AVAILABLE) {
+            mtkBridge.registerService(this);
         }
     }
     
@@ -605,9 +577,9 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     try {
                         // Add delay before cleanup
                         Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeResetLlm();
+                        safeNativeResetLlm();
                         Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeReleaseLlm();
+                        safeNativeReleaseLlm();
                         mtkInitCount = 0; // Reset init count
                         Log.d(TAG, "Released MTK resources");
                     } catch (Exception e) {
@@ -693,7 +665,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
 
             // Verify native methods are available
             try {
-                nativeResetLlm();
+                safeNativeResetLlm();
             } catch (UnsatisfiedLinkError e) {
                 Log.e(TAG, "Native methods unavailable: " + e.getMessage());
                 AppConstants.MTK_BACKEND_AVAILABLE = false;
@@ -728,22 +700,12 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 try {
                     // Reset state before initialization
                     Log.d(TAG, "Resetting LLM state before initialization");
-                    try {
-                        nativeResetLlm();
-                    } catch (UnsatisfiedLinkError e) {
-                        Log.e(TAG, "Native method nativeResetLlm() not found: " + e.getMessage());
-                        return false;
-                    }
+                    safeNativeResetLlm();
                     Thread.sleep(100);
                     
                     // Initialize with MTK config path
                     Log.d(TAG, "Calling nativeInitLlm with path: " + AppConstants.MTK_CONFIG_PATH);
-                    try {
-                        success = nativeInitLlm(AppConstants.MTK_CONFIG_PATH, true);
-                    } catch (UnsatisfiedLinkError e) {
-                        Log.e(TAG, "Native method nativeInitLlm() not found: " + e.getMessage());
-                        return false;
-                    }
+                    success = safeNativeInitLlm(AppConstants.MTK_CONFIG_PATH, true);
                     
                     if (!success) {
                         Log.e(TAG, "MTK initialization returned false");
@@ -753,13 +715,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     
                     // After successful initialization, set the prompt token size
                     Log.d(TAG, "Setting initial prompt token size: " + AppConstants.MTK_PROMPT_TOKEN_SIZE);
-                    try {
-                        safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
-                        Thread.sleep(100); // Brief delay after model swap
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error setting initial token size", e);
-                        // Continue anyway since initialization was successful
-                    }
+                    safeNativeSwapModel(AppConstants.MTK_PROMPT_TOKEN_SIZE);
+                    Thread.sleep(100); // Brief delay after model swap
                     
                 } catch (Exception e) {
                     Log.e(TAG, "Error during MTK initialization", e);
@@ -797,7 +754,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Reset with timeout
                 Future<?> resetFuture = cleanupExecutor.submit(() -> {
                     try {
-                        tempInstance.nativeResetLlm();
+                        tempInstance.safeNativeResetLlm();
                     } catch (Exception e) {
                         Log.w(TAG, "Error during emergency reset", e);
                     }
@@ -815,7 +772,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Release with timeout
                 Future<?> releaseFuture = cleanupExecutor.submit(() -> {
                     try {
-                        tempInstance.nativeReleaseLlm();
+                        tempInstance.safeNativeReleaseLlm();
                     } catch (Exception e) {
                         Log.w(TAG, "Error during emergency release", e);
                     }
@@ -855,9 +812,9 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 for (int i = 0; i < 3; i++) {
                     Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
                         try {
-                            nativeResetLlm();
+                            safeNativeResetLlm();
                             Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                            nativeReleaseLlm();
+                            safeNativeReleaseLlm();
                         } catch (Exception e) {
                             Log.e(TAG, "Error during forced cleanup attempt", e);
                         }
@@ -893,17 +850,9 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             // Force cleanup in a separate thread with timeout
             Thread cleanupThread = new Thread(() -> {
                 try {
-                    try {
-                        nativeResetLlm();
-                    } catch (UnsatisfiedLinkError e) {
-                        Log.e(TAG, "Native method nativeResetLlm() missing during cleanup: " + e.getMessage());
-                    }
+                    safeNativeResetLlm();
                     Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                    try {
-                        nativeReleaseLlm();
-                    } catch (UnsatisfiedLinkError e) {
-                        Log.e(TAG, "Native method nativeReleaseLlm() missing during cleanup: " + e.getMessage());
-                    }
+                    safeNativeReleaseLlm();
                 } catch (Exception e) {
                     Log.w(TAG, "Error during error cleanup", e);
                 }
@@ -921,95 +870,36 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         }
     }
 
-    // Replace native method declarations with calls to the bridge
+    // Delegate to the bridge for native methods
     private boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeInitLlm");
-            return false;
-        }
-        try {
-            return bridgeInstance.nativeInitLlm(yamlConfigPath, preloadSharedWeights);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeInitLlm() not available: " + e.getMessage());
-            return false;
-        }
+        return mtkBridge.initLlm(yamlConfigPath, preloadSharedWeights);
     }
     
     private String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeInference");
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-        try {
-            return bridgeInstance.nativeInference(inputString, maxResponse, parsePromptTokens);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeInference() not available: " + e.getMessage());
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
+        return mtkBridge.inference(inputString, maxResponse, parsePromptTokens);
     }
     
-    private String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, 
-                                            final TokenCallback callback) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeStreamingInference");
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
-        try {
-            // Create adapter for the callback
-            com.mtkresearch.gai_android.service.LLMEngineService.TokenCallback bridgeCallback = 
-                new com.mtkresearch.gai_android.service.LLMEngineService.TokenCallback() {
-                    @Override
-                    public void onToken(String token) {
-                        if (callback != null) {
-                            callback.onToken(token);
-                        }
-                    }
-                };
-            return bridgeInstance.nativeStreamingInference(inputString, maxResponse, parsePromptTokens, bridgeCallback);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeStreamingInference() not available: " + e.getMessage());
-            return AppConstants.LLM_ERROR_RESPONSE;
-        }
+    private String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback) {
+        return mtkBridge.streamingInference(inputString, maxResponse, parsePromptTokens, new MTKNativeBridge.TokenCallback() {
+            @Override
+            public void onToken(String token) {
+                callback.onToken(token);
+            }
+        });
     }
     
     private void nativeReleaseLlm() {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeReleaseLlm");
-            return;
-        }
-        try {
-            bridgeInstance.nativeReleaseLlm();
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeReleaseLlm() not available: " + e.getMessage());
-        }
+        mtkBridge.releaseLlm();
     }
     
     private boolean nativeResetLlm() {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeResetLlm");
-            return false;
-        }
-        try {
-            return bridgeInstance.nativeResetLlm();
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeResetLlm() not available: " + e.getMessage());
-            return false;
-        }
+        return mtkBridge.resetLlm();
     }
     
     private boolean nativeSwapModel(int tokenSize) {
-        if (bridgeInstance == null) {
-            Log.e(TAG, "Bridge instance is null, cannot call nativeSwapModel");
-            return false;
-        }
-        try {
-            return bridgeInstance.nativeSwapModel(tokenSize);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeSwapModel() not available: " + e.getMessage());
-            return false;
-        }
+        return mtkBridge.swapModel(tokenSize);
     }
-
+    
     // Interface for token callbacks (from original implementation)
     public interface TokenCallback {
         void onToken(String token);
@@ -1022,21 +912,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
             }
             return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
-        }
-
-        // Check if native methods are available
-        try {
-            // Test if nativeStreamingInference exists
-            nativeStreamingInference("test", 1, false, null);
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Native method nativeStreamingInference() not available: " + e.getMessage());
-            if (callback != null) {
-                callback.onToken(AppConstants.LLM_ERROR_RESPONSE + " (Native methods missing)");
-            }
-            return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE + " (Native methods missing)");
-        } catch (Exception e) {
-            // This is expected as we passed null callback
-            // Just checking if the method exists
         }
 
         currentCallback = callback;
@@ -1146,7 +1021,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                text.contains(PromptFormat.getStopToken(ModelType.LLAMA_3_2));
     }
 
-    // Add safe versions of native methods that won't crash when implementations are missing
+    // Safe versions of native methods that won't crash when implementations are missing
     private boolean safeNativeResetLlm() {
         try {
             return nativeResetLlm();
@@ -1179,6 +1054,37 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         } catch (UnsatisfiedLinkError e) {
             Log.e(TAG, "Native method nativeSwapModel() not available: " + e.getMessage());
             return false;
+        }
+    }
+
+    // Add methods required by the native code that will be called through JNI
+    // These are essential for the bridge pattern to work correctly
+    public void onNativeToken(String token) {
+        if (currentCallback != null && isGenerating.get()) {
+            currentCallback.onToken(token);
+            currentStreamingResponse.append(token);
+        }
+    }
+    
+    public void onNativeError(String error) {
+        Log.e(TAG, "Native error: " + error);
+        
+        if (currentCallback != null) {
+            currentCallback.onToken("[Error: " + error + "]");
+        }
+        
+        // Make sure generation is completed
+        if (isGenerating.get()) {
+            completeGeneration();
+        }
+    }
+    
+    public void onNativeCompletion(String text) {
+        Log.d(TAG, "Native completion received, length: " + (text != null ? text.length() : 0));
+        
+        // Make sure generation is completed
+        if (isGenerating.get()) {
+            completeGeneration();
         }
     }
 } 
