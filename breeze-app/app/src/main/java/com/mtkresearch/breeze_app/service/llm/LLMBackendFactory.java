@@ -51,10 +51,13 @@ public interface LLMBackendFactory {
                 return null;
             }
             
-            String configPath = AppConstants.MTK_CONFIG_PATH;
+            String configPath = AppConstants.getMtkConfigPath(context);
+            android.util.Log.d("LLMBackendFactory", "Using MTK config path: " + configPath);
+            
             String modelPath = AppConstants.getModelPath(context);
             // Get MTKNativeBridge instance
             MTKNativeBridge mtkBridge = MTKNativeBridge.getInstance();
+            // Pass context to MTKBackend so it can show the download dialog if needed
             return new MTKBackend(mtkBridge, modelPath, configPath);
         }
         

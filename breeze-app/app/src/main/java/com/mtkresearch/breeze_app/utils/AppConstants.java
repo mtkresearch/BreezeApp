@@ -44,7 +44,7 @@ public class AppConstants {
     public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;   // 5 seconds timeout for cleanup
     
     // MTK Backend Constants
-    public static final String MTK_CONFIG_PATH = "/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml";
+    public static final String MTK_CONFIG_PATH = "/data/user/0/com.mtkresearch.breeze_app.breeze/files/models/Breeze2-3B-Instruct-mobile-npu/config_breezetiny_3b_instruct.yaml";
     public static final String MTK_SERVICE_TAG = "LLMEngineService";
     public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
@@ -141,6 +141,13 @@ public class AppConstants {
             this.displayName = displayName;
             this.fileType = fileType;
             this.fileSize = fileSize;
+        }
+        
+        /**
+         * Convenience constructor that sets fileType to FILE_TYPE_LLM by default
+         */
+        public DownloadFileInfo(String url, String fileName, String displayName, long fileSize) {
+            this(url, fileName, displayName, FILE_TYPE_LLM, fileSize);
         }
     }
     
@@ -457,5 +464,56 @@ public class AppConstants {
             return java.util.concurrent.Executors.newSingleThreadExecutor();
         }
         return executor;
+    }
+
+    // Get MTK config path - use downloaded config when available
+    public static String getMtkConfigPath(Context context) {
+        if (context != null) {
+            // First check if we have a downloaded config file in the MTK NPU model directory
+            File mtkNpuDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), MTK_NPU_MODEL_DIR);
+            File configFile = new File(mtkNpuDir, MTK_NPU_MODEL_CONFIG_FILE);
+            
+            if (configFile.exists() && configFile.length() > 0) {
+                Log.d(TAG, "Using downloaded MTK config file: " + configFile.getAbsolutePath());
+                return configFile.getAbsolutePath();
+            }
+        }
+        
+        // Fall back to default path if no downloaded config
+        Log.d(TAG, "Using default MTK config path: " + MTK_CONFIG_PATH);
+        return MTK_CONFIG_PATH;
+    }
+
+    // MTK NPU Model Directory and files
+    public static final String MTK_NPU_MODEL_DIR = "mtk_npu";
+    public static final String MTK_NPU_MODEL_CONFIG_FILE = "config_breezetiny_3b_instruct.yaml";
+    
+    // MTK NPU Model Download URLs
+    public static final String MTK_NPU_MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/";
+    // Mirror URL using HF Mirror
+    public static final String MTK_NPU_MODEL_MIRROR_URL = "https://hf-mirror.com/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/";
+    // Direct download URLs for MTK NPU files (fallback)
+    public static final String MTK_NPU_CONFIG_DIRECT_URL = "https://raw.githubusercontent.com/MediaTek-Research/briztk/main/config_breezetiny_3b_instruct.yaml";
+    
+    // Fallback direct URLs for each file type - used when Hugging Face is unreachable
+    public static final String[] MTK_NPU_FALLBACK_URLS = {
+        "https://raw.githubusercontent.com/MediaTek-Research/briztk/main/samples/config_breezetiny_3b_instruct.yaml",
+        "https://fastly.jsdelivr.net/gh/MediaTek-Research/briztk@main/samples/config_breezetiny_3b_instruct.yaml",
+        "https://cdn.jsdelivr.net/gh/MediaTek-Research/briztk@main/samples/config_breezetiny_3b_instruct.yaml"
+    };
+    
+    // Helper method to generate multiple download URLs for a file
+    private static String getMultipleUrls(String filename) {
+        String urls = MTK_NPU_MODEL_BASE_URL + filename + ";" + 
+               MTK_NPU_MODEL_MIRROR_URL + filename;
+        
+        // For config file, add the direct GitHub URLs
+        if (filename.equals(MTK_NPU_MODEL_CONFIG_FILE)) {
+            for (String fallbackUrl : MTK_NPU_FALLBACK_URLS) {
+                urls += ";" + fallbackUrl;
+            }
+        }
+        
+        return urls;
     }
 } 

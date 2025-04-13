@@ -334,4 +334,8 @@
     <string name="small_model_option">%1$s (%2$s)\nFaster startup, less memory usage, suitable for devices with limited resources</string>
     <string name="continue_button">Continue</string>
 
+    <string name="retry_download">Retry Download</string>
+    <string name="download_failed_unknown">Download failed for unknown reason</string>
+    <string name="download_progress_format">Progress: %1$d%% (%2$s / %3$s)</string>
+
 </resources>
