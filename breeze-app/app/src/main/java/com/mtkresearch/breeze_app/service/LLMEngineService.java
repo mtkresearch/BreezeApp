@@ -315,30 +315,78 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                         isInitialized = true;
                     }
                     Log.i(TAG, "Successfully initialized " + finalBackendName + " backend");
+                    completeInitialization(true);
+                    return true;
                 } else {
                     Log.e(TAG, "Failed to initialize " + finalBackendName + " backend");
+                    
+                    // If MTK initialization failed, try CPU as fallback
+                    if (finalBackendName.equals(AppConstants.BACKEND_MTK)) {
+                        Log.i(TAG, "Attempting fallback to CPU backend after MTK initialization failure");
+                        initializationInProgress = true; // Keep initialization in progress
+                        tryFallbackCPUBackend();
+                        // Don't complete initialization yet - the fallback will handle it
+                        return false;
+                    } else {
+                        // If this was already CPU or another backend, just fail
+                        completeInitialization(false);
+                        return false;
+                    }
                 }
-                
-                completeInitialization(success);
-                return success;
             })
             .exceptionally(e -> {
                 Log.e(TAG, "Exception during " + finalBackendName + " initialization", e);
-                completeInitialization(false);
-                return false;
+                
+                // If MTK threw exception, try CPU as fallback
+                if (finalBackendName.equals(AppConstants.BACKEND_MTK)) {
+                    Log.i(TAG, "Attempting fallback to CPU backend after MTK initialization exception");
+                    initializationInProgress = true; // Keep initialization in progress
+                    tryFallbackCPUBackend();
+                    // Don't complete initialization yet - the fallback will handle it
+                    return false;
+                } else {
+                    // If this was already CPU or another backend, just fail
+                    completeInitialization(false);
+                    return false;
+                }
             });
     }
     
-    // Helper method to complete initialization cleanly
-    private void completeInitialization(boolean success) {
-        synchronized (initLock) {
-            if (!success) {
-                isInitialized = false;
+    // Helper method to try CPU backend as fallback
+    private void tryFallbackCPUBackend() {
+        Log.d(TAG, "Initializing CPU backend as fallback");
+        try {
+            // Create CPU backend
+            LLMBackend cpuBackend = backendFactory.createCPUBackend(modelPath);
+            if (cpuBackend == null) {
+                Log.e(TAG, "Failed to create CPU backend for fallback");
+                completeInitialization(false);
+                return;
             }
-            initializationInProgress = false;
-            if (currentInitFuture != null && !currentInitFuture.isDone()) {
-                currentInitFuture.complete(success);
-            }
+            
+            // Try to initialize it
+            cpuBackend.initialize().thenApply(success -> {
+                if (success) {
+                    synchronized (initLock) {
+                        currentBackend = cpuBackend;
+                        currentBackendName = AppConstants.BACKEND_CPU;
+                        isInitialized = true;
+                    }
+                    Log.i(TAG, "Successfully initialized CPU backend as fallback");
+                    completeInitialization(true);
+                } else {
+                    Log.e(TAG, "Failed to initialize CPU backend as fallback");
+                    completeInitialization(false);
+                }
+                return success;
+            }).exceptionally(e -> {
+                Log.e(TAG, "Exception during CPU fallback initialization", e);
+                completeInitialization(false);
+                return false;
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating CPU backend for fallback", e);
+            completeInitialization(false);
         }
     }
 
@@ -664,6 +712,19 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
              }
              currentCallback = null;
              currentStreamingResponse.setLength(0);
+        }
+    }
+
+    // Helper method to complete initialization cleanly
+    private void completeInitialization(boolean success) {
+        synchronized (initLock) {
+            if (!success) {
+                isInitialized = false;
+            }
+            initializationInProgress = false;
+            if (currentInitFuture != null && !currentInitFuture.isDone()) {
+                currentInitFuture.complete(success);
+            }
         }
     }
 
