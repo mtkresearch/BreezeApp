@@ -55,6 +55,7 @@
 
         <activity
             android:name="com.mtkresearch.breeze_app.ChatActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Breeze2Demo">

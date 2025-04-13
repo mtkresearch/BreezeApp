@@ -156,11 +156,41 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onResume() {
         super.onResume();
-        reinitializeLLMIfNeeded();
+        Log.d(TAG, "Activity resumed");
+        
+        // Fix for out-of-order buffer issues: force recreate the window surface
+        // This helps sync the buffer state when coming back from background
+        final View decorView = getWindow().getDecorView();
+        decorView.post(() -> {
+            // Post to ensure we're in the correct rendering state
+            try {
+                // Force a new frame
+                decorView.invalidate();
+                
+                // If needed, we can force a complete redraw with:
+                // ViewCompat.setLayerType(decorView, ViewCompat.LAYER_TYPE_HARDWARE, null);
+                // decorView.setWillNotDraw(false);
+                
+                // Schedule another invalidate in the next frame to ensure proper sync
+                decorView.postDelayed(() -> {
+                    decorView.invalidate();
+                }, 16); // Approximately one frame at 60fps
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error handling surface synchronization", e);
+            }
+        });
+        
+        // Wait a moment before performing heavy operations after resume
+        decorView.postDelayed(() -> {
+            // Any post-resume initialization that should happen after the UI is stable
+            reinitializeLLMIfNeeded();
+        }, 100);
     }
 
     @Override
     protected void onPause() {
+        Log.d(TAG, "Activity paused");
         super.onPause();
         saveCurrentChat();
         releaseLLMResources();
