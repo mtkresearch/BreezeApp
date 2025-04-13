@@ -43,7 +43,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             System.loadLibrary("sigchain");  // Load signal handler first
             Thread.sleep(100);  // Give time for signal handlers to initialize
             
-            System.loadLibrary("llm_jni");
+            System.loadLibrary("breeze_llm_jni");
             
             // Try to initialize the bridge for JNI calls
             try {
@@ -288,11 +288,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 }
 
                 // For testing, we'll only try MTK and fail if it's not available rather than falling back to CPU
-                Log.e(TAG, "MTK initialization failed, NOT falling back to CPU as requested");
-                future.complete(false);
-                return false;
+                Log.d(TAG, "MTK initialization failed, falling back to CPU backend");
                 
-                /* Commented out CPU fallback code for testing
                 // Try CPU backend if MTK failed or CPU is preferred
                 loadLocalModel();
                 
@@ -307,7 +304,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 Log.e(TAG, "All backend initialization attempts failed");
                 future.complete(false);
                 return false;
-                */
             } catch (Exception e) {
                 Log.e(TAG, "Error during initialization", e);
                 future.completeExceptionally(e);
