@@ -14,9 +14,11 @@ import com.mtkresearch.breeze_app.utils.ConversationManager;
 import com.mtkresearch.breeze_app.utils.AppConstants;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class LLMEngineService extends BaseEngineService implements LlamaCallback {
@@ -86,6 +88,10 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             return "Unknown";
         }
         return com.mtkresearch.breeze_app.utils.ModelUtils.getModelDisplayName(modelPath);
+    }
+
+    public interface StreamingResponseCallback {
+        void onToken(String token);
     }
 
     public LLMEngineService() {
@@ -467,7 +473,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             
             if (modelPath == null) {
                 Log.e(TAG, "Model path is null, cannot initialize");
-                return;
+                return false;
             }
             
             // Get temperature from constants
@@ -486,12 +492,10 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             // Load the model
             int loadResult = mModule.load();
             
-            modelLoadTime = System.currentTimeMillis() - runStartTime;
-            
             if (loadResult != 0) {
                 Log.e(TAG, "Failed to load model: " + loadResult);
                 mModule = null;
-                return;
+                return false;
             }
 
             Log.d(TAG, "Local CPU backend initialized successfully");
@@ -500,73 +504,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             Log.e(TAG, "Error initializing Local CPU backend", e);
             return false;
         }
-    }
-
-    public CompletableFuture<String> generateResponse(String prompt) {
-        if (!isInitialized || mModule == null) {
-            return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
-        }
-
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                switch (currentBackend) {
-                    case AppConstants.BACKEND_MTK:
-                        String response = nativeInference(prompt, 256, false);
-                        nativeResetLlm();
-                        nativeSwapModel(128);
-                        return response;
-                    case AppConstants.BACKEND_CPU:
-                        try {
-                            // Calculate sequence length based on prompt length, matching original implementation
-                            int seqLen = (int)(prompt.length() * 0.75) + 64;  // Original Llama runner formula
-                            
-                            CompletableFuture<String> future = new CompletableFuture<>();
-                            currentResponse = future;
-                            
-                            executor.execute(() -> {
-                                try {
-                                    mModule.generate(prompt, seqLen, new LlamaCallback() {
-                                        @Override
-                                        public void onResult(String result) {
-                                            if (!isGenerating.get() || 
-                                                result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
-                                                return;
-                                            }
-                                            currentStreamingResponse.append(result);
-                                        }
-
-                                        @Override
-                                        public void onStats(float tps) {
-                                            Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
-                                        }
-                                    }, false);
-                                    
-                                    // Only complete if we haven't been stopped
-                                    if (isGenerating.get()) {
-                                        currentResponse.complete(currentStreamingResponse.toString());
-                                    }
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Error in CPU generation", e);
-                                    if (!currentResponse.isDone()) {
-                                        currentResponse.completeExceptionally(e);
-                                    }
-                                } finally {
-                                    isGenerating.set(false);
-                                }
-                            });
-                            
-                            return future.get(60000, TimeUnit.MILLISECONDS);
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error in CPU streaming response", e);
-                            throw e;
-                        }
-                    default:
-                        return AppConstants.LLM_ERROR_RESPONSE;
-                }
-            }
-        });
-        
-        return future;
     }
     
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
@@ -716,6 +653,18 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         });
         
         return resultFuture;
+    }
+
+    private void completeGeneration() {
+        if (isGenerating.compareAndSet(true, false)) {
+            String finalResponse = currentStreamingResponse.toString();
+            if (currentResponse != null && !currentResponse.isDone()) {
+                currentResponse.complete(finalResponse);
+            }
+            // Clean up resources
+            currentCallback = null;
+            System.gc(); // Request garbage collection for any lingering resources
+        }
     }
     
     public void stopGeneration() {
