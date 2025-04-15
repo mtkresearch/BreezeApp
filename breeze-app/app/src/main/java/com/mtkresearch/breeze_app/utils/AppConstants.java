@@ -32,10 +32,10 @@ public class AppConstants {
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
     public static final String BACKEND_MTK = "mtk";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend since MTK is experimental
+    public static final String BACKEND_DEFAULT = BACKEND_MTK;  // Default to CPU backend since MTK is experimental
     
     // Backend Enable Flags
-    public static final boolean MTK_BACKEND_ENABLED = false;  // Set to true to enable MTK backend
+    public static final boolean MTK_BACKEND_ENABLED = true;  // Set to true to enable MTK backend
     public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
     
     // Backend Initialization Constants
