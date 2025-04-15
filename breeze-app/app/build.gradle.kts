@@ -11,18 +11,22 @@ android {
 
     defaultConfig {
         applicationId = "com.mtkresearch.breeze_app"
-        minSdk = 26
+        minSdk = 33
         targetSdk = 35
         versionCode = 1
         versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
+        vectorDrawables.useSupportLibrary = true
 
         ndk {
             abiFilters.addAll(listOf("arm64-v8a"))
+        }
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+            }
         }
 
         manifestPlaceholders["app_name"] = "BreezeApp"
@@ -55,18 +59,17 @@ android {
 
     sourceSets {
         getByName("main") {
-            java {
-                srcDirs("src/main/java")
-            }
-            jniLibs {
-                srcDirs("libs")
-            }
+            java.srcDirs("src/main/java")
+            jniLibs.srcDirs("libs")
         }
     }
 
-    packaging {
-        jniLibs {
-            useLegacyPackaging = true
+    packaging.jniLibs.useLegacyPackaging = true
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
 
@@ -78,7 +81,7 @@ android {
             versionNameSuffix = "-breeze"
             resValue("string", "app_name", "Breeze2-demo")
             buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
-            manifestPlaceholders["file_provider_authority"] = 
+            manifestPlaceholders["file_provider_authority"] =
                 "com.mtkresearch.breeze_app.breeze.fileprovider"
         }
     }
