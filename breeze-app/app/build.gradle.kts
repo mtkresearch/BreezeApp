@@ -108,7 +108,7 @@ dependencies {
     implementation("androidx.appcompat:appcompat:${Versions.APPCOMPAT}")
     implementation("com.google.android.material:material:${Versions.MATERIAL}")
     implementation("androidx.constraintlayout:constraintlayout:${Versions.CONSTRAINT_LAYOUT}")
-    
+
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${Versions.COROUTINES}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.COROUTINES}")
