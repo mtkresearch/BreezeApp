@@ -31,19 +31,41 @@ public class AppConstants {
     // Backend Constants
     public static final String BACKEND_NONE = "none";
     public static final String BACKEND_CPU = "cpu";
-    public static final String BACKEND_DEFAULT = BACKEND_CPU;  // Default to CPU backend
+    public static final String BACKEND_MTK = "mtk";
+    public static final String BACKEND_DEFAULT = BACKEND_MTK;  // Default to CPU backend since MTK is experimental
     
-    // Backend Enable Flags - MTK related flags removed
+    // Backend Enable Flags
+    public static final boolean MTK_BACKEND_ENABLED = true;  // Set to true to enable MTK backend
+    public static volatile boolean MTK_BACKEND_AVAILABLE = false;  // Runtime state of MTK backend availability
     
-    // Backend Initialization Constants - MTK related constants removed
+    // Backend Initialization Constants
     public static final long BACKEND_INIT_DELAY_MS = 200;    // Delay between backend initialization attempts
     public static final long BACKEND_CLEANUP_DELAY_MS = 100; // Delay for backend cleanup operations
+    public static final int MAX_MTK_INIT_ATTEMPTS = 5;       // Maximum attempts to initialize MTK backend
+    public static final long MTK_NATIVE_OP_TIMEOUT_MS = 10000;
+    public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;   // 5 seconds timeout for cleanup
+    
+    // MTK Backend Constants
+    public static final String MTK_CONFIG_PATH = "/data/user/0/com.mtkresearch.breeze_app.breeze/files/models/Breeze2-3B-Instruct-mobile-npu/config_breezetiny_3b_instruct.yaml";
+    public static final String MTK_SERVICE_TAG = "LLMEngineService";
+    public static final Object MTK_LOCK = new Object();
+    public static final boolean MTK_VALIDATE_UTF8 = false;
+    public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
+    public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
+    public static final int MTK_PROMPT_TOKEN_SIZE = 128; // Token size for prompt processing
+    public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts
+    public static volatile boolean isCleaningUp = false; // Flag to track MTK cleanup state
+    
+    // LLM Stop Tokens
+    public static final String LLM_STOP_TOKEN_EOT = "<|eot_id|>";
+    public static final String LLM_STOP_TOKEN_EOT_ALT = "<|end_of_text|>";
     
     // LLM Service Constants
     public static final long LLM_INIT_TIMEOUT_MS = 300000;  // 5 minutes for initialization
     public static final long LLM_GENERATION_TIMEOUT_MS = Long.MAX_VALUE;  // No timeout for generation
     public static final long LLM_NATIVE_OP_TIMEOUT_MS = 10000;  // 10 seconds for native ops
     public static final long LLM_CLEANUP_TIMEOUT_MS = 10000;  // 10 seconds for cleanup
+    public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
 
     // Model Files and Paths
@@ -121,6 +143,13 @@ public class AppConstants {
             this.displayName = displayName;
             this.fileType = fileType;
             this.fileSize = fileSize;
+        }
+        
+        /**
+         * Convenience constructor that sets fileType to FILE_TYPE_LLM by default
+         */
+        public DownloadFileInfo(String url, String fileName, String displayName, long fileSize) {
+            this(url, fileName, displayName, FILE_TYPE_LLM, fileSize);
         }
     }
     
@@ -361,6 +390,10 @@ public class AppConstants {
     // LLM Configuration
     public static final float LLM_TEMPERATURE = 0.2f;
     
+    // When false: Send button always shows send icon and only sends messages
+    // When true: Send button toggles between send and audio chat mode
+    public static final boolean AUDIO_CHAT_ENABLED = false;
+
     // Conversation History Constants
     public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
 
@@ -381,6 +414,9 @@ public class AppConstants {
     // Activity Tags
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
+    public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
+
+
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {
@@ -422,4 +458,71 @@ public class AppConstants {
     public static final boolean EXPANDED_INPUT_ENABLED = true;
     // Enable downloading models
     public static final boolean DOWNLOAD_ENABLED = true;
+
+    // Check if MTK backend is truly available
+    public static boolean isMTKBackendAvailable() {
+        return MTK_BACKEND_ENABLED && MTK_BACKEND_AVAILABLE && 
+               com.mtkresearch.breeze_app.service.LLMEngineService.isMTKBackendAvailable();
+    }
+    
+    // Safely get a working executor or create one if needed
+    public static java.util.concurrent.ExecutorService ensureExecutor(
+            java.util.concurrent.ExecutorService executor, String logTag) {
+        if (executor == null || executor.isShutdown()) {
+            android.util.Log.w(logTag, "Executor null or shutdown, creating new one");
+            return java.util.concurrent.Executors.newSingleThreadExecutor();
+        }
+        return executor;
+    }
+
+    // Get MTK config path - use downloaded config when available
+    public static String getMtkConfigPath(Context context) {
+        if (context != null) {
+            // First check if we have a downloaded config file in the MTK NPU model directory
+            File mtkNpuDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), MTK_NPU_MODEL_DIR);
+            File configFile = new File(mtkNpuDir, MTK_NPU_MODEL_CONFIG_FILE);
+            
+            if (configFile.exists() && configFile.length() > 0) {
+                Log.d(TAG, "Using downloaded MTK config file: " + configFile.getAbsolutePath());
+                return configFile.getAbsolutePath();
+            }
+        }
+        
+        // Fall back to default path if no downloaded config
+        Log.d(TAG, "Using default MTK config path: " + MTK_CONFIG_PATH);
+        return MTK_CONFIG_PATH;
+    }
+
+    // MTK NPU Model Directory and files
+    public static final String MTK_NPU_MODEL_DIR = "mtk_npu";
+    public static final String MTK_NPU_MODEL_CONFIG_FILE = "config_breezetiny_3b_instruct.yaml";
+    
+    // MTK NPU Model Download URLs
+    public static final String MTK_NPU_MODEL_BASE_URL = "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/";
+    // Mirror URL using HF Mirror
+    public static final String MTK_NPU_MODEL_MIRROR_URL = "https://hf-mirror.com/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/";
+    // Direct download URLs for MTK NPU files (fallback)
+    public static final String MTK_NPU_CONFIG_DIRECT_URL = "https://raw.githubusercontent.com/MediaTek-Research/briztk/main/config_breezetiny_3b_instruct.yaml";
+    
+    // Fallback direct URLs for each file type - used when Hugging Face is unreachable
+    public static final String[] MTK_NPU_FALLBACK_URLS = {
+        "https://raw.githubusercontent.com/MediaTek-Research/briztk/main/samples/config_breezetiny_3b_instruct.yaml",
+        "https://fastly.jsdelivr.net/gh/MediaTek-Research/briztk@main/samples/config_breezetiny_3b_instruct.yaml",
+        "https://cdn.jsdelivr.net/gh/MediaTek-Research/briztk@main/samples/config_breezetiny_3b_instruct.yaml"
+    };
+    
+    // Helper method to generate multiple download URLs for a file
+    private static String getMultipleUrls(String filename) {
+        String urls = MTK_NPU_MODEL_BASE_URL + filename + ";" + 
+               MTK_NPU_MODEL_MIRROR_URL + filename;
+        
+        // For config file, add the direct GitHub URLs
+        if (filename.equals(MTK_NPU_MODEL_CONFIG_FILE)) {
+            for (String fallbackUrl : MTK_NPU_FALLBACK_URLS) {
+                urls += ";" + fallbackUrl;
+            }
+        }
+        
+        return urls;
+    }
 } 

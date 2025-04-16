@@ -1,4 +1,4 @@
-# BreezeApp
+# BreezeApp - AI on phone
 
 [![License: Pending](https://img.shields.io/badge/License-Pending-yellow.svg)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/mtkresearch/BreezeApp)](https://github.com/mtkresearch/BreezeApp/issues)
@@ -7,10 +7,13 @@
 
 [繁體中文](../../README.md) | [English](README_en.md)
 
-Text chatbot
+## Overview
+
+This project aims to create a community-driven platform for running AI capabilities locally on Android devices. Our goal is to provide a privacy-focused solution where all AI features work completely offline (airplane mode supported), ensuring your data never leaves your device.
+
 <p align="center">
-  <img src="../../assets/BreezeApp_npu_en.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
-  <img src="../../assets/BreezeApp_cpu_en.gif" width="300" alt="CPU Backend Demo"/>
+  <img src="../..//assets/BreezeApp_npu.gif" width="300" alt="NPU Backend Demo"/>&nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="../..//assets/BreezeApp_cpu.gif" width="300" alt="CPU Backend Demo"/>
 </p>
 <p align="center">
   <em>Left: NPU Backend &nbsp;&nbsp;&nbsp;&nbsp; Right: CPU Backend</em>
@@ -47,6 +50,8 @@ If you are interested in the BreezeApp, please feel free to contact us: [info@mt
 - [Download the latest APK](https://huggingface.co/MediaTek-Research/BreezeApp/resolve/main/BreezeApp.apk)
 - The app includes an in-app model download feature that will automatically prompt you to download required models on first launch.
 
+### Developer Setup
+Looking to build and contribute? Check our [Setup Guide](/docs/setup/installation.md) for detailed instructions.
 
 ## ✨ Features
 
@@ -62,53 +67,41 @@ If you are interested in the BreezeApp, please feel free to contact us: [info@mt
     | ASR       |     🚧     |    ❌    |    -    |
     | TTS       |     ✅     |    ❌    |    -    |
 
-## Compatible models
+## 🔍 Project Structure
 
-| Model Type | Available Models |
-|:----------:|:----------------:|
-| LLM        | Breeze 2         |
-| VLM        | Breeze 2         |
-| ASR        | Breeze 2         |
-| TTS        | Breeze 2         |
-
- ## Compatible devices
-Currently, the app has been successfully tested only on the Pixel 7a (8GB) and Samsung Flip 4. We welcome feedback from users on their actual experiences with different devices.
-
- 
- ### Developer Settings
-Want to build and contribute code? Check out our [Installation Guide](docs/setup/installation.md) for detailed instructions.
-
-
+- `/app` - Android application source code
+- `/docs` - Documentation and guides
+  - `/setup` - Installation and configuration guides
+  - `/architecture` - System architecture and design
+  - `/contributing` - Guidelines for contributors
+  - `/i18n` - Internationalized documentation
+- `/assets` - Images, videos, and other static resources
 
 ## 🆘 Help Wanted
 
 We're looking for contributors to help with the following tasks:
 
-1. **Promotion**
-   - Increase visibility of BreezeApp
-   - Multi-language support
-   
-2. **Performance Optimization**
+1. **Performance Optimization**
    - Profile the app and enhance memory management
    - Optimize inference speed on various devices
    - Reduce app size and resource consumption
 
-3. **Code Quality**
+2. **Code Quality**
    - Refactor code to improve maintainability
    - Add unit and integration tests
    - Implement better error handling and logging
 
-4. **Device Compatibility**
-   - Test on more Android devices
+3. **Device Compatibility**
+   - Test on more Android devices (currently only tested on Pixel 7a (8GB) and Samsung Flip 4)
    - Identify and fix device-specific issues
    - Support for different screen sizes and aspect ratios
 
-5. **User Experience**
+4. **User Experience**
    - Improve UI responsiveness during model inference
    - Enhance accessibility features
    - Create more intuitive onboarding process
 
-6. **Documentation**
+5. **Documentation**
    - Improve code documentation
    - Create developer tutorials
    - Add screenshots and demos to user guides

@@ -174,6 +174,14 @@ public class FileDownloadAdapter extends RecyclerView.Adapter<FileDownloadAdapte
         return null;
     }
 
+    /**
+     * Get the number of items in the adapter (alias for getItemCount)
+     * @return The number of items in the adapter
+     */
+    public int getCount() {
+        return getItemCount();
+    }
+
     @NonNull
     @Override
     public FileViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {

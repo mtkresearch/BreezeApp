@@ -67,7 +67,9 @@ public class TTSEngineService extends BaseEngineService {
     }
 
     private CompletableFuture<Boolean> initializeBackends() {
-        return tryInitializeBackend("CPU", this::initializeCPUTTS)
+        return tryInitializeBackend("MTK", this::initializeMTKTTS)
+            .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
+                : tryInitializeBackend("CPU", this::initializeCPUTTS))
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultTTS));
     }
@@ -84,6 +86,10 @@ public class TTSEngineService extends BaseEngineService {
                 Log.d(TAG, "❌ " + backendName + " TTS failed");
                 return CompletableFuture.completedFuture(false);
             });
+    }
+
+    private CompletableFuture<Boolean> initializeMTKTTS() {
+        return CompletableFuture.completedFuture(false); // Placeholder
     }
 
     private CompletableFuture<Boolean> initializeCPUTTS() {
@@ -208,6 +214,9 @@ public class TTSEngineService extends BaseEngineService {
 
         try {
             switch (backend) {
+                case "mtk":
+                    mtkSpeak(text);
+                    break;
                 case "cpu":
                     cpuSpeak(text);
                     break;
@@ -221,6 +230,11 @@ public class TTSEngineService extends BaseEngineService {
             future.completeExceptionally(e);
         }
         return future;
+    }
+
+    private void mtkSpeak(String text) {
+        // Placeholder for MTK TTS implementation
+        throw new UnsupportedOperationException("MTK TTS not implemented yet");
     }
 
     private void cpuSpeak(String text) {
@@ -397,4 +411,5 @@ public class TTSEngineService extends BaseEngineService {
         releaseAudioTrack();
         super.onDestroy();
     }
+
 }

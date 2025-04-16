@@ -85,6 +85,8 @@ public class ModelUtils {
     public static String getBackendDisplayName(String backend) {
         if (backend == null) return "Unknown";
         switch (backend.toLowerCase()) {
+            case "mtk":
+                return "NPU";
             case "cpu":
                 return "CPU";
             default:
@@ -94,10 +96,35 @@ public class ModelUtils {
 
     /**
      * Determines the preferred backend based on device hardware capabilities.
-     * @return The preferred backend identifier ("cpu")
+     * @return The preferred backend identifier ("mtk" or "cpu")
      */
     public static String getPreferredBackend() {
-        Log.i(TAG, "Using CPU backend");
+        // If MTK backend is disabled via flag, always return CPU
+        if (!AppConstants.MTK_BACKEND_ENABLED) {
+            Log.i(TAG, "MTK backend is disabled by flag, using CPU backend");
+            return "cpu";
+        }
+
+        try {
+            // Get the device's chipset information from multiple sources
+            String hardware = android.os.Build.HARDWARE.toLowerCase();
+            String processor = System.getProperty("os.arch", "").toLowerCase();
+            String cpuInfo = readCpuInfo();
+
+            Log.d(TAG, "Chipset detection - Hardware: " + hardware + 
+                      ", Processor: " + processor + 
+                      ", CPU Info: " + cpuInfo);
+
+            // Check if the device has MT6991 chipset
+            if (isMTKChipset(hardware, processor, cpuInfo)) {
+                Log.i(TAG, "MT6991 chipset detected, using MTK backend");
+                return "mtk";
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error detecting chipset", e);
+        }
+        
+        Log.i(TAG, "MT6991 chipset not detected, using CPU backend");
         return "cpu";
     }
 
@@ -120,5 +147,18 @@ public class ModelUtils {
             Log.w(TAG, "Error reading CPU info", e);
             return "";
         }
+    }
+
+    /**
+     * Checks if the device has an MTK chipset based on hardware information.
+     * @param hardware Hardware string from Build.HARDWARE
+     * @param processor Processor architecture string
+     * @param cpuInfo CPU information from /proc/cpuinfo
+     * @return true if MTK chipset is detected, false otherwise
+     */
+    private static boolean isMTKChipset(String hardware, String processor, String cpuInfo) {
+        return hardware.contains("mt6991") || 
+               processor.contains("mt6991") || 
+               cpuInfo.contains("mt6991");
     }
 } 

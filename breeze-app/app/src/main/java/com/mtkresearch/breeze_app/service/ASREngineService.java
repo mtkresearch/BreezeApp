@@ -53,7 +53,9 @@ public class ASREngineService extends BaseEngineService {
     }
 
     private CompletableFuture<Boolean> initializeBackends() {
-        return tryInitializeBackend("CPU", this::initializeCPUASR)
+        return tryInitializeBackend("MTK", this::initializeMTKASR)
+            .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
+                : tryInitializeBackend("Local", this::initializeCPUASR))
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultASR));
     }
@@ -70,6 +72,10 @@ public class ASREngineService extends BaseEngineService {
                 Log.d(TAG, "❌ " + backendName + " ASR failed");
                 return CompletableFuture.completedFuture(false);
             });
+    }
+
+    private CompletableFuture<Boolean> initializeMTKASR() {
+        return CompletableFuture.completedFuture(false); // Placeholder
     }
 
     private CompletableFuture<Boolean> initializeCPUASR() {
