@@ -88,8 +88,6 @@ public class ModelUtils {
             case "mtk":
                 return "NPU";
             case "cpu":
-            case "localcpu":
-            case "local_cpu":
                 return "CPU";
             default:
                 return backend.toUpperCase();

@@ -36,7 +36,7 @@ public class TTSEngineService extends BaseEngineService {
     
     // TTS components
     private TextToSpeech textToSpeech;
-    private SherpaTTS localTTS;
+    private SherpaTTS cpuTTS;
     private String backend = "none";
     private boolean isTextToSpeechInitialized = false;
     private AudioTrack audioTrack;
@@ -48,7 +48,7 @@ public class TTSEngineService extends BaseEngineService {
         return new LocalBinder();
     }
 
-    // Callback interface for local TTS
+    // Callback interface for CPU TTS
     private interface SynthesisCallback {
         void onStart();
         void onComplete();
@@ -69,7 +69,7 @@ public class TTSEngineService extends BaseEngineService {
     private CompletableFuture<Boolean> initializeBackends() {
         return tryInitializeBackend("MTK", this::initializeMTKTTS)
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
-                : tryInitializeBackend("Local", this::initializeLocalTTS))
+                : tryInitializeBackend("CPU", this::initializeLocalTTS))
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultTTS));
     }
@@ -92,15 +92,15 @@ public class TTSEngineService extends BaseEngineService {
         return CompletableFuture.completedFuture(false); // Placeholder
     }
 
-    private CompletableFuture<Boolean> initializeLocalTTS() {
+    private CompletableFuture<Boolean> initializeCPUTTS() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         try {
-            Log.d(TAG, "Initializing Local TTS...");
-            localTTS = SherpaTTS.Companion.getInstance(getApplicationContext());
+            Log.d(TAG, "Initializing CPU TTS...");
+            cpuTTS = SherpaTTS.Companion.getInstance(getApplicationContext());
             future.complete(true);
-            Log.d(TAG, "Local TTS initialized with " + localTTS.getNumSpeakers() + " speakers");
+            Log.d(TAG, "CPU TTS initialized with " + cpuTTS.getNumSpeakers() + " speakers");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize Local TTS", e);
+            Log.e(TAG, "Failed to initialize CPU TTS", e);
             future.complete(false);
         }
         return future;
@@ -183,12 +183,12 @@ public class TTSEngineService extends BaseEngineService {
     private CompletableFuture<Boolean> testTTSEngine() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         try {
-            if (localTTS == null || !localTTS.isInitialized()) {
+            if (cpuTTS == null || !cpuTTS.isInitialized()) {
                 future.complete(false);
                 return future;
             }
             
-            boolean testResult = localTTS.testTTS();
+            boolean testResult = cpuTTS.testTTS();
             future.complete(testResult);
         } catch (Exception e) {
             Log.e(TAG, "TTS test failed", e);
@@ -200,14 +200,14 @@ public class TTSEngineService extends BaseEngineService {
     @Override
     public boolean isReady() {
         return isInitialized && (
-            (backend.equals("local") && localTTS != null) ||
+            (backend.equals("cpu") && cpuTTS != null) ||
             (backend.equals("default") && isTextToSpeechInitialized)
         );
     }
 
     public CompletableFuture<Void> speak(String text) {
         CompletableFuture<Void> future = new CompletableFuture<>();
-        if (localTTS == null || !localTTS.isInitialized()) {
+        if (cpuTTS == null || !cpuTTS.isInitialized()) {
             future.completeExceptionally(new IllegalStateException("TTS not initialized"));
             return future;
         }
@@ -217,8 +217,8 @@ public class TTSEngineService extends BaseEngineService {
                 case "mtk":
                     mtkSpeak(text);
                     break;
-                case "local":
-                    localSpeak(text);
+                case "cpu":
+                    cpuSpeak(text);
                     break;
                 case "default":
                     defaultSpeak(text);
@@ -237,10 +237,10 @@ public class TTSEngineService extends BaseEngineService {
         throw new UnsupportedOperationException("MTK TTS not implemented yet");
     }
 
-    private void localSpeak(String text) {
+    private void cpuSpeak(String text) {
         try {
             // Initialize audio track with the sample rate
-            initAudioTrack(localTTS.getSampleRate());
+            initAudioTrack(cpuTTS.getSampleRate());
             
             // Add a flag to track if synthesis is complete
             final boolean[] isSynthesisComplete = new boolean[1];
@@ -249,7 +249,7 @@ public class TTSEngineService extends BaseEngineService {
             // Create a completion handler
             CompletableFuture<Void> synthesisComplete = new CompletableFuture<>();
             
-            localTTS.synthesize(
+            cpuTTS.synthesize(
                 text,
                 0,  // speakerId
                 1.0f,  // speed
@@ -285,7 +285,7 @@ public class TTSEngineService extends BaseEngineService {
             }
             
         } catch (Exception e) {
-            Log.e(TAG, "Error in local TTS", e);
+            Log.e(TAG, "Error in CPU TTS", e);
             releaseAudioTrack();
         }
     }
@@ -391,8 +391,8 @@ public class TTSEngineService extends BaseEngineService {
     }
 
     public void stopSpeaking() {
-        if (backend.equals("local") && localTTS != null) {
-            localTTS.stop();
+        if (backend.equals("cpu") && cpuTTS != null) {
+            cpuTTS.stop();
             releaseAudioTrack();
         } else if (backend.equals("default") && textToSpeech != null) {
             textToSpeech.stop();
@@ -401,8 +401,8 @@ public class TTSEngineService extends BaseEngineService {
 
     @Override
     public void onDestroy() {
-        if (localTTS != null) {
-            localTTS.release();
+        if (cpuTTS != null) {
+            cpuTTS.release();
         }
         if (textToSpeech != null) {
             textToSpeech.stop();
