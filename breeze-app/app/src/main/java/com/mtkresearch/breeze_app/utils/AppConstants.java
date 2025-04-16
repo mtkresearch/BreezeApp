@@ -53,7 +53,6 @@ public class AppConstants {
     public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
     public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
     public static final int MTK_PROMPT_TOKEN_SIZE = 128; // Token size for prompt processing
-    public static volatile boolean MTK_BACKEND_AVAILABLE = true; // Re-enable MTK backend
     public static volatile int mtkInitCount = 0;       // Counter for MTK initialization attempts
     public static volatile boolean isCleaningUp = false; // Flag to track MTK cleanup state
     
@@ -463,7 +462,7 @@ public class AppConstants {
     // Check if MTK backend is truly available
     public static boolean isMTKBackendAvailable() {
         return MTK_BACKEND_ENABLED && MTK_BACKEND_AVAILABLE && 
-               com.mtkresearch.gai_android.service.LLMEngineService.isMTKBackendAvailable();
+               com.mtkresearch.breeze_app.service.LLMEngineService.isMTKBackendAvailable();
     }
     
     // Safely get a working executor or create one if needed

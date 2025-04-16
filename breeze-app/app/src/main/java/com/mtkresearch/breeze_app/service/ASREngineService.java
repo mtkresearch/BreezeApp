@@ -55,7 +55,7 @@ public class ASREngineService extends BaseEngineService {
     private CompletableFuture<Boolean> initializeBackends() {
         return tryInitializeBackend("MTK", this::initializeMTKASR)
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
-                : tryInitializeBackend("Local", this::initializeLocalASR))
+                : tryInitializeBackend("Local", this::initializeCPUASR))
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultASR));
     }

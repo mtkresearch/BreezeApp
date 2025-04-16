@@ -27,6 +27,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     // Service state
     private String currentBackend = AppConstants.BACKEND_NONE;
     private String preferredBackend = AppConstants.BACKEND_DEFAULT;
+
+    private boolean hasSeenAssistantMarker = false;
     private final ConversationManager conversationManager;
     
     // Generation state
@@ -505,23 +507,24 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             return false;
         }
     }
-    
+
     public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
-        if (!isInitialized || mModule == null) {
+        if (!isInitialized) {
             if (callback != null) {
                 callback.onToken(AppConstants.LLM_ERROR_RESPONSE);
             }
             return CompletableFuture.completedFuture(AppConstants.LLM_ERROR_RESPONSE);
         }
-        
+
+        hasSeenAssistantMarker = false;
         currentCallback = callback;
         currentResponse = new CompletableFuture<>();
         currentStreamingResponse.setLength(0);
         isGenerating.set(true);
-        
+
         CompletableFuture<String> resultFuture = new CompletableFuture<>();
-        
-        executor.execute(() -> {
+
+        CompletableFuture.runAsync(() -> {
             try {
                 switch (currentBackend) {
                     case AppConstants.BACKEND_MTK:
@@ -538,13 +541,13 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                             }
                                         }
                                     });
-                                    
+
                                     // Only complete if we haven't been stopped
                                     if (isGenerating.get()) {
                                         currentResponse.complete(response);
                                         resultFuture.complete(response);
                                     }
-                                    
+
                                     // Clean up MTK state
                                     try {
                                         nativeResetLlm();
@@ -567,17 +570,17 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                             throw e;
                         }
                         break;
-                        
+
                     case AppConstants.BACKEND_CPU:
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
-                        
+
                         // Calculate sequence length with more generous output space
                         int seqLen = Math.min(
-                            AppConstants.getLLMMaxSeqLength(context),
-                            prompt.length() + AppConstants.getLLMMinOutputLength(context)
+                                AppConstants.getLLMMaxSeqLength(context),
+                                prompt.length() + AppConstants.getLLMMinOutputLength(context)
                         );
-                        
+
                         executor.execute(() -> {
                             try {
                                 mModule.generate(prompt, seqLen, new LlamaCallback() {
@@ -621,14 +624,14 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                         Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
                                     }
                                 }, false);
-                                
+
                                 // Only complete if we haven't been stopped and have a response
                                 if (!currentResponse.isDone() && currentStreamingResponse.length() > 0) {
                                     String finalResponse = currentStreamingResponse.toString();
                                     currentResponse.complete(finalResponse);
                                     resultFuture.complete(finalResponse);
                                 }
-                                
+
                             } catch (Exception e) {
                                 Log.e(TAG, "Error in CPU streaming generation", e);
                                 if (!currentResponse.isDone()) {
@@ -640,7 +643,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                             }
                         });
                         break;
-                        
+
                     default:
                         String error = "Unsupported backend: " + currentBackend;
                         Log.e(TAG, error);
@@ -651,7 +654,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 resultFuture.completeExceptionally(e);
             }
         });
-        
+
         return resultFuture;
     }
 
@@ -666,41 +669,34 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             System.gc(); // Request garbage collection for any lingering resources
         }
     }
-    
+
     public void stopGeneration() {
         Log.d(TAG, "Manual stopping of generation requested");
-        
+
         // First, mark that we're no longer generating to prevent further tokens from being processed
         isGenerating.set(false);
-        
+
         if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
             try {
                 nativeResetLlm();
+                nativeSwapModel(128);
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping MTK generation", e);
             }
         } else if (mModule != null) {
             try {
-                // Use a separate thread to ensure the stop command is sent immediately
-                // and doesn't get blocked by other operations
-                new Thread(() -> {
-                    try {
-                        Log.d(TAG, "Forcefully stopping LlamaModule");
-                        mModule.stop();
-                        
-                        // Sleep briefly to give the module time to process the stop command
-                        Thread.sleep(100);
-                        
-                        // Call stop again to ensure it takes effect
-                        mModule.stop();
-                        Log.d(TAG, "Second stop call completed");
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error in forceful stopping thread", e);
-                    }
-                }).start();
+                mModule.stop();
             } catch (Exception e) {
-                Log.e(TAG, "Error initiating stop process", e);
+                Log.e(TAG, "Error stopping CPU generation", e);
             }
+        }
+
+        if (currentResponse != null && !currentResponse.isDone()) {
+            String finalResponse = currentStreamingResponse.toString();
+            if (finalResponse.isEmpty()) {
+                finalResponse = "[Generation stopped by user]";
+            }
+            currentResponse.complete(finalResponse);
         }
         
         // Complete any pending futures

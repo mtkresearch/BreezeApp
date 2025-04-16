@@ -69,7 +69,7 @@ public class TTSEngineService extends BaseEngineService {
     private CompletableFuture<Boolean> initializeBackends() {
         return tryInitializeBackend("MTK", this::initializeMTKTTS)
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
-                : tryInitializeBackend("CPU", this::initializeLocalTTS))
+                : tryInitializeBackend("CPU", this::initializeCPUTTS))
             .thenCompose(success -> success ? CompletableFuture.completedFuture(true)
                 : tryInitializeBackend("Default", this::initializeDefaultTTS));
     }
