@@ -407,7 +407,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     Thread.sleep(100);
                     
                     // Initialize with conservative settings
-                    success = nativeInitLlm("/data/local/tmp/llm_sdk/config_breezetiny_3b_instruct.yaml", true);
+                    success = nativeInitLlm(AppConstants.getMtkConfigPath(context), true);
                     
                     if (!success) {
                         Log.e(TAG, "MTK initialization returned false");

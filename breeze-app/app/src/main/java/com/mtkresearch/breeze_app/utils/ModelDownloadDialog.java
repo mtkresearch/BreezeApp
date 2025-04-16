@@ -39,7 +39,8 @@ public class ModelDownloadDialog extends Dialog {
 
     public enum DownloadMode {
         LLM,
-        TTS
+        TTS,
+        MTK_NPU
     }
 
     private final IntroDialog parentDialog;
@@ -223,7 +224,7 @@ public class ModelDownloadDialog extends Dialog {
 
     private File getModelDir() {
         File appDir = getContext().getFilesDir();
-        File modelDir;
+        File modelDir = null;
         
         if (downloadMode == DownloadMode.TTS) {
             File baseModelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
@@ -240,14 +241,25 @@ public class ModelDownloadDialog extends Dialog {
                     return null;
                 }
             }
-        } else {
+        } else if(downloadMode == DownloadMode.LLM){
             modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
             if (!modelDir.exists() && !modelDir.mkdirs()) {
                 Log.e(TAG, "Failed to create model directory");
                 return null;
             }
+        } else if(downloadMode == DownloadMode.MTK_NPU){
+            modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
+            if (!modelDir.exists() && !modelDir.mkdirs()) {
+                Log.e(TAG, "Failed to create model directory");
+                return null;
+            }
+            modelDir = new File(modelDir, AppConstants.MTK_NPU_MODEL_DIR);
+            if (!modelDir.exists() && !modelDir.mkdirs()) {
+                Log.e(TAG, "Failed to create model directory");
+                return null;
+            }            
         }
-        
+
         return modelDir;
     }
 
@@ -339,7 +351,7 @@ public class ModelDownloadDialog extends Dialog {
                     fileSize
                 ));
             }
-        } else {
+        } else if(downloadMode == DownloadMode.LLM){
             // Add LLM model files to the list with temporary file sizes (0)
             // We'll update these sizes asynchronously when we get the actual values
             
@@ -409,10 +421,11 @@ public class ModelDownloadDialog extends Dialog {
                 tempModelSize
             );
             downloadFiles.add(modelInfo);
+
             Log.d(TAG, "Added LLM model file to download list: " + modelFileName + " (" + modelDisplayName + ")");
             
             // Note: We'll fetch accurate sizes in fetchFileSizesAsync() later
-            
+
             // Initialize file adapter with initial list (even with placeholder sizes)
             if (fileAdapter != null) {
                 List<FileDownloadAdapter.FileDownloadStatus> statusList = new ArrayList<>();
@@ -423,6 +436,88 @@ public class ModelDownloadDialog extends Dialog {
                 fileAdapter.setFiles(statusList);
                 Log.d(TAG, "Initialized file adapter with placeholder sizes for " + downloadFiles.size() + " files");
             }
+
+        }
+        else if (downloadMode == DownloadMode.MTK_NPU){
+        // hot fix
+
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L // 6GB estimate
+            ));
+            
+            downloadFiles.add( new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla",
+                "Language Model",
+                AppConstants.FILE_TYPE_LLM,
+                16  * 1024 * 1024L // 6GB estimate
+            ));
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L // 6GB estimate
+            ));
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                5  * 1024 * 1024L // 6GB estimate
+            ));
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/added_tokens.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "added_tokens.yaml",
+                "YAML",
+                    AppConstants.FILE_TYPE_LLM,
+                10  * 1024L // 6GB estimate
+            ));
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "config_breezetiny_3b_instruct.yaml",
+                "YAML",
+                    AppConstants.FILE_TYPE_LLM,
+                3 *  1024L // 6GB estimate
+            ));
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/embedding_int16.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "embedding_int16.bin",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L // 6GB estimate
+            ));      
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/shared_weights_0.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "shared_weights_0.bin",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L // 6GB estimate
+            ));        
+            downloadFiles.add(new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "tokenizer.tiktoken",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                3 * 1024 * 1024L // 6GB estimate
+            ));
+
+            // Initialize file adapter with initial list (even with placeholder sizes)
+            if (fileAdapter != null) {
+                List<FileDownloadAdapter.FileDownloadStatus> statusList = new ArrayList<>();
+                for (AppConstants.DownloadFileInfo info : downloadFiles) {
+                    FileDownloadAdapter.FileDownloadStatus status = new FileDownloadAdapter.FileDownloadStatus(info);
+                    statusList.add(status);
+                }
+                fileAdapter.setFiles(statusList);
+                Log.d(TAG, "Initialized file adapter with placeholder sizes for " + downloadFiles.size() + " files");
+            }
+
+
         }
     }
     

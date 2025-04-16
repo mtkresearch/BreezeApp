@@ -68,12 +68,15 @@
             android:name="com.mtkresearch.breeze_app.MainActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo" />
-
         <activity
             android:name="com.mtkresearch.breeze_app.AudioChatActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo" />
-
+	    
+        <activity
+            android:name="com.mtkresearch.breeze_app.ModelDownloadActivity"
+            android:exported="true"
+            android:grantUriPermissions="true"/>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

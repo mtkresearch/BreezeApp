@@ -75,6 +75,7 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.mtkresearch.breeze_app.utils.ModelUtils;
+import com.mtkresearch.breeze_app.utils.HWCompatibility;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
@@ -84,6 +85,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final int PICK_IMAGE_REQUEST = AppConstants.PICK_IMAGE_REQUEST;
     private static final int CAPTURE_IMAGE_REQUEST = AppConstants.CAPTURE_IMAGE_REQUEST;
     private static final int PICK_FILE_REQUEST = AppConstants.PICK_FILE_REQUEST;
+    private static final int REQUEST_CODE_DOWNLOAD_ACTIVITY = AppConstants.REQUEST_CODE_DOWNLOAD_ACTIVITY;
 
     // Constants for alpha values
     private static final float ENABLED_ALPHA = AppConstants.ENABLED_ALPHA;
@@ -390,11 +392,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             isInitializing = true;
         }
         
-        // Update UI state immediately when initialization starts
-        updateInteractionState();
-        
         // Remove overlay animation code and directly start services
-        initializeServices();
+        if(true || AppConstants.needsModelDownload(getApplicationContext())){
+            Intent intent = new Intent(this, ModelDownloadActivity.class);
+            if (HWCompatibility.isSupportedHW() == "mtk") {
+                intent.putExtra("download_mode", "MTK_NPU");
+            }
+            else {
+                intent.putExtra("download_mode", "CPU");
+            }
+            //
+            startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
+        }
+        else {
+        // Update UI state immediately when initialization starts
+        
+            updateInteractionState();
+            initializeServices();
+        }
     }
 
     private void initializeServices() {
@@ -989,7 +1004,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode != RESULT_OK) return;
+        if (requestCode != REQUEST_CODE_DOWNLOAD_ACTIVITY && resultCode != RESULT_OK) return;
 
         switch (requestCode) {
             case PICK_IMAGE_REQUEST:
@@ -1010,6 +1025,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     }
                 }
                 break;
+            case REQUEST_CODE_DOWNLOAD_ACTIVITY:
+                if(resultCode == RESULT_OK){
+                    initializeServices();
+                }
+                else {
+                    //prepare to shutdown app.
+                    finish();
+                }
+                break;    
         }
     }
 

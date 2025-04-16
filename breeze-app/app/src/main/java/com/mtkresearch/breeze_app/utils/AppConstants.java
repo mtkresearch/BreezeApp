@@ -46,7 +46,7 @@ public class AppConstants {
     public static final long MTK_CLEANUP_TIMEOUT_MS = 5000;   // 5 seconds timeout for cleanup
     
     // MTK Backend Constants
-    public static final String MTK_CONFIG_PATH = "/data/user/0/com.mtkresearch.breeze_app.breeze/files/models/Breeze2-3B-Instruct-mobile-npu/config_breezetiny_3b_instruct.yaml";
+    public static final String MTK_CONFIG_PATH = "Breeze2-3B-Instruct-mobile-npu/";
     public static final String MTK_SERVICE_TAG = "LLMEngineService";
     public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
@@ -402,6 +402,7 @@ public class AppConstants {
     public static final int PICK_IMAGE_REQUEST = 1;
     public static final int CAPTURE_IMAGE_REQUEST = 2;
     public static final int PICK_FILE_REQUEST = 3;
+    public static final int REQUEST_CODE_DOWNLOAD_ACTIVITY = 4;
 
     // UI Constants
     public static final float ENABLED_ALPHA = 1.0f;
@@ -494,7 +495,7 @@ public class AppConstants {
     }
 
     // MTK NPU Model Directory and files
-    public static final String MTK_NPU_MODEL_DIR = "mtk_npu";
+    public static final String MTK_NPU_MODEL_DIR = "Breeze2-3B-Instruct-mobile-npu";
     public static final String MTK_NPU_MODEL_CONFIG_FILE = "config_breezetiny_3b_instruct.yaml";
     
     // MTK NPU Model Download URLs
