@@ -41,7 +41,6 @@ public class IntroDialog extends Dialog {
     private static final long MIN_STORAGE_TTS_MB = 125; // Minimum 125MB storage requirement for TTS
     private boolean hasMinimumRam = true;
     private boolean hasRequiredStorage = true;
-    private boolean hasRequiredModels = true;
     private final List<IntroPage> introPages;
     private OnFinalButtonClickListener finalButtonClickListener;
     private RadioGroup modelSizeRadioGroup; // Add RadioGroup for model selection
@@ -155,42 +154,6 @@ public class IntroDialog extends Dialog {
                 // Check if we're on the requirements page (last page)
                 if (position == introPages.size() - 1) {
                     checkSystemRequirements();
-                    // Show download dialog if only models are missing
-                    if (!hasRequiredModels && hasMinimumRam && hasRequiredStorage) {
-                        // Check if TTS models are missing
-                        if (AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
-                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.TTS);
-                            downloadDialog.setOnDismissListener(dialog -> {
-                                // Recheck requirements after dialog is dismissed
-                                checkSystemRequirements();
-                                // Update the requirements description
-                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
-                                    buildRequirementsDescription(context));
-                                // Update button state and text
-                                updateButtonState(context);
-                                updateButtonText(context);
-                                // Force refresh the current page
-                                viewPager.getAdapter().notifyItemChanged(currentPage);
-                            });
-                            downloadDialog.show();
-                        } else {
-                            // For LLM models
-                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.LLM);
-                            downloadDialog.setOnDismissListener(dialog -> {
-                                // Recheck requirements after dialog is dismissed
-                                checkSystemRequirements();
-                                // Update the requirements description
-                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
-                                    buildRequirementsDescription(context));
-                                // Update button state and text
-                                updateButtonState(context);
-                                updateButtonText(context);
-                                // Force refresh the current page
-                                viewPager.getAdapter().notifyItemChanged(currentPage);
-                            });
-                            downloadDialog.show();
-                        }
-                    }
                 }
             }
         });
@@ -235,8 +198,6 @@ public class IntroDialog extends Dialog {
         boolean hasLLMModels = !AppConstants.needsModelDownload(getContext());
         boolean hasTTSModels = !AppConstants.TTS_ENABLED || !AppConstants.needsTTSModelDownload(getContext());
         
-        // Both LLM and TTS models (if enabled) must be present
-        hasRequiredModels = hasLLMModels && hasTTSModels;
         
         // Calculate required storage based on missing models
         long requiredStorageMB = 0;
@@ -259,46 +220,17 @@ public class IntroDialog extends Dialog {
     }
 
     private boolean meetsAllRequirements() {
-        return hasMinimumRam && hasRequiredStorage && hasRequiredModels;
+        // return hasMinimumRam && hasRequiredStorage && hasRequiredModels;
+        return hasMinimumRam && hasRequiredStorage;
     }
 
     private void showRequirementsWarning(Context context) {
-        if (!hasMinimumRam || !hasRequiredStorage || !hasRequiredModels) {
+        if (!hasMinimumRam || !hasRequiredStorage) {
             // Cast context to Activity for runOnUiThread
             if (context instanceof Activity) {
                 Activity activity = (Activity) context;
                 activity.runOnUiThread(() -> {
-                    if (!hasRequiredModels) {
-                        // Show model selection dialog before downloading
-                        if (AppConstants.needsModelDownload(context)) {
-                            // Use our helper method to determine if we should show the model selection dialog
-                            if (shouldShowModelSelectionDialog(context)) {
-                                showModelSelectionDialog(context);
-                            } else {
-                                // For devices with insufficient RAM and explicit small model preference,
-                                // proceed directly to download
-                                ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.LLM);
-                                downloadDialog.setOnDismissListener(dialog -> {
-                                    checkSystemRequirements();
-                                });
-                                downloadDialog.show();
-                            }
-                        } else if (AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
-                            // Show TTS model download dialog
-                            Log.d("IntroDialog", "Showing TTS model download dialog");
-                            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.TTS);
-                            downloadDialog.setOnDismissListener(dialog -> {
-                                checkSystemRequirements();
-                                // Update the requirements description
-                                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
-                                    buildRequirementsDescription(context));
-                                // Update button state and text
-                                updateButtonState(context);
-                                updateButtonText(context);
-                            });
-                            downloadDialog.show();
-                        }
-                    } else if (!hasMinimumRam) {
+                    if (!hasMinimumRam) {
                         btnNext.setText(context.getString(R.string.insufficient_ram, AppConstants.MIN_RAM_REQUIRED_GB));
                     } else if (!hasRequiredStorage) {
                         // Check which models need to be downloaded to show appropriate storage requirement
@@ -454,16 +386,6 @@ public class IntroDialog extends Dialog {
                     } else {
                         errorMessage.append("\n").append(context.getString(R.string.insufficient_storage, MIN_STORAGE_LLM_GB));
                     }
-                }
-                if (!hasRequiredModels) {
-                    if (AppConstants.TTS_ENABLED && AppConstants.needsTTSModelDownload(context)) {
-                        errorMessage.append("\n").append(context.getString(R.string.missing_models, 
-                            AppConstants.TTS_MODEL_FILE, AppConstants.TTS_LEXICON_FILE));
-                    } else if (AppConstants.needsModelDownload(context)) {
-                        errorMessage.append("\n").append(context.getString(R.string.missing_models, 
-                            AppConstants.BREEZE_MODEL_FILE, AppConstants.LLM_TOKENIZER_FILE));
-                    }
-                    showRequirementsWarning(context);
                 }
                 
                 btnNext.setText(errorMessage.toString());
