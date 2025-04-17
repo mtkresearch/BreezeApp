@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BreezeApp</string>
+    <string name="file_provider_authority" translatable="false">${file_provider_authority}</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## IntroDialog.java -->
+    <!-- 介绍对话框标题 -->
+    <string name="intro_dialog_title_warning">Demo 版本警告</string>
+    <string name="intro_dialog_title_current_features">当前功能</string>
+    <string name="intro_dialog_title_system_requirements">系统要求</string>
+
+    <!-- 介绍对话框第 1 页：Demo 版本警告 -->
+    <string name="intro_description">
+    <![CDATA[
+    这是一个社区驱动的项目，旨在将 AI 功能直接带到您的手机，
+    让您能够<b>完全离线</b>体验 AI 功能，无需担心隐私问题。
+    <br/><br/>
+    作为一个起步项目，我们欢迎开发者和爱好者加入我们，共同改进这款应用。
+    由于我们持续提升使用体验，您可能会遇到一些稳定性问题。
+    <br/><br/>
+    欢迎通过 GitHub 贡献、报告问题或提交 PR：
+    <br/>
+    <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
+    ]]>
+    </string>
+
+    <!-- 介绍对话框第 2 页：当前功能 -->
+    <string name="build_features_description">
+    <![CDATA[
+    • 本地 LLM 聊天：<br/>
+    &nbsp;&nbsp;&nbsp;- 完全离线的 AI 聊天功能<br/>
+    &nbsp;&nbsp;&nbsp;- 所有数据均存于设备内<br/>
+    &nbsp;&nbsp;&nbsp;- 支持文字转语音 (TTS)
+    <br/><br/>
+    • 未来功能（即将推出）：<br/>
+    &nbsp;&nbsp;&nbsp;- 视觉理解 (VLM)<br/>
+    &nbsp;&nbsp;&nbsp;- 语音输入支持 (ASR)
+    <br/><br/>
+    加入我们，共同打造以隐私为核心的 AI 体验！
+    ]]>
+    </string>
+
+    <!-- 介绍对话框第 3 页：系统需求 -->
+    <!-- 内存状态 -->
+    <string name="ram_passed">✅ 通过</string>
+    <string name="ram_error">⛔️ 错误：内存不足（%1$sGB &lt; 要求 %2$sGB）</string>
+
+    <!-- 存储状态 -->
+    <string name="storage_sufficient">✅ 空间充足（可用 %1$sGB）</string>
+    <string name="storage_error">⛔️ 错误：存储空间不足（仅剩 %1$sGB）</string>
+
+    <!-- 模型状态 -->
+    <string name="model_found">✅ 已找到模型</string>
+    <string name="model_missing">⛔️ 缺少模型</string>
+
+    <!-- 警告信息 -->
+    <string name="warning_ram"><![CDATA[⚠️ 警告：您的设备不符合最低内存要求。<br/>]]></string>
+    <string name="warning_model_missing"><![CDATA[⚠️ 警告：所需模型文件（%1$s 或 %2$s）缺失。<br/>]]></string>
+    <string name="warning_storage"><![CDATA[⚠️ 警告：存储空间不足（%1$sGB &lt; 要求 %2$sGB）。<br/>]]></string>
+    <string name="warning_footer"><![CDATA[应用程序可能无法正常运行。<br/>]]></string>
+
+    <!-- 状态摘要 -->
+    <string name="status_summary" translatable="false">
+     <![CDATA[
+    • 内存：<br/>
+    &nbsp;&nbsp;&nbsp;要求：%1$sGB+<br/>
+    &nbsp;&nbsp;&nbsp;您的设备：%2$sGB<br/>
+    &nbsp;&nbsp;&nbsp;状态：%3$s<br/><br/>
+
+    • 模型文件：<br/>
+    &nbsp;&nbsp;&nbsp;位置：%4$s<br/>
+    &nbsp;&nbsp;&nbsp;要求：%5$s 或 %6$s<br/>
+    &nbsp;&nbsp;&nbsp;状态：%7$s<br/><br/>
+
+    • 存储空间：<br/>
+    &nbsp;&nbsp;&nbsp;要求：至少 %8$sGB 可用空间<br/>
+    &nbsp;&nbsp;&nbsp;可用：%9$sGB<br/>
+    &nbsp;&nbsp;&nbsp;状态：%10$s<br/><br/>
+
+    %11$s
+    <br/>
+    请确保所有要求都符合，以获得最佳性能。
+    ]]>
+    </string>
+
+    <!-- 介绍对话框操作 -->
+    <string name="next">下一步</string>
+    <string name="got_it">知道了</string>
+    <string name="requirements_not_met">不符合要求</string>
+    <string name="cannot_proceed">无法继续：</string>
+    <string name="insufficient_ram">• 内存不足（最低要求 %1$dGB）</string>
+    <string name="insufficient_storage">• 存储空间不足（最低要求 %1$dGB）</string>
+    <string name="insufficient_storage_mb">• 存储空间不足（最低要求 %1$dMB）</string>
+    <string name="missing_models">• 所需模型文件（%1$s 或 %2$s）缺失</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="thinking">思考中...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="view_chat_history">查看聊天记录</string>
+    <string name="loading">加载中...</string>
+    <string name="new_conversation">新的对话</string>
+    <string name="app_logo">应用程序标志</string>
+    <string name="how_can_i_help_you">我可以如何帮助您？</string>
+    <string name="type_in_here">请在此输入...</string>
+    <string name="chat_history">聊天记录</string>
+    <string name="send_message">发送消息</string>
+    <string name="voice_input">语音输入</string>
+    <string name="add_attachments" translatable="false">新增附件</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## intro_page_layout.xml -->
+    <string name="scroll_for_more">向下滚动以查看更多</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatMediaHandler.java -->
+    <string name="failed_to_start_recording">无法开始录音</string>
+    <string name="failed_to_process_file">无法处理文件</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## UiUtils.java -->
+    <string name="error_showing_image_preview">显示图片预览时发生错误</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## AudioChatActivity.java -->
+    <string name="camera_switched">已切换至 %1$s 相机</string>
+    <string name="camera_front">前置</string>
+    <string name="camera_back">后置</string>
+    <string name="menu_options">菜单选项</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## MainActivity.java -->
+    <string name="failed_to_initialize" translatable="false">初始化失败：</string>
+    <string name="model_directory_not_found" translatable="false">找不到模型目录</string>
+    <string name="no_llm_models_found" translatable="false">未找到 LLM 模型。请确保 %1$s 或 %2$s 模型可用。</string>
+    <string name="please_select_a_model_first" translatable="false">请先选择模型</string>
+    <string name="waiting_for_services_to_initialize" translatable="false">正在等待服务初始化</string>
+    <string name="speech_recognition_requires_audio_permission" translatable="false">语音识别需要音频权限</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ChatActivity.java -->
+    <string name="error_initializing_services" translatable="false">初始化服务时发生错误：</string>
+    <string name="initializing_model_with" translatable="false">正在初始化模型</string>
+    <string name="speech_recognition_is_disabled" translatable="false">语音识别已停用</string>
+    <string name="error_generating_response" translatable="false">生成响应时发生错误</string>
+    <string name="stopping_generation" translatable="false">停止生成...</string>
+    <string name="error_analyzing_image" translatable="false">分析图片时发生错误</string>
+    <string name="ASR_service_not_ready" translatable="false">ASR 服务尚未准备就绪</string>
+    <string name="error_launching_camera" translatable="false">启动相机时发生错误</string>
+    <string name="no_recordings_found" translatable="false">未找到录音</string>
+    <string name="recording_deleted" translatable="false">录音已删除</string>
+    <string name="camera_permission_required" translatable="false">拍摄照片需要相机权限</string>
+    <string name="mic_permission_required" translatable="false">语音输入需要麦克风权限</string>
+    <string name="text_to_speech_service_not_available">文字转语音服务不可用</string>
+    <string name="text_to_speech_is_still_initializing">文字转语音仍在初始化中...</string>
+    <string name="converting_text_to_speech">正在将文字转换为语音...</string>
+    <string name="error_playing_audio">播放音频时发生错误</string>
+    <string name="error_starting_audio_playback">启动音频播放时发生错误</string>
+    <string name="failed_to_reinitialize_llm">重新初始化 LLM 失败</string>
+    <string name="initializing_model">正在初始化模型...</string>
+    <string name="failed_to_initialize_model">初始化模型失败</string>
+    <string name="error_initializing_model">初始化模型时发生错误</string>
+    <string name="model_service_disconnected">模型服务已断线</string>
+    <string name="ars_initialization_failed">ASR 初始化失败</string>
+    <string name="error_initializing_asr">初始化 ASR 时发生错误：</string>
+    <string name="initializing_text_to_speech">正在初始化文字转语音...</string>
+    <string name="text_to_speech_ready">文字转语音已准备就绪</string>
+    <string name="failed_to_initialize_text_to_speech">初始化文字转语音失败</string>
+    <string name="error_initialize_text_to_speech">初始化文字转语音时发生错误：</string>
+    <string name="no_histories_selected">未选择任何历史记录</string>
+    <string name="selected_histories_deleted">已删除所选历史记录</string>
+    <string name="history_deleted">历史记录已删除</string>
+    <string name="more_taps">还需点击 %1$d 次...</string>
+    <string name="text_copied_to_clipboard">文字已复制到剪贴板</string>
+    <string name="image_saved_to_pictures">图片已保存至“图片”文件夹</string>
+    <string name="error_saving_image">保存图片时发生错误</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## ModelDownloadDialog -->
+    <string name="download_model">下载模型</string>
+    <string name="model_missing_message">缺少所需的模型文件。下载大小约为 %1$s。</string>
+    <string name="model_missing_message_ram_constraint">缺少所需的模型文件。下载大小约为 %1$s。\n\n注意：由于您设备的内存限制（可用 %2$d GB，大型模型建议 %3$d GB），我们建议使用较小的 %4$s 模型以获得更好的性能。</string>
+    <string name="model_missing_message_variant">缺少所需的 %1$s 模型文件。下载大小约为 %2$s。</string>
+    <string name="calculating_size">...计算中...</string>
+    <string name="model_missing_message_tts">缺少所需的 TTS 模型文件。下载大小约为 125MB。</string>
+    <string name="download">下载</string>
+    <string name="downloading">下载中...</string>
+    <string name="downloading_file">下载 %1$s 中</string>
+    <string name="download_progress">下载进度：%1$d%%</string>
+    <string name="download_progress_tts">正在下载 TTS 模型：%1$d%%</string>
+    <string name="download_complete">下载完成</string>
+    <string name="download_complete_tts">TTS 模型下载完成</string>
+    <string name="download_failed">下载失败：%1$s</string>
+    <string name="download_failed_tts">TTS 模型下载失败：%1$s</string>
+    <string name="download_cancelled">下载已取消</string>
+    <string name="download_paused">下载已暂停</string>
+    <string name="download_resuming">恢复下载中…</string>
+    <string name="download_partially_complete">部分文件已成功下载</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+    <string name="overall_progress">整体进度</string>
+    <string name="model_files">模型文件</string>
+    <string name="error_preparing_download">准备下载时发生错误</string>
+    <string name="error_all_download_attempts_failed">所有下载尝试均失败</string>
+    <string name="error_downloading_model">下载模型时发生错误：%1$s</string>
+    <string name="error_downloading_tts_model">下载 TTS 模型时发生错误：%1$s</string>
+    <string name="error_creating_model_directory">创建模型目录时发生错误</string>
+    <string name="insufficient_storage_for_download">存储空间不足，无法下载。请释放至少 %1$dGB 空间。</string>
+    <string name="insufficient_storage_for_download_mb">存储空间不足，无法下载。请释放至少 %1$dMB 空间。</string>
+
+    <!-- binding.modelNameText.setText -->
+    <string name="unknown_model">未知模型</string>
+    <string name="model_error">模型错误</string>
+    <string name="model_disconnected">模型已断线</string>
+    <string name="initializing">正在初始化...</string>
+    <string name="model_not_available">模型不可用</string>
+
+    <string name="delete_selected_histories">删除选择的历史记录</string>
+    <string name="check_delete">确定要删除选择的 %1$d 条历史记录吗？</string>
+
+    <string name="delete">删除</string>
+    <string name="cancel">取消</string>
+
+    <string name="please_wait_for_the_response_to_finish">请等待响应完成</string>
+    <string name="type_a_message">请输入消息...</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_audio_chat.xml -->
+    <string name="choose_voice">选择语音</string>
+    <string name="toggle_camera">切换相机</string>
+    <string name="toggle_microphone">切换麦克风</string>
+    <string name="more_options">更多选项</string>
+    <string name="close">关闭</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_chat.xml -->
+    <string name="message">消息</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## activity_main.xml -->
+    <string name="device_information">设备信息</string>
+    <string name="engine_status">引擎状态</string>
+    <string name="model_settings">模型设置</string>
+    <string name="history_lookback">历史回溯：</string>
+    <string name="max_sequence_Length">最大序列长度：</string>
+    <string name="temperature">温度：</string>
+    <string name="llm_backend">LLM 后端：</string>
+    <string name="llm_engine">LLM 引擎：</string>
+    <string name="vlm_engine">VLM 引擎：</string>
+    <string name="asr_engine">ASR 引擎：</string>
+    <string name="tts_engine">TTS 引擎：</string>
+    <string name="start_chat">开始聊天</string>
+
+    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+    <!-- ## dialog_voice_selection.xml -->
+    <string name="start_new_chat">开始新聊天</string>
+    <string name="choose_a_voice">选择语音</string>
+
+
+
+    <!-- 模型状态 -->
+    <string name="model_status_llm_found">✅ 已找到</string>
+    <string name="model_status_llm_missing">⛔️ 缺失</string>
+    <string name="model_status_vlm_not_implemented">⚠️ 尚未实现</string>
+    <string name="model_status_asr_not_implemented">⚠️ 尚未实现</string>
+    <string name="model_status_tts_found">✅ 已找到</string>
+    <string name="model_status_tts_missing">⛔️ 缺失</string>
+
+    <string name="warning_tts_model_missing">⚠️ 警告：所需的 TTS 模型文件缺失。<br/></string>
+
+    <string name="model_status_llm_title">LLM 模型状态：%1$s</string>
+    <string name="model_status_vlm_title">VLM 模型状态：%1$s</string>
+    <string name="model_status_asr_title">ASR 模型状态：%1$s</string>
+    <string name="model_status_tts_title">TTS 模型状态：%1$s</string>
+
+    <!-- 需求描述部分标题 -->
+    <string name="requirements_header_memory">内存：</string>
+    <string name="requirements_header_model_status">模型状态：</string>
+    <string name="requirements_header_storage">存储空间：</string>
+
+    <!-- 需求描述详情 -->
+    <string name="requirements_memory_required">需求：%1$dGB+</string>
+    <string name="requirements_memory_device">您的设备：%1$dGB</string>
+    <string name="requirements_memory_status">状态：%1$s</string>
+
+    <string name="requirements_storage_required">需求：至少 %1$dGB 可用空间</string>
+    <string name="requirements_storage_available">可用：%1$dGB</string>
+    <string name="requirements_storage_status">状态：%1$s</string>
+
+    <string name="requirements_footer">请确保所有需求都符合，以获得最佳性能。</string>
+
+    <!-- HTML Formatting -->
+    <string name="html_bullet">•&#160;</string>
+    <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
+    <string name="html_linebreak">&lt;br/&gt;</string>
+
+    <string name="retry">重试</string>
+
+    <!-- File download status strings -->
+    <string name="download_status_pending">等待中</string>
+    <string name="download_status_in_progress">%1$d%%</string>
+    <string name="download_status_paused">已暂停</string>
+    <string name="download_status_completed">已完成</string>
+    <string name="download_status_failed">失败</string>
+    <string name="download_size_format">%1$s / %2$s</string>
+    <string name="unknown_size">未知大小</string>
+
+    <string name="LLM_invalid_token_error">很抱歉，无法生成有效的响应。这可能是由于问题的复杂性或当前模型的限制。请尝试重新表述您的问题。</string>
+    <string name="LLM_generation_timeout">很抱歉，响应生成时间过长，已被中断。请尝试提出不同的问题，或将此问题拆分为较小的部分。</string>
+
+    <!-- Model Size Selection Strings -->
+    <string name="model_size_preference_title">LLM 模型大小</string>
+    <string name="model_size_large">大型模型（高质量）</string>
+    <string name="model_size_small">小型模型（内存效率高）</string>
+    <string name="model_size_auto">自动（根据设备选择）</string>
+    <string name="model_size_warning_title">警告：内存不足</string>
+    <string name="model_size_warning_message">您的设备内存不足，无法流畅运行大型模型（需要 %1$d GB，可用 %2$d GB）。使用大型模型可能导致崩溃或运行缓慢。确定要继续吗？</string>
+    <string name="model_size_warning_confirm">仍要使用</string>
+    <string name="model_size_warning_cancel">使用小型模型</string>
+    <string name="model_size_current">当前：%s</string>
+    <string name="ram_info">内存：%d GB 可用 / %d GB 要求</string>
+
+    <!-- Backend Selection Strings -->
+
+    <!-- Model Selection Dialog -->
+    <string name="model_selection_title">选择 Breeze 模型版本</string>
+    <string name="model_selection_description">选择最适合您设备的 Breeze 模型版本。%1$s</string>
+    <string name="large_model_recommended">我们建议您的设备使用高性能版本。</string>
+    <string name="small_model_recommended">由于内存限制，我们建议您的设备使用小型版本。</string>
+    <string name="quantization_notice">⚠️ 重要提示：在内存小于7GB的设备上，将使用量化模型，与完整模型相比，此模型可能偶尔会产生较不精确的响应。</string>
+    <string name="large_model_option">%1$s (%2$s)\n更好的质量和更多功能，但需要更多内存</string>
+    <string name="small_model_option">%1$s (%2$s)\n启动更快，使用更少内存，适合资源有限的设备</string>
+    <string name="continue_button">继续</string>
+
+</resources>
