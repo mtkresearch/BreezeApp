@@ -308,9 +308,6 @@
     <string name="html_indent">&amp;nbsp;&amp;nbsp;&amp;nbsp;</string>
     <string name="html_linebreak">&lt;br/&gt;</string>
 
-    <string name="LLM_invalid_token_error">I apologize, but I was unable to generate a valid response. This might be due to the complexity of the question or current model limitations. Please try rephrasing your question.</string>
-    <string name="LLM_generation_timeout">I apologize, but the response generation took too long and had to be interrupted. Please try asking a different question or breaking this one into smaller parts.</string>
-
     <!-- Model Size Selection Strings -->
     <string name="model_size_preference_title">LLM Model Size</string>
     <string name="model_size_large">Large Model (High Quality)</string>
@@ -321,7 +318,7 @@
     <string name="model_size_warning_confirm">Use Anyway</string>
     <string name="model_size_warning_cancel">Use Small Model</string>
     <string name="model_size_current">Current: %s</string>
-    <string name="ram_info">RAM: %d GB Available / %d GB Required</string>
+    <string name="ram_info" formatted="false">RAM: %d GB Available / %d GB Required</string>
     
     <!-- Backend Selection Strings -->
 
@@ -334,5 +331,17 @@
     <string name="large_model_option">%1$s (%2$s)\nBetter quality, more capabilities, but requires more memory</string>
     <string name="small_model_option">%1$s (%2$s)\nFaster startup, less memory usage, suitable for devices with limited resources</string>
     <string name="continue_button">Continue</string>
+
+    <!-- Resource monitoring messages -->
+    <string name="high_memory_warning">應用程式記憶體使用量較高，已自動調整設定以改善效能</string>
+    <string name="high_temperature_warning">設備溫度較高，已自動降低處理負載</string>
+    <string name="performance_mode_disabled">已切換至節能模式以改善效能</string>
+    <string name="performance_mode_enabled">已恢復正常運行模式</string>
+
+    <!-- LLM Error Messages -->
+    <string name="LLM_default_error">I apologize, but I encountered an error generating a response. Please try again.</string>
+    <string name="LLM_empty_response_error">I apologize, but I couldn\'t generate a proper response. Please try rephrasing your question.</string>
+    <string name="LLM_input_too_long_error">I apologize, but your input is too long. Please try breaking it into smaller parts.</string>
+    <string name="LLM_invalid_token_error">### Due to known ExecuTorch issues, the language model is unable to respond to the above content ###</string>
 
 </resources>
