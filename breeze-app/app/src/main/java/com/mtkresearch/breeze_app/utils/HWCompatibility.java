@@ -36,10 +36,7 @@ public class HWCompatibility {
     private static boolean isMTKChipset(String hardware, String processor, String cpuInfo) {
         return (hardware.contains("mt6991") || 
                  processor.contains("mt6991") || 
-                 cpuInfo.contains("mt6991")) ||
-               (hardware.contains("mt6989") || 
-                processor.contains("mt6989") || 
-                cpuInfo.contains("mt6989"));
+                 cpuInfo.contains("mt6991")) ;
     }
 
     public static String isSupportedHW(){
