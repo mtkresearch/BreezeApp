@@ -449,8 +449,7 @@ public class IntroDialog extends Dialog {
             File modelFile = new File(modelPath);
             File tokenizerFile = new File(tokenizerPath);
             
-            boolean llmModelsExist = modelFile.exists() && modelFile.isFile() && modelFile.length() > 0 &&
-                                   tokenizerFile.exists() && tokenizerFile.isFile() && tokenizerFile.length() > 0;
+            boolean llmModelsExist = !AppConstants.needsModelDownload(context);
             
             String llmStatus = context.getString(llmModelsExist ? 
                 R.string.model_status_llm_found : R.string.model_status_llm_missing);

@@ -6,6 +6,7 @@ import android.util.Log;
 import java.io.IOException;
 import android.app.ActivityManager;
 import android.content.SharedPreferences;
+import com.mtkresearch.breeze_app.utils.ModelUtils;
 
 public class AppConstants {
     private static final String TAG = "AppConstants";
@@ -170,7 +171,73 @@ public class AppConstants {
             6 * 1024 * 1024 * 1024L // 6GB estimate
         )
     };
-    
+
+    public static final DownloadFileInfo[] MTK_NPU_LLM_DOWNLOAD_FILES = {
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla",
+                "Language Model",
+                AppConstants.FILE_TYPE_LLM,
+                16  * 1024 * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla",
+                "Language Model",
+                    AppConstants.FILE_TYPE_LLM,
+                5  * 1024 * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/added_tokens.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "added_tokens.yaml",
+                "YAML",
+                    AppConstants.FILE_TYPE_LLM,
+                10  * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "config_breezetiny_3b_instruct.yaml",
+                "YAML",
+                    AppConstants.FILE_TYPE_LLM,
+                3 *  1024L // 6GB estimate
+            ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/embedding_int16.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "embedding_int16.bin",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L // 6GB estimate
+            ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/shared_weights_0.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "shared_weights_0.bin",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L // 6GB estimate
+        ),
+        new AppConstants.DownloadFileInfo(
+                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken", // Using second URL from MODEL_DOWNLOAD_URLS 
+                "tokenizer.tiktoken",
+                "bin",
+                    AppConstants.FILE_TYPE_LLM,
+                3 * 1024 * 1024L // 6GB estimate
+         )
+
+    };
     // TTS related download files
     public static final DownloadFileInfo[] TTS_DOWNLOAD_FILES = {
         new DownloadFileInfo(
@@ -314,17 +381,31 @@ public class AppConstants {
 
     // Check if model needs to be downloaded
     public static boolean needsModelDownload(Context context) {
-        String modelFileName = getAppropriateModelFile(context);
-        
-        // First check if model exists in legacy location
-        File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
-        if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
-            return false;
+        if (ModelUtils.getPreferredBackend() == "mtk") {
+            // First check if model exists in legacy location
+            boolean needDownload = false;
+            // TBD, should add downloading flag here to avoid download accident
+            for(int i=0; i< MTK_NPU_LLM_DOWNLOAD_FILES.length; i++){
+                File file = new File(getMTKModelPath(context), MTK_NPU_LLM_DOWNLOAD_FILES[i].fileName);
+                if(!file.exists()){
+                    needDownload = true;
+                }
+            }            
+            return needDownload;
         }
+        else {
+            String modelFileName = getAppropriateModelFile(context);
+            
+            // First check if model exists in legacy location
+            File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
+            if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
+                return false;
+            }
 
-        // Then check app's private storage
-        File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
-        return !appModelFile.exists() || appModelFile.length() == 0;
+            // Then check app's private storage
+            File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
+            return !appModelFile.exists() || appModelFile.length() == 0;
+        }
     }
 
     // Get the current effective model path (used for sequence length calculations)
@@ -475,13 +556,19 @@ public class AppConstants {
         }
         return executor;
     }
+    public static String getMTKModelPath(Context context) {
+        if (context != null) {
+            File mtkNpuDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), MTK_NPU_MODEL_DIR);
+            return mtkNpuDir.getAbsolutePath();
+        }
+        return "";
+    }
 
     // Get MTK config path - use downloaded config when available
     public static String getMtkConfigPath(Context context) {
         if (context != null) {
             // First check if we have a downloaded config file in the MTK NPU model directory
-            File mtkNpuDir = new File(new File(context.getFilesDir(), APP_MODEL_DIR), MTK_NPU_MODEL_DIR);
-            File configFile = new File(mtkNpuDir, MTK_NPU_MODEL_CONFIG_FILE);
+            File configFile = new File(getMTKModelPath(context), MTK_NPU_MODEL_CONFIG_FILE);
             
             if (configFile.exists() && configFile.length() > 0) {
                 Log.d(TAG, "Using downloaded MTK config file: " + configFile.getAbsolutePath());

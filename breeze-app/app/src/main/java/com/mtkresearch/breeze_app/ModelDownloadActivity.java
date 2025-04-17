@@ -8,6 +8,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 import android.view.View;
 import android.widget.TextView;
+import android.view.WindowManager;
 
 import com.mtkresearch.breeze_app.utils.AppConstants;
 import com.mtkresearch.breeze_app.utils.ModelDownloadDialog;
@@ -23,6 +24,7 @@ public class ModelDownloadActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         
         // Set a simple layout with a title and back button
         setContentView(R.layout.activity_model_download);
@@ -93,5 +95,10 @@ public class ModelDownloadActivity extends Activity {
         } else {
             super.onBackPressed();
         }
+    }
+    @Override
+    public void onDestroy(){
+        super.onDestroy();
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);        
     }
 } 

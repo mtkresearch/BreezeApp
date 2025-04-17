@@ -393,7 +393,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
         
         // Remove overlay animation code and directly start services
-        if(true || AppConstants.needsModelDownload(getApplicationContext())){
+        if(AppConstants.needsModelDownload(getApplicationContext())){
             Intent intent = new Intent(this, ModelDownloadActivity.class);
             if (HWCompatibility.isSupportedHW() == "mtk") {
                 intent.putExtra("download_mode", "MTK_NPU");
