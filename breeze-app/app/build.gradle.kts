@@ -3,8 +3,17 @@ import com.android.build.api.dsl.ProductFlavor
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
+    // Firebase plugins are applied conditionally below
+}
+
+// Check if google-services.json exists
+val googleServicesFile = file("google-services.json")
+val hasGoogleServices = googleServicesFile.exists()
+
+// Apply Firebase plugins if google-services.json exists
+if (hasGoogleServices) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 android {
@@ -25,20 +34,16 @@ android {
             abiFilters.addAll(listOf("arm64-v8a"))
         }
 
+        manifestPlaceholders["app_name"] = "BreezeApp"
+
         externalNativeBuild {
             cmake {
                 cppFlags += "-std=c++17"
             }
         }
-
-        manifestPlaceholders["app_name"] = "BreezeApp"
-
-        externalNativeBuild {
-            cmake {
-                arguments += "-DANDROID_STL=c++_shared"
-                cppFlags += "-fsanitize-hwaddress"
-            }
-        }
+        
+        // Add a BuildConfig field to indicate Firebase presence
+        buildConfigField("Boolean", "USE_FIREBASE", hasGoogleServices.toString())
     }
 
     buildTypes {
@@ -50,16 +55,20 @@ android {
             )
             signingConfig = signingConfigs.getByName("debug")
 
-            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-                nativeSymbolUploadEnabled = true
-                mappingFileUploadEnabled = true
+            if (hasGoogleServices) {
+                configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                    nativeSymbolUploadEnabled = true
+                    mappingFileUploadEnabled = true
+                }
             }
         }
         
         debug {
-            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
-                nativeSymbolUploadEnabled = true
-                mappingFileUploadEnabled = true
+            if (hasGoogleServices) {
+                configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                    nativeSymbolUploadEnabled = true
+                    mappingFileUploadEnabled = true
+                }
             }
             
             ndk {
@@ -91,14 +100,17 @@ android {
         }
     }
 
-    packaging.jniLibs.useLegacyPackaging = true
-
-    // externalNativeBuild {
-    //     cmake {
-    //         path = file("src/main/cpp/CMakeLists.txt")
-    //         version = "3.22.1"
-    //     }
-    // }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            
+            // Handle duplicate .so libraries
+            pickFirsts += listOf(
+                "**/libc++_shared.so",
+                "**/libfbjni.so"
+            )
+        }
+    }
 
     flavorDimensions += "version"
     productFlavors {
@@ -146,12 +158,15 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:${Versions.ANDROID_JUNIT}")
     androidTestImplementation("androidx.test.espresso:espresso-core:${Versions.ESPRESSO}")
 
-    // Import the BoM for the Firebase platform
-    implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
-    
-    // Add the dependencies for the Crashlytics NDK and Analytics libraries
-    implementation("com.google.firebase:firebase-crashlytics-ndk")
-    implementation("com.google.firebase:firebase-analytics")
+    // Firebase dependencies only if google-services.json exists
+    if (hasGoogleServices) {
+        // Import the BoM for the Firebase platform
+        implementation(platform("com.google.firebase:firebase-bom:33.11.0"))
+        
+        // Add the dependencies for the Crashlytics NDK and Analytics libraries
+        implementation("com.google.firebase:firebase-crashlytics-ndk")
+        implementation("com.google.firebase:firebase-analytics")
+    }
 
     // Executorch dependencies
     implementation("com.facebook.fbjni:fbjni:${Versions.FBJNI}")

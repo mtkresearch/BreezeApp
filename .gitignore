@@ -41,3 +41,10 @@ Breeze-Tiny-Instruct-v0_1-mobile
 Llama3.2-3B-Instruct-mobile
 
 .cursor/
+
+# JNI folder - contains proprietary source code
+breeze-app/app/jni/
+*/app/jni/
+
+# Firebase configuration
+**/google-services.json

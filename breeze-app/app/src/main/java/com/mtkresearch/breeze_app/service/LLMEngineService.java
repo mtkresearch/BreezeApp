@@ -56,7 +56,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 System.loadLibrary("sigchain");  // Load signal handler first
                 Thread.sleep(100);  // Give time for signal handlers to initialize
                 
-                System.loadLibrary("llm_jni_proxy");
+                System.loadLibrary("llm_jni");
                 AppConstants.MTK_BACKEND_AVAILABLE = true;
                 Log.d(TAG, "Successfully loaded llm_jni library");
                 
