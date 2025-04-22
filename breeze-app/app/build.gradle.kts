@@ -24,8 +24,8 @@ android {
         applicationId = "com.mtkresearch.breeze_app"
         minSdk = 33
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.8.0"
+        versionCode = 9
+        versionName = "0.9.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -176,7 +176,7 @@ dependencies {
     implementation("com.facebook.soloader:soloader:${Versions.SOLOADER}")
     implementation(files("libs/executorch.aar"))
 
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+//    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
 
 // Force specific versions for compatibility with Kotlin 2.0.0
