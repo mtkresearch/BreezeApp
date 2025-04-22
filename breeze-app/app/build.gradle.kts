@@ -173,6 +173,8 @@ dependencies {
     implementation("com.google.code.gson:gson:${Versions.GSON}")
     implementation("com.facebook.soloader:soloader:${Versions.SOLOADER}")
     implementation(files("libs/executorch.aar"))
+
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
 
 // Force specific versions for compatibility with Kotlin 2.0.0

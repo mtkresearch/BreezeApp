@@ -161,25 +161,37 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onResume() {
         super.onResume();
-        reinitializeLLMIfNeeded();
+        // reinitializeLLMIfNeeded();
+        initializeServices();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         saveCurrentChat();
-        releaseLLMResources();
+        
+        try {
+            cleanup();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
     }
 
     @Override
     protected void onStop() {
         Log.d(TAG, "onStop");
         super.onStop();
+
+        try {
+            cleanup();
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        }
     }
 
     @Override
     protected void onDestroy() {
-            Log.d(TAG, "onDestroy");
+        Log.d(TAG, "onDestroy");
         super.onDestroy();
         // Ensure services are unbound and cleaned up
         try {
@@ -1180,11 +1192,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void unbindAllServices() {
-        if (llmService != null) {
-            llmService.releaseResources();
-            unbindService(llmConnection);
-             Log.d(TAG, "unbind llm");
-        }
+        if (llmService != null) unbindService(llmConnection);
         if (vlmService != null) unbindService(vlmConnection);
         if (asrService != null) unbindService(asrConnection);
         if (ttsService != null) unbindService(ttsConnection);

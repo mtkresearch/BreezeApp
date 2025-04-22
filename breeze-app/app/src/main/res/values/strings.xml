@@ -343,5 +343,6 @@
     <string name="LLM_empty_response_error">I apologize, but I couldn\'t generate a proper response. Please try rephrasing your question.</string>
     <string name="LLM_input_too_long_error">I apologize, but your input is too long. Please try breaking it into smaller parts.</string>
     <string name="LLM_invalid_token_error">### Due to known ExecuTorch issues, the language model is unable to respond to the above content ###</string>
+    <string name="error_binding_services">Fail to bind services</string>
 
 </resources>
