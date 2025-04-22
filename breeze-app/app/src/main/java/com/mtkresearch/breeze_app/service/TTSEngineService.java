@@ -28,6 +28,7 @@ import kotlin.Unit;
 import kotlin.jvm.functions.Function0;
 import kotlin.jvm.functions.Function1;
 
+import java.lang.ref.WeakReference;
 
 public class TTSEngineService extends BaseEngineService {
     private static final String TAG = "TTSEngineService";
@@ -41,7 +42,18 @@ public class TTSEngineService extends BaseEngineService {
     private boolean isTextToSpeechInitialized = false;
     private AudioTrack audioTrack;
 
-    public class LocalBinder extends BaseEngineService.LocalBinder<TTSEngineService> { }
+    public class LocalBinder extends BaseEngineService.LocalBinder<TTSEngineService> {
+        private final WeakReference<TTSEngineService> serviceRef;
+        
+        public LocalBinder() {
+            this.serviceRef = new WeakReference<>(TTSEngineService.this);
+        }
+        
+        @Override
+        public TTSEngineService getService() {
+            return serviceRef.get();
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {

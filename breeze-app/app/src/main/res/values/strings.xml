@@ -345,4 +345,8 @@
     <string name="LLM_invalid_token_error">### Due to known ExecuTorch issues, the language model is unable to respond to the above content ###</string>
     <string name="error_binding_services">Fail to bind services</string>
 
+    <!-- New error messages for ChatActivity -->
+    <string name="error_resuming_activity">Error resuming chat. Please restart the app if problems persist.</string>
+    <string name="error_starting_initialization">Failed to start initialization. Please try again.</string>
+
 </resources>

@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.lang.ref.WeakReference;
 
 public class LLMEngineService extends BaseEngineService implements LlamaCallback {
     private static final String TAG = "LLMEngineService";
@@ -60,16 +61,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 AppConstants.MTK_BACKEND_AVAILABLE = true;
                 Log.d(TAG, "Successfully loaded llm_jni library");
                 
-                // Register shutdown hook for cleanup
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    try {
-                        Log.d(TAG, "cleanupMTKResources");
-                        cleanupMTKResources();
-                        cleanupExecutor.shutdownNow();
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error in shutdown hook", e);
-                    }
-                }));
             } catch (UnsatisfiedLinkError | Exception e) {
                 AppConstants.MTK_BACKEND_AVAILABLE = false;
                 Log.w(TAG, "Failed to load native libraries, MTK backend will be disabled", e);
@@ -157,7 +148,18 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
     }
 
-    public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> { }
+    public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> {
+        private final WeakReference<LLMEngineService> serviceRef;
+        
+        public LocalBinder() {
+            this.serviceRef = new WeakReference<>(LLMEngineService.this);
+        }
+        
+        @Override
+        public LLMEngineService getService() {
+            return serviceRef.get();
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -266,110 +268,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         return future;
     }
 
-    private static void cleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d("LLMEngineService", "Performing emergency cleanup of MTK resources");
-                LLMEngineService tempInstance = new LLMEngineService();
-                
-                // Reset with timeout
-                Future<?> resetFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeResetLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency reset", e);
-                    }
-                });
-                
-                try {
-                    resetFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Reset operation timed out");
-                    resetFuture.cancel(true);
-                }
-                
-                Thread.sleep(100);
-                
-                // Release with timeout
-                Future<?> releaseFuture = cleanupExecutor.submit(() -> {
-                    try {
-                        tempInstance.nativeReleaseLlm();
-                    } catch (Exception e) {
-                        Log.w("LLMEngineService", "Error during emergency release", e);
-                    }
-                });
-                
-                try {
-                    releaseFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                } catch (TimeoutException e) {
-                    Log.w("LLMEngineService", "Release operation timed out");
-                    releaseFuture.cancel(true);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(100);
-                
-            } catch (Exception e) {
-                Log.e("LLMEngineService", "Error during MTK cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
-    private void forceCleanupMTKResources() {
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) return;
-            isCleaningUp = true;
-            
-            try {
-                Log.d(TAG, "Forcing cleanup of MTK resources");
-                
-                // Multiple cleanup attempts with timeouts
-                for (int i = 0; i < 3; i++) {
-                    Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
-                        try {
-                            nativeResetLlm();
-                            Thread.sleep(100);
-                            nativeReleaseLlm();
-                            Log.d(TAG, "nativeReleaseLlm");
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error during forced cleanup attempt", e);
-                        }
-                    });
-                    
-                    try {
-                        cleanupFuture.get(AppConstants.MTK_NATIVE_OP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                    } catch (TimeoutException e) {
-                        Log.w(TAG, "Cleanup attempt " + (i+1) + " timed out");
-                        cleanupFuture.cancel(true);
-                    }
-                    
-                    Thread.sleep(200);
-                }
-                
-                // Reset state
-                mtkInitCount = 0;
-                
-                // Force garbage collection
-                System.gc();
-                Thread.sleep(200);
-                
-            } catch (Exception e) {
-                Log.e(TAG, "Error during forced cleanup", e);
-            } finally {
-                isCleaningUp = false;
-            }
-        }
-    }
-
     private boolean initializeMTKBackend() {
         if (!AppConstants.MTK_BACKEND_AVAILABLE) {
             Log.d(TAG, "MTK backend disabled, skipping");
@@ -386,7 +284,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Force cleanup if we've hit the max init attempts
                 if (mtkInitCount >= AppConstants.MAX_MTK_INIT_ATTEMPTS) {
                     Log.w(TAG, "MTK init count exceeded limit, forcing cleanup");
-                    forceCleanupMTKResources();
                     mtkInitCount = 0;
                     Thread.sleep(1000);  // Wait for cleanup to complete
                 }
@@ -735,10 +632,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Release MTK resources if using MTK backend
                 if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
                     try {
-                        // Add delay before cleanup
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
-                        nativeResetLlm();
-                        Thread.sleep(AppConstants.BACKEND_CLEANUP_DELAY_MS);
                         nativeReleaseLlm();
                         mtkInitCount = 0; // Reset init count
                         Log.d(TAG, "Released MTK resources");
@@ -781,9 +674,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         // Run cleanup with timeout
         Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
             try {
-                cleanupMTKResources();
                 releaseResources();
- Log.d(TAG, "cleanupMTKResources in onDestroy");                
+ Log.d(TAG, "releaseResources in onDestroy");                
             } catch (Exception e) {
                 Log.e(TAG, "Error during service cleanup", e);
             }

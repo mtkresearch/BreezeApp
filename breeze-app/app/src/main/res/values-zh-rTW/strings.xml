@@ -341,6 +341,10 @@
     <string name="LLM_invalid_token_error">### 因ExecuTorch已知問題，導致語言模型無法針對上述內容進行回應 ###</string>
     <string name="error_binding_services">服務綁定失敗</string>
 
+    <!-- New error messages for ChatActivity -->
+    <string name="error_resuming_activity">恢復聊天時發生錯誤。如果問題持續，請重新啟動應用程式。</string>
+    <string name="error_starting_initialization">初始化啟動失敗。請再試一次。</string>
+
     <!-- Resource monitoring messages -->
 
 </resources>

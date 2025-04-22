@@ -161,17 +161,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onResume() {
         super.onResume();
-        // reinitializeLLMIfNeeded();
         initializeServices();
     }
 
     @Override
     protected void onPause() {
+        Log.d(TAG, "onPause");
         super.onPause();
         saveCurrentChat();
         
         try {
-            cleanup();
+            unbindAllServices();
         } catch (Exception e) {
             Log.e(TAG, "Error during cleanup", e);
         }
@@ -183,7 +183,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         super.onStop();
 
         try {
-            cleanup();
+            unbindAllServices();
         } catch (Exception e) {
             Log.e(TAG, "Error during cleanup", e);
         }
@@ -193,7 +193,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     protected void onDestroy() {
         Log.d(TAG, "onDestroy");
         super.onDestroy();
-        // Ensure services are unbound and cleaned up
+        
+        // Ensure all services are properly unbound and cleaned up
         try {
             cleanup();
         } catch (Exception e) {
@@ -485,13 +486,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                             isInitializing = false;
                         }
                         updateInteractionState();
-                        
-                        // Log final service states
-                        Log.d(TAG, "Service initialization complete. States:");
-                        Log.d(TAG, "LLM ready: " + llmServiceReady);
-                        Log.d(TAG, "VLM ready: " + vlmServiceReady);
-                        Log.d(TAG, "ASR ready: " + asrServiceReady);
-                        Log.d(TAG, "TTS ready: " + ttsServiceReady);
+                            
+                            // Log final service states
+                            Log.d(TAG, "Service initialization complete. States:");
+                            Log.d(TAG, "LLM ready: " + llmServiceReady);
+                            Log.d(TAG, "VLM ready: " + vlmServiceReady);
+                            Log.d(TAG, "ASR ready: " + asrServiceReady);
+                            Log.d(TAG, "TTS ready: " + ttsServiceReady);
                     }
                 });
                 
@@ -1134,7 +1135,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         CompletableFuture.runAsync(() -> {
             try {
                 // Save current chat before cleanup
-                    Log.w(TAG, "saveCurrentChat in cleanup");
+                Log.w(TAG, "saveCurrentChat in cleanup");
                 saveCurrentChat();
                 
                 // Unbind services with timeout
@@ -1142,7 +1143,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
                     Log.w(TAG, "unbindAllServices");
                     unbindAllServices();
-
                 });
                 
                 try {
@@ -1151,7 +1151,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Log.w(TAG, "Service unbinding timed out", e);
                     cleanupFuture.cancel(true);
                 }
-                    Log.w(TAG, " cleanupExecutor.shutdownNow");
+                Log.w(TAG, " cleanupExecutor.shutdownNow");
                 
                 cleanupExecutor.shutdownNow();
                 
@@ -1180,10 +1180,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     ttsService = null;
                     stopService(new Intent(ChatActivity.this, TTSEngineService.class));
                 }
-
+                
                 // Force garbage collection
                 System.gc();
-                    Log.w(TAG, " finish System.gc()");
+                Log.w(TAG, " finish System.gc()");
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error during cleanup", e);
@@ -1192,28 +1192,37 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void unbindAllServices() {
-        if (llmService != null) unbindService(llmConnection);
-        if (vlmService != null) unbindService(vlmConnection);
-        if (asrService != null) unbindService(asrConnection);
-        if (ttsService != null) unbindService(ttsConnection);
-    }
-
-    private void releaseLLMResources() {
-         Log.d(TAG, "releaseLLMResources");
         if (llmService != null) {
-            llmService.releaseResources();
+            try {
+                unbindService(llmConnection);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "LLM service not registered", e);
+            }
+            stopService(new Intent(ChatActivity.this, LLMEngineService.class));
         }
-    }
-
-    private void reinitializeLLMIfNeeded() {
-        if (llmService != null && !llmService.isReady()) {
-            llmService.initialize()
-                .thenAccept(success -> {
-                    if (!success) {
-                        Log.e(TAG, "Failed to reinitialize LLM");
-                        runOnUiThread(() -> Toast.makeText(this, this.getString(R.string.failed_to_reinitialize_llm), Toast.LENGTH_SHORT).show());
-                    }
-                });
+        if (vlmService != null) {
+            try {
+                unbindService(vlmConnection);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "VLM service not registered", e);
+            }
+            stopService(new Intent(ChatActivity.this, VLMEngineService.class));
+        }
+        if (asrService != null) {
+            try {
+                unbindService(asrConnection);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "ASR service not registered", e);
+            }
+            stopService(new Intent(ChatActivity.this, ASREngineService.class));
+        }
+        if (ttsService != null) {
+            try {
+                unbindService(ttsConnection);
+            } catch (IllegalArgumentException e) {
+                Log.w(TAG, "TTS service not registered", e);
+            }
+            stopService(new Intent(ChatActivity.this, TTSEngineService.class));
         }
     }
 
@@ -1725,7 +1734,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             if (isInitializationInProgress) {
                 // During initialization, disable all interactive components
                 disableAllInteractions();
-                
+
                 // Show initialization state in model name
                 binding.modelNameText.setText(this.getString(R.string.initializing));
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.text_primary, getTheme()));
@@ -1777,41 +1786,41 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.inputContainer.setEnabled(false);
         binding.collapsedInput.setEnabled(false);
         binding.expandedInput.setEnabled(false);
-        
-        binding.messageInput.setEnabled(false);
-        binding.messageInput.setFocusable(false);
-        binding.messageInput.setFocusableInTouchMode(false);
-        binding.messageInput.setAlpha(DISABLED_ALPHA);
-        
-        binding.messageInputExpanded.setEnabled(false);
-        binding.messageInputExpanded.setFocusable(false);
-        binding.messageInputExpanded.setFocusableInTouchMode(false);
-        binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
-        
-        binding.historyButton.setEnabled(false);
-        binding.historyButton.setClickable(false);
-        binding.historyButton.setAlpha(DISABLED_ALPHA);
-        
-        binding.newConversationButton.setEnabled(false);
-        binding.newConversationButton.setClickable(false);
-        binding.newConversationButton.setAlpha(DISABLED_ALPHA);
-        
-        binding.attachButton.setEnabled(false);
-        binding.attachButton.setAlpha(DISABLED_ALPHA);
-        binding.attachButtonExpanded.setEnabled(false);
-        binding.attachButtonExpanded.setAlpha(DISABLED_ALPHA);
-        
-        binding.voiceButton.setEnabled(false);
-        binding.voiceButton.setAlpha(DISABLED_ALPHA);
-        binding.voiceButtonExpanded.setEnabled(false);
-        binding.voiceButtonExpanded.setAlpha(DISABLED_ALPHA);
-        
-        binding.sendButton.setEnabled(false);
-        binding.sendButton.setAlpha(DISABLED_ALPHA);
-        binding.sendButtonExpanded.setEnabled(false);
-        binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
-        
-        RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+            
+            binding.messageInput.setEnabled(false);
+            binding.messageInput.setFocusable(false);
+            binding.messageInput.setFocusableInTouchMode(false);
+            binding.messageInput.setAlpha(DISABLED_ALPHA);
+            
+            binding.messageInputExpanded.setEnabled(false);
+            binding.messageInputExpanded.setFocusable(false);
+            binding.messageInputExpanded.setFocusableInTouchMode(false);
+            binding.messageInputExpanded.setAlpha(DISABLED_ALPHA);
+            
+            binding.historyButton.setEnabled(false);
+            binding.historyButton.setClickable(false);
+            binding.historyButton.setAlpha(DISABLED_ALPHA);
+            
+            binding.newConversationButton.setEnabled(false);
+            binding.newConversationButton.setClickable(false);
+            binding.newConversationButton.setAlpha(DISABLED_ALPHA);
+            
+            binding.attachButton.setEnabled(false);
+            binding.attachButton.setAlpha(DISABLED_ALPHA);
+            binding.attachButtonExpanded.setEnabled(false);
+            binding.attachButtonExpanded.setAlpha(DISABLED_ALPHA);
+            
+            binding.voiceButton.setEnabled(false);
+            binding.voiceButton.setAlpha(DISABLED_ALPHA);
+            binding.voiceButtonExpanded.setEnabled(false);
+            binding.voiceButtonExpanded.setAlpha(DISABLED_ALPHA);
+            
+            binding.sendButton.setEnabled(false);
+            binding.sendButton.setAlpha(DISABLED_ALPHA);
+            binding.sendButtonExpanded.setEnabled(false);
+            binding.sendButtonExpanded.setAlpha(DISABLED_ALPHA);
+            
+            RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
         if (historyRecyclerView != null) {
             historyRecyclerView.setEnabled(false);
             historyRecyclerView.setAlpha(DISABLED_ALPHA);
@@ -1820,24 +1829,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private void enableBasicComponents() {
         binding.inputContainer.setEnabled(true);
-        binding.collapsedInput.setEnabled(true);
-        binding.expandedInput.setEnabled(true);
-        
-        binding.historyButton.setEnabled(true);
-        binding.historyButton.setClickable(true);
-        binding.historyButton.setAlpha(ENABLED_ALPHA);
-        
-        binding.newConversationButton.setEnabled(true);
-        binding.newConversationButton.setClickable(true);
-        binding.newConversationButton.setAlpha(ENABLED_ALPHA);
-        
-        RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
-        if (historyRecyclerView != null) {
-            historyRecyclerView.setEnabled(true);
-            historyRecyclerView.setAlpha(ENABLED_ALPHA);
-            if (historyAdapter != null) {
-                historyAdapter.notifyDataSetChanged();
-            }
+            binding.collapsedInput.setEnabled(true);
+            binding.expandedInput.setEnabled(true);
+            
+            binding.historyButton.setEnabled(true);
+            binding.historyButton.setClickable(true);
+            binding.historyButton.setAlpha(ENABLED_ALPHA);
+            
+            binding.newConversationButton.setEnabled(true);
+            binding.newConversationButton.setClickable(true);
+            binding.newConversationButton.setAlpha(ENABLED_ALPHA);
+            
+            RecyclerView historyRecyclerView = findViewById(R.id.historyRecyclerView);
+            if (historyRecyclerView != null) {
+                historyRecyclerView.setEnabled(true);
+                historyRecyclerView.setAlpha(ENABLED_ALPHA);
+                if (historyAdapter != null) {
+                    historyAdapter.notifyDataSetChanged();
+                }
         }
     }
 
