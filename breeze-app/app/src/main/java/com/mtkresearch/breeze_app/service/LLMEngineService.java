@@ -63,6 +63,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Register shutdown hook for cleanup
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     try {
+                        Log.d(TAG, "cleanupMTKResources");
                         cleanupMTKResources();
                         cleanupExecutor.shutdownNow();
                     } catch (Exception e) {
@@ -165,6 +166,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(TAG, "onStartCommand flag="+flags+", startId= "+startId);
         if (intent != null) {
             if (intent.hasExtra("model_path")) {
                 modelPath = intent.getStringExtra("model_path");
@@ -204,7 +206,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     @Override
     public CompletableFuture<Boolean> initialize() {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        
+        Log.d(TAG, "initialize");
+
         // Create a timeout future
         CompletableFuture.delayedExecutor(AppConstants.LLM_INIT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
             .execute(() -> {
@@ -336,6 +339,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                             nativeResetLlm();
                             Thread.sleep(100);
                             nativeReleaseLlm();
+                            Log.d(TAG, "nativeReleaseLlm");
                         } catch (Exception e) {
                             Log.e(TAG, "Error during forced cleanup attempt", e);
                         }
@@ -408,7 +412,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     
                     // Initialize with conservative settings
                     success = nativeInitLlm(AppConstants.getMtkConfigPath(context), true);
-                    
+
                     if (!success) {
                         Log.e(TAG, "MTK initialization returned false");
                         cleanupAfterError();
@@ -717,6 +721,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     }
     
     public void releaseResources() {
+        Log.d(TAG, "releaseResources");
         synchronized (MTK_LOCK) {
             if (isCleaningUp) {
                 Log.w(TAG, "Cleanup already in progress");
@@ -770,6 +775,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     
     @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy");   
         super.onDestroy();
         
         // Run cleanup with timeout
@@ -777,6 +783,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             try {
                 cleanupMTKResources();
                 releaseResources();
+ Log.d(TAG, "cleanupMTKResources in onDestroy");                
             } catch (Exception e) {
                 Log.e(TAG, "Error during service cleanup", e);
             }
@@ -790,7 +797,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         } catch (Exception e) {
             Log.e(TAG, "Error waiting for cleanup", e);
         }
-        
         if (executor != null) {
             executor.shutdown();
             executor = null;

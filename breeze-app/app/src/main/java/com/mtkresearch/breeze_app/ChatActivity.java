@@ -77,6 +77,10 @@ import android.os.Looper;
 import com.mtkresearch.breeze_app.utils.ModelUtils;
 import com.mtkresearch.breeze_app.utils.HWCompatibility;
 
+import com.google.firebase.analytics.FirebaseAnalytics;
+import com.google.firebase.crashlytics.FirebaseCrashlytics;
+
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
 
@@ -168,7 +172,14 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     @Override
+    protected void onStop() {
+        Log.d(TAG, "onStop");
+        super.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
+            Log.d(TAG, "onDestroy");
         super.onDestroy();
         // Ensure services are unbound and cleaned up
         try {
@@ -1098,17 +1109,28 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
     }
 
+    private void shutdownFirebase() {
+        FirebaseAnalytics.getInstance(getApplicationContext()).setAnalyticsCollectionEnabled(false);
+        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false);
+   //     FirebaseMessaging.getInstance().deleteToken();
+   //     FirebaseDatabase.getInstance().goOffline();
+   //     FirebaseFirestore.getInstance().terminate();
+   //     FirebaseApp.getInstance().delete(); // 最後刪除整個 FirebaseApp
+    }
     private void cleanup() {
         // Run cleanup in background to prevent ANR
         CompletableFuture.runAsync(() -> {
             try {
                 // Save current chat before cleanup
+                    Log.w(TAG, "saveCurrentChat in cleanup");
                 saveCurrentChat();
                 
                 // Unbind services with timeout
                 ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
                 Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
+                    Log.w(TAG, "unbindAllServices");
                     unbindAllServices();
+
                 });
                 
                 try {
@@ -1117,6 +1139,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Log.w(TAG, "Service unbinding timed out", e);
                     cleanupFuture.cancel(true);
                 }
+                    Log.w(TAG, " cleanupExecutor.shutdownNow");
                 
                 cleanupExecutor.shutdownNow();
                 
@@ -1127,9 +1150,28 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 historyManager = null;
                 historyAdapter = null;
                 drawerLayout = null;
-                
+                mediaHandler = null;
+
+                if(llmService != null){
+                    llmService = null;
+                    stopService(new Intent(ChatActivity.this, LLMEngineService.class));
+                }
+                if(asrService != null){
+                    asrService = null;
+                    stopService(new Intent(ChatActivity.this, ASREngineService.class));
+                }
+                if(vlmService != null){
+                    vlmService = null;
+                    stopService(new Intent(ChatActivity.this, VLMEngineService.class));
+                }
+                if(ttsService != null){
+                    ttsService = null;
+                    stopService(new Intent(ChatActivity.this, TTSEngineService.class));
+                }
+
                 // Force garbage collection
                 System.gc();
+                    Log.w(TAG, " finish System.gc()");
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error during cleanup", e);
@@ -1141,6 +1183,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         if (llmService != null) {
             llmService.releaseResources();
             unbindService(llmConnection);
+             Log.d(TAG, "unbind llm");
         }
         if (vlmService != null) unbindService(vlmConnection);
         if (asrService != null) unbindService(asrConnection);
@@ -1148,6 +1191,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void releaseLLMResources() {
+         Log.d(TAG, "releaseLLMResources");
         if (llmService != null) {
             llmService.releaseResources();
         }
@@ -1212,6 +1256,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "LLM service connected"); 
             llmService = null;
             llmServiceReady = false;
             runOnUiThread(() -> {
@@ -1233,6 +1278,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Log.d(TAG, "VLM service connected"); 
             vlmService = null;
             vlmServiceReady = false;
             updateInteractionState();
