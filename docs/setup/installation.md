@@ -30,7 +30,7 @@
 
 4. Download required model files:
     - LLM models: \
-        a. BreezeTiny:
+        a. Breeze2-3B-Instruct:
         ```bash
         # Download from Hugging Face
         git lfs install
@@ -39,16 +39,6 @@
         # Push to Android device
         adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
         adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
-        ```
-        b. Llama3.2-3B-Instruct:
-        ```bash
-        # Download from Hugging Face
-        git lfs install
-        git clone https://huggingface.co/MediaTek-Research/Llama3.2-3B-Instruct-mobile
-        
-        # Push to Android device
-        adb push Llama3.2-3B-Instruct-mobile/llama3_2.pte /data/local/tmp/llama/
-        adb push Llama3.2-3B-Instruct-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
 
     - VLM models:\
@@ -88,42 +78,27 @@
 
 6. Build the project in Android Studio
 
-## Changing Default Backend or LLM Model
+## Changing Default Backend
 
-To change the default backend (CPU) or LLM model (Breeze), follow these steps:
+To change the default backend (CPU to MTK), follow these steps:
 
 1. Open the "AppConstants.java" file, located at:
    ```bash
-   cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/gai_android/utils/AppConstants.java
+   cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/breeze_app/utils/AppConstants.java
    ```
-2. Use your preferred programming tools to modify the following constants and set your desired backend and model:
+2. Use your preferred programming tools to modify the following constants:
    ```java
    // Backend Constants
    public static final String BACKEND_CPU = "cpu" ;
    public static final String BACKEND_MTK = "mtk" ;
-   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // Change to desired backend
-   ...
-   // Model Files and Paths
-   public static final String LLAMA_MODEL_FILE = "llama3_2.pte" ;
-   public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1.pte" ;
-   public static final String LLAMA_MODEL_DIR = "/data/local/tmp/llama/" ;
-   public static final String MODEL_PATH = LLAMA_MODEL_DIR + BREEZE_MODEL_FILE ; // Change to desired model
+   public static final String BACKEND_DEFAULT = BACKEND_MTK ; // Change to desired backend
    ```
    
-   - Changing the Backend:\
-      By default, the backend is set to "CPU". If you want to use "MTK" as the application backend, modify the following line:
-      ```java
-      // Backend Constants
-      ...
-      public static final String BACKEND_DEFAULT = BACKEND_MTK ; // Change to desired backend
-      ```
+   By default, the backend is set to "CPU". If you want to use "MTK" as the application backend, modify the following line:
+   ```java
+   // Backend Constants
+   ...
+   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // Change to desired backend
+   ```
 
-   - Changing the LLM Model:\
-      By default, the model is set to "Breeze2". If you want to use "Llama3_2", modify the following line:
-      ```java
-      // Model Files and Paths
-      ...
-      public static final String MODEL_PATH = LLAMA_MODEL_DIR + LLAMA_MODEL_FILE ; // Change to desired model
-      ```
-
-3. After modifying the backend or LLM model, "rebuild" the project in Android Studio to apply the changes. 
+3. After modifying the backend, "rebuild" the project in Android Studio to apply the changes. 
