@@ -25,7 +25,7 @@ android {
         minSdk = 33
         targetSdk = 35
         versionCode = 11
-        versionName = "0.9.1"
+        versionName = "1.0.0-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -100,7 +100,10 @@ android {
 
     sourceSets {
         getByName("main") {
-            java.srcDirs("src/main/java")
+            java {
+                srcDirs("src/main/java", 
+                       "../external/sherpa-onnx/sherpa-onnx/java-api/src")
+            }
             jniLibs.srcDirs("libs")
         }
     }
@@ -129,6 +132,13 @@ android {
                 "com.mtkresearch.breeze_app.breeze.fileprovider"
         }
     }
+    
+    // Configure Robolectric testing
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 // Version constants
@@ -145,6 +155,8 @@ object Versions {
     const val GSON = "2.8.6"
     const val SOLOADER = "0.10.5"
     const val KOTLIN = "2.0.0"
+    const val MOCKITO = "5.17.0"
+    const val ROBOLECTRIC = "4.14.1"
 }
 
 dependencies {
@@ -164,6 +176,12 @@ dependencies {
     testImplementation("junit:junit:${Versions.JUNIT}")
     androidTestImplementation("androidx.test.ext:junit:${Versions.ANDROID_JUNIT}")
     androidTestImplementation("androidx.test.espresso:espresso-core:${Versions.ESPRESSO}")
+    
+    // Mockito for unit testing
+    testImplementation("org.mockito:mockito-core:${Versions.MOCKITO}")
+    
+    // Robolectric for Android unit testing without device
+    testImplementation("org.robolectric:robolectric:${Versions.ROBOLECTRIC}")
 
     // Firebase dependencies only if google-services.json exists
     if (hasGoogleServices) {
