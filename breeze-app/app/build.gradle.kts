@@ -24,8 +24,8 @@ android {
         applicationId = "com.mtkresearch.breeze_app"
         minSdk = 33
         targetSdk = 35
-        versionCode = 9
-        versionName = "0.9.0"
+        versionCode = 11
+        versionName = "0.9.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -60,6 +60,11 @@ android {
                     nativeSymbolUploadEnabled = true
                     mappingFileUploadEnabled = true
                 }
+            }
+            
+            // Add full debug symbols for release builds to better diagnose crashes
+            ndk {
+                debugSymbolLevel = "FULL"
             }
         }
         
