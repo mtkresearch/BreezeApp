@@ -139,6 +139,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     // Add new fields for initialization state
     private boolean isInitializing = false;
+    private boolean isFirstLaunch = true;
     private final Object initLock = new Object();
     private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
 
@@ -146,6 +147,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         initializeViews();
         initializeHandlers();
@@ -160,8 +162,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     @Override
     protected void onResume() {
+        Log.d(TAG, "onResume");
         super.onResume();
-        initializeServices();
+        if (!isFirstLaunch) {
+            initializeServices();
+        }
     }
 
     @Override
@@ -434,6 +439,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             updateInteractionState();
             initializeServices();
         }
+
+        isFirstLaunch = false;
     }
 
     private void initializeServices() {

@@ -57,6 +57,7 @@ public class TTSEngineService extends BaseEngineService {
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind");
         return new LocalBinder();
     }
 
@@ -413,6 +414,7 @@ public class TTSEngineService extends BaseEngineService {
 
     @Override
     public void onDestroy() {
+        Log.d(TAG, "onDestroy");
         if (cpuTTS != null) {
             cpuTTS.release();
         }

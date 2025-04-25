@@ -25,7 +25,7 @@ android {
         minSdk = 33
         targetSdk = 35
         versionCode = 11
-        versionName = "0.9.1"
+        versionName = "0.9.2-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -157,8 +157,6 @@ dependencies {
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${Versions.COROUTINES}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.COROUTINES}")
-    implementation(libs.play.services.measurement.api)
-    implementation(libs.firebase.crashlytics)
 
     // Testing
     testImplementation("junit:junit:${Versions.JUNIT}")
