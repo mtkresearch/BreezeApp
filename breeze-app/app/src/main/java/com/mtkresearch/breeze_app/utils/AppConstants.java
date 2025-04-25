@@ -81,8 +81,8 @@ public class AppConstants {
     public static final String SMALL_LLM_MODEL_DISPLAY_NAME = "Breeze2-spinQuant";
     
     // RAM Requirements
-    public static final long MIN_RAM_REQUIRED_GB = 7; // Minimum RAM for the app to run
-    public static final long LARGE_MODEL_MIN_RAM_GB = 10; // Minimum RAM for large model
+    public static final long MIN_RAM_REQUIRED_GB = 5; // Minimum RAM for the app to run
+    public static final long LARGE_MODEL_MIN_RAM_GB =12; // Minimum RAM for large model
     
     // Model Selection Key
     public static final String KEY_MODEL_SIZE_PREFERENCE = "model_size_preference";
@@ -435,7 +435,7 @@ public class AppConstants {
         activityManager.getMemoryInfo(memoryInfo);
         
         // Convert total memory from bytes to GB
-        return memoryInfo.totalMem / (1024 * 1024 * 1024);
+        return memoryInfo.availMem / (1024 * 1024 * 1024);
     }
     
     // Check if device has enough RAM for large model

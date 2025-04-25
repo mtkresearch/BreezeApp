@@ -172,7 +172,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     protected void onPause() {
         Log.d(TAG, "onPause");
-        super.onPause();
         saveCurrentChat();
         
         try {
@@ -180,6 +179,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         } catch (Exception e) {
             Log.e(TAG, "Error during cleanup", e);
         }
+        super.onPause();
     }
 
     @Override
