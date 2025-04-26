@@ -169,8 +169,6 @@ dependencies {
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${Versions.COROUTINES}")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:${Versions.COROUTINES}")
-    implementation(libs.play.services.measurement.api)
-    implementation(libs.firebase.crashlytics)
 
     // Testing
     testImplementation("junit:junit:${Versions.JUNIT}")

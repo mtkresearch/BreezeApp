@@ -163,6 +163,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
 
     @Override
     public IBinder onBind(Intent intent) {
+        Log.d(TAG, "onBind");
         return new LocalBinder();
     }
 
