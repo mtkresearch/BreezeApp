@@ -77,8 +77,8 @@ import android.os.Looper;
 import com.mtkresearch.breeze_app.utils.ModelUtils;
 import com.mtkresearch.breeze_app.utils.HWCompatibility;
 
-import com.google.firebase.analytics.FirebaseAnalytics;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
+//import com.google.firebase.analytics.FirebaseAnalytics;
+//import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
@@ -1130,8 +1130,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void shutdownFirebase() {
-        FirebaseAnalytics.getInstance(getApplicationContext()).setAnalyticsCollectionEnabled(false);
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false);
+//        FirebaseAnalytics.getInstance(getApplicationContext()).setAnalyticsCollectionEnabled(false);
+//        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false);
    //     FirebaseMessaging.getInstance().deleteToken();
    //     FirebaseDatabase.getInstance().goOffline();
    //     FirebaseFirestore.getInstance().terminate();

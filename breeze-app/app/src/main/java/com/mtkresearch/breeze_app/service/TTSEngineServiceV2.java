@@ -1,9 +1,6 @@
 package com.mtkresearch.breeze_app.service;
 
 import android.content.Intent;
-import android.media.AudioAttributes;
-import android.media.AudioFormat;
-import android.media.AudioTrack;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
@@ -12,6 +9,7 @@ import android.util.Log;
 import com.mtkresearch.breeze_app.tts.TTSConfig;
 import com.mtkresearch.breeze_app.tts.TTSService;
 import com.mtkresearch.breeze_app.tts.runners.SherpaTTSRunner;
+import com.mtkresearch.breeze_app.utils.AudioPlayerUtils;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.CompletableFuture;
@@ -26,9 +24,8 @@ public class TTSEngineServiceV2 extends BaseEngineService {
     // TTS components
     private TTSService ttsService;
     private String backend = "none";
-    private AudioTrack audioTrack;
-    private int sampleRate = 16000; // Default sample rate
-    private boolean audioPlaying = false;
+    private AudioPlayerUtils audioPlayer;
+    private boolean isSpeaking = false;
 
     public class LocalBinder extends BaseEngineService.LocalBinder<TTSEngineServiceV2> {
         private final WeakReference<TTSEngineServiceV2> serviceRef;
@@ -76,6 +73,13 @@ public class TTSEngineServiceV2 extends BaseEngineService {
             // Update the model
             ttsService.updateModel(config);
             
+            // Get sample rate from TTSService
+            int sampleRate = ttsService.getSampleRate();
+            Log.d(TAG, "Using sample rate from TTS engine: " + sampleRate + " Hz");
+            
+            // Initialize AudioPlayerUtils with the correct sample rate
+            audioPlayer = new AudioPlayerUtils(getApplicationContext(), sampleRate);
+            
             // Set backend
             backend = "sherpa";
             isInitialized = true;
@@ -100,7 +104,7 @@ public class TTSEngineServiceV2 extends BaseEngineService {
 
     @Override
     public boolean isReady() {
-        return isInitialized && ttsService != null;
+        return isInitialized && ttsService != null && audioPlayer != null;
     }
 
     /**
@@ -116,117 +120,69 @@ public class TTSEngineServiceV2 extends BaseEngineService {
             return future;
         }
         
+        // Stop any ongoing speech
+        stopSpeaking();
+        
         try {
             Log.d(TAG, "Speaking: " + text);
+            isSpeaking = true;
             
-            // Synthesize speech
-            ttsService.speak(text, pcmData -> {
+            // Use the simplified API that directly provides float samples
+            ttsService.speak(text, floatSamples -> {
                 try {
-                    // Play the audio
-                    playAudio(pcmData);
-                    future.complete(null);
+                    if (floatSamples != null && floatSamples.length > 0) {
+                        // Only proceed if we're still speaking (not stopped)
+                        if (!isSpeaking) {
+                            Log.d(TAG, "Speech was stopped, not playing audio");
+                            future.complete(null);
+                            return;
+                        }
+                        
+                        // Play audio samples directly
+                        boolean success = audioPlayer.playAudioSamples(floatSamples);
+                        
+                        if (!success) {
+                            Log.w(TAG, "Failed to play audio samples");
+                        }
+                    } else {
+                        // This is the end of speech signal
+                        Log.d(TAG, "TTS synthesis complete");
+                        isSpeaking = false;
+                        future.complete(null);
+                    }
                 } catch (Exception e) {
                     Log.e(TAG, "Error playing audio", e);
+                    isSpeaking = false;
                     future.completeExceptionally(e);
                 }
             });
         } catch (Exception e) {
             Log.e(TAG, "Error in speak", e);
+            isSpeaking = false;
             future.completeExceptionally(e);
         }
         
         return future;
-    }
-    
-    /**
-     * Play audio data using AudioTrack
-     * @param pcmData PCM audio data to play
-     */
-    private synchronized void playAudio(byte[] pcmData) {
-        if (pcmData == null || pcmData.length == 0) {
-            Log.w(TAG, "No audio data to play");
-            return;
-        }
-        
-        // Clean up any existing AudioTrack
-        releaseAudioTrack();
-        
-        try {
-            // Initialize AudioTrack
-            initAudioTrack();
-            
-            // Play the audio
-            audioPlaying = true;
-            audioTrack.write(pcmData, 0, pcmData.length);
-            
-            // Add a small delay to ensure all audio is played
-            new Handler(Looper.getMainLooper()).postDelayed(this::releaseAudioTrack, 
-                    1000 + (pcmData.length * 1000 / (sampleRate * 2)));
-        } catch (Exception e) {
-            Log.e(TAG, "Error playing audio", e);
-            releaseAudioTrack();
-        }
-    }
-    
-    /**
-     * Initialize AudioTrack for playback
-     */
-    private void initAudioTrack() {
-        int minBufferSize = AudioTrack.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_16BIT
-        );
-        
-        AudioAttributes attributes = new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                .build();
-        
-        AudioFormat format = new AudioFormat.Builder()
-                .setSampleRate(sampleRate)
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                .build();
-        
-        audioTrack = new AudioTrack.Builder()
-                .setAudioAttributes(attributes)
-                .setAudioFormat(format)
-                .setBufferSizeInBytes(minBufferSize * 2)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build();
-        
-        audioTrack.play();
-    }
-    
-    /**
-     * Release AudioTrack resources
-     */
-    private synchronized void releaseAudioTrack() {
-        if (audioTrack != null) {
-            try {
-                if (audioTrack.getPlayState() == AudioTrack.PLAYSTATE_PLAYING) {
-                    audioTrack.stop();
-                }
-                audioTrack.release();
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing AudioTrack", e);
-            }
-            audioTrack = null;
-            audioPlaying = false;
-        }
     }
 
     /**
      * Stop any ongoing speech
      */
     public void stopSpeaking() {
-        releaseAudioTrack();
+        isSpeaking = false;
+        if (audioPlayer != null) {
+            audioPlayer.stopPlayback();
+        }
     }
 
     @Override
     public void onDestroy() {
-        releaseAudioTrack();
+        stopSpeaking();
+        
+        if (audioPlayer != null) {
+            audioPlayer.release();
+            audioPlayer = null;
+        }
         
         if (ttsService != null) {
             ttsService.release();

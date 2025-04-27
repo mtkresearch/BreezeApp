@@ -6,7 +6,6 @@ import android.util.Log;
 import com.k2fsa.sherpa.onnx.SherpaTTS;
 import com.mtkresearch.breeze_app.tts.TTSConfig;
 import com.mtkresearch.breeze_app.tts.TTSRunner;
-import com.mtkresearch.breeze_app.tts.PCMUtils;
 
 import java.util.function.Consumer;
 
@@ -43,6 +42,22 @@ public class SherpaTTSRunner implements TTSRunner {
         setModel(config);
     }
 
+    /**
+     * Get the sample rate from SherpaTTS
+     * @return Sample rate in Hz, defaults to 16000 if not available
+     */
+    public int getSampleRate() {
+        if (sherpaTTS != null && sherpaTTS.isInitialized()) {
+            try {
+                return sherpaTTS.getSampleRate();
+            } catch (Exception e) {
+                Log.w(TAG, "Failed to get sample rate from SherpaTTS", e);
+            }
+        }
+        // Default sample rate if not available
+        return 16000;
+    }
+
     @Override
     public void setModel(TTSConfig config) {
         if (!"sherpa".equals(config.backend)) {
@@ -69,10 +84,10 @@ public class SherpaTTSRunner implements TTSRunner {
     }
 
     @Override
-    public void synthesize(String text, Consumer<byte[]> callback) {
+    public void synthesize(String text, Consumer<float[]> callback) {
         if (sherpaTTS == null || !sherpaTTS.isInitialized()) {
             Log.e(TAG, "SherpaTTS not initialized");
-            callback.accept(new byte[0]);
+            callback.accept(new float[0]);
             return;
         }
         
@@ -86,25 +101,22 @@ public class SherpaTTSRunner implements TTSRunner {
             // Use a thread to avoid blocking the main thread
             new Thread(() -> {
                 try {
-                    // Generate audio samples using SherpaTTS
+                    // Generate and return float samples directly from SherpaTTS
                     float[] samples = sherpaTTS.speak(text, speakerId, speed);
                     
-                    // Convert float samples to 16-bit PCM
-                    byte[] pcm = PCMUtils.floatArrayToPCM16(samples);
+                    // Pass the float samples directly to callback
+                    callback.accept(samples);
                     
-                    // Pass the PCM data to callback
-                    callback.accept(pcm);
-                    
-                    Log.i(TAG, "Speech generated successfully. Length: " + pcm.length + " bytes");
+                    Log.i(TAG, "Speech generated successfully. Length: " + samples.length + " samples");
                 } catch (Exception e) {
                     Log.e(TAG, "Failed to synthesize speech", e);
-                    callback.accept(new byte[0]);
+                    callback.accept(new float[0]);
                 }
             }).start();
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to synthesize speech", e);
-            callback.accept(new byte[0]);
+            callback.accept(new float[0]);
         }
     }
 

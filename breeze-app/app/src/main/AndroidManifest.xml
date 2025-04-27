@@ -97,6 +97,7 @@
         <service android:name="com.mtkresearch.breeze_app.service.VLMEngineService" />
         <service android:name="com.mtkresearch.breeze_app.service.ASREngineService" />
         <service android:name="com.mtkresearch.breeze_app.service.TTSEngineService" />
+        <service android:name="com.mtkresearch.breeze_app.service.TTSEngineServiceV2" />
     </application>
 
 </manifest>

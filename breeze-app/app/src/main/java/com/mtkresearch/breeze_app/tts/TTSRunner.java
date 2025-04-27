@@ -1,5 +1,7 @@
 package com.mtkresearch.breeze_app.tts;
 
+import java.util.function.Consumer;
+
 /**
  * TTSRunner interface defines methods that any text-to-speech implementation must support.
  */
@@ -13,9 +15,15 @@ public interface TTSRunner {
     /**
      * Synthesize speech from the given text
      * @param text The text to convert to speech
-     * @param callback Callback for receiving the generated audio data
+     * @param callback Callback for receiving the generated audio data as float samples
      */
-    void synthesize(String text, java.util.function.Consumer<byte[]> callback);
+    void synthesize(String text, Consumer<float[]> callback);
+    
+    /**
+     * Get the sample rate of the audio produced by this runner
+     * @return Sample rate in Hz
+     */
+    int getSampleRate();
     
     /**
      * Release resources used by this runner

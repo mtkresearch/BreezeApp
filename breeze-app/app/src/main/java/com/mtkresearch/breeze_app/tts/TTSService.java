@@ -1,10 +1,15 @@
 package com.mtkresearch.breeze_app.tts;
 
+import android.util.Log;
+import java.util.function.Consumer;
+
 /**
  * Main service for text-to-speech functionality.
- * Manages TTSRunners and provides a unified interface for speech synthesis.
+ * Provides a simplified interface for speech synthesis.
  */
 public class TTSService {
+    private static final String TAG = "TTSService";
+    
     /** The current TTSRunner implementation */
     private TTSRunner runner;
 
@@ -17,19 +22,8 @@ public class TTSService {
     }
 
     /**
-     * Switch to a different TTSRunner implementation
-     * @param newRunner The new TTSRunner to use
-     */
-    public void switchRunner(TTSRunner newRunner) {
-        if (runner != null) {
-            runner.release();
-        }
-        this.runner = newRunner;
-    }
-
-    /**
-     * Update the current TTSRunner with a new configuration
-     * @param config The new configuration to use
+     * Update the model configuration
+     * @param config The configuration to use
      */
     public void updateModel(TTSConfig config) {
         if (runner != null) {
@@ -38,18 +32,43 @@ public class TTSService {
     }
 
     /**
-     * Synthesize speech from the given text
-     * @param text The text to convert to speech
-     * @param callback Callback for receiving the generated audio data
+     * Synthesize speech from text and receive float samples
+     * @param text The text to speak
+     * @param callback Callback for receiving float audio samples
      */
-    public void speak(String text, java.util.function.Consumer<byte[]> callback) {
+    public void speak(String text, Consumer<float[]> callback) {
         if (runner != null) {
             runner.synthesize(text, callback);
+        } else {
+            Log.e(TAG, "No TTS runner available");
+            callback.accept(new float[0]);
         }
     }
 
     /**
-     * Release resources used by the current TTSRunner
+     * Get the sample rate of the current TTS runner
+     * @return Sample rate in Hz, or 16000 if no runner available
+     */
+    public int getSampleRate() {
+        if (runner != null) {
+            return runner.getSampleRate();
+        }
+        return 16000; // Default fallback
+    }
+
+    /**
+     * Set a new runner
+     * @param newRunner The new runner to use
+     */
+    public void setRunner(TTSRunner newRunner) {
+        if (runner != null) {
+            runner.release();
+        }
+        this.runner = newRunner;
+    }
+
+    /**
+     * Release resources
      */
     public void release() {
         if (runner != null) {
