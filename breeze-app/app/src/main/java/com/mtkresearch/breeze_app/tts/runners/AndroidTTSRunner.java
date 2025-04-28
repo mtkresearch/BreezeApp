@@ -33,28 +33,19 @@ public class AndroidTTSRunner implements TTSRunner {
 
     private TextToSpeech tts;
     private boolean isInitialized = false;
+    private final Context context ;
+
+    public AndroidTTSRunner(Context context) {
+        this.context = context;
+    }
     
     /**
      * Creates a new AndroidTTSRunner instance
      * @param context Android context for TextToSpeech initialization
      */
     public AndroidTTSRunner(Context context, TTSConfig config) {
-        tts = new TextToSpeech(context, new TextToSpeech.OnInitListener() {
-        
-            @Override
-            public void onInit(int status) {
-                if (status == TextToSpeech.SUCCESS) {
-                    // TTS engine is successfully initialized.
-                    isInitialized = true;
-                    Log.d(TAG, "TTS engine initialized successfully");
-
-                    setModel(config);
-                } else {
-                    // Failed to initialize TTS engine.
-                    Log.e(TAG, "Failed to initialize TTS engine");
-                }
-            }
-        });
+        this.context = context;
+        setModel(config);
     }
     
     
@@ -66,6 +57,22 @@ public class AndroidTTSRunner implements TTSRunner {
         }
         
         try {
+            tts = new TextToSpeech(context, new TextToSpeech.OnInitListener() {
+                @Override
+                public void onInit(int status) {
+                    if (status == TextToSpeech.SUCCESS) {
+                        // TTS engine is successfully initialized.
+                        isInitialized = true;
+                        Log.d(TAG, "TTS engine initialized successfully");
+
+                        setModel(config);
+                    } else {
+                        // Failed to initialize TTS engine.
+                        Log.e(TAG, "Failed to initialize TTS engine");
+                    }
+                }
+            });
+
             // Set speech rate
             tts.setSpeechRate(config.speed);
             
