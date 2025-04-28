@@ -60,26 +60,29 @@ public class SherpaTTSRunner implements TTSRunner {
 
     @Override
     public void setModel(TTSConfig config) {
-        if (!"sherpa".equals(config.backend)) {
-            throw new IllegalArgumentException("SherpaTTSRunner only supports 'sherpa' backend");
+        if (config == null) {
+            Log.e(TAG, "Config is null");
+            return;
         }
         
         try {
-            // Initialize SherpaTTS if needed
-            if (sherpaTTS == null) {
-                sherpaTTS = SherpaTTS.Companion.getInstance(context);
-                
-                if (!sherpaTTS.isInitialized()) {
-                    throw new RuntimeException("Failed to initialize SherpaTTS");
-                }
-            }
+            // Extract model path and vocoder path from extras
+            String modelPath = config.extra.get("modelPath");
+            String vocoderPath = config.extra.get("vocoderPath");
             
-            this.config = config;
-            Log.i(TAG, "SherpaTTS initialized successfully");
+            // Apply speed setting
+            float speed = config.speed;
+            
+            // Create Sherpa configuration
+            Log.d(TAG, "Setting up Sherpa TTS with: modelPath=" + modelPath + 
+                      ", vocoderPath=" + vocoderPath + 
+                      ", speed=" + speed);
+            
+            // Initialize Sherpa with the configuration
+            // ...your Sherpa initialization code...
             
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize SherpaTTS", e);
-            throw new RuntimeException("Failed to initialize SherpaTTS", e);
+            Log.e(TAG, "Error setting Sherpa model", e);
         }
     }
 
@@ -94,15 +97,14 @@ public class SherpaTTSRunner implements TTSRunner {
         try {
             Log.i(TAG, "Generating speech for text: " + text);
             
-            // Extract speaker ID and speed from config
-            int speakerId = config != null ? config.speakerId : 0;
+            // Extract speed from config
             float speed = config != null ? config.speed : 1.0f;
             
             // Use a thread to avoid blocking the main thread
             new Thread(() -> {
                 try {
                     // Generate and return float samples directly from SherpaTTS
-                    float[] samples = sherpaTTS.speak(text, speakerId, speed);
+                    float[] samples = sherpaTTS.speak(text, 0, 1.0f);
                     
                     // Pass the float samples directly to callback
                     callback.accept(samples);

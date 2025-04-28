@@ -66,6 +66,14 @@ public class TTSService {
         }
         this.runner = newRunner;
     }
+    
+    /**
+     * Get the current runner instance
+     * @return The current TTSRunner implementation
+     */
+    public TTSRunner getRunner() {
+        return runner;
+    }
 
     /**
      * Release resources
