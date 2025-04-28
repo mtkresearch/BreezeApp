@@ -2,168 +2,153 @@
 
 This package provides a modular, extensible TTS system with support for multiple backends including Sherpa-onnx and Android's Google TTS.
 
+## Architecture Overview
+
+The TTS module follows a layered architecture with clear separation of concerns:
+
+```
+[Core TTS Components]
+     TTSService ──uses──> TTSRunner Implementation
+                            (SherpaTTSRunner, GoogleTTSRunner, etc.)
+```
+
+### Component Roles
+
+1. **TTSConfig**: Data container class
+   - Encapsulates configuration for TTS systems
+   - Provides factory methods for common configurations
+   - Allows backend-specific parameters through `extra` map
+
+2. **TTSRunner** (Interface): Implementation contract
+   - Defines the operations any TTS implementation must support
+   - Abstracts away the specifics of different TTS backends
+   - Enforces a consistent API regardless of implementation
+
+3. **TTSService**: Core business logic
+   - Manages TTSRunner implementations
+   - Provides simplified API for speech synthesis
+   - Handles error cases and resource management
+   - Independent of Android-specific code for testability
+
+4. **Runner Implementations**: Backend-specific code
+   - Implement the TTSRunner interface
+   - Handle the details of specific TTS technologies
+   - Translate between the common API and backend-specific requirements
+
 ## Package Structure
 
 ```
-com.mtkresearch.breeze_app.tts
-├── TTSService.java          - Main service class
-├── TTSRunner.java           - Interface for TTS implementations
-├── TTSConfig.java           - Configuration class
-├── PCMUtils.java            - Audio data conversion utilities
-└── runners/                 - TTS implementation runners
-    ├── SherpaTTSRunner.java - Sherpa-onnx implementation
-    ├── GoogleTTSRunner.java - Google TTS implementation
-    └── MtkTTSRunner.java    - Simple example implementation
+com.mtkresearch.breeze_app.tts/             - Core TTS implementation
+├── TTSService.java                         - Business logic for TTS functionality
+├── TTSRunner.java                          - Interface for TTS implementations
+├── TTSConfig.java                          - Configuration data container
+└── runners/                                - TTS backend implementations
+    ├── SherpaTTSRunner.java                - Sherpa-onnx implementation
+    └── CustomTTSRunner.java                - Custom implementation
 ```
 
-## Overview
-
-The TTS module consists of the following components:
-
-- `TTSRunner`: Interface that any TTS implementation must implement
-- `TTSConfig`: Configuration class for TTS settings
-- `TTSService`: Main service for managing TTS functionality
-- `runners.SherpaTTSRunner`: Implementation using the sherpa-onnx library
-- `runners.GoogleTTSRunner`: Implementation using Android's built-in Google TTS
-- `runners.MtkTTSRunner`: Simple example implementation for demonstration
-- `PCMUtils`: Utility for audio data conversion
-
-## Sherpa-onnx Integration
-
-This module uses the sherpa-onnx library from the Git submodule at `external/sherpa-onnx`. The JAR file and native libraries need to be included in the project.
-
-## Usage Examples
+## Using the Core TTS Components
 
 ### Basic Example with Sherpa TTS
 
 ```java
-import com.mtkresearch.breeze_app.tts.TTSConfig;
-import com.mtkresearch.breeze_app.tts.TTSService;
-import com.mtkresearch.breeze_app.tts.runners.SherpaTTSRunner;
-import java.util.HashMap;
-import java.util.Map;
-
-// Get application context
-Context context = getApplicationContext();
-
-// Create a TTS configuration for Sherpa
-Map<String, String> extraParams = new HashMap<>();
-extraParams.put("numThreads", "2");
-extraParams.put("lexicon", "/path/to/lexicon.txt");
-extraParams.put("dictDir", "/path/to/dict");
-
-TTSConfig config = new TTSConfig(
-    "sherpa",               // backend
-    "/path/to/model.onnx",  // modelPath
-    "/path/to/vocoder.onnx", // vocoderPath
-    0,                      // speakerId
-    1.0f,                   // speed
-    null,                   // voiceName (not used for Sherpa)
-    null,                   // apiKey (not used for Sherpa)
-    extraParams             // extra parameters
-);
-
 // Create a Sherpa TTS runner
-SherpaTTSRunner runner = new SherpaTTSRunner(context, config);
+SherpaTTSRunner runner = new SherpaTTSRunner(context);
 
 // Create the TTS service with the runner
 TTSService ttsService = new TTSService(runner);
 
+// Create a TTS configuration
+TTSConfig config = TTSConfig.createSherpaTTS(
+    "/path/to/model.onnx",  // modelPath
+    "/path/to/vocoder.onnx", // vocoderPath
+    0,                      // speakerId
+    1.0f                    // speed
+);
+
+// Update the model configuration
+ttsService.updateModel(config);
+
 // Synthesize speech
-ttsService.speak("Hello, world!", pcmData -> {
-    // Use the PCM data, e.g., play it or save it to a file
-    AudioTrack audioTrack = /* initialize AudioTrack */;
-    audioTrack.write(pcmData, 0, pcmData.length);
+ttsService.speak("Hello, world!", audioData -> {
+    // Process or play audio data
 });
 
 // Don't forget to release resources when done
 ttsService.release();
 ```
 
-### Using Google TTS
+
+### Switching Between Backends at Runtime
 
 ```java
-import com.mtkresearch.breeze_app.tts.TTSConfig;
-import com.mtkresearch.breeze_app.tts.TTSService;
-import com.mtkresearch.breeze_app.tts.runners.GoogleTTSRunner;
+// Start with one backend
+TTSService ttsService = new TTSService(new SherpaTTSRunner(context));
+ttsService.updateModel(TTSConfig.createSherpaTTS(...));
 
-// Get application context
-Context context = getApplicationContext();
-
-// Create a TTS configuration for Google
-TTSConfig config = TTSConfig.createGoogleTTS("en-us-x-sfg#female_1-local", 1.0f);
-
-// Create a Google TTS runner
-GoogleTTSRunner runner = new GoogleTTSRunner(context, config);
-
-// Create the TTS service
-TTSService ttsService = new TTSService(runner);
-
-// Synthesize speech (Note: Google TTS will play audio directly)
-ttsService.speak("Hello, world!", pcmData -> {
-    // pcmData will be empty for Google TTS
-});
-
-// Release resources
-ttsService.release();
+// Later, switch to another backend
+TTSRunner newRunner = new CustomTTSRunner(context);
+ttsService.setRunner(newRunner);
+ttsService.updateModel(TTSConfig.createCustomTTS(...));
 ```
 
-### Using MTK Example Runner
+## Extending with New TTS Backends
+
+To add a new TTS backend, implement the TTSRunner interface:
 
 ```java
+package com.mtkresearch.breeze_app.tts.runners;
+
+import android.content.Context;
 import com.mtkresearch.breeze_app.tts.TTSConfig;
-import com.mtkresearch.breeze_app.tts.TTSService;
-import com.mtkresearch.breeze_app.tts.runners.MtkTTSRunner;
+import com.mtkresearch.breeze_app.tts.TTSRunner;
 
-// Get application context
-Context context = getApplicationContext();
+import java.util.function.Consumer;
 
-// Create a simple configuration
-TTSConfig config = new TTSConfig(
-    "mtk",                  // backend
-    "dummy_model_path",     // modelPath (not actually used)
-    null,                   // vocoderPath
-    0,                      // speakerId
-    1.0f,                   // speed
-    null,                   // voiceName
-    null,                   // apiKey
-    null                    // extra parameters
-);
-
-// Create the MTK TTS runner
-MtkTTSRunner runner = new MtkTTSRunner(context, config);
-
-// Create the TTS service
-TTSService ttsService = new TTSService(runner);
-
-// Synthesize speech using the dummy implementation
-ttsService.speak("This is a test", pcmData -> {
-    // pcmData will contain a UTF-8 byte representation of a fixed string
-    String returnedText = new String(pcmData, StandardCharsets.UTF_8);
-    Log.d("MTK_TTS_TEST", "Received: " + returnedText);
-});
-
-// Release resources
-ttsService.release();
-```
-
-### Switching Between Backends
-
-```java
-import com.mtkresearch.breeze_app.tts.TTSConfig;
-import com.mtkresearch.breeze_app.tts.TTSService;
-import com.mtkresearch.breeze_app.tts.runners.SherpaTTSRunner;
-import com.mtkresearch.breeze_app.tts.runners.GoogleTTSRunner;
-
-// Get application context
-Context context = getApplicationContext();
-
-// Create a TTS service with initial Sherpa TTS runner
-TTSService ttsService = new TTSService(new SherpaTTSRunner(context, sherpaConfig));
-
-// Later, switch to Google TTS
-GoogleTTSRunner googleRunner = new GoogleTTSRunner(context, googleConfig);
-ttsService.switchRunner(googleRunner);
+public class NewBackendRunner implements TTSRunner {
+    private final Context context;
+    private YourTTSEngine engine; // Your backend TTS engine
+    
+    public NewBackendRunner(Context context) {
+        this.context = context;
+        // Initialize your engine
+    }
+    
+    @Override
+    public void setModel(TTSConfig config) {
+        // Convert TTSConfig to your engine's configuration
+        // Example:
+        String modelPath = config.modelPath;
+        float speed = config.speed;
+        
+        // Configure your engine with these parameters
+        engine.configure(modelPath, speed);
+    }
+    
+    @Override
+    public void synthesize(String text, Consumer<float[]> callback) {
+        // Generate speech using your engine
+        float[] audioData = engine.generateSpeech(text);
+        
+        // Return the audio data through the callback
+        callback.accept(audioData);
+    }
+    
+    @Override
+    public int getSampleRate() {
+        // Return your engine's sample rate
+        return engine.getSampleRate();
+    }
+    
+    @Override
+    public void release() {
+        // Clean up resources
+        if (engine != null) {
+            engine.shutdown();
+            engine = null;
+        }
+    }
+}
 ```
 
 ## Notes on Model Files
@@ -173,37 +158,16 @@ https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
 
 Models should be placed in the app's assets directory or external storage.
 
-## Extending with Your Own Runner
+## Best Practices
 
-To create your own TTS runner implementation:
+1. **Resource Cleanup**
+   - Call release() on TTSService when you're done with it
+   - Properly manage the lifecycle to prevent memory leaks
 
-1. Implement the TTSRunner interface
-2. Handle the configuration conversion within your runner
-3. Implement the synthesis logic
-4. Follow the context pattern established in existing runners
+2. **Error Handling**
+   - Handle exceptions from TTS operations
+   - Provide fallback behavior when TTS is unavailable
 
-```java
-public class CustomTTSRunner implements TTSRunner {
-    private final Context context;
-    
-    public CustomTTSRunner(Context context) {
-        this.context = context;
-    }
-    
-    @Override
-    public void setModel(TTSConfig config) {
-        // Convert TTSConfig to your TTS engine's configuration format
-        // Initialize your TTS engine
-    }
-    
-    @Override
-    public void synthesize(String text, Consumer<byte[]> callback) {
-        // Convert text to speech using your TTS engine
-        // Call the callback with the resulting audio data
-    }
-    
-    @Override
-    public void release() {
-        // Clean up resources
-    }
-} 
+3. **Performance Considerations**
+   - TTS synthesis can be computationally intensive
+   - Consider caching frequently used phrases

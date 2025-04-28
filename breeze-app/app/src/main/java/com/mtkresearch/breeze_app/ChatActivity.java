@@ -33,7 +33,7 @@ import java.io.File;
 
 import com.mtkresearch.breeze_app.service.ASREngineService;
 import com.mtkresearch.breeze_app.service.LLMEngineService;
-import com.mtkresearch.breeze_app.service.TTSEngineServiceV2;
+import com.mtkresearch.breeze_app.service.TTSEngineService;
 import com.mtkresearch.breeze_app.service.VLMEngineService;
 import com.mtkresearch.breeze_app.utils.IntroDialog;
 import com.mtkresearch.breeze_app.utils.UiUtils;
@@ -113,7 +113,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private LLMEngineService llmService;
     private VLMEngineService vlmService;
     private ASREngineService asrService;
-    private TTSEngineServiceV2 ttsService;
+    private TTSEngineService ttsService;
 
     private DrawerLayout drawerLayout;
 
@@ -617,7 +617,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         Log.d(TAG, "Starting TTS service initialization...");
         
         // Prepare TTS intent
-        Intent ttsIntent = new Intent(this, TTSEngineServiceV2.class);
+        Intent ttsIntent = new Intent(this, TTSEngineService.class);
         
         // Bind service on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
@@ -1185,7 +1185,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
                 if(ttsService != null){
                     ttsService = null;
-                    stopService(new Intent(ChatActivity.this, TTSEngineServiceV2.class));
+                    stopService(new Intent(ChatActivity.this, TTSEngineService.class));
                 }
                 
                 // Force garbage collection
@@ -1229,7 +1229,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             } catch (IllegalArgumentException e) {
                 Log.w(TAG, "TTS service not registered", e);
             }
-            stopService(new Intent(ChatActivity.this, TTSEngineServiceV2.class));
+            stopService(new Intent(ChatActivity.this, TTSEngineService.class));
         }
     }
 
@@ -1348,7 +1348,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
             Log.d(TAG, "TTS service connected");
-            ttsService = ((TTSEngineServiceV2.LocalBinder) service).getService();
+            ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
                 runOnUiThread(() -> Toast.makeText(ChatActivity.this,
                         ChatActivity.this.getString(R.string.initializing_text_to_speech), Toast.LENGTH_SHORT).show());
