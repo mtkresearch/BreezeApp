@@ -60,29 +60,22 @@ public class SherpaTTSRunner implements TTSRunner {
 
     @Override
     public void setModel(TTSConfig config) {
-        if (config == null) {
-            Log.e(TAG, "Config is null");
-            return;
-        }
-        
         try {
-            // Extract model path and vocoder path from extras
-            String modelPath = config.extra.get("modelPath");
-            String vocoderPath = config.extra.get("vocoderPath");
+            // Initialize SherpaTTS if needed
+            if (sherpaTTS == null) {
+                sherpaTTS = SherpaTTS.Companion.getInstance(context);
+                
+                if (!sherpaTTS.isInitialized()) {
+                    throw new RuntimeException("Failed to initialize SherpaTTS");
+                }
+            }
             
-            // Apply speed setting
-            float speed = config.speed;
-            
-            // Create Sherpa configuration
-            Log.d(TAG, "Setting up Sherpa TTS with: modelPath=" + modelPath + 
-                      ", vocoderPath=" + vocoderPath + 
-                      ", speed=" + speed);
-            
-            // Initialize Sherpa with the configuration
-            // ...your Sherpa initialization code...
+            this.config = config;
+            Log.i(TAG, "SherpaTTS initialized successfully");
             
         } catch (Exception e) {
-            Log.e(TAG, "Error setting Sherpa model", e);
+            Log.e(TAG, "Failed to initialize SherpaTTS", e);
+            throw new RuntimeException("Failed to initialize SherpaTTS", e);
         }
     }
 
