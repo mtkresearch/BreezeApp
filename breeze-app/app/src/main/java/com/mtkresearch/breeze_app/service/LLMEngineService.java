@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.CountDownLatch;
 import java.lang.ref.WeakReference;
 
 public class LLMEngineService extends BaseEngineService implements LlamaCallback {
@@ -44,10 +45,11 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     private String modelPath = null;  // Set from intent
     
     // MTK backend state
-    private static final Object MTK_LOCK = new Object();
     private static int mtkInitCount = 0;
     private static boolean isCleaningUp = false;
     private static final ExecutorService cleanupExecutor = Executors.newSingleThreadExecutor();
+    private final Object MODULE_LOCK = new Object();
+    private volatile boolean isModuleInitializing = false;    
     
     static {
         // Only try to load MTK libraries if MTK backend is enabled
@@ -222,50 +224,51 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         
         // Run initialization in background
         CompletableFuture.supplyAsync(() -> {
-            try {
-                // Always release existing resources before initialization
-                releaseResources();
-                
-                // Try MTK backend only if it's preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_MTK)) {
-                    // Add delay before trying MTK initialization
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
+            synchronized (MODULE_LOCK) {
+                try {
+                    // Always release existing resources before initialization
+                    releaseResources();
                     
-                    if (initializeMTKBackend()) {
-                        currentBackend = AppConstants.BACKEND_MTK;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized MTK backend");
-                        future.complete(true);
-                        return true;
+                    // Try MTK backend only if it's preferred
+                    if (preferredBackend.equals(AppConstants.BACKEND_MTK)) {
+                        // Add delay before trying MTK initialization
+                        Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
+                        
+                        if (initializeMTKBackend()) {
+                            currentBackend = AppConstants.BACKEND_MTK;
+                            isInitialized = true;
+                            Log.d(TAG, "Successfully initialized MTK backend");
+                            future.complete(true);
+                            return true;
+                        }
+                        Log.w(TAG, "MTK backend initialization failed");
+                        
+                        // Add delay before trying fallback
+                        Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
                     }
-                    Log.w(TAG, "MTK backend initialization failed");
-                    
-                    // Add delay before trying fallback
-                    Thread.sleep(AppConstants.BACKEND_INIT_DELAY_MS);
-                }
 
-                // Try CPU backend if MTK failed or CPU is preferred
-                if (preferredBackend.equals(AppConstants.BACKEND_CPU)) {
-                    if (initializeLocalCPUBackend()) {
-                        currentBackend = AppConstants.BACKEND_CPU;
-                        isInitialized = true;
-                        Log.d(TAG, "Successfully initialized CPU backend");
-                        future.complete(true);
-                        return true;
+                    // Try CPU backend if MTK failed or CPU is preferred
+                    if (preferredBackend.equals(AppConstants.BACKEND_CPU)) {
+                        if (initializeLocalCPUBackend()) {
+                            currentBackend = AppConstants.BACKEND_CPU;
+                            isInitialized = true;
+                            Log.d(TAG, "Successfully initialized CPU backend");
+                            future.complete(true);
+                            return true;
+                        }
+                        Log.w(TAG, "CPU backend initialization failed");
                     }
-                    Log.w(TAG, "CPU backend initialization failed");
-                }
 
-                Log.e(TAG, "All backend initialization attempts failed");
-                future.complete(false);
-                return false;
-            } catch (Exception e) {
-                Log.e(TAG, "Error during initialization", e);
-                future.completeExceptionally(e);
-                return false;
+                    Log.e(TAG, "All backend initialization attempts failed");
+                    future.complete(false);
+                    return false;
+                } catch (Exception e) {
+                    Log.e(TAG, "Error during initialization", e);
+                    future.completeExceptionally(e);
+                    return false;
+                }
             }
         });
-        
         return future;
     }
 
@@ -275,7 +278,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             return false;
         }
 
-        synchronized (MTK_LOCK) {
             if (isCleaningUp) {
                 Log.w(TAG, "Cannot initialize while cleanup is in progress");
                 return false;
@@ -336,7 +338,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 cleanupAfterError();
                 return false;
             }
-        }
+        
     }
 
     private void cleanupAfterError() {
@@ -366,46 +368,84 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
 
     private boolean initializeLocalCPUBackend() {
         try {
-            Log.d(TAG, "Attempting Local CPU backend initialization...");
-
-            if (mModule != null) {
-                Log.d(TAG, "Start deallocating existing module instance");
-                mModule.resetNative();
-                mModule = null;
-                Log.d(TAG, "Completed deallocating existing module instance");
-            }
+                isModuleInitializing = true;
+                
+                // 確保先完全釋放舊的資源
+                if (mModule != null) {
+                    try {
+                        final LlamaModule moduleToRelease = mModule;
+                        mModule = null; // 先置空，避免其他線程訪問
+                        moduleToRelease.stop(); // 如果有生成進行中，先停止
+                        Thread.sleep(100); // 短暫等待確保停止生效
+                        moduleToRelease.resetNative();
+                        Log.d(TAG, "Release legacy LlamaModule ");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error on releasing legacy LlamaModule", e);
+                    }
+                    System.gc(); // 主動請求垃圾回收
+                    Thread.sleep(200); // 給GC一些時間
+                }
+                
+                // 確認路徑存在
+                if (modelPath == null) {
+                    Log.e(TAG, "Model path is null, cannot initialize");
+                    isModuleInitializing = false;
+                    return false;
+                }
+                
+                // Record loading time
+                long runStartTime = System.currentTimeMillis();
+                
+                // Initialize LlamaModule with model parameters
+                try {
+                    float temperature = AppConstants.LLM_TEMPERATURE;
+                    mModule = new LlamaModule(
+                        ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
+                        modelPath,
+                        AppConstants.getTokenizerPath(this),
+                        temperature
+                    );
+                } catch (Exception e) {
+                    Log.e(TAG, "Error constructing LlamaModule instance", e);
+                    isModuleInitializing = false;
+                    return false;
+                }
+                
+                // timeout mechanism
+                final LlamaModule currentModule = mModule;
+                Future<Integer> loadFuture = Executors.newSingleThreadExecutor().submit(() -> {
+                    return currentModule.load();
+                });
+                
+                try {
+                    int loadResult = loadFuture.get(AppConstants.LLM_LOAD_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                    if (loadResult != 0) {
+                        Log.e(TAG, "Fail to load model: " + loadResult);
+                        mModule = null;
+                        isModuleInitializing = false;
+                        return false;
+                    }
+                } catch (TimeoutException e) {
+                    Log.e(TAG, "Timeout loading model", e);
+                    loadFuture.cancel(true);
+                    mModule = null;
+                    isModuleInitializing = false;
+                    return false;
+                } catch (Exception e) {
+                    Log.e(TAG, "Error on loading model", e);
+                    mModule = null;
+                    isModuleInitializing = false;
+                    return false;
+                }
+                
+                Log.d(TAG, "Local CPU backend initialized successfully, takes: " + 
+                    (System.currentTimeMillis() - runStartTime) + "ms");
+                isModuleInitializing = false;
+                return true;
             
-            if (modelPath == null) {
-                Log.e(TAG, "Model path is null, cannot initialize");
-                return false;
-            }
-            
-            // Get temperature from constants
-            float temperature = AppConstants.LLM_TEMPERATURE;
-            
-            long runStartTime = System.currentTimeMillis();
-            
-            // Initialize LlamaModule with model parameters
-            mModule = new LlamaModule(
-                ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
-                modelPath,
-                AppConstants.getTokenizerPath(this),
-                temperature
-            );
-            
-            // Load the model
-            int loadResult = mModule.load();
-            
-            if (loadResult != 0) {
-                Log.e(TAG, "Failed to load model: " + loadResult);
-                mModule = null;
-                return false;
-            }
-
-            Log.d(TAG, "Local CPU backend initialized successfully");
-            return true;
         } catch (Exception e) {
             Log.e(TAG, "Error initializing Local CPU backend", e);
+            isModuleInitializing = false;
             return false;
         }
     }
@@ -620,82 +660,162 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     
     public void releaseResources() {
         Log.d(TAG, "releaseResources");
-        synchronized (MTK_LOCK) {
-            if (isCleaningUp) {
-                Log.w(TAG, "Cleanup already in progress");
-                return;
-            }
-            
-            isCleaningUp = true;
-            try {
-                stopGeneration();
-                
-                // Release MTK resources if using MTK backend
+        synchronized (MODULE_LOCK) {
+        if (isCleaningUp) {
+            Log.w(TAG, "Cleanup already in progress");
+            return;
+        }
+        
+        isCleaningUp = true;
+        try {
+            stopGeneration();
+
+            synchronized (MODULE_LOCK) {
+                // release NPU resource/
                 if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
                     try {
+                        nativeResetLlm();
+                        Thread.sleep(100); // 確保 reset 完成
                         nativeReleaseLlm();
-                        mtkInitCount = 0; // Reset init count
+                        mtkInitCount = 0;
                         Log.d(TAG, "Released MTK resources");
                     } catch (Exception e) {
                         Log.e(TAG, "Error releasing MTK resources", e);
                         cleanupAfterError();
                     }
                 }
-                
-                // Release CPU resources if using CPU backend
+
+                // release CPU resource
                 if (mModule != null) {
                     try {
-                        mModule.resetNative();
-                        mModule = null;
+                        // 先確保停止生成
+                        final LlamaModule moduleToRelease = mModule;
+                        mModule = null; // 先置空，避免其他線程訪問
+
+                        // 停止並釋放 LlamaModule
+                        try {
+                            moduleToRelease.stop();
+                            Thread.sleep(100); // 確保停止完成
+                        } catch (Exception e) {
+                            Log.w(TAG, "Error on stop LlamaModule", e);
+                        }
+
+                        // 釋放本地資源
+                        try {
+                            moduleToRelease.resetNative();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error on reset LlamaModule", e);
+                        }
+
                         Log.d(TAG, "Released CPU resources");
                     } catch (Exception e) {
                         Log.e(TAG, "Error releasing CPU resources", e);
                     }
                 }
-                
-                // Reset state
-                currentBackend = AppConstants.BACKEND_NONE;
-                isInitialized = false;
-                System.gc(); // Request garbage collection
-                
-                Log.d(TAG, "All resources released");
-            } catch (Exception e) {
-                Log.e(TAG, "Error during cleanup", e);
-            } finally {
-                isCleaningUp = false;
             }
+
+            currentBackend = AppConstants.BACKEND_NONE;
+            isInitialized = false;
+            System.gc();
+//            Thread.sleep(200);
+
+            Log.d(TAG, "All resources released");
+        } catch (Exception e) {
+            Log.e(TAG, "Error during cleanup", e);
+        } finally {
+            isCleaningUp = false;
         }
     }
-    
-    @Override
-    public void onDestroy() {
+}
+
+@Override
+public void onDestroy() {
         Log.d(TAG, "onDestroy");   
-        super.onDestroy();
         
-        // Run cleanup with timeout
+        // 停止所有生成任務
+        stopGeneration();
+        
+        // 記錄開始時間
+        long startTime = System.currentTimeMillis();
+        
+        // 取消所有正在進行的操作
+        if (executor != null && !executor.isShutdown()) {
+            try {
+                executor.shutdownNow();
+                if (!executor.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
+                    Log.w(TAG, "執行器未能及時關閉");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "關閉執行器時出錯", e);
+            }
+        }
+        
+        // 使用 CountDownLatch 等待清理完成
+        final CountDownLatch cleanupLatch = new CountDownLatch(1);
+        
+        // 運行清理，設置超時
         Future<?> cleanupFuture = cleanupExecutor.submit(() -> {
             try {
                 releaseResources();
- Log.d(TAG, "releaseResources in onDestroy");                
+                Log.d(TAG, "releaseResources completed (onDestroy)");                
             } catch (Exception e) {
                 Log.e(TAG, "Error during service cleanup", e);
+            } finally {
+                cleanupLatch.countDown();
             }
+            Log.d(TAG, "releasedResources");
         });
         
         try {
-            cleanupFuture.get(AppConstants.MTK_CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-        } catch (TimeoutException e) {
-            Log.w(TAG, "Service cleanup timed out");
-            cleanupFuture.cancel(true);
+            // 等待清理完成或超時
+            if (!cleanupLatch.await(AppConstants.MTK_CLEANUP_TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+                Log.w(TAG, "Service cleanup timed out");
+                cleanupFuture.cancel(true);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error waiting for cleanup", e);
         }
+        
+        // 確保執行器關閉
+    Log.d(TAG, "executor.shutdownNow");
         if (executor != null) {
-            executor.shutdown();
+            executor.shutdownNow();
             executor = null;
         }
+    Log.d(TAG, "executor.shutdownNow success44");
+        super.onDestroy();
+                
+        Log.d(TAG, "onDestroy 完成，耗時: " + (System.currentTimeMillis() - startTime) + "ms");
     }
     
+    private void releaseLlamaModule(LlamaModule module) {
+        if (module == null) return;
+        
+        try {
+            // 在單獨的線程中釋放資源，設置超時
+            Future<?> future = Executors.newSingleThreadExecutor().submit(() -> {
+                try {
+                    // 先停止任何生成
+                    module.stop();
+
+                    // 釋放本地資源
+                    module.resetNative();
+                } catch (Exception e) {
+                    Log.e(TAG, "釋放 LlamaModule 時出錯", e);
+                }
+            });
+            
+            // 設置超時，避免卡住
+            try {
+                future.get(1000, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException e) {
+                Log.w(TAG, "釋放 LlamaModule 超時");
+                future.cancel(true);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "管理 LlamaModule 釋放過程時出錯", e);
+        }
+    }    
     public String getCurrentBackend() {
         return currentBackend;
     }

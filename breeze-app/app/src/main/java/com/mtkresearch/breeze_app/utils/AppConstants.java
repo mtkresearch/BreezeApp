@@ -49,7 +49,6 @@ public class AppConstants {
     // MTK Backend Constants
     public static final String MTK_CONFIG_PATH = "Breeze2-3B-Instruct-mobile-npu/";
     public static final String MTK_SERVICE_TAG = "LLMEngineService";
-    public static final Object MTK_LOCK = new Object();
     public static final boolean MTK_VALIDATE_UTF8 = false;
     public static final long MTK_STOP_DELAY_MS = 100;  // Delay between stop attempts
     public static final int MTK_TOKEN_SIZE = 1; // Token size for generation
@@ -69,6 +68,7 @@ public class AppConstants {
     public static final int LLM_MAX_MTK_INIT_ATTEMPTS = 3;
     public static final String DEFAULT_SYSTEM_PROMPT = "你是擁有臺灣知識的語言模型，請用繁體中文或英文回答以下問題";
 
+    public static final int LLM_LOAD_TIMEOUT_MS = 300000;
     // Model Files and Paths
     public static final String LLAMA_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
     public static final String BREEZE_MODEL_FILE = "Breeze-Tiny-Instruct-v0_1-2048.pte";
