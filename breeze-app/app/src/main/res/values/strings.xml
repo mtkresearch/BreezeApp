@@ -58,6 +58,8 @@
     <!-- TTS dialog strings -->
     <string name="tts_processing_title">TTS processing</string>
     <string name="tts_error_title">TTS Error</string>
+    <string name="failed_to_convert_text_to_audio">Failed to convert text to audio. Format may be unsupported or TTS engine error occurred.</string>
+    <string name="failed_to_convert_text_to_audio_short">Failed to convert text to audio. Maybe unsupported.</string>
     <string name="ok">OK</string>
 
     <!-- warning message -->

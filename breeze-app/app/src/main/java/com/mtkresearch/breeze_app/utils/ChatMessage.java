@@ -12,6 +12,7 @@ public class ChatMessage implements Serializable {
     private transient Uri imageUri; // Mark as transient since Uri is not serializable
     private int promptId; // Added to group messages in the same conversation
     private String imageUriString; // Store image URI as string for serialization
+    private int customTextColor = 0;
 
     public ChatMessage(@NonNull String text, boolean isUser) {
         this(text, isUser, 0);
@@ -73,6 +74,14 @@ public class ChatMessage implements Serializable {
 
     public boolean hasContent() {
         return text != null && !text.isEmpty() && !text.equals("Thinking...");
+    }
+
+    public void setCustomTextColor(int color) {
+        this.customTextColor = color;
+    }
+
+    public int getCustomTextColor() {
+        return customTextColor;
     }
 
     @Override

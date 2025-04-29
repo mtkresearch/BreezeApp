@@ -150,6 +150,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private boolean hasReceivedResponse = false;  // Add class field
 
+    private int ttsAnimatingPosition = -1;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
@@ -1096,7 +1098,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     @Override
-    public void onSpeakerClick(String messageText) {
+    public void onSpeakerClick(String messageText, int position) {
         if (ttsService == null) {
             showTTSErrorDialog(getString(R.string.text_to_speech_service_not_available));
             return;
@@ -1107,15 +1109,25 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             return;
         }
 
-        runOnUiThread(this::showTTSProcessDialog);
+        // Set highlight color (e.g., orange)
+        int highlightColor = getResources().getColor(R.color.primary, getTheme());
+        chatAdapter.setMessageTextColor(position, highlightColor);
+        ttsAnimatingPosition = position;
 
         CompletableFuture.runAsync(() -> {
             ttsService.speak(messageText)
                 .thenAccept(success -> {
                     runOnUiThread(() -> {
                         dismissTTSProcessDialog();
+                        // Restore color based on message type
+                        ChatMessage msg = conversationManager.getMessages().get(position);
+                        int normalColor = msg.isUser()
+                            ? getResources().getColor(R.color.user_message_text, getTheme())
+                            : getResources().getColor(R.color.ai_message_text, getTheme());
+                        chatAdapter.setMessageTextColor(position, normalColor);
+                        ttsAnimatingPosition = -1;
                         if (!success) {
-                            showTTSErrorDialog("Failed to convert text to audio. Maybe unsupported.");
+                            showTTSErrorDialog(getString(R.string.failed_to_convert_text_to_audio));
                         }
                     });
                 })
@@ -1123,6 +1135,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Log.e(TAG, "TTS error", throwable);
                     runOnUiThread(() -> {
                         dismissTTSProcessDialog();
+                        // Restore color based on message type
+                        ChatMessage msg = conversationManager.getMessages().get(position);
+                        int normalColor = msg.isUser()
+                            ? getResources().getColor(R.color.user_message_text, getTheme())
+                            : getResources().getColor(R.color.ai_message_text, getTheme());
+                        chatAdapter.setMessageTextColor(position, normalColor);
+                        ttsAnimatingPosition = -1;
                         showTTSErrorDialog("Error during TTS: " + throwable.getMessage());
                     });
                     return null;
@@ -1442,7 +1461,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             private final View mainContent = binding.getRoot().findViewById(R.id.mainContent);
             private final View contentOverlay = binding.getRoot().findViewById(R.id.contentOverlay);
 
-            @Override
+    @Override
             public void onDrawerSlide(View drawerView, float slideOffset) {
                 // Move the main content with the drawer
                 mainContent.setTranslationX(drawerView.getWidth() * slideOffset);
@@ -1456,7 +1475,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
 
-            @Override
+    @Override
             public void onDrawerClosed(View drawerView) {
                 contentOverlay.setVisibility(View.GONE);
                 contentOverlay.setAlpha(0f);
@@ -1467,7 +1486,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
 
-            @Override
+    @Override
             public void onDrawerStateChanged(int newState) {
                 // Handle back press in selection mode
                 if (newState == DrawerLayout.STATE_DRAGGING && historyAdapter.isSelectionMode()) {
@@ -1981,13 +2000,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Ensure we're on the main thread
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 new Handler(Looper.getMainLooper()).post(this::showIntroDialog);
-                return;
+            return;
             }
 
             // Check if activity is finishing
             if (isFinishing()) {
                 Log.w(TAG, "Activity is finishing, skipping dialog");
-                return;
+            return;
             }
 
             IntroDialog dialog = new IntroDialog(this);
