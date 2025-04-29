@@ -98,6 +98,10 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="thinking">思考中...</string>
+    <string name="tts_processing_title">TTS 處理中</string>
+    <string name="tts_processing_message">請稍候，我們正在為您準備語音...</string>
+    <string name="tts_error_title">TTS 錯誤</string>
+    <string name="ok">確定</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_chat.xml -->

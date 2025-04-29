@@ -9,8 +9,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import android.widget.ImageButton;
 import android.widget.CheckBox;
@@ -116,6 +119,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private TTSEngineService ttsService;
 
     private DrawerLayout drawerLayout;
+
+    private AlertDialog ttsProcessDialog;
 
     private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = AppConstants.CONVERSATION_HISTORY_LOOKBACK;
 
@@ -1093,40 +1098,53 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     @Override
     public void onSpeakerClick(String messageText) {
         if (ttsService == null) {
-            Toast.makeText(this, this.getString(R.string.text_to_speech_service_not_available), Toast.LENGTH_SHORT).show();
+            showTTSErrorDialog(getString(R.string.text_to_speech_service_not_available));
             return;
         }
 
         if (!ttsService.isReady()) {
-            Toast.makeText(this, this.getString(R.string.text_to_speech_is_still_initializing), Toast.LENGTH_SHORT).show();
+            showTTSErrorDialog(getString(R.string.text_to_speech_is_still_initializing));
             return;
         }
 
-        // Show loading state
-        Toast.makeText(this, this.getString(R.string.converting_text_to_speech), Toast.LENGTH_SHORT).show();
+        runOnUiThread(this::showTTSProcessDialog);
 
-        // Run TTS in background
         CompletableFuture.runAsync(() -> {
-            try {
-                ttsService.speak(messageText)
-                    .thenRun(() -> {
-                        // Success - no need for notification
-                    })
-                    .exceptionally(throwable -> {
-                        Log.e(TAG, "Error converting text to speech", throwable);
-                        runOnUiThread(() -> Toast.makeText(this, 
-                            this.getString(R.string.error_playing_audio), Toast.LENGTH_SHORT).show());
-                        return null;
+            ttsService.speak(messageText)
+                .thenAccept(success -> {
+                    runOnUiThread(() -> {
+                        dismissTTSProcessDialog();
+                        if (!success) {
+                            showTTSErrorDialog("Failed to convert text to audio. Maybe unsupported.");
+                        }
                     });
-            } catch (Exception e) {
-                Log.e(TAG, "Error initiating text to speech", e);
-                runOnUiThread(() -> Toast.makeText(this, 
-                    this.getString(R.string.error_starting_audio_playback), Toast.LENGTH_SHORT).show());
-            }
-        }).exceptionally(throwable -> {
-            Log.e(TAG, "Error in TTS background task", throwable);
-            return null;
+                })
+                .exceptionally(throwable -> {
+                    Log.e(TAG, "TTS error", throwable);
+                    runOnUiThread(() -> {
+                        dismissTTSProcessDialog();
+                        showTTSErrorDialog("Error during TTS: " + throwable.getMessage());
+                    });
+                    return null;
+                });
         });
+    }
+    
+    private void showTTSErrorDialog(String errorMessage) {
+        // First dismiss the progress dialog if it's showing
+        dismissTTSProcessDialog();
+        
+        // Create and show error dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        
+        // Set title and error message
+        builder.setTitle(R.string.tts_error_title)
+               .setMessage(errorMessage)
+               .setCancelable(true)
+               .setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
+        
+        AlertDialog errorDialog = builder.create();
+        errorDialog.show();
     }
 
     private void shutdownFirebase() {
@@ -1552,6 +1570,85 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             })
             .setNegativeButton(this.getString(R.string.cancel), null)
             .show();
+    }
+
+    private void showTTSProcessDialog() {
+        // If a dialog is already showing, dismiss it first
+        dismissTTSProcessDialog();
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        // Create a ProgressBar
+        ProgressBar progressBar = new ProgressBar(this);
+        progressBar.setIndeterminate(true);
+        
+        // Set the progress bar color to primary orange
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            progressBar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(
+                getResources().getColor(R.color.primary, getTheme())
+            ));
+        } else {
+            progressBar.getIndeterminateDrawable().setColorFilter(
+                getResources().getColor(R.color.primary), 
+                android.graphics.PorterDuff.Mode.SRC_IN
+            );
+        }
+
+        // Create a FrameLayout to center the ProgressBar
+        FrameLayout container = new FrameLayout(this);
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.WRAP_CONTENT,
+            FrameLayout.LayoutParams.WRAP_CONTENT
+        );
+        params.gravity = Gravity.CENTER;
+        container.addView(progressBar, params);
+
+        // Add a message to let users know they can cancel
+        builder.setTitle(R.string.tts_processing_title)
+               .setMessage(R.string.tts_processing_message)
+               .setView(container)
+               .setCancelable(true) // Allow canceling by tapping outside
+               .setNegativeButton(R.string.cancel, (dialog, which) -> {
+                   // Stop TTS when canceled
+                   if (ttsService != null) {
+                       ttsService.stopSpeaking();
+                   }
+                   dismissTTSProcessDialog();
+               });
+
+        ttsProcessDialog = builder.create();
+        
+        // Handle back button press
+        ttsProcessDialog.setOnKeyListener((dialog, keyCode, event) -> {
+            if (keyCode == android.view.KeyEvent.KEYCODE_BACK && 
+                event.getAction() == android.view.KeyEvent.ACTION_UP) {
+                // Stop TTS when back button is pressed
+                if (ttsService != null) {
+                    ttsService.stopSpeaking();
+                }
+                dismissTTSProcessDialog();
+                return true;
+            }
+            return false;
+        });
+        
+        // Handle dialog dismiss
+        ttsProcessDialog.setOnDismissListener(dialog -> {
+            // Stop TTS when dialog is dismissed
+            if (ttsService != null) {
+                ttsService.stopSpeaking();
+            }
+            ttsProcessDialog = null;
+        });
+        
+        ttsProcessDialog.show();
+    }
+
+    private void dismissTTSProcessDialog() {
+        if (ttsProcessDialog != null && ttsProcessDialog.isShowing()) {
+            ttsProcessDialog.dismiss();
+            ttsProcessDialog = null;
+        }
     }
 
     private void exitSelectionMode() {
