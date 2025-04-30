@@ -358,4 +358,8 @@
     <string name="error_resuming_activity">Error resuming chat. Please restart the app if problems persist.</string>
     <string name="error_starting_initialization">Failed to start initialization. Please try again.</string>
 
+    <!-- New TTS language support errors -->
+    <string name="tts_error_english_only">TTS does not support pure English sentences with the current model.</string>
+    <string name="tts_error_code_switching">TTS does not support code-switching (mixing English and other languages) with the current model.</string>
+
 </resources>

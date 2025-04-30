@@ -1109,21 +1109,30 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             return;
         }
 
+        // Regex for English letters, numbers, punctuation, and whitespace
+        String englishOnlyPattern = "^[\\p{IsLatin}\\p{Punct}\\d\\s]+$";
+
         // Set highlight color (e.g., orange)
+        ChatMessage msg = conversationManager.getMessages().get(position);
+        int normalColor = msg.isUser()
+            ? getResources().getColor(R.color.user_message_text, getTheme())
+            : getResources().getColor(R.color.ai_message_text, getTheme());
         int highlightColor = getResources().getColor(R.color.primary, getTheme());
         chatAdapter.setMessageTextColor(position, highlightColor);
         ttsAnimatingPosition = position;
+
+        if (messageText.matches(englishOnlyPattern)) {
+            chatAdapter.setMessageTextColor(position, normalColor);
+            ttsAnimatingPosition = -1;
+            showTTSErrorDialog(getString(R.string.tts_error_english_only));
+            return;
+        }
 
         CompletableFuture.runAsync(() -> {
             ttsService.speak(messageText)
                 .thenAccept(success -> {
                     runOnUiThread(() -> {
                         dismissTTSProcessDialog();
-                        // Restore color based on message type
-                        ChatMessage msg = conversationManager.getMessages().get(position);
-                        int normalColor = msg.isUser()
-                            ? getResources().getColor(R.color.user_message_text, getTheme())
-                            : getResources().getColor(R.color.ai_message_text, getTheme());
                         chatAdapter.setMessageTextColor(position, normalColor);
                         ttsAnimatingPosition = -1;
                         if (!success) {
@@ -1135,11 +1144,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     Log.e(TAG, "TTS error", throwable);
                     runOnUiThread(() -> {
                         dismissTTSProcessDialog();
-                        // Restore color based on message type
-                        ChatMessage msg = conversationManager.getMessages().get(position);
-                        int normalColor = msg.isUser()
-                            ? getResources().getColor(R.color.user_message_text, getTheme())
-                            : getResources().getColor(R.color.ai_message_text, getTheme());
                         chatAdapter.setMessageTextColor(position, normalColor);
                         ttsAnimatingPosition = -1;
                         showTTSErrorDialog("Error during TTS: " + throwable.getMessage());
