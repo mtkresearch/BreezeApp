@@ -1465,7 +1465,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             private final View mainContent = binding.getRoot().findViewById(R.id.mainContent);
             private final View contentOverlay = binding.getRoot().findViewById(R.id.contentOverlay);
 
-    @Override
+            @Override
             public void onDrawerSlide(View drawerView, float slideOffset) {
                 // Move the main content with the drawer
                 mainContent.setTranslationX(drawerView.getWidth() * slideOffset);
@@ -1479,7 +1479,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
 
-    @Override
+            @Override
             public void onDrawerClosed(View drawerView) {
                 contentOverlay.setVisibility(View.GONE);
                 contentOverlay.setAlpha(0f);
@@ -1490,7 +1490,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
 
-    @Override
+            @Override
             public void onDrawerStateChanged(int newState) {
                 // Handle back press in selection mode
                 if (newState == DrawerLayout.STATE_DRAGGING && historyAdapter.isSelectionMode()) {
@@ -1593,78 +1593,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             })
             .setNegativeButton(this.getString(R.string.cancel), null)
             .show();
-    }
-
-    private void showTTSProcessDialog() {
-        // If a dialog is already showing, dismiss it first
-        dismissTTSProcessDialog();
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-        // Create a ProgressBar
-        ProgressBar progressBar = new ProgressBar(this);
-        progressBar.setIndeterminate(true);
-        
-        // Set the progress bar color to primary orange
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            progressBar.setIndeterminateTintList(android.content.res.ColorStateList.valueOf(
-                getResources().getColor(R.color.primary, getTheme())
-            ));
-        } else {
-            progressBar.getIndeterminateDrawable().setColorFilter(
-                getResources().getColor(R.color.primary), 
-                android.graphics.PorterDuff.Mode.SRC_IN
-            );
-        }
-
-        // Create a FrameLayout to center the ProgressBar
-        FrameLayout container = new FrameLayout(this);
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-            FrameLayout.LayoutParams.WRAP_CONTENT,
-            FrameLayout.LayoutParams.WRAP_CONTENT
-        );
-        params.gravity = Gravity.CENTER;
-        container.addView(progressBar, params);
-
-        // Add a message to let users know they can cancel
-        builder.setTitle(R.string.tts_processing_title)
-               .setMessage(R.string.tts_processing_message)
-               .setView(container)
-               .setCancelable(true) // Allow canceling by tapping outside
-               .setNegativeButton(R.string.cancel, (dialog, which) -> {
-                   // Stop TTS when canceled
-                   if (ttsService != null) {
-                       ttsService.stopSpeaking();
-                   }
-                   dismissTTSProcessDialog();
-               });
-
-        ttsProcessDialog = builder.create();
-        
-        // Handle back button press
-        ttsProcessDialog.setOnKeyListener((dialog, keyCode, event) -> {
-            if (keyCode == android.view.KeyEvent.KEYCODE_BACK && 
-                event.getAction() == android.view.KeyEvent.ACTION_UP) {
-                // Stop TTS when back button is pressed
-                if (ttsService != null) {
-                    ttsService.stopSpeaking();
-                }
-                dismissTTSProcessDialog();
-                return true;
-            }
-            return false;
-        });
-        
-        // Handle dialog dismiss
-        ttsProcessDialog.setOnDismissListener(dialog -> {
-            // Stop TTS when dialog is dismissed
-            if (ttsService != null) {
-                ttsService.stopSpeaking();
-            }
-            ttsProcessDialog = null;
-        });
-        
-        ttsProcessDialog.show();
     }
 
     private void dismissTTSProcessDialog() {
@@ -2004,13 +1932,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             // Ensure we're on the main thread
             if (Looper.myLooper() != Looper.getMainLooper()) {
                 new Handler(Looper.getMainLooper()).post(this::showIntroDialog);
-            return;
+                return;
             }
 
             // Check if activity is finishing
             if (isFinishing()) {
                 Log.w(TAG, "Activity is finishing, skipping dialog");
-            return;
+                return;
             }
 
             IntroDialog dialog = new IntroDialog(this);
