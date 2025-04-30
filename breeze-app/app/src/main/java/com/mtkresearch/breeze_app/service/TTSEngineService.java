@@ -218,8 +218,8 @@ public class TTSEngineService extends BaseEngineService {
         );
     }
 
-    public CompletableFuture<Void> speak(String text) {
-        CompletableFuture<Void> future = new CompletableFuture<>();
+    public CompletableFuture<Boolean> speak(String text) {
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
         if (cpuTTS == null || !cpuTTS.isInitialized()) {
             future.completeExceptionally(new IllegalStateException("TTS not initialized"));
             return future;
@@ -228,16 +228,16 @@ public class TTSEngineService extends BaseEngineService {
         try {
             switch (backend) {
                 case "mtk":
-                    mtkSpeak(text);
+                    mtkSpeak(text, future);
                     break;
                 case "cpu":
-                    cpuSpeak(text);
+                    cpuSpeak(text, future);
                     break;
                 case "default":
-                    defaultSpeak(text);
+                    defaultSpeak(text, future);
                     break;
                 default:
-                    throw new IllegalStateException("No TTS backend available");
+                    future.completeExceptionally(new IllegalStateException("No TTS backend available"));
             }
         } catch (Exception e) {
             future.completeExceptionally(e);
@@ -245,32 +245,30 @@ public class TTSEngineService extends BaseEngineService {
         return future;
     }
 
-    private void mtkSpeak(String text) {
+    private void mtkSpeak(String text, CompletableFuture<Boolean> future) {
         // Placeholder for MTK TTS implementation
-        throw new UnsupportedOperationException("MTK TTS not implemented yet");
+        future.completeExceptionally(new UnsupportedOperationException("MTK TTS not implemented yet"));
     }
 
-    private void cpuSpeak(String text) {
+    private void cpuSpeak(String text, CompletableFuture<Boolean> future) {
         try {
-            // Initialize audio track with the sample rate
             initAudioTrack(cpuTTS.getSampleRate());
-            
-            // Add a flag to track if synthesis is complete
-            final boolean[] isSynthesisComplete = new boolean[1];
-            final boolean[] isPlaybackComplete = new boolean[1];
-            
-            // Create a completion handler
-            CompletableFuture<Void> synthesisComplete = new CompletableFuture<>();
-            
+
+            final boolean[] gotValidSamples = { false };  // Add a flag
+            final boolean[] isSynthesisComplete = { false };
+
             cpuTTS.synthesize(
                 text,
-                0,  // speakerId
-                1.0f,  // speed
+                0, // speakerId
+                1.0f, // speed
                 new Function1<float[], Unit>() {
                     @Override
                     public Unit invoke(float[] samples) {
-                        if (audioTrack != null && !isPlaybackComplete[0]) {
-                            playAudioSamples(samples);
+                        if (samples != null && samples.length > 0) {
+                            gotValidSamples[0] = true; // ✅ Mark we got something valid
+                            if (audioTrack != null) {
+                                playAudioSamples(samples);
+                            }
                         }
                         return Unit.INSTANCE;
                     }
@@ -279,40 +277,57 @@ public class TTSEngineService extends BaseEngineService {
                     @Override
                     public Unit invoke() {
                         isSynthesisComplete[0] = true;
-                        // Add a small delay before releasing to ensure all audio is played
+
                         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            isPlaybackComplete[0] = true;
                             releaseAudioTrack();
-                            synthesisComplete.complete(null);
-                        }, 1000); // 1 second delay to ensure playback completes
+                            if (gotValidSamples[0]) {
+                                future.complete(true);   // ✅ Normal success
+                            } else {
+                                future.complete(false);  // ❌ Treat as failed
+                            }
+                        }, 1000);
+
                         return Unit.INSTANCE;
                     }
                 }
             );
-            
-            // Wait for synthesis to complete
-            try {
-                synthesisComplete.get(10, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                Log.e(TAG, "Error waiting for synthesis completion", e);
-            }
-            
+
         } catch (Exception e) {
             Log.e(TAG, "Error in CPU TTS", e);
             releaseAudioTrack();
+            future.completeExceptionally(e);
         }
     }
 
-    private void defaultSpeak(String text) {
+    private void defaultSpeak(String text, CompletableFuture<Boolean> future) {
         try {
             String utteranceId = "TTS_" + System.currentTimeMillis();
+
+            textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                @Override public void onStart(String utteranceId) {
+                    Log.d(TAG, "Started speaking: " + utteranceId);
+                }
+
+                @Override public void onDone(String utteranceId) {
+                    Log.d(TAG, "Finished speaking: " + utteranceId);
+                    future.complete(true);  // ✅ Success
+                }
+
+                @Override public void onError(String utteranceId) {
+                    Log.e(TAG, "Error speaking: " + utteranceId);
+                    future.complete(false); // ✅ Treat as failure
+                }
+            });
+
             int result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
-            
+
             if (result != TextToSpeech.SUCCESS) {
-                throw new IllegalStateException("TTS initialization failed");
+                throw new IllegalStateException("TTS speak call failed");
             }
+
         } catch (Exception e) {
             Log.e(TAG, "Error in default TTS", e);
+            future.completeExceptionally(e);  // ✅ Failure
         }
     }
 

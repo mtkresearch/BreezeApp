@@ -32,7 +32,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
     private boolean ttsEnabled = AppConstants.TTS_ENABLED;  // Default to AppConstants value
 
     public interface OnSpeakerClickListener {
-        void onSpeakerClick(String messageText);
+        void onSpeakerClick(String messageText, int position);
     }
 
     public interface OnMessageLongClickListener {
@@ -85,6 +85,13 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         notifyDataSetChanged();
     }
 
+    public void setMessageTextColor(int position, int color) {
+        if (position >= 0 && position < messages.size()) {
+            messages.get(position).setCustomTextColor(color);
+            notifyItemChanged(position);
+        }
+    }
+
     @NonNull
     @Override
     public MessageViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -111,6 +118,15 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         // Set the message text
         holder.messageText.setText(message.getText());
 
+        // Set the text color based on custom color if set
+        if (message.getCustomTextColor() != 0) {
+            holder.messageText.setTextColor(message.getCustomTextColor());
+        } else if (message.isUser()) {
+            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
+        } else {
+            holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
+        }
+
         // Get the ConstraintLayout params for the message bubble
         ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) holder.messageBubble.getLayoutParams();
 
@@ -121,7 +137,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         }
 
         holder.messageBubble.setLayoutParams(params);
-        setupImageAndSpeakerButtons(holder, message);
+        setupImageAndSpeakerButtons(holder, message, position);
 
         // Show/hide speaker icon based on TTS enabled state
         if (holder.speakerIcon != null) {
@@ -129,7 +145,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
                 holder.speakerIcon.setVisibility(View.VISIBLE);
                 holder.speakerIcon.setOnClickListener(v -> {
                     if (speakerClickListener != null) {
-                        speakerClickListener.onSpeakerClick(message.getText());
+                        speakerClickListener.onSpeakerClick(message.getText(), position);
                     }
                 });
             } else {
@@ -143,7 +159,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         params.horizontalBias = 1f;
         holder.messageBubble.setBackgroundResource(R.drawable.bg_user_message);
-        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.user_message_text));
         
         holder.speakerButton.setVisibility(View.GONE);
         holder.userSpeakerButton.setVisibility(message.hasText() ? View.VISIBLE : View.GONE);
@@ -159,7 +174,6 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         params.endToEnd = ConstraintLayout.LayoutParams.PARENT_ID;
         params.horizontalBias = 0f;
         holder.messageBubble.setBackgroundResource(R.drawable.bg_ai_message);
-        holder.messageText.setTextColor(holder.itemView.getContext().getColor(R.color.ai_message_text));
         
         holder.userSpeakerButton.setVisibility(View.GONE);
         holder.speakerButton.setVisibility(message.hasText() ? View.VISIBLE : View.GONE);
@@ -169,7 +183,7 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
         params.endToStart = ConstraintLayout.LayoutParams.UNSET;
     }
 
-    private void setupImageAndSpeakerButtons(MessageViewHolder holder, ChatMessage message) {
+    private void setupImageAndSpeakerButtons(MessageViewHolder holder, ChatMessage message, int position) {
         Uri imageUri = message.getImageUri();
         if (imageUri != null) {
             Log.d(TAG, "Image URI present: " + imageUri);
@@ -185,13 +199,13 @@ public class ChatMessageAdapter extends RecyclerView.Adapter<ChatMessageAdapter.
             holder.messageImage.setVisibility(View.GONE);
         }
 
-        setupSpeakerClickListeners(holder, message);
+        setupSpeakerClickListeners(holder, message, position);
     }
 
-    private void setupSpeakerClickListeners(MessageViewHolder holder, ChatMessage message) {
+    private void setupSpeakerClickListeners(MessageViewHolder holder, ChatMessage message, int position) {
         View.OnClickListener speakerListener = v -> {
             if (speakerClickListener != null && message.hasText()) {
-                speakerClickListener.onSpeakerClick(message.getText());
+                speakerClickListener.onSpeakerClick(message.getText(), position);
             }
         };
         

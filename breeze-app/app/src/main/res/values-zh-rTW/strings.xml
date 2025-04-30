@@ -98,6 +98,12 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="thinking">思考中...</string>
+    <string name="tts_processing_title">TTS 處理中</string>
+    <string name="tts_processing_message">請稍候，我們正在為您準備語音...</string>
+    <string name="tts_error_title">TTS 錯誤</string>
+    <string name="failed_to_convert_text_to_audio">無法將文字轉換為語音。格式可能不支援或 TTS 引擎發生錯誤。</string>
+    <string name="failed_to_convert_text_to_audio_short">無法將文字轉換為語音。可能是格式不支援。</string>
+    <string name="ok">確定</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## activity_chat.xml -->
@@ -346,5 +352,8 @@
     <string name="error_starting_initialization">初始化啟動失敗。請再試一次。</string>
 
     <!-- Resource monitoring messages -->
+
+    <string name="tts_error_english_only">目前的 TTS 模型不支援全英文句子的語音合成。</string>
+    <string name="tts_error_code_switching">目前的 TTS 模型不支援中英混合（Code-Switching）語音合成。</string>
 
 </resources>

@@ -9,8 +9,11 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.Gravity;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.PopupMenu;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import android.widget.ImageButton;
 import android.widget.CheckBox;
@@ -117,6 +120,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private DrawerLayout drawerLayout;
 
+    private AlertDialog ttsProcessDialog;
+
     private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = AppConstants.CONVERSATION_HISTORY_LOOKBACK;
 
     // Add promptId field at the top of the class
@@ -144,6 +149,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
 
     private boolean hasReceivedResponse = false;  // Add class field
+
+    private int ttsAnimatingPosition = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1091,42 +1098,76 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     @Override
-    public void onSpeakerClick(String messageText) {
+    public void onSpeakerClick(String messageText, int position) {
         if (ttsService == null) {
-            Toast.makeText(this, this.getString(R.string.text_to_speech_service_not_available), Toast.LENGTH_SHORT).show();
+            showTTSErrorDialog(getString(R.string.text_to_speech_service_not_available));
             return;
         }
 
         if (!ttsService.isReady()) {
-            Toast.makeText(this, this.getString(R.string.text_to_speech_is_still_initializing), Toast.LENGTH_SHORT).show();
+            showTTSErrorDialog(getString(R.string.text_to_speech_is_still_initializing));
             return;
         }
 
-        // Show loading state
-        Toast.makeText(this, this.getString(R.string.converting_text_to_speech), Toast.LENGTH_SHORT).show();
+        // Regex for English letters, numbers, punctuation, and whitespace
+        String englishOnlyPattern = "^[\\p{IsLatin}\\p{Punct}\\d\\s]+$";
 
-        // Run TTS in background
+        // Set highlight color (e.g., orange)
+        ChatMessage msg = conversationManager.getMessages().get(position);
+        int normalColor = msg.isUser()
+            ? getResources().getColor(R.color.user_message_text, getTheme())
+            : getResources().getColor(R.color.ai_message_text, getTheme());
+        int highlightColor = getResources().getColor(R.color.primary, getTheme());
+        chatAdapter.setMessageTextColor(position, highlightColor);
+        ttsAnimatingPosition = position;
+
+        if (messageText.matches(englishOnlyPattern)) {
+            chatAdapter.setMessageTextColor(position, normalColor);
+            ttsAnimatingPosition = -1;
+            showTTSErrorDialog(getString(R.string.tts_error_english_only));
+            return;
+        }
+
         CompletableFuture.runAsync(() -> {
-            try {
-                ttsService.speak(messageText)
-                    .thenRun(() -> {
-                        // Success - no need for notification
-                    })
-                    .exceptionally(throwable -> {
-                        Log.e(TAG, "Error converting text to speech", throwable);
-                        runOnUiThread(() -> Toast.makeText(this, 
-                            this.getString(R.string.error_playing_audio), Toast.LENGTH_SHORT).show());
-                        return null;
+            ttsService.speak(messageText)
+                .thenAccept(success -> {
+                    runOnUiThread(() -> {
+                        dismissTTSProcessDialog();
+                        chatAdapter.setMessageTextColor(position, normalColor);
+                        ttsAnimatingPosition = -1;
+                        if (!success) {
+                            showTTSErrorDialog(getString(R.string.failed_to_convert_text_to_audio));
+                        }
                     });
-            } catch (Exception e) {
-                Log.e(TAG, "Error initiating text to speech", e);
-                runOnUiThread(() -> Toast.makeText(this, 
-                    this.getString(R.string.error_starting_audio_playback), Toast.LENGTH_SHORT).show());
-            }
-        }).exceptionally(throwable -> {
-            Log.e(TAG, "Error in TTS background task", throwable);
-            return null;
+                })
+                .exceptionally(throwable -> {
+                    Log.e(TAG, "TTS error", throwable);
+                    runOnUiThread(() -> {
+                        dismissTTSProcessDialog();
+                        chatAdapter.setMessageTextColor(position, normalColor);
+                        ttsAnimatingPosition = -1;
+                        showTTSErrorDialog("Error during TTS: " + throwable.getMessage());
+                    });
+                    return null;
+                });
         });
+    }
+    
+    private void showTTSErrorDialog(String errorMessage) {
+        // First dismiss the progress dialog if it's showing
+        dismissTTSProcessDialog();
+        
+        // Create and show error dialog
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        
+        // Set title and error message
+        builder.setTitle(R.string.tts_error_title)
+               .setMessage(errorMessage)
+               .setCancelable(true)
+               .setPositiveButton(R.string.ok, (dialog, which) -> dialog.dismiss());
+        
+        AlertDialog errorDialog = builder.create();
+        errorDialog.show();
     }
 
     private void shutdownFirebase() {
@@ -1552,6 +1593,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             })
             .setNegativeButton(this.getString(R.string.cancel), null)
             .show();
+    }
+
+    private void dismissTTSProcessDialog() {
+        if (ttsProcessDialog != null && ttsProcessDialog.isShowing()) {
+            ttsProcessDialog.dismiss();
+            ttsProcessDialog = null;
+        }
     }
 
     private void exitSelectionMode() {

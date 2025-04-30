@@ -55,6 +55,13 @@
     <string name="model_found">✅ Model Found</string>
     <string name="model_missing">⛔️ Model Missing</string>
 
+    <!-- TTS dialog strings -->
+    <string name="tts_processing_title">TTS processing</string>
+    <string name="tts_error_title">TTS Error</string>
+    <string name="failed_to_convert_text_to_audio">Failed to convert text to audio. Format may be unsupported or TTS engine error occurred.</string>
+    <string name="failed_to_convert_text_to_audio_short">Failed to convert text to audio. Maybe unsupported.</string>
+    <string name="ok">OK</string>
+
     <!-- warning message -->
     <string name="warning_ram"><![CDATA[⚠️ WARNING: Your device does not meet the minimum RAM requirement.<br/>]]></string>
     <string name="warning_model_missing"><![CDATA[⚠️ WARNING: Required model files (%1$s or %2$s) are missing.<br/>]]></string>
@@ -143,6 +150,8 @@
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
+    <string name="tts_processing_message">Converting text to speech...</string>
+
     <!-- Toast.makeText -->
     <string name="error_initializing_services">Error initializing services: </string>
     <string name="initializing_model_with">Initializing model with </string>
@@ -348,5 +357,9 @@
     <!-- New error messages for ChatActivity -->
     <string name="error_resuming_activity">Error resuming chat. Please restart the app if problems persist.</string>
     <string name="error_starting_initialization">Failed to start initialization. Please try again.</string>
+
+    <!-- New TTS language support errors -->
+    <string name="tts_error_english_only">TTS does not support pure English sentences with the current model.</string>
+    <string name="tts_error_code_switching">TTS does not support code-switching (mixing English and other languages) with the current model.</string>
 
 </resources>
