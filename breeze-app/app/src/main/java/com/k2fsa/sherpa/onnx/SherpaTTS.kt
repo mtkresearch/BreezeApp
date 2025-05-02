@@ -2,7 +2,7 @@ package com.k2fsa.sherpa.onnx;
 
 import android.content.Context
 import android.util.Log
-import com.mtkresearch.breeze_app.utils.AppConstants
+import com.mtkresearch.breezeapp.utils.AppConstants
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException

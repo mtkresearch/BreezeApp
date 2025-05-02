@@ -356,4 +356,8 @@
     <string name="tts_error_english_only">目前的 TTS 模型不支援全英文句子的語音合成。</string>
     <string name="tts_error_code_switching">目前的 TTS 模型不支援中英混合（Code-Switching）語音合成。</string>
 
+    <!-- Feedback Dialog Strings -->
+    <string name="feedback_thanks_upvote">感謝您的肯定！</string>
+    <string name="feedback_thanks_downvote">感謝您的反饋，我們會繼續改進！</string>
+
 </resources>

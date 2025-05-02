@@ -17,15 +17,15 @@ if (hasGoogleServices) {
 }
 
 android {
-    namespace = "com.mtkresearch.breeze_app"
+    namespace = "com.mtkresearch.breezeapp"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtkresearch.breeze_app"
+        applicationId = "com.mtkresearch.breezeapp"
         minSdk = 33
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.9.2"
+        versionCode = 13
+        versionName = "1.0.1-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -35,12 +35,6 @@ android {
         }
 
         manifestPlaceholders["app_name"] = "BreezeApp"
-
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-            }
-        }
         
         // Add a BuildConfig field to indicate Firebase presence
         buildConfigField("Boolean", "USE_FIREBASE", hasGoogleServices.toString())
@@ -121,12 +115,11 @@ android {
     productFlavors {
         create("breeze") {
             dimension = "version"
-            applicationIdSuffix = ".breeze"
             versionNameSuffix = "-breeze"
             resValue("string", "app_name", "BreezeApp")
             buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
             manifestPlaceholders["file_provider_authority"] =
-                "com.mtkresearch.breeze_app.breeze.fileprovider"
+                "com.mtkresearch.breezeapp.fileprovider"
         }
     }
 }
