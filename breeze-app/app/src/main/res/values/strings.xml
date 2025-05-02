@@ -362,4 +362,8 @@
     <string name="tts_error_english_only">TTS does not support pure English sentences with the current model.</string>
     <string name="tts_error_code_switching">TTS does not support code-switching (mixing English and other languages) with the current model.</string>
 
+    <!-- Feedback Dialog Strings -->
+    <string name="feedback_thanks_upvote">Thanks for your positive feedback!</string>
+    <string name="feedback_thanks_downvote">Thanks for helping us improve!</string>
+
 </resources>

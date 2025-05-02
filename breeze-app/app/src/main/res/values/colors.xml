@@ -17,4 +17,5 @@
     <color name="ai_message_bg">#FFFFFF</color>    <!-- No background (white) -->
     <color name="ai_message_text">#757575</color>
     <color name="error">#AF2316</color>  <!-- Gray text for AI messages -->
+    <color name="dialog_bg">#FFB74D</color>
 </resources>

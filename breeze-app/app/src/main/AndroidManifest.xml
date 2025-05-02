@@ -56,7 +56,7 @@
             android:required="false" />
 
         <activity
-            android:name="com.mtkresearch.breeze_app.ChatActivity"
+            android:name="com.mtkresearch.breezeapp.ChatActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.Breeze2Demo"
@@ -68,18 +68,18 @@
         </activity>
         
         <activity
-            android:name="com.mtkresearch.breeze_app.MainActivity"
+            android:name="com.mtkresearch.breezeapp.MainActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo"
             android:screenOrientation="portrait" />
         <activity
-            android:name="com.mtkresearch.breeze_app.AudioChatActivity"
+            android:name="com.mtkresearch.breezeapp.AudioChatActivity"
             android:exported="false"
             android:theme="@style/Theme.Breeze2Demo"
             android:screenOrientation="portrait" />
 	    
         <activity
-            android:name="com.mtkresearch.breeze_app.ModelDownloadActivity"
+            android:name="com.mtkresearch.breezeapp.ModelDownloadActivity"
             android:exported="true"
             android:grantUriPermissions="true"
             android:screenOrientation="portrait"/>
@@ -93,10 +93,10 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <service android:name="com.mtkresearch.breeze_app.service.LLMEngineService" />
-        <service android:name="com.mtkresearch.breeze_app.service.VLMEngineService" />
-        <service android:name="com.mtkresearch.breeze_app.service.ASREngineService" />
-        <service android:name="com.mtkresearch.breeze_app.service.TTSEngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.LLMEngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.VLMEngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.ASREngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.TTSEngineService" />
     </application>
 
 </manifest>

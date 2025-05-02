@@ -8,7 +8,7 @@
 
 package com.executorch;
 
-import com.mtkresearch.breeze_app.utils.AppConstants;
+import com.mtkresearch.breezeapp.utils.AppConstants;
 
 public class PromptFormat {
 
