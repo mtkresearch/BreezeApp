@@ -540,7 +540,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                         }
 
                                         // Handle both stop tokens - filter out both EOS tokens
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) || token.equals("<|eot_id|>") || token.equals("<|end_of_text|>")) {
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
                                             Log.d(TAG, "Stop token detected: " + token);
                                             String finalResponse = currentStreamingResponse.toString();
                                             if (!currentResponse.isDone()) {
@@ -548,8 +548,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                                 resultFuture.complete(finalResponse);
                                             }
                                             isGenerating.set(false);
-                                            // Clear the callback immediately to prevent further token processing
-                                            currentCallback = null;
+                                            
                                             // Explicitly stop the module when we detect a stop token
                                             try {
                                                 mModule.stop();
@@ -614,10 +613,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
             // Clean up resources
             currentCallback = null;
             System.gc(); // Request garbage collection for any lingering resources
-        } else {
-            // If generation was already stopped, just ensure callback is cleared
-            currentCallback = null;
-        }
+        } 
     }
 
     public void stopGeneration() {
