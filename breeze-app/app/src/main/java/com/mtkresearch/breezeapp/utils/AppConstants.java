@@ -461,7 +461,12 @@ public class AppConstants {
     }
     
     // LLM Configuration
-    public static final float LLM_TEMPERATURE = 0.2f;
+    public static float LLM_TEMPERATURE = 0.2f;
+    public static int LLM_MAX_TOKEN = 256;
+    public static float LLM_REPETITION_PENALTY = 0.1f;
+    public static float LLM_FREQUENCY_PENALTY = 0.1f;
+    public static int LLM_TOP_K = 1;
+    public static float LLM_TOP_P = 0.9f;
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode

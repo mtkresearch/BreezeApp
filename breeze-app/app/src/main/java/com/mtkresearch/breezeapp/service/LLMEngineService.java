@@ -402,6 +402,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Initialize LlamaModule with model parameters
                 try {
                     float temperature = AppConstants.LLM_TEMPERATURE;
+                    Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
                     mModule = new LlamaModule(
                         ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
                         modelPath,

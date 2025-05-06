@@ -175,6 +175,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     protected void onResume() {
         Log.d(TAG, "onResume");
         super.onResume();
+        // 強制關閉抽屜，確保從設置活動返回時抽屜是關閉的
+        if (drawerLayout != null) {
+            drawerLayout.closeDrawer(GravityCompat.START);
+        }
+
         if (!isFirstLaunch) {
             initializeServices();
         }
@@ -250,6 +255,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Initially disable all interactive components
         updateInteractionState();
+
+        // Add this call where you initialize other views
+        setupFooterControls();
     }
 
     private void initializeHandlers() {
@@ -551,6 +559,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
         String preferredBackend = ModelUtils.getPreferredBackend();
         llmIntent.putExtra("preferred_backend", preferredBackend);
+
+        // Log all the llm config used, with separate lines
+        Log.d(TAG, "LLM config used:");
+        Log.d(TAG, "Temperature: " + AppConstants.LLM_TEMPERATURE);
+        Log.d(TAG, "Max Token: " + AppConstants.LLM_MAX_TOKEN);
+        Log.d(TAG, "Repetition Penalty: " + AppConstants.LLM_REPETITION_PENALTY);
+        Log.d(TAG, "Frequency Penalty: " + AppConstants.LLM_FREQUENCY_PENALTY);
+        Log.d(TAG, "Top K: " + AppConstants.LLM_TOP_K);
+        Log.d(TAG, "Top P: " + AppConstants.LLM_TOP_P);
+        
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
@@ -1541,6 +1559,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         ImageButton deleteButton = findViewById(R.id.deleteHistoryButton);
         CheckBox selectAllCheckbox = findViewById(R.id.selectAllCheckbox);
+        ImageButton settingsButton = findViewById(R.id.settingsButton);
 
         deleteButton.setOnClickListener(v -> {
             if (historyAdapter.isSelectionMode()) {
@@ -1594,6 +1613,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             historyManager.setCurrentActiveHistory(history);
             drawerLayout.closeDrawers();
             updateWatermarkVisibility();
+        });
+
+        settingsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
         });
     }
 
@@ -2176,5 +2200,26 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         .start();
             }
         }, 5000);
+    }
+
+    // Add this to the initializeViews method or any appropriate initialization method
+    private void setupFooterControls() {
+        // Set version info text
+        TextView versionInfoTextView = findViewById(R.id.versionInfoTextView);
+        try {
+            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            versionInfoTextView.setText("v" + versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            Log.e(TAG, "Error getting app version", e);
+            versionInfoTextView.setText("v1.0.0"); // Fallback version
+        }
+
+        // Set settings button click listener
+        ImageButton settingsButton = findViewById(R.id.settingsButton);
+        settingsButton.setOnClickListener(v -> {
+            // Open settings activity
+            Intent settingsIntent = new Intent(ChatActivity.this, SettingsActivity.class);
+            startActivity(settingsIntent);
+        });
     }
 }

@@ -24,8 +24,8 @@ android {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 33
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.0.1-dev"
+        versionCode = 16
+        versionName = "1.0.2-dev"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
@@ -35,6 +35,7 @@ android {
         }
 
         manifestPlaceholders["app_name"] = "BreezeApp"
+        manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.breezeapp.fileprovider"
         
         // Add a BuildConfig field to indicate Firebase presence
         buildConfigField("Boolean", "USE_FIREBASE", hasGoogleServices.toString())
@@ -110,18 +111,6 @@ android {
             )
         }
     }
-
-    flavorDimensions += "version"
-    productFlavors {
-        create("breeze") {
-            dimension = "version"
-            versionNameSuffix = "-breeze"
-            resValue("string", "app_name", "BreezeApp")
-            buildConfigField("String", "GIT_BRANCH", "\"release/0.1\"")
-            manifestPlaceholders["file_provider_authority"] =
-                "com.mtkresearch.breezeapp.fileprovider"
-        }
-    }
 }
 
 // Version constants
@@ -138,6 +127,7 @@ object Versions {
     const val GSON = "2.8.6"
     const val SOLOADER = "0.10.5"
     const val KOTLIN = "2.0.0"
+    const val PREFERENCE = "1.2.1"
 }
 
 dependencies {
@@ -146,6 +136,8 @@ dependencies {
     implementation("androidx.appcompat:appcompat:${Versions.APPCOMPAT}")
     implementation("com.google.android.material:material:${Versions.MATERIAL}")
     implementation("androidx.constraintlayout:constraintlayout:${Versions.CONSTRAINT_LAYOUT}")
+    implementation("androidx.preference:preference:${Versions.PREFERENCE}")
+    implementation("androidx.preference:preference-ktx:${Versions.PREFERENCE}")
 
     // Kotlin coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:${Versions.COROUTINES}")
