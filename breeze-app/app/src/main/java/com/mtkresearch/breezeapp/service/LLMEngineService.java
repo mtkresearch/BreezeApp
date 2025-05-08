@@ -1,8 +1,15 @@
 package com.mtkresearch.breezeapp.service;
 
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_MAX_TOKEN;
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_TEMPERATURE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_MAX_TOKEN_VALUE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TEMPERATURE_VALUE;
+
 import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
+import android.content.Context;
+import android.content.SharedPreferences;
 
 import org.pytorch.executorch.LlamaModule;
 import org.pytorch.executorch.LlamaCallback;
@@ -401,7 +408,11 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 
                 // Initialize LlamaModule with model parameters
                 try {
-                    float temperature = AppConstants.LLM_TEMPERATURE;
+                    // Read temperature directly from SharedPreferences
+                    SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    float temperature = prefs.getFloat(KEY_TEMPERATURE_VALUE, DEFAULT_LLM_TEMPERATURE);
+                    
+                    Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
                     mModule = new LlamaModule(
                         ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
                         modelPath,
@@ -477,7 +488,11 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                             // MTK backend uses raw prompt without formatting
                             executor.execute(() -> {
                                 try {
-                                    String response = nativeStreamingInference(prompt, 256, false, new TokenCallback() {
+                                    // Get max token value from preferences
+                                    SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                                    int maxTokenValue = prefs.getInt(KEY_MAX_TOKEN_VALUE, DEFAULT_LLM_MAX_TOKEN);
+                                    
+                                    String response = nativeStreamingInference(prompt, maxTokenValue, false, new TokenCallback() {
                                         @Override
                                         public void onToken(String token) {
                                             if (callback != null && isGenerating.get()) {

@@ -366,4 +366,24 @@
     <string name="feedback_thanks_upvote">Thanks for your positive feedback!</string>
     <string name="feedback_thanks_downvote">Thanks for helping us improve!</string>
 
+    <!-- Setting -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_description">Configure your AI model settings</string>
+
+    <!-- LLM Settings -->
+    <string name="llm_settings_title">LLM Settings</string>
+    <string name="pref_temperature_title">Temperature</string>
+    <string name="pref_temperature_summary">Control the creativity of generated responses</string>
+    <string name="pref_max_token_title">Max Token</string>
+    <string name="pref_max_token_summary">Maximum number of tokens in generated responses</string>
+    <string name="pref_repetition_penalty_title">Repetition Penalty</string>
+    <string name="pref_repetition_penalty_summary">Higher values reduce repetition in generated text</string>
+    <string name="pref_frequency_penalty_title">Frequency Penalty</string>
+    <string name="pref_frequency_penalty_summary">Penalizes frequently used words in the generated text</string>
+    <string name="pref_top_k_title">Top K</string>
+    <string name="pref_top_k_summary">Limits token selection to the K most likely tokens</string>
+    <string name="pref_top_p_title">Top P</string>
+    <string name="pref_top_p_summary">Controls diversity by considering tokens with cumulative probability</string>
+    <string name="applying_llm_settings">Applying LLM settings...</string>
+
 </resources>

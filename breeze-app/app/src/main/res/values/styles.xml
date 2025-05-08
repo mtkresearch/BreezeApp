@@ -8,4 +8,15 @@
         <item name="android:backgroundDimEnabled">false</item>
         <item name="android:windowAnimationStyle">@null</item>
     </style>
+    
+    <!-- Custom preference styles -->
+    <style name="PreferenceThemeOverlay.BreezeApp" parent="PreferenceThemeOverlay">
+        <item name="seekBarPreferenceStyle">@style/SeekBarPreference.BreezeApp</item>
+        <item name="colorAccent">@color/primary</item>
+    </style>
+    
+    <style name="SeekBarPreference.BreezeApp" parent="Preference.SeekBarPreference">
+        <item name="android:progressTint">@color/primary</item>
+        <item name="android:thumbTint">@color/primary</item>
+    </style>
 </resources> 

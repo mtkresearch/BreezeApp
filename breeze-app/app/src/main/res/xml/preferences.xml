@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- LLM (Large Language Model) Settings -->
+    <PreferenceCategory
+        app:key="llm_category"
+        app:title="@string/llm_settings_title">
+
+        <!-- Temperature: 0.70 float = 70 int (DEFAULT_TEMPERATURE * 100) -->
+        <SeekBarPreference
+            app:key="temperature"
+            app:title="@string/pref_temperature_title"
+            app:summary="@string/pref_temperature_summary"
+            app:defaultValue="50"
+            android:min="0"
+            android:max="100" />
+
+        <!-- Max Token: Range 128-2048 with steps of 128 -->
+        <SeekBarPreference
+            app:key="max_token"
+            app:title="@string/pref_max_token_title"
+            app:summary="@string/pref_max_token_summary"
+            app:defaultValue="256"
+            android:min="128"
+            android:max="2048" />
+
+        <!-- Repetition Penalty: 0.2 float = 20 int (DEFAULT_REPETITION_PENALTY * 100) -->
+        <SeekBarPreference
+            app:key="repetition_penalty"
+            app:title="@string/pref_repetition_penalty_title"
+            app:summary="@string/pref_repetition_penalty_summary"
+            app:defaultValue="20"
+            android:min="0"
+            android:max="100" />
+
+        <SeekBarPreference
+            app:key="frequency_penalty"
+            app:title="@string/pref_frequency_penalty_title"
+            app:summary="@string/pref_frequency_penalty_summary"
+            app:defaultValue="20"
+            android:min="0"
+            android:max="100" />
+
+        <!-- integer number input field -->
+        <EditTextPreference
+            app:key="top_k"
+            app:title="@string/pref_top_k_title"
+            app:summary="@string/pref_top_k_summary"
+            app:defaultValue="1"
+            android:inputType="number" />
+
+        <SeekBarPreference
+            app:key="top_p"
+            app:title="@string/pref_top_p_title"
+            app:summary="@string/pref_top_p_summary"
+            app:defaultValue="90"
+            android:min="0"
+            android:max="100" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

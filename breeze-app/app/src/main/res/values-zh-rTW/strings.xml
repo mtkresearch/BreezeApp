@@ -360,4 +360,24 @@
     <string name="feedback_thanks_upvote">感謝您的肯定！</string>
     <string name="feedback_thanks_downvote">感謝您的反饋，我們會繼續改進！</string>
 
+    <!-- Settings -->
+    <string name="settings_title">設定</string>
+    <string name="settings_description">您的 AI 模型設定</string>
+
+    <!-- LLM Settings -->
+    <string name="llm_settings_title">LLM 設定</string>
+    <string name="pref_temperature_title">溫度</string>
+    <string name="pref_temperature_summary">控制生成回應的創造力</string>
+    <string name="pref_max_token_title">最大 Token 數</string>
+    <string name="pref_max_token_summary">生成回應的最大 Token 數</string>
+    <string name="pref_repetition_penalty_title">重複懲罰</string>
+    <string name="pref_repetition_penalty_summary">減少重複回應的機率</string>
+    <string name="pref_frequency_penalty_title">頻率懲罰</string>
+    <string name="pref_frequency_penalty_summary">懲罰生成文本中頻繁使用的詞彙</string>
+    <string name="pref_top_k_title">Top K 取樣</string>
+    <string name="pref_top_k_summary">限制 Token 選擇在最可能的 K 個詞彙中</string>
+    <string name="pref_top_p_title">Top P 取樣</string>
+    <string name="pref_top_p_summary">通過考慮累積概率來控制文本多樣性</string>
+    <string name="applying_llm_settings">應用 LLM 設定中...</string>
+    
 </resources>
