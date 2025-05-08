@@ -1,0 +1,28 @@
+{
+    "models": [
+      {
+        "id": "breeze2-3b-250501-npu",
+        "runner": "mediatek",
+        "ram": 5000000000,
+        "urls": []
+      },
+      {
+        "id": "breeze2-3b-250501-cpu",
+        "runner": "executorch",
+        "ram": 12000000000,
+        "urls": [
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/Breeze-Tiny-Instruct-v0_1-2048.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/tokenizer.bin?download=true"
+        ]
+      },
+      {
+        "id": "breeze2-3b-spin-250501-cpu",
+        "runner": "executorch",
+        "ram": 5000000000,
+        "urls": [
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/Breeze-Tiny-Instruct-v0_1-2048-spin.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/tokenizer.bin?download=true"
+        ]
+      }
+    ]
+  }

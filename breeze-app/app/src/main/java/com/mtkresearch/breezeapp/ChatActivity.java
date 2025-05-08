@@ -85,6 +85,8 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import android.content.SharedPreferences;
 import java.lang.NumberFormatException;
 
+import com.mtkresearch.breezeapp.utils.ModelFilter;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
 
@@ -453,6 +455,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Remove overlay animation code and directly start services
         if(AppConstants.needsModelDownload(getApplicationContext())){
+            // Write filtered model list to file before launching the download activity
+            ModelFilter.writeFilteredModelListToFile(this, "filteredModelList.json");
+            
             Intent intent = new Intent(this, ModelDownloadActivity.class);
             if (HWCompatibility.isSupportedHW() == "mtk") {
                 intent.putExtra("download_mode", "MTK_NPU");
@@ -1109,6 +1114,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 break;
             case REQUEST_CODE_DOWNLOAD_ACTIVITY:
                 if(resultCode == RESULT_OK){
+                    // Write the downloadedModelList.json to the assets folder
                     initializeServices();
                 }
                 else {
