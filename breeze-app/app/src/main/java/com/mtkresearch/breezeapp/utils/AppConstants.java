@@ -11,15 +11,32 @@ public class AppConstants {
     private static final String TAG = "AppConstants";
 
     // Shared Preferences
-    public static final String PREFS_NAME = "GAISettings";
+    public static final String PREFS_NAME = "BreezeAppSettings";
     
     // Preference Keys
     public static final String KEY_HISTORY_LOOKBACK = "history_lookback";
     public static final String KEY_SEQUENCE_LENGTH = "sequence_length";
     public static final String KEY_DEFAULT_MODEL = "default_model";
     public static final String KEY_FIRST_LAUNCH = "first_launch";
-    public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_PREFERRED_BACKEND = "preferred_backend";
+
+    // Preference keys from SettingsFragment
+    // Keys without suffix store integer values for UI controls (0-100)
+    // Keys with "_value" suffix store actual float values (0.0-1.0) used by the model
+    public static final String KEY_TEMPERATURE = "temperature";
+    public static final String KEY_TEMPERATURE_VALUE = "temperature_value"; // Actual float value used by the model
+    public static final String KEY_MAX_TOKEN = "max_token";
+    public static final String KEY_MAX_TOKEN_VALUE = "max_token_value";
+    public static final String KEY_REPETITION_PENALTY = "repetition_penalty";
+    public static final String KEY_REPETITION_PENALTY_VALUE = "repetition_penalty_value"; // Actual float value used by the model
+    public static final String KEY_FREQUENCY_PENALTY = "frequency_penalty";
+    public static final String KEY_FREQUENCY_PENALTY_VALUE = "frequency_penalty_value"; // Actual float value used by the model
+    public static final String KEY_TOP_K = "top_k";
+    public static final String KEY_TOP_K_VALUE = "top_k_value";
+    public static final String KEY_TOP_P = "top_p";
+    public static final String KEY_TOP_P_VALUE = "top_p_value"; // Actual float value used by the model
+
+
     public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
     
     // Service Enable Flags
@@ -460,13 +477,13 @@ public class AppConstants {
         }
     }
     
-    // LLM Configuration
-    public static float LLM_TEMPERATURE = 0.2f;
-    public static int LLM_MAX_TOKEN = 256;
-    public static float LLM_REPETITION_PENALTY = 0.1f;
-    public static float LLM_FREQUENCY_PENALTY = 0.1f;
-    public static int LLM_TOP_K = 1;
-    public static float LLM_TOP_P = 0.9f;
+//    // LLM Configuration
+    public static final float DEFAULT_LLM_TEMPERATURE = 0.2f;
+    public static final int DEFAULT_LLM_MAX_TOKEN = 256;
+    public static final float DEFAULT_LLM_REPETITION_PENALTY = 1.2f;
+    public static final float DEFAULT_LLM_FREQUENCY_PENALTY = 1.2f;
+    public static final int DEFAULT_LLM_TOP_K = 1;
+    public static final float DEFAULT_LLM_TOP_P = 0.9f;
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode

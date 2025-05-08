@@ -82,6 +82,8 @@ import com.mtkresearch.breezeapp.utils.HWCompatibility;
 import com.google.firebase.analytics.FirebaseAnalytics;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 
+import android.content.SharedPreferences;
+import java.lang.NumberFormatException;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
@@ -559,16 +561,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
         String preferredBackend = ModelUtils.getPreferredBackend();
         llmIntent.putExtra("preferred_backend", preferredBackend);
-
-        // Log all the llm config used, with separate lines
-        Log.d(TAG, "LLM config used:");
-        Log.d(TAG, "Temperature: " + AppConstants.LLM_TEMPERATURE);
-        Log.d(TAG, "Max Token: " + AppConstants.LLM_MAX_TOKEN);
-        Log.d(TAG, "Repetition Penalty: " + AppConstants.LLM_REPETITION_PENALTY);
-        Log.d(TAG, "Frequency Penalty: " + AppConstants.LLM_FREQUENCY_PENALTY);
-        Log.d(TAG, "Top K: " + AppConstants.LLM_TOP_K);
-        Log.d(TAG, "Top P: " + AppConstants.LLM_TOP_P);
-        
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
