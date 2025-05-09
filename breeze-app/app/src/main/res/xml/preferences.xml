@@ -8,6 +8,13 @@
         app:key="llm_category"
         app:title="@string/llm_settings_title">
 
+        <ListPreference
+            app:key="llm_model_id"
+            app:title="@string/pref_llm_model_id_title"
+            app:summary="@string/pref_llm_model_id_summary"
+            app:defaultValue="breeze2-3b-250501-npu"
+            app:useSimpleSummaryProvider="true" />
+
         <!-- Temperature: 0.70 float = 70 int (DEFAULT_TEMPERATURE * 100) -->
         <SeekBarPreference
             app:key="temperature"

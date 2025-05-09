@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="llm_model_ids">
+        <!-- This will be populated dynamically when models are downloaded -->
+    </string-array>
+</resources> 
