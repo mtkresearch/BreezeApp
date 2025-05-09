@@ -1297,23 +1297,43 @@ public class ModelDownloadDialog extends Dialog {
                     JSONObject model = models.getJSONObject(i);
                     String modelId = model.getString("id");
                     
+                    // Get the model directory
+                    File modelDir = getModelDir(modelId);
+                    if (modelDir == null) {
+                        Log.e(TAG, "Failed to get model directory for model: " + modelId);
+                        continue;
+                    }
+                    
                     // Check if all files for this model were downloaded successfully
                     boolean allFilesDownloaded = true;
                     JSONArray urls = model.getJSONArray("urls");
                     for (int j = 0; j < urls.length(); j++) {
                         String url = urls.getString(j);
                         String fileName = getFileNameFromUrl(url);
-                        File modelFile = new File(getModelDir(modelId), fileName);
-                        if (!modelFile.exists() || modelFile.length() == 0) {
+                        File modelFile = new File(modelDir, fileName);
+                        
+                        if (!modelFile.exists()) {
+                            Log.w(TAG, "File does not exist for model " + modelId + ": " + fileName);
                             allFilesDownloaded = false;
                             break;
                         }
+                        
+                        if (modelFile.length() == 0) {
+                            Log.w(TAG, "File is empty for model " + modelId + ": " + fileName);
+                            allFilesDownloaded = false;
+                            break;
+                        }
+                        
+                        Log.d(TAG, "Verified file for model " + modelId + ": " + fileName + " (size: " + modelFile.length() + " bytes)");
                     }
                     
                     // If all files were downloaded, add to the list and update array
                     if (allFilesDownloaded) {
+                        Log.i(TAG, "All files verified for model: " + modelId + ", adding to downloaded list");
                         modelsArray.put(model);
                         updateModelIdArray(modelId);
+                    } else {
+                        Log.w(TAG, "Not all files were successfully downloaded for model: " + modelId);
                     }
                 }
             }
@@ -1324,7 +1344,8 @@ public class ModelDownloadDialog extends Dialog {
             File file = new File(getContext().getFilesDir(), "downloadedModelList.json");
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(downloadedModels.toString(2).getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "Successfully wrote downloaded model list to " + file.getAbsolutePath());
+                Log.i(TAG, "Successfully wrote downloaded model list to " + file.getAbsolutePath() + 
+                         " with " + modelsArray.length() + " models");
             }
         } catch (Exception e) {
             Log.e(TAG, "Error saving downloaded model list", e);

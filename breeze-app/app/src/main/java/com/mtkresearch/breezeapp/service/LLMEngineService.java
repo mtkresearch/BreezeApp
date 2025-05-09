@@ -185,8 +185,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand flag="+flags+", startId= "+startId);
         if (intent != null) {
-            if (intent.hasExtra("base_path")) {
-                modelBasePath = intent.getStringExtra("base_path");
+            if (intent.hasExtra("base_model_path")) {
+                modelBasePath = intent.getStringExtra("base_model_path");
                 Log.d(TAG, "Using base path: " + modelBasePath);
             }
 
@@ -328,7 +328,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     Thread.sleep(100);
                     
                     // Initialize with conservative settings
-                    success = nativeInitLlm(AppConstants.getMtkConfigPath(context), true);
+                    success = nativeInitLlm(modelPath, true);
 
                     if (!success) {
                         Log.e(TAG, "MTK initialization returned false");

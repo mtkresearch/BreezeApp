@@ -558,9 +558,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
         String[] modelInfo = ModelUtils.getModelInfo(this);
-        llmIntent.putExtra("model_path", modelInfo[0]);
-        llmIntent.putExtra("preferred_backend", modelInfo[1]);
-        llmIntent.putExtra("ram", modelInfo[2]);
+        llmIntent.putExtra("base_model_path", modelInfo[0]);
+        llmIntent.putExtra("model_path", modelInfo[1]);
+        llmIntent.putExtra("preferred_backend", modelInfo[2]);
+        llmIntent.putExtra("ram", modelInfo[3]);
         Log.d(TAG, "Initializing model with: " + modelInfo[0] + " " + modelInfo[1] + " " + modelInfo[2] + " " + modelInfo[3]);
         
         // Show status on main thread
