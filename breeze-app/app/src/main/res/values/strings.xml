@@ -385,5 +385,7 @@
     <string name="pref_top_p_title">Top P</string>
     <string name="pref_top_p_summary">Controls diversity by considering tokens with cumulative probability</string>
     <string name="applying_llm_settings">Applying LLM settings...</string>
+    <string name="pref_llm_model_id_title">LLM Model Selection</string>
+    <string name="pref_llm_model_id_summary">Select which LLM model to use</string>
 
 </resources>

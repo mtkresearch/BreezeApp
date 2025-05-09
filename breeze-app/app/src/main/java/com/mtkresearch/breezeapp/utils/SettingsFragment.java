@@ -24,10 +24,16 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
 
 import com.mtkresearch.breezeapp.R;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
     
@@ -73,6 +79,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     private SeekBarPreference frequencyPenaltyPreference;
     private EditTextPreference topKPreference;
     private SeekBarPreference topPPreference;
+    private ListPreference modelIdPreference;
     
     // Track when we're programmatically changing values
     private boolean isInternalUpdate = false;
@@ -284,6 +291,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 return String.format("%.1f", topP);
             });
         }
+        
+        modelIdPreference = findPreference("llm_model_id");
+        updateModelIdList();
     }
     
     @Override
@@ -323,6 +333,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 topKPreference.setText(String.valueOf(DEFAULT_LLM_TOP_K));
             }
         }
+        
+        // Update the model list when returning to settings
+        updateModelIdList();
     }
     
     @Override
@@ -446,6 +459,11 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     }
                 });
                 break;
+                
+            case "llm_model_id":
+                String newModelId = sharedPreferences.getString(key, "");
+                Log.d(TAG, "Model ID changed to: " + newModelId);
+                break;
         }
     }
     
@@ -466,6 +484,60 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 return TOP_P_STEP_SIZE;
             default:
                 return 0; // unknown key
+        }
+    }
+    
+    private void updateModelIdList() {
+        if (modelIdPreference != null && getContext() != null) {
+            // Get compatible model IDs from ModelFilter
+            List<String> compatibleIds = ModelFilter.getCompatibleModelIds(getContext());
+            Log.d(TAG, "Compatible model IDs: " + compatibleIds);
+
+            // Get downloaded model IDs from ModelArrayManager
+            String[] downloadedIds = ModelArrayManager.getModelIds(getContext());
+            Set<String> downloadedIdSet = new HashSet<>();
+            for (String id : downloadedIds) {
+                downloadedIdSet.add(id);
+            }
+            Log.d(TAG, "Downloaded model IDs: " + downloadedIdSet);
+
+            // Create final list of available models (intersection of compatible and downloaded)
+            List<String> availableIds = new ArrayList<>();
+            for (String id : compatibleIds) {
+                if (downloadedIdSet.contains(id)) {
+                    availableIds.add(id);
+                }
+            }
+            Log.d(TAG, "Available model IDs (compatible and downloaded): " + availableIds);
+
+            if (!availableIds.isEmpty()) {
+                String[] modelIds = availableIds.toArray(new String[0]);
+                modelIdPreference.setEntries(modelIds);
+                modelIdPreference.setEntryValues(modelIds);
+
+                // Check if current value is valid
+                String currentValue = modelIdPreference.getValue();
+                boolean isCurrentValueValid = false;
+                for (String modelId : modelIds) {
+                    if (modelId.equals(currentValue)) {
+                        isCurrentValueValid = true;
+                        break;
+                    }
+                }
+
+                // If current value is not valid, set to first available model
+                if (!isCurrentValueValid) {
+                    Log.d(TAG, "Current model ID " + currentValue + " is not valid, setting to " + modelIds[0]);
+                    modelIdPreference.setValue(modelIds[0]);
+                }
+            } else {
+                Log.w(TAG, "No models available (compatible and downloaded)");
+                // Set default values as fallback
+                String[] defaultIds = {"breeze2-3b-250501-npu", "breeze2-3b-250501-cpu"};
+                modelIdPreference.setEntries(defaultIds);
+                modelIdPreference.setEntryValues(defaultIds);
+                modelIdPreference.setValue(defaultIds[0]);
+            }
         }
     }
 }

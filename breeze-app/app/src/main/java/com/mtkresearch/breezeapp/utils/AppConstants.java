@@ -6,6 +6,8 @@ import android.util.Log;
 import java.io.IOException;
 import android.app.ActivityManager;
 import android.content.SharedPreferences;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public class AppConstants {
     private static final String TAG = "AppConstants";
@@ -38,7 +40,8 @@ public class AppConstants {
 
 
     public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
-    
+    public static final String DEFAULT_LLM_MODEL = "breeze2-3b-spin-250501-cpu";
+
     // Service Enable Flags
     public static final boolean LLM_ENABLED = true;  // LLM is essential
     public static final boolean VLM_ENABLED = false; // VLM is experimental
@@ -153,20 +156,23 @@ public class AppConstants {
         public final String displayName;
         public final String fileType;
         public final long fileSize;
+        public final String modelId;  // Add modelId field
         
-        public DownloadFileInfo(String url, String fileName, String displayName, String fileType, long fileSize) {
+        public DownloadFileInfo(String url, String fileName, String displayName, String fileType, long fileSize, String modelId) {
             this.url = url;
             this.fileName = fileName;
             this.displayName = displayName;
             this.fileType = fileType;
             this.fileSize = fileSize;
+            this.modelId = modelId;
         }
         
-        /**
-         * Convenience constructor that sets fileType to FILE_TYPE_LLM by default
-         */
+        public DownloadFileInfo(String url, String fileName, String displayName, String fileType, long fileSize) {
+            this(url, fileName, displayName, fileType, fileSize, null);
+        }
+        
         public DownloadFileInfo(String url, String fileName, String displayName, long fileSize) {
-            this(url, fileName, displayName, FILE_TYPE_LLM, fileSize);
+            this(url, fileName, displayName, FILE_TYPE_LLM, fileSize, null);
         }
     }
     
@@ -177,14 +183,16 @@ public class AppConstants {
             LLM_TOKENIZER_FILE,
             "Tokenizer",
             FILE_TYPE_TOKENIZER,
-            5 * 1024 * 1024 // ~5MB estimate
+            5 * 1024 * 1024, // ~5MB estimate
+            null
         ),
         new DownloadFileInfo(
             MODEL_DOWNLOAD_URLS[1], // Using second URL from MODEL_DOWNLOAD_URLS 
             BREEZE_MODEL_FILE,
             "Language Model",
             FILE_TYPE_LLM,
-            6 * 1024 * 1024 * 1024L // 6GB estimate
+            6 * 1024 * 1024 * 1024L, // 6GB estimate
+            null
         )
     };
 
@@ -193,64 +201,73 @@ public class AppConstants {
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla",
                 "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                2 * 1024 * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla",
                 "Language Model",
                 AppConstants.FILE_TYPE_LLM,
-                16  * 1024 * 1024L // 6GB estimate
+                16  * 1024 * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla",
                 "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                2 * 1024 * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                2 * 1024 * 1024 * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla",
                 "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                5  * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                5  * 1024 * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/added_tokens.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "added_tokens.yaml",
                 "YAML",
-                    AppConstants.FILE_TYPE_LLM,
-                10  * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                10  * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "config_breezetiny_3b_instruct.yaml",
                 "YAML",
-                    AppConstants.FILE_TYPE_LLM,
-                3 *  1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                3 *  1024L,
+                null
             ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/embedding_int16.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "embedding_int16.bin",
                 "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                790 * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L,
+                null
             ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/shared_weights_0.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "shared_weights_0.bin",
                 "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                790 * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                790 * 1024 * 1024L,
+                null
         ),
         new AppConstants.DownloadFileInfo(
                 "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken", // Using second URL from MODEL_DOWNLOAD_URLS 
                 "tokenizer.tiktoken",
                 "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                3 * 1024 * 1024L // 6GB estimate
+                AppConstants.FILE_TYPE_LLM,
+                3 * 1024 * 1024L,
+                null
          )
 
     };
@@ -397,30 +414,20 @@ public class AppConstants {
 
     // Check if model needs to be downloaded
     public static boolean needsModelDownload(Context context) {
-        if (ModelUtils.getPreferredBackend() == "mtk") {
-            // First check if model exists in legacy location
-            boolean needDownload = false;
-            // TBD, should add downloading flag here to avoid download accident
-            for(int i=0; i< MTK_NPU_LLM_DOWNLOAD_FILES.length; i++){
-                File file = new File(getMTKModelPath(context), MTK_NPU_LLM_DOWNLOAD_FILES[i].fileName);
-                if(!file.exists()){
-                    needDownload = true;
-                }
-            }            
-            return needDownload;
+        // Check if downloadedModelList.json exists and has content
+        File downloadedListFile = new File(context.getFilesDir(), "downloadedModelList.json");
+        if (!downloadedListFile.exists() || downloadedListFile.length() == 0) {
+            return true;
         }
-        else {
-            String modelFileName = getAppropriateModelFile(context);
-            
-            // First check if model exists in legacy location
-            File legacyModelFile = new File(LLAMA_MODEL_DIR, modelFileName);
-            if (legacyModelFile.exists() && legacyModelFile.length() > 0) {
-                return false;
-            }
-
-            // Then check app's private storage
-            File appModelFile = new File(new File(context.getFilesDir(), APP_MODEL_DIR), modelFileName);
-            return !appModelFile.exists() || appModelFile.length() == 0;
+        
+        try {
+            // Read and parse the file
+            JSONObject json = new JSONObject(new String(java.nio.file.Files.readAllBytes(downloadedListFile.toPath())));
+            JSONArray models = json.getJSONArray("models");
+            return models.length() == 0;  // Need download if no models in list
+        } catch (Exception e) {
+            Log.e("AppConstants", "Error reading downloadedModelList.json", e);
+            return true;  // Need download if can't read file
         }
     }
 

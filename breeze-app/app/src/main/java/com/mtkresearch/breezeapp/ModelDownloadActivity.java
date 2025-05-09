@@ -9,6 +9,10 @@ import android.widget.TextView;
 import android.view.WindowManager;
 
 import com.mtkresearch.breezeapp.utils.ModelDownloadDialog;
+import com.mtkresearch.breezeapp.utils.HWCompatibility;
+import com.mtkresearch.breezeapp.utils.ModelFilter;
+
+import org.json.JSONObject;
 
 /**
  * Activity for displaying the model download dialog.
@@ -36,31 +40,37 @@ public class ModelDownloadActivity extends Activity {
             finish();
         });
         
-        // Display title based on download mode
+        // Display title based on hardware support
         TextView titleText = findViewById(R.id.titleText);
         
-        // Get the download mode from the intent
-        Intent intent = getIntent();
-        String downloadModeStr = intent.getStringExtra("download_mode");
-        Log.d(TAG, "ModelDownloadActivity started with mode: " + downloadModeStr);
-        
-        // Determine the download mode
+        // Determine the download mode based on hardware support
         ModelDownloadDialog.DownloadMode downloadMode = ModelDownloadDialog.DownloadMode.LLM;
-        if ("MTK_NPU".equals(downloadModeStr)) {
+        String hwSupport = HWCompatibility.isSupportedHW();
+        boolean isMtkSupported = "mtk".equals(hwSupport);
+        
+        if (isMtkSupported) {
             downloadMode = ModelDownloadDialog.DownloadMode.MTK_NPU;
             titleText.setText("MTK NPU Model Download");
-        } else if ("TTS".equals(downloadModeStr)) {
-            downloadMode = ModelDownloadDialog.DownloadMode.TTS;
-            titleText.setText("TTS Model Download");
         } else {
             titleText.setText("LLM Model Download");
         }
         
-        // Show the download dialog
-        final ModelDownloadDialog.DownloadMode finalMode = downloadMode;
-        Log.d(TAG, "Showing model download dialog for mode: " + finalMode);
+        // Read the filtered model list using the ModelFilter class
+        JSONObject filteredModelList = ModelFilter.readFilteredModelList(this);
         
-        downloadDialog = new ModelDownloadDialog(this, null, finalMode);
+        // Show the download dialog
+        Log.d(TAG, "Showing model download dialog for mode: " + downloadMode);
+        
+        downloadDialog = new ModelDownloadDialog(this, null, downloadMode);
+        
+        // Set the filtered model list if available
+        if (filteredModelList != null) {
+            Log.d(TAG, "Setting filtered model list to dialog");
+            downloadDialog.setFilteredModelList(filteredModelList);
+        } else {
+            Log.w(TAG, "No filtered model list available");
+        }
+        
         downloadDialog.setOnDismissListener(dialog -> {
             Log.d(TAG, "Download dialog dismissed, finishing activity");
             // Finish this activity when the dialog is dismissed
@@ -93,6 +103,7 @@ public class ModelDownloadActivity extends Activity {
             super.onBackPressed();
         }
     }
+    
     @Override
     public void onDestroy(){
         super.onDestroy();

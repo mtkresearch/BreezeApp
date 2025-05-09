@@ -29,6 +29,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CountDownLatch;
 import java.lang.ref.WeakReference;
+import java.nio.file.Paths;
 
 public class LLMEngineService extends BaseEngineService implements LlamaCallback {
     private static final String TAG = "LLMEngineService";
@@ -50,6 +51,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     // CPU backend (LlamaModule)
     private LlamaModule mModule = null;
     private String modelPath = null;  // Set from intent
+    private String modelBasePath = null;  // Set from intent
     
     // MTK backend state
     private static int mtkInitCount = 0;
@@ -183,6 +185,11 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand flag="+flags+", startId= "+startId);
         if (intent != null) {
+            if (intent.hasExtra("base_path")) {
+                modelBasePath = intent.getStringExtra("base_path");
+                Log.d(TAG, "Using base path: " + modelBasePath);
+            }
+
             if (intent.hasExtra("model_path")) {
                 modelPath = intent.getStringExtra("model_path");
                 Log.d(TAG, "Using model path: " + modelPath);
@@ -416,7 +423,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     mModule = new LlamaModule(
                         ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
                         modelPath,
-                        AppConstants.getTokenizerPath(this),
+                        Paths.get(modelBasePath, "tokenizer.bin").toString(),
                         temperature
                     );
                 } catch (Exception e) {

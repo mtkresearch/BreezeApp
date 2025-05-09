@@ -10,7 +10,10 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -63,12 +66,11 @@ public class ModelFilter {
     }
     
     /**
-     * Writes the filtered model list to a file in the app's files directory
+     * Writes the filtered model list to the app's internal storage
      * @param context Application context
-     * @param fileName Name of the file to write to
-     * @return True if the write was successful, false otherwise
+     * @return True if successful, false otherwise
      */
-    public static boolean writeFilteredModelListToFile(Context context, String fileName) {
+    public static boolean writeFilteredModelListToFile(Context context) {
         try {
             // Get the filtered model list
             JSONObject filteredJson = getFilteredModelList(context);
@@ -80,8 +82,8 @@ public class ModelFilter {
             // Convert to string
             String jsonContent = filteredJson.toString(2); // Pretty print with indentation
             
-            // Write to file
-            File file = new File(context.getFilesDir(), fileName);
+            // Write to file in the app's files directory
+            File file = new File(context.getFilesDir(), "filteredModelList.json");
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(jsonContent.getBytes(StandardCharsets.UTF_8));
                 Log.d(TAG, "Successfully wrote filtered model list to " + file.getAbsolutePath());
@@ -90,6 +92,34 @@ public class ModelFilter {
         } catch (Exception e) {
             Log.e(TAG, "Error writing filtered model list to file", e);
             return false;
+        }
+    }
+
+    /**
+     * Reads the filtered model list from the app's files directory
+     * @param context Application context
+     * @return JSONObject containing the filtered model list, or null if not found
+     */
+    public static JSONObject readFilteredModelList(Context context) {
+        File file = new File(context.getFilesDir(), "filteredModelList.json");
+        if (!file.exists()) {
+            Log.w(TAG, "Filtered model list file not found");
+            return null;
+        }
+        
+        StringBuilder stringBuilder = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                stringBuilder.append(line).append('\n');
+            }
+            
+            String jsonString = stringBuilder.toString();
+            Log.d(TAG, "Read filtered model list from file: " + file.getAbsolutePath());
+            return new JSONObject(jsonString);
+        } catch (Exception e) {
+            Log.e(TAG, "Error reading filtered model list file", e);
+            return null;
         }
     }
     

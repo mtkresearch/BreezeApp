@@ -44,6 +44,7 @@ import com.mtkresearch.breezeapp.utils.AppConstants;
 import java.io.IOException;
 import android.content.pm.PackageManager;
 
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -455,17 +456,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Remove overlay animation code and directly start services
         if(AppConstants.needsModelDownload(getApplicationContext())){
-            // Write filtered model list to file before launching the download activity
-            ModelFilter.writeFilteredModelListToFile(this, "filteredModelList.json");
+            // Filter models based on hardware compatibility and write to file
+            ModelFilter.writeFilteredModelListToFile(this);
             
             Intent intent = new Intent(this, ModelDownloadActivity.class);
-            if (HWCompatibility.isSupportedHW() == "mtk") {
-                intent.putExtra("download_mode", "MTK_NPU");
-            }
-            else {
-                intent.putExtra("download_mode", "CPU");
-            }
-            //
             startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
         }
         else {
@@ -563,15 +557,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
-        String preferredBackend = ModelUtils.getPreferredBackend();
-        llmIntent.putExtra("preferred_backend", preferredBackend);
+        String[] modelInfo = ModelUtils.getModelInfo(this);
+        llmIntent.putExtra("model_path", modelInfo[0]);
+        llmIntent.putExtra("preferred_backend", modelInfo[1]);
+        llmIntent.putExtra("ram", modelInfo[2]);
+        Log.d(TAG, "Initializing model with: " + modelInfo[0] + " " + modelInfo[1] + " " + modelInfo[2] + " " + modelInfo[3]);
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
                 Toast.makeText(ChatActivity.this,
-                        ChatActivity.this.getString(R.string.initializing_model_with) + preferredBackend.toUpperCase() + " backend...",
+                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo[1].toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });

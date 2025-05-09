@@ -379,5 +379,7 @@
     <string name="pref_top_p_title">Top P 取樣</string>
     <string name="pref_top_p_summary">通過考慮累積概率來控制文本多樣性</string>
     <string name="applying_llm_settings">應用 LLM 設定中...</string>
+    <string name="pref_llm_model_id_title">選擇 LLM 模型</string>
+    <string name="pref_llm_model_id_summary">選擇要使用的 LLM 模型</string>
     
 </resources>
