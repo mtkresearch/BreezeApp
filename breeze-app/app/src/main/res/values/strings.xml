@@ -388,4 +388,8 @@
     <string name="pref_llm_model_id_title">LLM Model Selection</string>
     <string name="pref_llm_model_id_summary">Select which LLM model to use</string>
 
+    <!-- Memory Warning Dialog -->
+    <string name="insufficient_memory_title">Insufficient Memory</string>
+    <string name="insufficient_memory_message_with_avail">This model requires %1$d GB of RAM to run. Your device currently has %2$d GB available. Please go to Settings to change the model or clean up background application.</string>
+
 </resources>

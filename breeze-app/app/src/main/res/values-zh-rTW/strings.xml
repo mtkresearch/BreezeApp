@@ -382,4 +382,8 @@
     <string name="pref_llm_model_id_title">選擇 LLM 模型</string>
     <string name="pref_llm_model_id_summary">選擇要使用的 LLM 模型</string>
     
+    <!-- Memory Warning Dialog -->
+    <string name="insufficient_memory_title">記憶體不足</string>
+    <string name="insufficient_memory_message_with_avail">此模型需要 %1$d GB 記憶體才能運行。您的裝置目前有 %2$d GB 可用。 請前往設定選擇較小的模型或清理背景應用程式。</string>
+
 </resources>

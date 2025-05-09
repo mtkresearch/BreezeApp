@@ -125,7 +125,7 @@ public class ModelUtils {
         return "cpu";
     }
 
-    public static String[] getModelInfo(Context context) {
+    public static String[] getPrefModelInfo(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         String modelId = prefs.getString("llm_model_id", AppConstants.DEFAULT_LLM_MODEL);
         String basePath = Paths.get(context.getFilesDir().getPath(), "models", modelId).toString();
@@ -146,10 +146,10 @@ public class ModelUtils {
                 JSONObject model = models.getJSONObject(i);
                 if (model.getString("id").equals(modelId)) {
                     String modelPath = "";
-                    if (model.getString("model_path").isEmpty()) {
+                    if (model.getString("model_entry_path").isEmpty()) {
                         modelPath = basePath;
                     } else {
-                        modelPath = Paths.get(basePath, model.getString("model_path")).toString();
+                        modelPath = Paths.get(basePath, model.getString("model_entry_path")).toString();
                     }
                     String backend = model.getString("backend");
                     String ram = model.getString("ram");

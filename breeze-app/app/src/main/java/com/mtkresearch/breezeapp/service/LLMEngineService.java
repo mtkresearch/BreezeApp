@@ -50,7 +50,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     
     // CPU backend (LlamaModule)
     private LlamaModule mModule = null;
-    private String modelPath = null;  // Set from intent
+    private String model_entry_path = null;  // Set from intent
     private String modelBasePath = null;  // Set from intent
     
     // MTK backend state
@@ -86,13 +86,13 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     }
 
     public String getModelName() {
-        if (modelPath == null) {
+        if (model_entry_path == null) {
             if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
                 return "Breeze2";  // Default to Breeze2 for MTK backend
             }
             return "Unknown";
         }
-        return com.mtkresearch.breezeapp.utils.ModelUtils.getModelDisplayName(modelPath);
+        return com.mtkresearch.breezeapp.utils.ModelUtils.getModelDisplayName(model_entry_path);
     }
 
     public interface StreamingResponseCallback {
@@ -185,18 +185,18 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand flag="+flags+", startId= "+startId);
         if (intent != null) {
-            if (intent.hasExtra("base_model_path")) {
-                modelBasePath = intent.getStringExtra("base_model_path");
+            if (intent.hasExtra("base_folder")) {
+                modelBasePath = intent.getStringExtra("base_folder");
                 Log.d(TAG, "Using base path: " + modelBasePath);
             }
 
-            if (intent.hasExtra("model_path")) {
-                modelPath = intent.getStringExtra("model_path");
-                Log.d(TAG, "Using model path: " + modelPath);
+            if (intent.hasExtra("model_entry_path")) {
+                model_entry_path = intent.getStringExtra("model_entry_path");
+                Log.d(TAG, "Using model path: " + model_entry_path);
             } else {
                 // Use AppConstants to get the correct model path
-                modelPath = AppConstants.getModelPath(this);
-                Log.d(TAG, "Using default model path: " + modelPath);
+                model_entry_path = AppConstants.getModelPath(this);
+                Log.d(TAG, "Using default model path: " + model_entry_path);
             }
             
             if (intent.hasExtra("preferred_backend")) {
@@ -328,7 +328,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     Thread.sleep(100);
                     
                     // Initialize with conservative settings
-                    success = nativeInitLlm(modelPath, true);
+                    success = nativeInitLlm(model_entry_path, true);
 
                     if (!success) {
                         Log.e(TAG, "MTK initialization returned false");
@@ -404,7 +404,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 }
                 
                 // 確認路徑存在
-                if (modelPath == null) {
+                if (model_entry_path == null) {
                     Log.e(TAG, "Model path is null, cannot initialize");
                     isModuleInitializing = false;
                     return false;
@@ -422,7 +422,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                     Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
                     mModule = new LlamaModule(
                         ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
-                        modelPath,
+                        model_entry_path,
                         Paths.get(modelBasePath, "tokenizer.bin").toString(),
                         temperature
                     );

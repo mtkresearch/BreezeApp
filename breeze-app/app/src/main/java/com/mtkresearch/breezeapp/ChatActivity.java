@@ -44,7 +44,6 @@ import com.mtkresearch.breezeapp.utils.AppConstants;
 import java.io.IOException;
 import android.content.pm.PackageManager;
 
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -78,13 +77,6 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.mtkresearch.breezeapp.utils.ModelUtils;
-import com.mtkresearch.breezeapp.utils.HWCompatibility;
-
-import com.google.firebase.analytics.FirebaseAnalytics;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import android.content.SharedPreferences;
-import java.lang.NumberFormatException;
 
 import com.mtkresearch.breezeapp.utils.ModelFilter;
 
@@ -552,23 +544,67 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeLLMService() throws Exception {
+        // First check if we need to download models
+        File modelsFile = new File(getFilesDir(), "downloadedModelList.json");
+        if (!modelsFile.exists() || modelsFile.length() == 0) {
+            Log.w(TAG, "downloadedModelList.json not found or empty, launching download activity");
+            // Filter models based on hardware compatibility and write to file
+            ModelFilter.writeFilteredModelListToFile(this);
+            Intent intent = new Intent(this, ModelDownloadActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
+            return;
+        }
+
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean success = new AtomicBoolean(false);
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        String[] modelInfo = ModelUtils.getModelInfo(this);
-        llmIntent.putExtra("base_model_path", modelInfo[0]);
-        llmIntent.putExtra("model_path", modelInfo[1]);
+        String[] modelInfo = ModelUtils.getPrefModelInfo(this);
+        
+        // Check available RAM
+        long requiredRamGB = Long.parseLong(modelInfo[3]) / (1024 * 1024 * 1024);
+        long availRamGB = AppConstants.getAvailableRamGB(this);
+        if (availRamGB < requiredRamGB) {
+            // Show dialog on main thread
+            CountDownLatch dialogLatch = new CountDownLatch(1);
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    AlertDialog dialog = new AlertDialog.Builder(ChatActivity.this)
+                        .setTitle(R.string.insufficient_memory_title)
+                        .setMessage(getString(R.string.insufficient_memory_message_with_avail, requiredRamGB, availRamGB))
+                        .setPositiveButton(R.string.ok, (d, which) -> {
+                            if (!isFinishing()) {
+                                // Use application context for the intent
+                                Intent settingsIntent = new Intent(getApplicationContext(), SettingsActivity.class);
+                                settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(settingsIntent);
+                            }
+                            dialogLatch.countDown();
+                        })
+                        .create();
+                    
+                    // Dismiss dialog if activity is destroyed
+                    dialog.setOnDismissListener(d -> dialogLatch.countDown());
+                    dialog.show();
+                } else {
+                    dialogLatch.countDown();
+                }
+            });
+            dialogLatch.await();
+            return;
+        }
+
+        llmIntent.putExtra("base_folder", modelInfo[0]);
+        llmIntent.putExtra("model_entry_path", modelInfo[1]);
         llmIntent.putExtra("preferred_backend", modelInfo[2]);
-        llmIntent.putExtra("ram", modelInfo[3]);
         Log.d(TAG, "Initializing model with: " + modelInfo[0] + " " + modelInfo[1] + " " + modelInfo[2] + " " + modelInfo[3]);
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
                 Toast.makeText(ChatActivity.this,
-                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo[1].toUpperCase() + " backend...",
+                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo[2].toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });
@@ -1111,7 +1147,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 break;
             case REQUEST_CODE_DOWNLOAD_ACTIVITY:
                 if(resultCode == RESULT_OK){
-                    // Write the downloadedModelList.json to the assets folder
                     initializeServices();
                 }
                 else {
@@ -1217,14 +1252,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         errorDialog.show();
     }
 
-    private void shutdownFirebase() {
-        FirebaseAnalytics.getInstance(getApplicationContext()).setAnalyticsCollectionEnabled(false);
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false);
-   //     FirebaseMessaging.getInstance().deleteToken();
-   //     FirebaseDatabase.getInstance().goOffline();
-   //     FirebaseFirestore.getInstance().terminate();
-   //     FirebaseApp.getInstance().delete(); // 最後刪除整個 FirebaseApp
-    }
     private void cleanup() {
         // Run cleanup in background to prevent ANR
         CompletableFuture.runAsync(() -> {

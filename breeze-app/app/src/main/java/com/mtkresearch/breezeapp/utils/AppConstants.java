@@ -170,10 +170,6 @@ public class AppConstants {
         public DownloadFileInfo(String url, String fileName, String displayName, String fileType, long fileSize) {
             this(url, fileName, displayName, fileType, fileSize, null);
         }
-        
-        public DownloadFileInfo(String url, String fileName, String displayName, long fileSize) {
-            this(url, fileName, displayName, FILE_TYPE_LLM, fileSize, null);
-        }
     }
     
     // LLM related download files

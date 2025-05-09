@@ -40,10 +40,10 @@ public class ModelDownloadActivity extends Activity {
             finish();
         });
         
-        // Display title based on hardware support
+        // Display title based on filtered model list
         TextView titleText = findViewById(R.id.titleText);
         
-        // Determine the download mode based on hardware support
+        // Determine the download mode based on filtered model list
         ModelDownloadDialog.DownloadMode downloadMode = ModelDownloadDialog.DownloadMode.LLM;
         String hwSupport = HWCompatibility.isSupportedHW();
         boolean isMtkSupported = "mtk".equals(hwSupport);

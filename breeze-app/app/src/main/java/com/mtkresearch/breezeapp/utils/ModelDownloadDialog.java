@@ -1331,7 +1331,6 @@ public class ModelDownloadDialog extends Dialog {
                     if (allFilesDownloaded) {
                         Log.i(TAG, "All files verified for model: " + modelId + ", adding to downloaded list");
                         modelsArray.put(model);
-                        updateModelIdArray(modelId);
                     } else {
                         Log.w(TAG, "Not all files were successfully downloaded for model: " + modelId);
                     }
@@ -1349,35 +1348,6 @@ public class ModelDownloadDialog extends Dialog {
             }
         } catch (Exception e) {
             Log.e(TAG, "Error saving downloaded model list", e);
-        }
-    }
-
-    private void updateModelIdArray(String modelId) {
-        try {
-            // Get the current list of model IDs from ModelArrayManager
-            String[] currentIds = ModelArrayManager.getModelIds(getContext());
-            List<String> modelIds = new ArrayList<>();
-            
-            // Add existing IDs
-            for (String id : currentIds) {
-                modelIds.add(id);
-            }
-            
-            // Add new ID if it's not already in the list
-            if (!modelIds.contains(modelId)) {
-                modelIds.add(modelId);
-                Log.d(TAG, "Added new model ID to array: " + modelId);
-            }
-
-            // Save to SharedPreferences (this is simpler than modifying XML directly)
-            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putStringSet("llm_model_ids", new HashSet<>(modelIds));
-            editor.apply();
-            
-            Log.d(TAG, "Updated model ID array with " + modelIds.size() + " models");
-        } catch (Exception e) {
-            Log.e(TAG, "Error updating model ID array", e);
         }
     }
 } 

@@ -34,6 +34,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.File;
+import java.nio.file.Files;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
     
@@ -493,11 +497,20 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             List<String> compatibleIds = ModelFilter.getCompatibleModelIds(getContext());
             Log.d(TAG, "Compatible model IDs: " + compatibleIds);
 
-            // Get downloaded model IDs from ModelArrayManager
-            String[] downloadedIds = ModelArrayManager.getModelIds(getContext());
+            // Get downloaded model IDs from downloadedModelList.json directly
             Set<String> downloadedIdSet = new HashSet<>();
-            for (String id : downloadedIds) {
-                downloadedIdSet.add(id);
+            try {
+                File modelsFile = new File(getContext().getFilesDir(), "downloadedModelList.json");
+                if (modelsFile.exists()) {
+                    JSONObject json = new JSONObject(new String(Files.readAllBytes(modelsFile.toPath())));
+                    JSONArray models = json.getJSONArray("models");
+                    for (int i = 0; i < models.length(); i++) {
+                        JSONObject model = models.getJSONObject(i);
+                        downloadedIdSet.add(model.getString("id"));
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error reading downloadedModelList.json", e);
             }
             Log.d(TAG, "Downloaded model IDs: " + downloadedIdSet);
 
@@ -532,11 +545,11 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 }
             } else {
                 Log.w(TAG, "No models available (compatible and downloaded)");
-                // Set default values as fallback
-                String[] defaultIds = {"breeze2-3b-250501-npu", "breeze2-3b-250501-cpu"};
-                modelIdPreference.setEntries(defaultIds);
-                modelIdPreference.setEntryValues(defaultIds);
-                modelIdPreference.setValue(defaultIds[0]);
+                // Set no options in the preference
+                String[] emptyIds = {};
+                modelIdPreference.setEntries(emptyIds);
+                modelIdPreference.setEntryValues(emptyIds);
+                modelIdPreference.setValue("");
             }
         }
     }
