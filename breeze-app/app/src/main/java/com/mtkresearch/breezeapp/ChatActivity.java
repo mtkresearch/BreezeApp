@@ -549,7 +549,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         if (!modelsFile.exists() || modelsFile.length() == 0) {
             Log.w(TAG, "downloadedModelList.json not found or empty, launching download activity");
             // Filter models based on hardware compatibility and write to file
-            ModelFilter.writeFilteredModelListToFile(this);
+            ModelFilter.readFilteredModelList(this);
             Intent intent = new Intent(this, ModelDownloadActivity.class);
             startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
             return;
