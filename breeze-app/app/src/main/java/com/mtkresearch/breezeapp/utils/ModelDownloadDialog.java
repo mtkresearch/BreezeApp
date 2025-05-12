@@ -239,11 +239,11 @@ public class ModelDownloadDialog extends Dialog {
         File modelDir = new File(baseDir, modelId);
         
         // Create directories if they don't exist
-        if (!modelDir.exists() && !modelDir.mkdirs()) {
+            if (!modelDir.exists() && !modelDir.mkdirs()) {
             Log.e(TAG, "Failed to create model directory: " + modelDir.getPath());
-            return null;
+                return null;
         }
-        
+
         return modelDir;
     }
 
@@ -319,10 +319,10 @@ public class ModelDownloadDialog extends Dialog {
                     
                     for (int j = 0; j < urls.length(); j++) {
                         String url = urls.getString(j);
-                        String fileName = getFileNameFromUrl(url);
-                        downloadFiles.add(new AppConstants.DownloadFileInfo(
-                            url,
-                            fileName,
+                String fileName = getFileNameFromUrl(url);
+                downloadFiles.add(new AppConstants.DownloadFileInfo(
+                    url,
+                    fileName,
                             modelId + "/" + fileName,
                             AppConstants.FILE_TYPE_LLM,
                             estimateFileSize(url),
@@ -756,8 +756,8 @@ public class ModelDownloadDialog extends Dialog {
                 
                 // Only log if verbose logging is enabled
                 if (AppConstants.ENABLE_DOWNLOAD_VERBOSE_LOGGING) {
-                    Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
-                        fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
+                Log.d(TAG, String.format("Download attempt - URL: %s, File: %s, Available: %dMB, Required: %dMB",
+                    fileInfo.url, fileInfo.fileName, availableSpace, requiredSpace));
                 }
 
                 if (availableSpace < requiredSpace) {
@@ -1290,6 +1290,7 @@ public class ModelDownloadDialog extends Dialog {
         try {
             JSONObject downloadedModels = new JSONObject();
             JSONArray modelsArray = new JSONArray();
+            List<String> modelIds = new ArrayList<>();
 
             if (filteredModelList != null) {
                 JSONArray models = filteredModelList.getJSONArray("models");
@@ -1331,6 +1332,7 @@ public class ModelDownloadDialog extends Dialog {
                     if (allFilesDownloaded) {
                         Log.i(TAG, "All files verified for model: " + modelId + ", adding to downloaded list");
                         modelsArray.put(model);
+                        modelIds.add(modelId);
                     } else {
                         Log.w(TAG, "Not all files were successfully downloaded for model: " + modelId);
                     }
@@ -1345,6 +1347,56 @@ public class ModelDownloadDialog extends Dialog {
                 fos.write(downloadedModels.toString(2).getBytes(StandardCharsets.UTF_8));
                 Log.i(TAG, "Successfully wrote downloaded model list to " + file.getAbsolutePath() + 
                          " with " + modelsArray.length() + " models");
+            }
+
+            // Update preferences with the downloaded models
+            if (!modelIds.isEmpty()) {
+                // 使用 AppConstants 的 getAvailableRamGB 取得可用記憶體
+                long usableRamGB = AppConstants.getAvailableRamGB(getContext());
+                Log.d(TAG, "Usable RAM (GB, via AppConstants): " + usableRamGB);
+
+                // Check hardware support
+                String hwSupport = HWCompatibility.isSupportedHW();
+                boolean hasNPUSupport = "mtk".equals(hwSupport);
+
+                // Separate models by backend type
+                List<String> npuModels = new ArrayList<>();
+                List<String> cpuModels = new ArrayList<>();
+
+                // Categorize models by backend and filter by RAM
+                for (int i = 0; i < modelsArray.length(); i++) {
+                    JSONObject model = modelsArray.getJSONObject(i);
+                    String modelId = model.getString("id");
+                    String modelBackend = model.getString("backend");
+                    long modelRamGB = Long.parseLong(model.getString("ramGB"));
+                    
+                    if (modelRamGB <= usableRamGB) {
+                        if ("mtk".equals(modelBackend)) {
+                            npuModels.add(modelId);
+                        } else if ("cpu".equals(modelBackend)) {
+                            cpuModels.add(modelId);
+                        }
+                    }
+                }
+
+                // Select default model based on hardware support
+                String defaultModel = "";
+                if (hasNPUSupport && !npuModels.isEmpty()) {
+                    defaultModel = npuModels.get(0);  // Get the first NPU model
+                } else if (!cpuModels.isEmpty()) {
+                    defaultModel = cpuModels.get(0);  // Get the first CPU model
+                } else if (!modelIds.isEmpty()) {
+                    defaultModel = modelIds.get(0);   // Fallback to any available model
+                }
+
+                // Save to SharedPreferences
+                if (!defaultModel.isEmpty()) {
+                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("llm_model_id", defaultModel);
+                    editor.apply();
+                    Log.i(TAG, "Set default model in preferences: " + defaultModel);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error saving downloaded model list", e);

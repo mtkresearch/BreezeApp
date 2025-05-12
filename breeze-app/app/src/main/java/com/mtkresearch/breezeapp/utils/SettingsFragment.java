@@ -38,6 +38,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.io.File;
 import java.nio.file.Files;
+import java.util.Map;
+import java.util.HashMap;
+import android.app.ActivityManager;
+import java.util.Comparator;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
     
@@ -493,12 +497,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     
     private void updateModelIdList() {
         if (modelIdPreference != null && getContext() != null) {
-            // Get compatible model IDs from ModelFilter
-            List<String> compatibleIds = ModelFilter.getCompatibleModelIds(getContext());
-            Log.d(TAG, "Compatible model IDs: " + compatibleIds);
-
-            // Get downloaded model IDs from downloadedModelList.json directly
-            Set<String> downloadedIdSet = new HashSet<>();
+            // Get downloaded models from downloadedModelList.json
+            List<String> modelIds = new ArrayList<>();
+            
             try {
                 File modelsFile = new File(getContext().getFilesDir(), "downloadedModelList.json");
                 if (modelsFile.exists()) {
@@ -506,46 +507,37 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     JSONArray models = json.getJSONArray("models");
                     for (int i = 0; i < models.length(); i++) {
                         JSONObject model = models.getJSONObject(i);
-                        downloadedIdSet.add(model.getString("id"));
+                        String id = model.getString("id");
+                        modelIds.add(id);
                     }
                 }
             } catch (Exception e) {
                 Log.e(TAG, "Error reading downloadedModelList.json", e);
             }
-            Log.d(TAG, "Downloaded model IDs: " + downloadedIdSet);
 
-            // Create final list of available models (intersection of compatible and downloaded)
-            List<String> availableIds = new ArrayList<>();
-            for (String id : compatibleIds) {
-                if (downloadedIdSet.contains(id)) {
-                    availableIds.add(id);
-                }
-            }
-            Log.d(TAG, "Available model IDs (compatible and downloaded): " + availableIds);
+            if (!modelIds.isEmpty()) {
+                // Set up preference entries with all downloaded models
+                String[] modelArray = modelIds.toArray(new String[0]);
+                modelIdPreference.setEntries(modelArray);
+                modelIdPreference.setEntryValues(modelArray);
 
-            if (!availableIds.isEmpty()) {
-                String[] modelIds = availableIds.toArray(new String[0]);
-                modelIdPreference.setEntries(modelIds);
-                modelIdPreference.setEntryValues(modelIds);
-
-                // Check if current value is valid
+                // Validate current value
                 String currentValue = modelIdPreference.getValue();
-                boolean isCurrentValueValid = false;
-                for (String modelId : modelIds) {
-                    if (modelId.equals(currentValue)) {
-                        isCurrentValueValid = true;
-                        break;
+                if (currentValue == null || currentValue.isEmpty() || !modelIds.contains(currentValue)) {
+                    // Get the first model from SharedPreferences
+                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    String defaultModel = prefs.getString("llm_model_id", modelIds.get(0));
+                    
+                    // Ensure the default model exists in our list
+                    if (!modelIds.contains(defaultModel)) {
+                        defaultModel = modelIds.get(0);
                     }
-                }
-
-                // If current value is not valid, set to first available model
-                if (!isCurrentValueValid) {
-                    Log.d(TAG, "Current model ID " + currentValue + " is not valid, setting to " + modelIds[0]);
-                    modelIdPreference.setValue(modelIds[0]);
+                    
+                    Log.d(TAG, "Setting model to: " + defaultModel);
+                    modelIdPreference.setValue(defaultModel);
                 }
             } else {
-                Log.w(TAG, "No models available (compatible and downloaded)");
-                // Set no options in the preference
+                Log.w(TAG, "No downloaded models found");
                 String[] emptyIds = {};
                 modelIdPreference.setEntries(emptyIds);
                 modelIdPreference.setEntryValues(emptyIds);

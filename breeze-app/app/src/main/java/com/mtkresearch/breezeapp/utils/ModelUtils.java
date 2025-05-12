@@ -136,7 +136,7 @@ public class ModelUtils {
         modelInfo.put("baseFolder", baseFolder);
         modelInfo.put("modelEntryPath", baseFolder);
         modelInfo.put("backend", modelId.endsWith("-npu") ? "mtk" : "cpu");
-        modelInfo.put("ram", "5000000000");
+        modelInfo.put("ramGB", "4");
 
         try {
             // Read downloadedModelList.json
@@ -163,7 +163,7 @@ public class ModelUtils {
                     modelInfo.put("baseFolder", baseFolder);
                     modelInfo.put("modelEntryPath", modelPath);
                     modelInfo.put("backend", model.getString("backend"));
-                    modelInfo.put("ram", model.getString("ram"));
+                    modelInfo.put("ramGB", model.getString("ramGB"));
                     return modelInfo;
                 }
             }

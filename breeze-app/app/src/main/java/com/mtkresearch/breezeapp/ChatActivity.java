@@ -564,7 +564,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         Map<String, String> modelInfo = ModelUtils.getPrefModelInfo(this);
         
         // Check available RAM
-        long requiredRamGB = Long.parseLong(modelInfo.get("ram")) / (1024 * 1024 * 1024);
+        long requiredRamGB = Long.parseLong(modelInfo.get("ramGB"));
         long availRamGB = AppConstants.getAvailableRamGB(this);
         if (availRamGB < requiredRamGB) {
             // Show dialog on main thread
