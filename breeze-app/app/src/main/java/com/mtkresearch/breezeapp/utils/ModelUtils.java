@@ -5,6 +5,8 @@ import android.util.Log;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -125,17 +127,23 @@ public class ModelUtils {
         return "cpu";
     }
 
-    public static String[] getPrefModelInfo(Context context) {
+    public static Map<String, String> getPrefModelInfo(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
         String modelId = prefs.getString("llm_model_id", AppConstants.DEFAULT_LLM_MODEL);
-        String basePath = Paths.get(context.getFilesDir().getPath(), "models", modelId).toString();
+        String baseFolder = Paths.get(context.getFilesDir().getPath(), "models", modelId).toString();
+
+        Map<String, String> modelInfo = new HashMap<>();
+        modelInfo.put("baseFolder", baseFolder);
+        modelInfo.put("modelEntryPath", baseFolder);
+        modelInfo.put("backend", modelId.endsWith("-npu") ? "mtk" : "cpu");
+        modelInfo.put("ram", "5000000000");
 
         try {
             // Read downloadedModelList.json
             File modelsFile = new File(context.getFilesDir(), "downloadedModelList.json");
             if (!modelsFile.exists()) {
                 Log.e(TAG, "downloadedModelList.json not found");
-                return new String[]{basePath, basePath, modelId.endsWith("-npu") ? "mtk" : "cpu", "5000000000"};
+                return modelInfo;
             }
 
             JSONObject json = new JSONObject(new String(Files.readAllBytes(modelsFile.toPath())));
@@ -147,20 +155,22 @@ public class ModelUtils {
                 if (model.getString("id").equals(modelId)) {
                     String modelPath = "";
                     if (model.getString("model_entry_path").isEmpty()) {
-                        modelPath = basePath;
+                        modelPath = baseFolder;
                     } else {
-                        modelPath = Paths.get(basePath, model.getString("model_entry_path")).toString();
+                        modelPath = Paths.get(baseFolder, model.getString("model_entry_path")).toString();
                     }
-                    String backend = model.getString("backend");
-                    String ram = model.getString("ram");
-                    return new String[]{basePath, modelPath, backend, ram};
+                    
+                    modelInfo.put("baseFolder", baseFolder);
+                    modelInfo.put("modelEntryPath", modelPath);
+                    modelInfo.put("backend", model.getString("backend"));
+                    modelInfo.put("ram", model.getString("ram"));
+                    return modelInfo;
                 }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error reading downloadedModelList.json", e);
         }
 
-        // Fallback to default behavior
-        return new String[]{basePath, basePath, modelId.endsWith("-npu") ? "mtk" : "cpu", "5000000000"};
+        return modelInfo;
     }
 } 

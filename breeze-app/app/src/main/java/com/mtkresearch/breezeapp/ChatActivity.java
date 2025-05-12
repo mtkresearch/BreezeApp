@@ -58,6 +58,7 @@ import com.mtkresearch.breezeapp.utils.ChatHistoryAdapter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import android.graphics.Color;
 
@@ -560,10 +561,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        String[] modelInfo = ModelUtils.getPrefModelInfo(this);
+        Map<String, String> modelInfo = ModelUtils.getPrefModelInfo(this);
         
         // Check available RAM
-        long requiredRamGB = Long.parseLong(modelInfo[3]) / (1024 * 1024 * 1024);
+        long requiredRamGB = Long.parseLong(modelInfo.get("ram")) / (1024 * 1024 * 1024);
         long availRamGB = AppConstants.getAvailableRamGB(this);
         if (availRamGB < requiredRamGB) {
             // Show dialog on main thread
@@ -595,16 +596,15 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             return;
         }
 
-        llmIntent.putExtra("base_folder", modelInfo[0]);
-        llmIntent.putExtra("model_entry_path", modelInfo[1]);
-        llmIntent.putExtra("preferred_backend", modelInfo[2]);
-        Log.d(TAG, "Initializing model with: " + modelInfo[0] + " " + modelInfo[1] + " " + modelInfo[2] + " " + modelInfo[3]);
+        llmIntent.putExtra("base_folder", modelInfo.get("baseFolder"));
+        llmIntent.putExtra("model_entry_path", modelInfo.get("modelEntryPath"));
+        llmIntent.putExtra("preferred_backend", modelInfo.get("backend"));
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
                 Toast.makeText(ChatActivity.this,
-                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo[2].toUpperCase() + " backend...",
+                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo.get("backend").toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });
