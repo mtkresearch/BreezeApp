@@ -29,6 +29,7 @@
 captures/
 *.class
 *.dex
+*.aab
 
 # Other unimportant files
 breeze-app/.gradle/

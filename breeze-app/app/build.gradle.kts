@@ -17,11 +17,11 @@ if (hasGoogleServices) {
 }
 
 android {
-    namespace = "com.mtkresearch.breezeapp"
+    namespace = "com.mtkresearch.breeze_app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtkresearch.breezeapp"
+        applicationId = "com.mtkresearch.breeze_app.breeze"
         minSdk = 33
         targetSdk = 35
         versionCode = 16
@@ -35,7 +35,7 @@ android {
         }
 
         manifestPlaceholders["app_name"] = "BreezeApp"
-        manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.breezeapp.fileprovider"
+        manifestPlaceholders["file_provider_authority"] = "com.mtkresearch.breeze_app.breeze.fileprovider"
         
         // Add a BuildConfig field to indicate Firebase presence
         buildConfigField("Boolean", "USE_FIREBASE", hasGoogleServices.toString())
