@@ -24,10 +24,24 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
 
 import com.mtkresearch.breezeapp.R;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.File;
+import java.nio.file.Files;
+import java.util.Map;
+import java.util.HashMap;
+import android.app.ActivityManager;
+import java.util.Comparator;
 
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
     
@@ -73,6 +87,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     private SeekBarPreference frequencyPenaltyPreference;
     private EditTextPreference topKPreference;
     private SeekBarPreference topPPreference;
+    private ListPreference modelIdPreference;
     
     // Track when we're programmatically changing values
     private boolean isInternalUpdate = false;
@@ -284,6 +299,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 return String.format("%.1f", topP);
             });
         }
+        
+        modelIdPreference = findPreference("llm_model_id");
+        updateModelIdList();
     }
     
     @Override
@@ -323,6 +341,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 topKPreference.setText(String.valueOf(DEFAULT_LLM_TOP_K));
             }
         }
+        
+        // Update the model list when returning to settings
+        updateModelIdList();
     }
     
     @Override
@@ -446,6 +467,11 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     }
                 });
                 break;
+                
+            case "llm_model_id":
+                String newModelId = sharedPreferences.getString(key, "");
+                Log.d(TAG, "Model ID changed to: " + newModelId);
+                break;
         }
     }
     
@@ -466,6 +492,57 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 return TOP_P_STEP_SIZE;
             default:
                 return 0; // unknown key
+        }
+    }
+    
+    private void updateModelIdList() {
+        if (modelIdPreference != null && getContext() != null) {
+            // Get downloaded models from downloadedModelList.json
+            List<String> modelIds = new ArrayList<>();
+            
+            try {
+                File modelsFile = new File(getContext().getFilesDir(), "downloadedModelList.json");
+                if (modelsFile.exists()) {
+                    JSONObject json = new JSONObject(new String(Files.readAllBytes(modelsFile.toPath())));
+                    JSONArray models = json.getJSONArray("models");
+                    for (int i = 0; i < models.length(); i++) {
+                        JSONObject model = models.getJSONObject(i);
+                        String id = model.getString("id");
+                        modelIds.add(id);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error reading downloadedModelList.json", e);
+            }
+
+            if (!modelIds.isEmpty()) {
+                // Set up preference entries with all downloaded models
+                String[] modelArray = modelIds.toArray(new String[0]);
+                modelIdPreference.setEntries(modelArray);
+                modelIdPreference.setEntryValues(modelArray);
+
+                // Validate current value
+                String currentValue = modelIdPreference.getValue();
+                if (currentValue == null || currentValue.isEmpty() || !modelIds.contains(currentValue)) {
+                    // Get the first model from SharedPreferences
+                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    String defaultModel = prefs.getString("llm_model_id", modelIds.get(0));
+                    
+                    // Ensure the default model exists in our list
+                    if (!modelIds.contains(defaultModel)) {
+                        defaultModel = modelIds.get(0);
+                    }
+                    
+                    Log.d(TAG, "Setting model to: " + defaultModel);
+                    modelIdPreference.setValue(defaultModel);
+                }
+            } else {
+                Log.w(TAG, "No downloaded models found");
+                String[] emptyIds = {};
+                modelIdPreference.setEntries(emptyIds);
+                modelIdPreference.setEntryValues(emptyIds);
+                modelIdPreference.setValue("");
+            }
         }
     }
 }

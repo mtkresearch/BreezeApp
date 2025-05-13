@@ -32,6 +32,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 
 import android.app.ActivityManager;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
@@ -58,6 +64,7 @@ public class ModelDownloadDialog extends Dialog {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private AtomicBoolean isPaused = new AtomicBoolean(false);
     private List<AppConstants.DownloadFileInfo> downloadFiles = new ArrayList<>();
+    private JSONObject filteredModelList = null;
 
     public ModelDownloadDialog(Context context, IntroDialog parentDialog, DownloadMode mode) {
         super(context);
@@ -221,54 +228,26 @@ public class ModelDownloadDialog extends Dialog {
         setCancelable(false);
     }
 
-    private File getModelDir() {
-        File appDir = getContext().getFilesDir();
-        File modelDir = null;
+    private File getModelDir(String modelId) {
+        Context context = getContext();
+        if (context == null || modelId == null) return null;
+
+        // Get base directory
+        File baseDir = new File(context.getFilesDir(), "models");
         
-        if (downloadMode == DownloadMode.TTS) {
-            File baseModelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
-            if (!baseModelDir.exists()) {
-                if (!baseModelDir.mkdirs()) {
-                    Log.e(TAG, "Failed to create base model directory");
-                    return null;
-                }
-            }
-            modelDir = new File(baseModelDir, AppConstants.TTS_MODEL_DIR);
-            if (!modelDir.exists()) {
-                if (!modelDir.mkdirs()) {
-                    Log.e(TAG, "Failed to create TTS model directory");
-                    return null;
-                }
-            }
-        } else if(downloadMode == DownloadMode.LLM){
-            modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
+        // Create model-specific directory using model ID
+        File modelDir = new File(baseDir, modelId);
+        
+        // Create directories if they don't exist
             if (!modelDir.exists() && !modelDir.mkdirs()) {
-                Log.e(TAG, "Failed to create model directory");
+            Log.e(TAG, "Failed to create model directory: " + modelDir.getPath());
                 return null;
-            }
-        } else if(downloadMode == DownloadMode.MTK_NPU){
-            modelDir = new File(appDir, AppConstants.APP_MODEL_DIR);
-            if (!modelDir.exists() && !modelDir.mkdirs()) {
-                Log.e(TAG, "Failed to create model directory");
-                return null;
-            }
-            modelDir = new File(modelDir, AppConstants.MTK_NPU_MODEL_DIR);
-            if (!modelDir.exists() && !modelDir.mkdirs()) {
-                Log.e(TAG, "Failed to create model directory");
-                return null;
-            }            
         }
 
         return modelDir;
     }
 
     private void startDownload() {
-        File modelDir = getModelDir();
-        if (modelDir == null) {
-            Toast.makeText(getContext(), R.string.error_creating_model_directory, Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         // Get available space from the app's private storage
         long availableSpaceMB = getContext().getFilesDir().getFreeSpace() / (1024 * 1024);
         long requiredSpace = downloadMode == DownloadMode.TTS ? 125 : 8 * 1024; // 125MB for TTS, 8GB for LLM
@@ -324,199 +303,36 @@ public class ModelDownloadDialog extends Dialog {
         statusText.setText(downloadMode == DownloadMode.TTS ? R.string.download_progress_tts : R.string.downloading);
         
         // Start download task
-        downloadTask = new DownloadTask(modelDir);
+        downloadTask = new DownloadTask();
         downloadTask.execute();
     }
     
     private void prepareDownloadFileList() {
         downloadFiles.clear();
-        Log.d(TAG, "Preparing download file list for mode: " + downloadMode);
-        
-        if (downloadMode == DownloadMode.TTS) {
-            // Add TTS model files to the list
-            for (int i = 0; i < AppConstants.TTS_MODEL_DOWNLOAD_URLS.length; i += 2) {
-                String url = AppConstants.TTS_MODEL_DOWNLOAD_URLS[i]; // Use primary URL
+        try {
+            if (filteredModelList != null) {
+                JSONArray models = filteredModelList.getJSONArray("models");
+                for (int i = 0; i < models.length(); i++) {
+                    JSONObject model = models.getJSONObject(i);
+                    String modelId = model.getString("id");
+                    JSONArray urls = model.getJSONArray("urls");
+                    
+                    for (int j = 0; j < urls.length(); j++) {
+                        String url = urls.getString(j);
                 String fileName = getFileNameFromUrl(url);
-                
-                // TTS sizes are known and small, so we can use the estimated size directly
-                long fileSize = estimateFileSize(url);
-                Log.d(TAG, "TTS model file: " + fileName + ", size: " + formatFileSize(fileSize));
-                
                 downloadFiles.add(new AppConstants.DownloadFileInfo(
                     url,
                     fileName,
-                    "TTS Model: " + fileName,
-                    AppConstants.FILE_TYPE_TTS_MODEL,
-                    fileSize
-                ));
-            }
-        } else if(downloadMode == DownloadMode.LLM){
-            // Add LLM model files to the list with temporary file sizes (0)
-            // We'll update these sizes asynchronously when we get the actual values
-            
-            // First, add tokenizer
-            String tokenizerUrl = AppConstants.MODEL_BASE_URL + AppConstants.LLM_TOKENIZER_FILE + "?download=true";
-            String tokenizerFileName = AppConstants.LLM_TOKENIZER_FILE;
-            
-            // Use placeholder size (0) - will be updated asynchronously
-            long tempTokenizerSize = 0L;
-            
-            AppConstants.DownloadFileInfo tokenizerInfo = new AppConstants.DownloadFileInfo(
-                tokenizerUrl,
-                tokenizerFileName,
-                "Tokenizer",
-                AppConstants.FILE_TYPE_TOKENIZER,
-                tempTokenizerSize
-            );
-            downloadFiles.add(tokenizerInfo);
-            Log.d(TAG, "Added tokenizer file to download list: " + tokenizerFileName);
-            
-            // Get the user's model preference
-            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-            String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
-            Log.d(TAG, "User's model size preference: " + modelSizePreference);
-            
-            // Device RAM info for logging
-            long availableRamGB = AppConstants.getAvailableRamGB(getContext());
-            boolean canUseLargeModel = AppConstants.canUseLargeModel(getContext());
-            Log.d(TAG, String.format("Device has %d GB RAM (%s for large model which requires %d GB)", 
-                availableRamGB, canUseLargeModel ? "sufficient" : "insufficient", AppConstants.LARGE_MODEL_MIN_RAM_GB));
-            
-            // Use the appropriate model file based on preference
-            String modelFileName;
-            String modelDisplayName;
-            
-            if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
-                modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
-                modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
-                Log.d(TAG, "Using high performance model: " + modelFileName);
-            } else if (modelSizePreference.equals(AppConstants.MODEL_SIZE_SMALL)) {
-                modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
-                modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
-                Log.d(TAG, "Using standard model: " + modelFileName);
-            } else {
-                // Auto - select based on RAM
-                if (canUseLargeModel) {
-                    modelFileName = AppConstants.LARGE_LLM_MODEL_FILE;
-                    modelDisplayName = AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME;
-                    Log.d(TAG, "Auto-selected high performance model based on RAM: " + modelFileName);
-                } else {
-                    modelFileName = AppConstants.SMALL_LLM_MODEL_FILE;
-                    modelDisplayName = AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME;
-                    Log.d(TAG, "Auto-selected standard model based on RAM: " + modelFileName);
+                            modelId + "/" + fileName,
+                            AppConstants.FILE_TYPE_LLM,
+                            estimateFileSize(url),
+                            modelId
+                        ));
+                    }
                 }
             }
-            
-            String modelUrl = AppConstants.MODEL_BASE_URL + modelFileName + "?download=true";
-            
-            // Use placeholder size (0) - will be updated asynchronously
-            long tempModelSize = 0L;
-            
-            AppConstants.DownloadFileInfo modelInfo = new AppConstants.DownloadFileInfo(
-                modelUrl,
-                modelFileName,
-                modelDisplayName,
-                AppConstants.FILE_TYPE_LLM,
-                tempModelSize
-            );
-            downloadFiles.add(modelInfo);
-
-            Log.d(TAG, "Added LLM model file to download list: " + modelFileName + " (" + modelDisplayName + ")");
-            
-            // Note: We'll fetch accurate sizes in fetchFileSizesAsync() later
-
-            // Initialize file adapter with initial list (even with placeholder sizes)
-            if (fileAdapter != null) {
-                List<FileDownloadAdapter.FileDownloadStatus> statusList = new ArrayList<>();
-                for (AppConstants.DownloadFileInfo info : downloadFiles) {
-                    FileDownloadAdapter.FileDownloadStatus status = new FileDownloadAdapter.FileDownloadStatus(info);
-                    statusList.add(status);
-                }
-                fileAdapter.setFiles(statusList);
-                Log.d(TAG, "Initialized file adapter with placeholder sizes for " + downloadFiles.size() + " files");
-            }
-
-        }
-        else if (downloadMode == DownloadMode.MTK_NPU){
-        // hot fix
-
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla",
-                "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                2 * 1024 * 1024 * 1024L // 6GB estimate
-            ));
-            
-            downloadFiles.add( new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla",
-                "Language Model",
-                AppConstants.FILE_TYPE_LLM,
-                16  * 1024 * 1024L // 6GB estimate
-            ));
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla",
-                "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                2 * 1024 * 1024 * 1024L // 6GB estimate
-            ));
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla",
-                "Language Model",
-                    AppConstants.FILE_TYPE_LLM,
-                5  * 1024 * 1024L // 6GB estimate
-            ));
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/added_tokens.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "added_tokens.yaml",
-                "YAML",
-                    AppConstants.FILE_TYPE_LLM,
-                10  * 1024L // 6GB estimate
-            ));
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "config_breezetiny_3b_instruct.yaml",
-                "YAML",
-                    AppConstants.FILE_TYPE_LLM,
-                3 *  1024L // 6GB estimate
-            ));
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/embedding_int16.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "embedding_int16.bin",
-                "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                790 * 1024 * 1024L // 6GB estimate
-            ));      
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/shared_weights_0.bin", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "shared_weights_0.bin",
-                "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                790 * 1024 * 1024L // 6GB estimate
-            ));        
-            downloadFiles.add(new AppConstants.DownloadFileInfo(
-                "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken", // Using second URL from MODEL_DOWNLOAD_URLS 
-                "tokenizer.tiktoken",
-                "bin",
-                    AppConstants.FILE_TYPE_LLM,
-                3 * 1024 * 1024L // 6GB estimate
-            ));
-
-            // Initialize file adapter with initial list (even with placeholder sizes)
-            if (fileAdapter != null) {
-                List<FileDownloadAdapter.FileDownloadStatus> statusList = new ArrayList<>();
-                for (AppConstants.DownloadFileInfo info : downloadFiles) {
-                    FileDownloadAdapter.FileDownloadStatus status = new FileDownloadAdapter.FileDownloadStatus(info);
-                    statusList.add(status);
-                }
-                fileAdapter.setFiles(statusList);
-                Log.d(TAG, "Initialized file adapter with placeholder sizes for " + downloadFiles.size() + " files");
-            }
-
-
+        } catch (Exception e) {
+            Log.e(TAG, "Error preparing download file list", e);
         }
     }
     
@@ -606,7 +422,8 @@ public class ModelDownloadDialog extends Dialog {
                             fileInfo.fileName,
                             fileInfo.displayName,
                             fileInfo.fileType,
-                            actualSize
+                            actualSize,
+                            fileInfo.modelId
                         );
                         
                         // Update the list
@@ -845,11 +662,9 @@ public class ModelDownloadDialog extends Dialog {
 
     private class DownloadTask extends AsyncTask<Void, Integer, Boolean> {
         private Exception error;
-        private final File modelDir;
         private volatile boolean isCancelled = false;
 
-        public DownloadTask(File modelDir) {
-            this.modelDir = modelDir;
+        public DownloadTask() {
         }
 
         public boolean isDownloadCancelled() {
@@ -883,7 +698,8 @@ public class ModelDownloadDialog extends Dialog {
                                 fileInfo.fileName,
                                 fileInfo.displayName + " (Alternative Source)",
                                 fileInfo.fileType,
-                                fileInfo.fileSize
+                                fileInfo.fileSize,
+                                fileInfo.modelId
                             );
                             
                             if (downloadFile(alternativeFile, fileIndex)) {
@@ -920,6 +736,11 @@ public class ModelDownloadDialog extends Dialog {
             HttpURLConnection connection = null;
 
             try {
+                // Check model ID first
+                if (fileInfo.modelId == null) {
+                    throw new IOException("Model ID is null for file: " + fileInfo.fileName);
+                }
+
                 // Check for cancellation at the start
                 if (isDownloadCancelled()) {
                     // Only log if verbose logging is enabled
@@ -941,6 +762,12 @@ public class ModelDownloadDialog extends Dialog {
 
                 if (availableSpace < requiredSpace) {
                     throw new IOException("Insufficient storage space. Need " + requiredSpace + "MB free.");
+                }
+
+                // Get model directory using the model ID
+                File modelDir = getModelDir(fileInfo.modelId);
+                if (modelDir == null) {
+                    throw new IOException("Failed to create directory for model: " + fileInfo.modelId);
                 }
 
                 // Setup files
@@ -1341,6 +1168,9 @@ public class ModelDownloadDialog extends Dialog {
             pauseResumeButton.setVisibility(View.GONE);
             
             if (success) {
+                // Save the downloaded model list
+                saveDownloadedModelList();
+                
                 statusText.setText(R.string.download_complete);
                 progressBar.setProgress(100);
                 
@@ -1439,6 +1269,137 @@ public class ModelDownloadDialog extends Dialog {
             
             // Let the parent class handle any additional cleanup
             super.onCancelled();
+        }
+    }
+
+    /**
+     * Sets the filtered model list to use for downloads
+     * @param filteredModelList JSONObject containing the filtered model list
+     */
+    public void setFilteredModelList(JSONObject filteredModelList) {
+        this.filteredModelList = filteredModelList;
+        Log.d(TAG, "Filtered model list set: " + (filteredModelList != null ? "contains data" : "null"));
+        
+        // If file adapter already initialized, prepare download file list again
+        if (fileAdapter != null) {
+            prepareDownloadFileList();
+        }
+    }
+
+    private void saveDownloadedModelList() {
+        try {
+            JSONObject downloadedModels = new JSONObject();
+            JSONArray modelsArray = new JSONArray();
+            List<String> modelIds = new ArrayList<>();
+
+            if (filteredModelList != null) {
+                JSONArray models = filteredModelList.getJSONArray("models");
+                for (int i = 0; i < models.length(); i++) {
+                    JSONObject model = models.getJSONObject(i);
+                    String modelId = model.getString("id");
+                    
+                    // Get the model directory
+                    File modelDir = getModelDir(modelId);
+                    if (modelDir == null) {
+                        Log.e(TAG, "Failed to get model directory for model: " + modelId);
+                        continue;
+                    }
+                    
+                    // Check if all files for this model were downloaded successfully
+                    boolean allFilesDownloaded = true;
+                    JSONArray urls = model.getJSONArray("urls");
+                    for (int j = 0; j < urls.length(); j++) {
+                        String url = urls.getString(j);
+                        String fileName = getFileNameFromUrl(url);
+                        File modelFile = new File(modelDir, fileName);
+                        
+                        if (!modelFile.exists()) {
+                            Log.w(TAG, "File does not exist for model " + modelId + ": " + fileName);
+                            allFilesDownloaded = false;
+                            break;
+                        }
+                        
+                        if (modelFile.length() == 0) {
+                            Log.w(TAG, "File is empty for model " + modelId + ": " + fileName);
+                            allFilesDownloaded = false;
+                            break;
+                        }
+                        
+                        Log.d(TAG, "Verified file for model " + modelId + ": " + fileName + " (size: " + modelFile.length() + " bytes)");
+                    }
+                    
+                    // If all files were downloaded, add to the list and update array
+                    if (allFilesDownloaded) {
+                        Log.i(TAG, "All files verified for model: " + modelId + ", adding to downloaded list");
+                        modelsArray.put(model);
+                        modelIds.add(modelId);
+                    } else {
+                        Log.w(TAG, "Not all files were successfully downloaded for model: " + modelId);
+                    }
+                }
+            }
+
+            downloadedModels.put("models", modelsArray);
+
+            // Write to file
+            File file = new File(getContext().getFilesDir(), "downloadedModelList.json");
+            try (FileOutputStream fos = new FileOutputStream(file)) {
+                fos.write(downloadedModels.toString(2).getBytes(StandardCharsets.UTF_8));
+                Log.i(TAG, "Successfully wrote downloaded model list to " + file.getAbsolutePath() + 
+                         " with " + modelsArray.length() + " models");
+            }
+
+            // Update preferences with the downloaded models
+            if (!modelIds.isEmpty()) {
+                // 使用 AppConstants 的 getAvailableRamGB 取得可用記憶體
+                long usableRamGB = AppConstants.getAvailableRamGB(getContext());
+                Log.d(TAG, "Usable RAM (GB, via AppConstants): " + usableRamGB);
+
+                // Check hardware support
+                String hwSupport = HWCompatibility.isSupportedHW();
+                boolean hasNPUSupport = "mtk".equals(hwSupport);
+
+                // Separate models by backend type
+                List<String> npuModels = new ArrayList<>();
+                List<String> cpuModels = new ArrayList<>();
+
+                // Categorize models by backend and filter by RAM
+                for (int i = 0; i < modelsArray.length(); i++) {
+                    JSONObject model = modelsArray.getJSONObject(i);
+                    String modelId = model.getString("id");
+                    String modelBackend = model.getString("backend");
+                    long modelRamGB = Long.parseLong(model.getString("ramGB"));
+                    
+                    if (modelRamGB <= usableRamGB) {
+                        if ("mtk".equals(modelBackend)) {
+                            npuModels.add(modelId);
+                        } else if ("cpu".equals(modelBackend)) {
+                            cpuModels.add(modelId);
+                        }
+                    }
+                }
+
+                // Select default model based on hardware support
+                String defaultModel = "";
+                if (hasNPUSupport && !npuModels.isEmpty()) {
+                    defaultModel = npuModels.get(0);  // Get the first NPU model
+                } else if (!cpuModels.isEmpty()) {
+                    defaultModel = cpuModels.get(0);  // Get the first CPU model
+                } else if (!modelIds.isEmpty()) {
+                    defaultModel = modelIds.get(0);   // Fallback to any available model
+                }
+
+                // Save to SharedPreferences
+                if (!defaultModel.isEmpty()) {
+                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putString("llm_model_id", defaultModel);
+                    editor.apply();
+                    Log.i(TAG, "Set default model in preferences: " + defaultModel);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving downloaded model list", e);
         }
     }
 } 

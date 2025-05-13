@@ -58,6 +58,7 @@ import com.mtkresearch.breezeapp.utils.ChatHistoryAdapter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import android.graphics.Color;
 
@@ -77,13 +78,8 @@ import android.os.Handler;
 import android.os.Looper;
 
 import com.mtkresearch.breezeapp.utils.ModelUtils;
-import com.mtkresearch.breezeapp.utils.HWCompatibility;
 
-import com.google.firebase.analytics.FirebaseAnalytics;
-import com.google.firebase.crashlytics.FirebaseCrashlytics;
-
-import android.content.SharedPreferences;
-import java.lang.NumberFormatException;
+import com.mtkresearch.breezeapp.utils.ModelFilter;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
@@ -453,14 +449,10 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Remove overlay animation code and directly start services
         if(AppConstants.needsModelDownload(getApplicationContext())){
+            // Filter models based on hardware compatibility and write to file
+            ModelFilter.writeFilteredModelListToFile(this);
+            
             Intent intent = new Intent(this, ModelDownloadActivity.class);
-            if (HWCompatibility.isSupportedHW() == "mtk") {
-                intent.putExtra("download_mode", "MTK_NPU");
-            }
-            else {
-                intent.putExtra("download_mode", "CPU");
-            }
-            //
             startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
         }
         else {
@@ -553,20 +545,66 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void initializeLLMService() throws Exception {
+        // First check if we need to download models
+        File modelsFile = new File(getFilesDir(), "downloadedModelList.json");
+        if (!modelsFile.exists() || modelsFile.length() == 0) {
+            Log.w(TAG, "downloadedModelList.json not found or empty, launching download activity");
+            // Filter models based on hardware compatibility and write to file
+            ModelFilter.readFilteredModelList(this);
+            Intent intent = new Intent(this, ModelDownloadActivity.class);
+            startActivityForResult(intent, REQUEST_CODE_DOWNLOAD_ACTIVITY);
+            return;
+        }
+
         CountDownLatch latch = new CountDownLatch(1);
         AtomicBoolean success = new AtomicBoolean(false);
         
         // Prepare LLM intent
         Intent llmIntent = new Intent(this, LLMEngineService.class);
-        llmIntent.putExtra("model_path", AppConstants.getModelPath(this));
-        String preferredBackend = ModelUtils.getPreferredBackend();
-        llmIntent.putExtra("preferred_backend", preferredBackend);
+        Map<String, String> modelInfo = ModelUtils.getPrefModelInfo(this);
+        
+        // Check available RAM
+        long requiredRamGB = Long.parseLong(modelInfo.get("ramGB"));
+        long availRamGB = AppConstants.getAvailableRamGB(this);
+        if (availRamGB < requiredRamGB) {
+            // Show dialog on main thread
+            CountDownLatch dialogLatch = new CountDownLatch(1);
+            runOnUiThread(() -> {
+                if (!isFinishing()) {
+                    AlertDialog dialog = new AlertDialog.Builder(ChatActivity.this)
+                        .setTitle(R.string.insufficient_memory_title)
+                        .setMessage(getString(R.string.insufficient_memory_message_with_avail, requiredRamGB, availRamGB))
+                        .setPositiveButton(R.string.ok, (d, which) -> {
+                            if (!isFinishing()) {
+                                // Use application context for the intent
+                                Intent settingsIntent = new Intent(getApplicationContext(), SettingsActivity.class);
+                                settingsIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(settingsIntent);
+                            }
+                            dialogLatch.countDown();
+                        })
+                        .create();
+                    
+                    // Dismiss dialog if activity is destroyed
+                    dialog.setOnDismissListener(d -> dialogLatch.countDown());
+                    dialog.show();
+                } else {
+                    dialogLatch.countDown();
+                }
+            });
+            dialogLatch.await();
+            return;
+        }
+
+        llmIntent.putExtra("base_folder", modelInfo.get("baseFolder"));
+        llmIntent.putExtra("model_entry_path", modelInfo.get("modelEntryPath"));
+        llmIntent.putExtra("preferred_backend", modelInfo.get("backend"));
         
         // Show status on main thread
         new Handler(Looper.getMainLooper()).post(() -> {
             if (!isFinishing()) {
                 Toast.makeText(ChatActivity.this,
-                        ChatActivity.this.getString(R.string.initializing_model_with) + preferredBackend.toUpperCase() + " backend...",
+                        ChatActivity.this.getString(R.string.initializing_model_with) + modelInfo.get("backend").toUpperCase() + " backend...",
                     Toast.LENGTH_SHORT).show();
             }
         });
@@ -1214,14 +1252,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         errorDialog.show();
     }
 
-    private void shutdownFirebase() {
-        FirebaseAnalytics.getInstance(getApplicationContext()).setAnalyticsCollectionEnabled(false);
-        FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(false);
-   //     FirebaseMessaging.getInstance().deleteToken();
-   //     FirebaseDatabase.getInstance().goOffline();
-   //     FirebaseFirestore.getInstance().terminate();
-   //     FirebaseApp.getInstance().delete(); // 最後刪除整個 FirebaseApp
-    }
     private void cleanup() {
         // Run cleanup in background to prevent ANR
         CompletableFuture.runAsync(() -> {

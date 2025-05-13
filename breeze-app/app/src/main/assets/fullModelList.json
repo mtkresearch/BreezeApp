@@ -1,0 +1,44 @@
+{
+    "models": [
+      {
+        "id": "breeze2-3b-250501-npu",
+        "runner": "mediatek",
+        "backend": "mtk",
+        "ramGB": 4,
+        "model_entry_path": "config_breezetiny_3b_instruct.yaml",
+        "urls": [
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0.dla",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_128t1024c_0_extracted.dla",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0.dla",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym4W_sym16A_Overall_28layer_1t1024c_0_extracted.dla",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/added_tokens.yaml",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/embedding_int16.bin",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/shared_weights_0.bin",
+          "https://huggingface.co/MediaTek-Research/Breeze2-3B-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken"
+        ]
+      },
+      {
+        "id": "breeze2-3b-250501-cpu",
+        "runner": "executorch",
+        "backend": "cpu",
+        "ramGB": 7,
+        "model_entry_path": "Breeze-Tiny-Instruct-v0_1-2048.pte",
+        "urls": [
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/Breeze-Tiny-Instruct-v0_1-2048.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/tokenizer.bin?download=true"
+        ]
+      },
+      {
+        "id": "breeze2-3b-spin-250501-cpu",
+        "runner": "executorch",
+        "backend": "cpu",
+        "ramGB": 3,
+        "model_entry_path": "Breeze-Tiny-Instruct-v0_1-2048-spin.pte",
+        "urls": [
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/Breeze-Tiny-Instruct-v0_1-2048-spin.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile/resolve/main/tokenizer.bin?download=true"
+        ]
+      }
+    ]
+  }
