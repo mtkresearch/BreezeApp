@@ -4,6 +4,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.IBinder;
 import android.net.Uri;
 import android.os.Bundle;
@@ -167,6 +168,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         setupHistoryDrawer();
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
+
+        // Set default model in preferences
+        SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString("llm_model_id", AppConstants.DEFAULT_LLM_MODEL);
+        editor.apply();
     }
 
     @Override

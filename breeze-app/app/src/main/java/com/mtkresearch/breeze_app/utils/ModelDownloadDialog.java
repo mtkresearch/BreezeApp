@@ -1387,6 +1387,10 @@ public class ModelDownloadDialog extends Dialog {
                     defaultModel = modelIds.get(0);   // Fallback to any available model
                 }
 
+                // Temporary set default model to "breeze2-3b-spin-250501-cpu"
+                defaultModel = AppConstants.DEFAULT_LLM_MODEL;
+                Log.i(TAG, "Temporary set default model in preferences: " + defaultModel);
+
                 // Save to SharedPreferences
                 if (!defaultModel.isEmpty()) {
                     SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
