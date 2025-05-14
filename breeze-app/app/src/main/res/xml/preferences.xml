@@ -26,7 +26,7 @@
 
         <!-- Max Token: Range 128-2048 with steps of 128 -->
         <SeekBarPreference
-            app:key="max_token"
+            app:key="max_token_value"
             app:title="@string/pref_max_token_title"
             app:summary="@string/pref_max_token_summary"
             app:defaultValue="256"
@@ -52,7 +52,7 @@
 
         <!-- integer number input field -->
         <EditTextPreference
-            app:key="top_k"
+            app:key="top_k_value"
             app:title="@string/pref_top_k_title"
             app:summary="@string/pref_top_k_summary"
             app:defaultValue="1"

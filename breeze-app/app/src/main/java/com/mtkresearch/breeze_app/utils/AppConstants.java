@@ -27,13 +27,11 @@ public class AppConstants {
     // Keys with "_value" suffix store actual float values (0.0-1.0) used by the model
     public static final String KEY_TEMPERATURE = "temperature";
     public static final String KEY_TEMPERATURE_VALUE = "temperature_value"; // Actual float value used by the model
-    public static final String KEY_MAX_TOKEN = "max_token";
     public static final String KEY_MAX_TOKEN_VALUE = "max_token_value";
     public static final String KEY_REPETITION_PENALTY = "repetition_penalty";
     public static final String KEY_REPETITION_PENALTY_VALUE = "repetition_penalty_value"; // Actual float value used by the model
     public static final String KEY_FREQUENCY_PENALTY = "frequency_penalty";
     public static final String KEY_FREQUENCY_PENALTY_VALUE = "frequency_penalty_value"; // Actual float value used by the model
-    public static final String KEY_TOP_K = "top_k";
     public static final String KEY_TOP_K_VALUE = "top_k_value";
     public static final String KEY_TOP_P = "top_p";
     public static final String KEY_TOP_P_VALUE = "top_p_value"; // Actual float value used by the model
