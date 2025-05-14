@@ -19,6 +19,7 @@ import com.executorch.ModelType;
 import com.mtkresearch.breezeapp.R;
 import com.mtkresearch.breezeapp.utils.ConversationManager;
 import com.mtkresearch.breezeapp.utils.AppConstants;
+import com.mtkresearch.breezeapp.utils.LLMInferenceParams;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -471,7 +472,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
         }
     }
 
-    public CompletableFuture<String> generateStreamingResponse(String prompt, StreamingResponseCallback callback) {
+    public CompletableFuture<String> generateStreamingResponse(String prompt, LLMInferenceParams params, StreamingResponseCallback callback) {
         if (!isInitialized) {
             if (callback != null) {
                 callback.onToken(String.valueOf(R.string.LLM_default_error));
@@ -495,11 +496,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                             // MTK backend uses raw prompt without formatting
                             executor.execute(() -> {
                                 try {
-                                    // Get max token value from preferences
-                                    SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-                                    int maxTokenValue = prefs.getInt(KEY_MAX_TOKEN_VALUE, DEFAULT_LLM_MAX_TOKEN);
                                     
-                                    String response = nativeStreamingInference(prompt, maxTokenValue, false, new TokenCallback() {
+                                    String response = nativeStreamingInference(prompt, params.getMaxToken(), false, new TokenCallback() {
                                         @Override
                                         public void onToken(String token) {
                                             if (callback != null && isGenerating.get()) {
@@ -507,7 +505,10 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                                 currentStreamingResponse.append(token);
                                             }
                                         }
-                                    });
+                                    },
+                                            params.getTemperature(),
+                                            params.getTopK(),
+                                            params.getRepetitionPenalty());
 
                                     // Only complete if we haven't been stopped
                                     if (isGenerating.get()) {
@@ -852,8 +853,9 @@ public void onDestroy() {
 
     // Native methods for MTK backend
     private native boolean nativeInitLlm(String yamlConfigPath, boolean preloadSharedWeights);
-    private native String nativeInference(String inputString, int maxResponse, boolean parsePromptTokens);
-    private native String nativeStreamingInference(String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback);
+    private native String nativeStreamingInference(
+            String inputString, int maxResponse, boolean parsePromptTokens, TokenCallback callback,
+            float temperature, int topK, float repetitionPenalty);
     private native void nativeReleaseLlm();
     private native boolean nativeResetLlm();
     private native boolean nativeSwapModel(int tokenSize);

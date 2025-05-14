@@ -39,6 +39,7 @@ import com.mtkresearch.breezeapp.service.LLMEngineService;
 import com.mtkresearch.breezeapp.service.TTSEngineService;
 import com.mtkresearch.breezeapp.service.VLMEngineService;
 import com.mtkresearch.breezeapp.utils.IntroDialog;
+import com.mtkresearch.breezeapp.utils.LLMInferenceParams;
 import com.mtkresearch.breezeapp.utils.UiUtils;
 import com.mtkresearch.breezeapp.utils.AppConstants;
 
@@ -777,7 +778,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             setSendButtonsAsStop(true);
             
             hasReceivedResponse = false;  // Reset at start of generation
-            llmService.generateStreamingResponse(formattedPrompt, new LLMEngineService.StreamingResponseCallback() {
+            LLMInferenceParams llmInferenceParams = LLMInferenceParams.fromSharedPreferences(this);
+            llmService.generateStreamingResponse(formattedPrompt, llmInferenceParams, new LLMEngineService.StreamingResponseCallback() {
                 private final StringBuilder currentResponse = new StringBuilder();
                 private boolean isGenerating = true;
 

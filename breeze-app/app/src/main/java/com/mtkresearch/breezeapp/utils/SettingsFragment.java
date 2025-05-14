@@ -7,12 +7,12 @@ import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_TEMPERATU
 import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_TOP_K;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_FREQUENCY_PENALTY;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_FREQUENCY_PENALTY_VALUE;
-import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_MAX_TOKEN;
+import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_MAX_TOKEN_VALUE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_REPETITION_PENALTY;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_REPETITION_PENALTY_VALUE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TEMPERATURE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TEMPERATURE_VALUE;
-import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_K;
+import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_K_VALUE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_P;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_P_VALUE;
 
@@ -116,7 +116,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             // Check for corruption - try to read values as integers, if exception occurs, we need to fix
             try {
                 prefs.getInt(KEY_TEMPERATURE, DEFAULT_TEMPERATURE_INT);
-                prefs.getInt(KEY_MAX_TOKEN, DEFAULT_LLM_MAX_TOKEN);
+                prefs.getInt(KEY_MAX_TOKEN_VALUE, DEFAULT_LLM_MAX_TOKEN);
                 prefs.getInt(KEY_REPETITION_PENALTY, DEFAULT_REPETITION_PENALTY_INT);
                 prefs.getInt(KEY_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY_INT);
                 prefs.getInt(KEY_TOP_P, DEFAULT_TOP_P_INT);
@@ -133,10 +133,10 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 
                 // Set default values with correct types
                 editor.putInt(KEY_TEMPERATURE, DEFAULT_TEMPERATURE_INT);
-                editor.putInt(KEY_MAX_TOKEN, DEFAULT_LLM_MAX_TOKEN);
+                editor.putInt(KEY_MAX_TOKEN_VALUE, DEFAULT_LLM_MAX_TOKEN);
                 editor.putInt(KEY_REPETITION_PENALTY, DEFAULT_REPETITION_PENALTY_INT);
                 editor.putInt(KEY_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY_INT);
-                editor.putString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+                editor.putString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
                 editor.putInt(KEY_TOP_P, DEFAULT_TOP_P_INT);
                 
                 // Apply changes
@@ -162,9 +162,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             // Get integer values from the SeekBar preferences
             int tempValue = prefs.getInt(KEY_TEMPERATURE, DEFAULT_TEMPERATURE_INT);
             int repPenaltyValue = prefs.getInt(KEY_REPETITION_PENALTY, DEFAULT_REPETITION_PENALTY_INT);
-            int maxTokenValue = prefs.getInt(KEY_MAX_TOKEN, DEFAULT_LLM_MAX_TOKEN);
+            int maxTokenValue = prefs.getInt(KEY_MAX_TOKEN_VALUE, DEFAULT_LLM_MAX_TOKEN);
             int freqPenaltyValue = prefs.getInt(KEY_FREQUENCY_PENALTY, DEFAULT_FREQUENCY_PENALTY_INT);
-            String topKValue = prefs.getString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+            String topKValue = prefs.getString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
             int topPValue = prefs.getInt(KEY_TOP_P, DEFAULT_TOP_P_INT);
             
             // 確保所有值都在正確的步進上
@@ -190,9 +190,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             SharedPreferences.Editor editor = prefs.edit();
             editor.putInt(KEY_TEMPERATURE, tempValue);
             editor.putInt(KEY_REPETITION_PENALTY, repPenaltyValue);
-            editor.putInt(KEY_MAX_TOKEN, maxTokenValue);
+            editor.putInt(KEY_MAX_TOKEN_VALUE, maxTokenValue);
             editor.putInt(KEY_FREQUENCY_PENALTY, freqPenaltyValue);
-            editor.putString(KEY_TOP_K, String.valueOf(topKInt));
+            editor.putString(KEY_TOP_K_VALUE, String.valueOf(topKInt));
             editor.putInt(KEY_TOP_P, topPValue);
             
             // Also store the real values with different keys for direct access
@@ -225,7 +225,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         }
         
         // Setup max token preference
-        maxTokenPreference = findPreference(KEY_MAX_TOKEN);
+        maxTokenPreference = findPreference(KEY_MAX_TOKEN_VALUE);
         if (maxTokenPreference != null) {
             maxTokenPreference.setUpdatesContinuously(true);
             maxTokenPreference.setSummaryProvider(preference -> {
@@ -259,7 +259,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         }
         
         // Setup top_k preference
-        topKPreference = findPreference(KEY_TOP_K);
+        topKPreference = findPreference(KEY_TOP_K_VALUE);
         if (topKPreference != null) {
             topKPreference.setSummaryProvider(preference -> {
                 String value = topKPreference.getText();
@@ -313,17 +313,17 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         // 所有滑桿都使用snapToStep確保步進值正確
         snapToStep(prefs, KEY_TEMPERATURE, TEMPERATURE_STEP_SIZE);
         snapToStep(prefs, KEY_REPETITION_PENALTY, REPETITION_PENALTY_STEP_SIZE);
-        snapToStep(prefs, KEY_MAX_TOKEN, MAX_TOKEN_STEP_SIZE);
+        snapToStep(prefs, KEY_MAX_TOKEN_VALUE, MAX_TOKEN_STEP_SIZE);
         snapToStep(prefs, KEY_FREQUENCY_PENALTY, FREQUENCY_PENALTY_STEP_SIZE);
         snapToStep(prefs, KEY_TOP_P, TOP_P_STEP_SIZE);
         
         // 確保top_k是有效的整數
-        String topKValue = prefs.getString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+        String topKValue = prefs.getString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
         try {
             int topK = Integer.parseInt(topKValue);
             if (topK < 1) {
                 SharedPreferences.Editor editor = prefs.edit();
-                editor.putString(KEY_TOP_K, "1");
+                editor.putString(KEY_TOP_K_VALUE, "1");
                 editor.apply();
                 
                 // 更新UI
@@ -333,7 +333,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             }
         } catch (NumberFormatException e) {
             SharedPreferences.Editor editor = prefs.edit();
-            editor.putString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+            editor.putString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
             editor.apply();
             
             // 更新UI
@@ -365,7 +365,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             int snappedValue;
             
             // 對於max_token，需要確保最小值為128
-            if (key.equals(KEY_MAX_TOKEN)) {
+            if (key.equals(KEY_MAX_TOKEN_VALUE)) {
                 snappedValue = (value / stepSize) * stepSize; // 向下取整以保持128的倍數
                 if (snappedValue < MAX_TOKEN_MIN) snappedValue = MAX_TOKEN_MIN;
             } else {
@@ -385,7 +385,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 } else if (key.equals(KEY_REPETITION_PENALTY)) {
                     snappedFloatValue = snappedValue / (float)REPETITION_PENALTY_SCALE;
                     editor.putFloat(KEY_REPETITION_PENALTY_VALUE, snappedFloatValue);
-                } else if (key.equals(KEY_MAX_TOKEN)) {
+                } else if (key.equals(KEY_MAX_TOKEN_VALUE)) {
                     // No float conversion needed
                 } else if (key.equals(KEY_FREQUENCY_PENALTY)) {
                     snappedFloatValue = snappedValue / (float)FREQUENCY_PENALTY_SCALE;
@@ -397,7 +397,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 
                 // Log changes only in debug mode
                 if (Log.isLoggable(TAG, Log.DEBUG)) {
-                    if (key.equals(KEY_MAX_TOKEN)) {
+                    if (key.equals(KEY_MAX_TOKEN_VALUE)) {
                         Log.d(TAG, "Snapped " + key + " from " + value + " to " + snappedValue);
                     } else if (key.equals(KEY_TEMPERATURE) || key.equals(KEY_REPETITION_PENALTY) || 
                               key.equals(KEY_FREQUENCY_PENALTY) || key.equals(KEY_TOP_P)) {
@@ -429,9 +429,9 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         
         // Handle preference changes
         switch (key) {
-            case KEY_TOP_K:
+            case KEY_TOP_K_VALUE:
                 // 處理文本輸入 - top_k
-                String topKValue = sharedPreferences.getString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+                String topKValue = sharedPreferences.getString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
                 try {
                     int topK = Integer.parseInt(topKValue);
                     if (topK < 1) topK = 1;
@@ -441,7 +441,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                     // 輸入值無效，恢復默認值
                     isInternalUpdate = true;
                     SharedPreferences.Editor editor = sharedPreferences.edit();
-                    editor.putString(KEY_TOP_K, String.valueOf(DEFAULT_LLM_TOP_K));
+                    editor.putString(KEY_TOP_K_VALUE, String.valueOf(DEFAULT_LLM_TOP_K));
                     editor.apply();
                     isInternalUpdate = false;
                     
@@ -455,7 +455,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 
             // Let the snapToStep method handle the other settings which will update both values
             case KEY_TEMPERATURE:
-            case KEY_MAX_TOKEN:
+            case KEY_MAX_TOKEN_VALUE:
             case KEY_REPETITION_PENALTY:
             case KEY_FREQUENCY_PENALTY:
             case KEY_TOP_P:
@@ -482,7 +482,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
         switch (key) {
             case KEY_TEMPERATURE:
                 return TEMPERATURE_STEP_SIZE;
-            case KEY_MAX_TOKEN:
+            case KEY_MAX_TOKEN_VALUE:
                 return MAX_TOKEN_STEP_SIZE;
             case KEY_REPETITION_PENALTY:
                 return REPETITION_PENALTY_STEP_SIZE;
