@@ -5,7 +5,7 @@
 [![Google Play](https://img.shields.io/badge/Google_Play-Coming_Soon-green.svg?style=flat&logo=google-play)](https://play.google.com)
 [![App Store](https://img.shields.io/badge/App_Store-Coming_Soon-blue.svg?style=flat&logo=app-store&logoColor=white)](https://apps.apple.com)
 
-[English](.README.md) | [繁體中文](./docs/i18n/README_zh.md)
+[English](README.md) | [繁體中文](./docs/i18n/README_zh.md)
 
 ## Overview
 
