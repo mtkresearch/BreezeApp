@@ -8,6 +8,7 @@ import static com.mtkresearch.breeze_app.utils.AppConstants.DEFAULT_LLM_TEMPERAT
 import static com.mtkresearch.breeze_app.utils.AppConstants.DEFAULT_LLM_TOP_K;
 import static com.mtkresearch.breeze_app.utils.AppConstants.DEFAULT_REPETITION_PENALTY_INT;
 import static com.mtkresearch.breeze_app.utils.AppConstants.DEFAULT_TEMPERATURE_INT;
+import static com.mtkresearch.breeze_app.utils.AppConstants.DEFAULT_TOP_P_INT;
 import static com.mtkresearch.breeze_app.utils.AppConstants.FREQUENCY_PENALTY_SCALE;
 import static com.mtkresearch.breeze_app.utils.AppConstants.FREQUENCY_PENALTY_STEP_SIZE;
 import static com.mtkresearch.breeze_app.utils.AppConstants.KEY_FREQUENCY_PENALTY;
