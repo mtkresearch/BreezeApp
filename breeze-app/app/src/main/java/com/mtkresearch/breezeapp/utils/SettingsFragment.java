@@ -1,10 +1,15 @@
 package com.mtkresearch.breezeapp.utils;
 
-import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_FREQUENCY_PENALTY;
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_FREQUENCY_PENALTY_INT;
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_FREQUENCY_PENALTY_INT;
 import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_MAX_TOKEN;
 import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_REPETITION_PENALTY;
 import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_TEMPERATURE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_LLM_TOP_K;
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_REPETITION_PENALTY_INT;
+import static com.mtkresearch.breezeapp.utils.AppConstants.DEFAULT_TEMPERATURE_INT;
+import static com.mtkresearch.breezeapp.utils.AppConstants.FREQUENCY_PENALTY_SCALE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.FREQUENCY_PENALTY_STEP_SIZE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_FREQUENCY_PENALTY;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_FREQUENCY_PENALTY_VALUE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_MAX_TOKEN_VALUE;
@@ -15,6 +20,14 @@ import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TEMPERATURE_VALUE
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_K_VALUE;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_P;
 import static com.mtkresearch.breezeapp.utils.AppConstants.KEY_TOP_P_VALUE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.MAX_TOKEN_MIN;
+import static com.mtkresearch.breezeapp.utils.AppConstants.MAX_TOKEN_STEP_SIZE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.REPETITION_PENALTY_SCALE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.REPETITION_PENALTY_STEP_SIZE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.TEMPERATURE_SCALE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.TEMPERATURE_STEP_SIZE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.TOP_P_SCALE;
+import static com.mtkresearch.breezeapp.utils.AppConstants.TOP_P_STEP_SIZE;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -27,6 +40,7 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SeekBarPreference;
+import androidx.preference.PreferenceManager;
 
 import com.mtkresearch.breezeapp.R;
 
@@ -46,36 +60,6 @@ import java.util.Comparator;
 public class SettingsFragment extends PreferenceFragmentCompat implements SharedPreferences.OnSharedPreferenceChangeListener {
     
     private static final String TAG = "SettingsFragment";
-    
-    // Display precision for float values
-    private static final int TEMPERATURE_SCALE = 100;     // Divide by 100 to get 0.00-1.00
-    private static final int REPETITION_PENALTY_SCALE = 100;  // Divide by 100 to get 0.00-1.00
-    private static final int FREQUENCY_PENALTY_SCALE = 100;  // Divide by 100 to get 0.00-1.00
-    private static final int TOP_P_SCALE = 100;  // Divide by 100 to get 0.00-1.00
-    
-    // The number of steps for each preference
-    private static final int TEMPERATURE_STEPS = 10;       // 0.0, 0.1, 0.2, ... 1.0
-    private static final int REPETITION_PENALTY_STEPS = 10; // 0.0, 0.1, 0.2, ... 1.0
-    private static final int FREQUENCY_PENALTY_STEPS = 10; // 0.0, 0.1, 0.2, ... 1.0
-    private static final int TOP_P_STEPS = 10; // 0.0, 0.1, 0.2, ... 1.0
-    
-    // Step sizes
-    private static final int TEMPERATURE_STEP_SIZE = TEMPERATURE_SCALE / TEMPERATURE_STEPS;
-    private static final int REPETITION_PENALTY_STEP_SIZE = REPETITION_PENALTY_SCALE / REPETITION_PENALTY_STEPS;
-    private static final int FREQUENCY_PENALTY_STEP_SIZE = FREQUENCY_PENALTY_SCALE / FREQUENCY_PENALTY_STEPS;
-    private static final int TOP_P_STEP_SIZE = TOP_P_SCALE / TOP_P_STEPS;
-    
-    // Max token step size and range
-    private static final int MAX_TOKEN_MIN = 128;
-    private static final int MAX_TOKEN_MAX = 2048;
-    private static final int MAX_TOKEN_STEP_SIZE = 128;
-
-
-    // Default values as integers (for the SeekBar preferences)
-    private static final int DEFAULT_TEMPERATURE_INT = (int)(DEFAULT_LLM_TEMPERATURE * TEMPERATURE_SCALE);
-    private static final int DEFAULT_REPETITION_PENALTY_INT = (int)(DEFAULT_LLM_REPETITION_PENALTY * REPETITION_PENALTY_SCALE);
-    private static final int DEFAULT_FREQUENCY_PENALTY_INT = (int)(DEFAULT_LLM_FREQUENCY_PENALTY * FREQUENCY_PENALTY_SCALE);
-    private static final int DEFAULT_TOP_P_INT = (int)(DEFAULT_LLM_TOP_K * TOP_P_SCALE);
     
     // Handler for delayed operations
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -110,7 +94,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             Context context = getContext();
             if (context == null) return;
             
-            SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+            SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
             boolean hasCorruption = false;
             
             // Check for corruption - try to read values as integers, if exception occurs, we need to fix
@@ -152,12 +136,47 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     @SuppressLint("DefaultLocale")
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
-        // 設置首選項檔案名稱
-        getPreferenceManager().setSharedPreferencesName(AppConstants.PREFS_NAME);
         setPreferencesFromResource(R.xml.preferences, rootKey);
+
+        // 只在第一次進入設定時寫入 default 值，之後用戶調整不會被覆蓋
+        SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
+        SharedPreferences.Editor editor = prefs.edit();
+        boolean changed = false;
+
+        // Encapsulate all LLM parameter fields, and set the default/min/max value
+        AppConstants.LLMPreferenceField[] fields = new AppConstants.LLMPreferenceField[] {
+            AppConstants.FIELD_TEMPERATURE,
+            AppConstants.FIELD_MAX_TOKEN,
+            AppConstants.FIELD_REPETITION_PENALTY,
+            AppConstants.FIELD_FREQUENCY_PENALTY,
+            AppConstants.FIELD_TOP_P
+        };
+        for (AppConstants.LLMPreferenceField field : fields) {
+            SeekBarPreference pref = findPreference(field.key);
+            if (pref != null) {
+                pref.setMin(field.min);
+                pref.setMax(field.max);
+            }
+            if (!prefs.contains(field.key)) {
+                Log.d(TAG, "Writing default for " + field.key + " = " + field.defaultValue);
+                editor.putInt(field.key, field.defaultValue);
+                changed = true;
+                if (pref != null) {
+                    pref.setValue(field.defaultValue);
+                }
+            }
+        }
+        if (!prefs.contains(AppConstants.KEY_TOP_K_VALUE)) {
+            Log.d(TAG, "Writing default for " + AppConstants.KEY_TOP_K_VALUE + " = " + AppConstants.DEFAULT_LLM_TOP_K);
+            editor.putString(AppConstants.KEY_TOP_K_VALUE, String.valueOf(AppConstants.DEFAULT_LLM_TOP_K));
+            changed = true;
+        }
+        if (changed) {
+            boolean ok = editor.commit(); // 用 commit() 確保同步
+            Log.d(TAG, "SharedPreferences commit result: " + ok);
+        }
         
         // Apply current values immediately
-        SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
         if (prefs != null) {
             // Get integer values from the SeekBar preferences
             int tempValue = prefs.getInt(KEY_TEMPERATURE, DEFAULT_TEMPERATURE_INT);
@@ -187,7 +206,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
             }
             
             // Store the SeekBar integer values for the UI
-            SharedPreferences.Editor editor = prefs.edit();
             editor.putInt(KEY_TEMPERATURE, tempValue);
             editor.putInt(KEY_REPETITION_PENALTY, repPenaltyValue);
             editor.putInt(KEY_MAX_TOKEN_VALUE, maxTokenValue);
@@ -525,7 +543,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
                 String currentValue = modelIdPreference.getValue();
                 if (currentValue == null || currentValue.isEmpty() || !modelIds.contains(currentValue)) {
                     // Get the first model from SharedPreferences
-                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences prefs = getPreferenceManager().getSharedPreferences();
                     String defaultModel = prefs.getString("llm_model_id", modelIds.get(0));
                     
                     // Ensure the default model exists in our list

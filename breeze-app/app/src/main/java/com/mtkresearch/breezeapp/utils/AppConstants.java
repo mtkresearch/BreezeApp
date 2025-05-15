@@ -8,13 +8,10 @@ import android.app.ActivityManager;
 import android.content.SharedPreferences;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import androidx.preference.PreferenceManager;
 
 public class AppConstants {
     private static final String TAG = "AppConstants";
-
-    // Shared Preferences
-    public static final String PREFS_NAME = "BreezeAppSettings";
-    
     // Preference Keys
     public static final String KEY_HISTORY_LOOKBACK = "history_lookback";
     public static final String KEY_SEQUENCE_LENGTH = "sequence_length";
@@ -329,7 +326,7 @@ public class AppConstants {
     
     // Get the appropriate model file based on user preference and RAM constraints
     public static String getAppropriateModelFile(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String modelSizePreference = prefs.getString(KEY_MODEL_SIZE_PREFERENCE, MODEL_SIZE_AUTO);
         
         // For auto preference, choose based on available RAM
@@ -345,13 +342,49 @@ public class AppConstants {
         }
     }
     
-//    // LLM Configuration
+    // LLM Configuration
     public static final float DEFAULT_LLM_TEMPERATURE = 0.2f;
     public static final int DEFAULT_LLM_MAX_TOKEN = 256;
     public static final float DEFAULT_LLM_REPETITION_PENALTY = 1.2f;
     public static final float DEFAULT_LLM_FREQUENCY_PENALTY = 1.2f;
-    public static final int DEFAULT_LLM_TOP_K = 1;
+    public static final int DEFAULT_LLM_TOP_K = 5;
     public static final float DEFAULT_LLM_TOP_P = 0.9f;
+
+    // LLM UI/Preference Min/Max/Step
+    public static final int TEMPERATURE_MIN = 0;
+    public static final int TEMPERATURE_MAX = 100;
+    public static final int TEMPERATURE_SCALE = 100;
+    public static final int TEMPERATURE_STEPS = 10;
+    public static final int TEMPERATURE_STEP_SIZE = TEMPERATURE_SCALE / TEMPERATURE_STEPS;
+
+    public static final int MAX_TOKEN_MIN = 128;
+    public static final int MAX_TOKEN_MAX = 2048;
+    public static final int MAX_TOKEN_STEP_SIZE = 128;
+
+    
+    public static final int REPETITION_PENALTY_MIN = 100;
+    public static final int REPETITION_PENALTY_MAX = 200;
+    public static final int REPETITION_PENALTY_SCALE = 100;
+    public static final int REPETITION_PENALTY_STEPS = 10;
+    public static final int REPETITION_PENALTY_STEP_SIZE = REPETITION_PENALTY_SCALE / REPETITION_PENALTY_STEPS;
+
+    public static final int FREQUENCY_PENALTY_MIN = 100;
+    public static final int FREQUENCY_PENALTY_MAX = 200;
+    public static final int FREQUENCY_PENALTY_SCALE = 100;
+    public static final int FREQUENCY_PENALTY_STEPS = 10;
+    public static final int FREQUENCY_PENALTY_STEP_SIZE = FREQUENCY_PENALTY_SCALE / FREQUENCY_PENALTY_STEPS;
+
+    public static final int TOP_P_MIN = 0;
+    public static final int TOP_P_MAX = 100;
+    public static final int TOP_P_SCALE = 100;
+    public static final int TOP_P_STEPS = 10;
+    public static final int TOP_P_STEP_SIZE = TOP_P_SCALE / TOP_P_STEPS;
+
+    // Default values as integers (for SeekBar)
+    public static final int DEFAULT_TEMPERATURE_INT = (int)(DEFAULT_LLM_TEMPERATURE * TEMPERATURE_SCALE);
+    public static final int DEFAULT_REPETITION_PENALTY_INT = (int)(DEFAULT_LLM_REPETITION_PENALTY * REPETITION_PENALTY_SCALE);
+    public static final int DEFAULT_FREQUENCY_PENALTY_INT = (int)(DEFAULT_LLM_FREQUENCY_PENALTY * FREQUENCY_PENALTY_SCALE);
+    public static final int DEFAULT_TOP_P_INT = (int)(DEFAULT_LLM_TOP_P * TOP_P_SCALE);
     
     // When false: Send button always shows send icon and only sends messages
     // When true: Send button toggles between send and audio chat mode
@@ -495,4 +528,31 @@ public class AppConstants {
         
         return urls;
     }
+
+    // LLM 參數封裝類別
+    public static class LLMPreferenceField {
+        public final String key;
+        public final int min;
+        public final int max;
+        public final int defaultValue;
+        public LLMPreferenceField(String key, int min, int max, int defaultValue) {
+            this.key = key;
+            this.min = min;
+            this.max = max;
+            this.defaultValue = defaultValue;
+        }
+    }
+
+    // LLM 參數欄位定義
+    public static final LLMPreferenceField FIELD_TEMPERATURE = new LLMPreferenceField(
+            KEY_TEMPERATURE, TEMPERATURE_MIN, TEMPERATURE_MAX, DEFAULT_TEMPERATURE_INT);
+    public static final LLMPreferenceField FIELD_MAX_TOKEN = new LLMPreferenceField(
+            KEY_MAX_TOKEN_VALUE, MAX_TOKEN_MIN, MAX_TOKEN_MAX, DEFAULT_LLM_MAX_TOKEN);
+    public static final LLMPreferenceField FIELD_REPETITION_PENALTY = new LLMPreferenceField(
+            KEY_REPETITION_PENALTY, REPETITION_PENALTY_MIN, REPETITION_PENALTY_MAX, DEFAULT_REPETITION_PENALTY_INT);
+    public static final LLMPreferenceField FIELD_FREQUENCY_PENALTY = new LLMPreferenceField(
+            KEY_FREQUENCY_PENALTY, FREQUENCY_PENALTY_MIN, FREQUENCY_PENALTY_MAX, DEFAULT_FREQUENCY_PENALTY_INT);
+    public static final LLMPreferenceField FIELD_TOP_P = new LLMPreferenceField(
+            KEY_TOP_P, TOP_P_MIN, TOP_P_MAX, DEFAULT_TOP_P_INT);
+    // top_k 是 string 輸入，這裡不包
 } 

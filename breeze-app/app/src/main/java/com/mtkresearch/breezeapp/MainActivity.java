@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Arrays;
 import android.content.SharedPreferences;
 import android.os.Looper;
+import androidx.preference.PreferenceManager;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = AppConstants.MAIN_ACTIVITY_TAG;
@@ -170,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
             displayDeviceInfo();
             initializeStatusIndicators();
 
-            settings = getSharedPreferences(AppConstants.PREFS_NAME, MODE_PRIVATE);
+            settings = PreferenceManager.getDefaultSharedPreferences(this);
             PromptManager.initialize(this);
             setupSettings();
             setupBackendSpinner();
@@ -675,12 +676,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public static int getHistoryLookback(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         return prefs.getInt(AppConstants.KEY_HISTORY_LOOKBACK, PromptManager.DEFAULT_HISTORY_LOOKBACK);
     }
 
     public static int getSequenceLength(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         return prefs.getInt(AppConstants.KEY_SEQUENCE_LENGTH, PromptManager.MAX_SEQUENCE_LENGTH);
     }
 
