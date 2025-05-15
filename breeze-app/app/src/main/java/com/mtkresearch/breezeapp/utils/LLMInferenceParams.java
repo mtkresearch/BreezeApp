@@ -2,6 +2,7 @@ package com.mtkresearch.breezeapp.utils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import androidx.preference.PreferenceManager;
 
 public class LLMInferenceParams {
     private int maxToken;
@@ -42,7 +43,7 @@ public class LLMInferenceParams {
      * 由 SharedPreferences 取得目前所有推論參數
      */
     public static LLMInferenceParams fromSharedPreferences(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         int maxToken = prefs.getInt(AppConstants.KEY_MAX_TOKEN_VALUE, AppConstants.DEFAULT_LLM_MAX_TOKEN);
         float temperature = prefs.getFloat(AppConstants.KEY_TEMPERATURE_VALUE, AppConstants.DEFAULT_LLM_TEMPERATURE);
         String topKStr = prefs.getString(AppConstants.KEY_TOP_K_VALUE, String.valueOf(AppConstants.DEFAULT_LLM_TOP_K));

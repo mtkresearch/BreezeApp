@@ -12,59 +12,44 @@
             app:key="llm_model_id"
             app:title="@string/pref_llm_model_id_title"
             app:summary="@string/pref_llm_model_id_summary"
-            app:defaultValue="breeze2-3b-250501-npu"
             app:useSimpleSummaryProvider="true" />
 
-        <!-- Temperature: 0.70 float = 70 int (DEFAULT_TEMPERATURE * 100) -->
+        <!-- Temperature -->
         <SeekBarPreference
             app:key="temperature"
             app:title="@string/pref_temperature_title"
-            app:summary="@string/pref_temperature_summary"
-            app:defaultValue="50"
-            android:min="0"
-            android:max="100" />
+            app:summary="@string/pref_temperature_summary" />
 
-        <!-- Max Token: Range 128-2048 with steps of 128 -->
+        <!-- Max Token -->
         <SeekBarPreference
             app:key="max_token_value"
             app:title="@string/pref_max_token_title"
-            app:summary="@string/pref_max_token_summary"
-            app:defaultValue="256"
-            android:min="128"
-            android:max="2048" />
+            app:summary="@string/pref_max_token_summary" />
 
-        <!-- Repetition Penalty: 0.2 float = 20 int (DEFAULT_REPETITION_PENALTY * 100) -->
+        <!-- Repetition Penalty -->
         <SeekBarPreference
             app:key="repetition_penalty"
             app:title="@string/pref_repetition_penalty_title"
-            app:summary="@string/pref_repetition_penalty_summary"
-            app:defaultValue="20"
-            android:min="0"
-            android:max="100" />
+            app:summary="@string/pref_repetition_penalty_summary" />
 
+        <!-- Frequency Penalty -->
         <SeekBarPreference
             app:key="frequency_penalty"
             app:title="@string/pref_frequency_penalty_title"
-            app:summary="@string/pref_frequency_penalty_summary"
-            app:defaultValue="20"
-            android:min="0"
-            android:max="100" />
+            app:summary="@string/pref_frequency_penalty_summary" />
 
         <!-- integer number input field -->
         <EditTextPreference
             app:key="top_k_value"
             app:title="@string/pref_top_k_title"
             app:summary="@string/pref_top_k_summary"
-            app:defaultValue="1"
             android:inputType="number" />
 
+        <!-- Top P -->
         <SeekBarPreference
             app:key="top_p"
             app:title="@string/pref_top_p_title"
-            app:summary="@string/pref_top_p_summary"
-            app:defaultValue="90"
-            android:min="0"
-            android:max="100" />
+            app:summary="@string/pref_top_p_summary" />
 
     </PreferenceCategory>
 

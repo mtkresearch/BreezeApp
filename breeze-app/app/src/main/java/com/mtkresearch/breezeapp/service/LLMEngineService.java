@@ -10,6 +10,7 @@ import android.os.IBinder;
 import android.util.Log;
 import android.content.Context;
 import android.content.SharedPreferences;
+import androidx.preference.PreferenceManager;
 
 import org.pytorch.executorch.LlamaModule;
 import org.pytorch.executorch.LlamaCallback;
@@ -32,7 +33,7 @@ import java.util.concurrent.CountDownLatch;
 import java.lang.ref.WeakReference;
 import java.nio.file.Paths;
 
-public class LLMEngineService extends BaseEngineService implements LlamaCallback {
+public class LLMEngineService extends BaseEngineService {
     private static final String TAG = "LLMEngineService";
     
     // Service state
@@ -102,65 +103,6 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
 
     public LLMEngineService() {
         this.conversationManager = new ConversationManager();
-    }
-    
-    @Override
-    public void onResult(String result) {
-        if (result == null || result.isEmpty() || !isGenerating.get()) {
-            return;
-        }
-        
-        // Check for stop token
-        if (result.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) || result.equals("<|eot_id|>") || result.equals("<|end_of_text|>")) {
-            Log.d(TAG, "Stop token detected: " + result);
-            
-            // First mark that we're no longer generating to prevent more tokens from being processed
-            isGenerating.set(false);
-            
-            // Clear callback immediately to prevent further token processing
-            currentCallback = null;
-            
-            // Stop the model in a standalone thread to ensure it's not blocked
-            if (mModule != null) {
-                try {
-                    new Thread(() -> {
-                        try {
-                            Log.d(TAG, "Forcefully stopping LlamaModule after stop token");
-                            mModule.stop();
-                            
-                            // Sleep briefly to give the module time to process the stop command
-                            Thread.sleep(100);
-                            
-                            // Call stop again to ensure it takes effect
-                            mModule.stop();
-                            Log.d(TAG, "Second stop call completed after stop token");
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error in forceful stopping thread after stop token", e);
-                        }
-                    }).start();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error initiating stop process after stop token", e);
-                }
-            }
-            
-            // Then complete the generation
-            completeGeneration();
-            return;
-        }
-        
-        // Directly append token to the response without UTF-8 checking
-        // Log.d(TAG, "Received token: \"" + result + "\"");
-        currentStreamingResponse.append(result);
-        
-        // Send token to callback if streaming
-        if (currentCallback != null) {
-            currentCallback.onToken(result);
-        }
-    }
-
-    @Override
-    public void onStats(float tps) {
-        Log.d(TAG, String.format("Generation speed: %.2f tokens/sec", tps));
     }
 
     public class LocalBinder extends BaseEngineService.LocalBinder<LLMEngineService> {
@@ -417,8 +359,8 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                 // Initialize LlamaModule with model parameters
                 try {
                     // Read temperature directly from SharedPreferences
-                    SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-                    float temperature = prefs.getFloat(KEY_TEMPERATURE_VALUE, DEFAULT_LLM_TEMPERATURE);
+                    LLMInferenceParams llmInferenceParams = LLMInferenceParams.fromSharedPreferences(this);
+                    float temperature = llmInferenceParams.getTemperature();
                     
                     Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
                     mModule = new LlamaModule(
@@ -563,7 +505,7 @@ public class LLMEngineService extends BaseEngineService implements LlamaCallback
                                         }
 
                                         // Handle both stop tokens - filter out both EOS tokens
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2))) {
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) || token.equals("<|eot_id|>")) {
                                             Log.d(TAG, "Stop token detected: " + token);
                                             String finalResponse = currentStreamingResponse.toString();
                                             if (!currentResponse.isDone()) {

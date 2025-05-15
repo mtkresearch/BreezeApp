@@ -32,6 +32,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
+import androidx.preference.PreferenceManager;
+
 public class IntroDialog extends Dialog {
     private ViewPager2 viewPager;
     private TabLayout tabLayout;
@@ -339,7 +341,7 @@ public class IntroDialog extends Dialog {
      * Saves the user's model size preference to SharedPreferences
      */
     private void saveModelSizePreference(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor editor = prefs.edit();
         
         int selectedId = modelSizeRadioGroup.getCheckedRadioButtonId();
@@ -457,7 +459,7 @@ public class IntroDialog extends Dialog {
             // Add model size information if models exist
             if (llmModelsExist) {
                 // Get the model size preference
-                SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
                 String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
                 
                 // Determine which model is being used
