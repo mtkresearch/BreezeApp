@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import androidx.preference.PreferenceManager;
 
 /**
  * Utility class for handling model-related operations.
@@ -128,7 +129,7 @@ public class ModelUtils {
     }
 
     public static Map<String, String> getPrefModelInfo(Context context) {
-        SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String modelId = prefs.getString("llm_model_id", AppConstants.DEFAULT_LLM_MODEL);
         String baseFolder = Paths.get(context.getFilesDir().getPath(), "models", modelId).toString();
 

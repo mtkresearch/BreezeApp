@@ -103,6 +103,7 @@
             android:label="@string/settings_title"
             android:parentActivityName="com.mtkresearch.breeze_app.ChatActivity"
             android:theme="@style/Theme.BreezeApp"
+            android:screenOrientation="portrait" 
             android:exported="false">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

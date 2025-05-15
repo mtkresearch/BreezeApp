@@ -36,6 +36,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
+import androidx.preference.PreferenceManager;
 
 public class ModelDownloadDialog extends Dialog {
     private static final String TAG = "ModelDownloadDialog";
@@ -110,7 +112,7 @@ public class ModelDownloadDialog extends Dialog {
             messageText.setText(R.string.model_missing_message_tts);
         } else {
             // Get the user's model preference
-            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
             String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
             
             // Use the appropriate model display name based on preference
@@ -342,7 +344,7 @@ public class ModelDownloadDialog extends Dialog {
         TextView messageText = findViewById(R.id.messageText);
         if (messageText != null && downloadMode != DownloadMode.TTS) {
             // Get the user's model preference
-            SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
             String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
             
             // Log the model preference for debugging
@@ -467,7 +469,7 @@ public class ModelDownloadDialog extends Dialog {
                     // Re-get the model display name to ensure consistency
                     String modelDisplayName;
                     boolean isSmallModel = false;
-                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
                     String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
                     
                     if (modelSizePreference.equals(AppConstants.MODEL_SIZE_LARGE)) {
@@ -1393,7 +1395,7 @@ public class ModelDownloadDialog extends Dialog {
 
                 // Save to SharedPreferences
                 if (!defaultModel.isEmpty()) {
-                    SharedPreferences prefs = getContext().getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
                     SharedPreferences.Editor editor = prefs.edit();
                     editor.putString("llm_model_id", defaultModel);
                     editor.apply();

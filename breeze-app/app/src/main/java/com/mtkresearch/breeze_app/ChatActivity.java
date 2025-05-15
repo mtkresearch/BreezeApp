@@ -82,6 +82,7 @@ import android.os.Looper;
 import com.mtkresearch.breeze_app.utils.ModelUtils;
 
 import com.mtkresearch.breeze_app.utils.ModelFilter;
+import androidx.preference.PreferenceManager;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
@@ -171,7 +172,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         clearCurrentConversation();
 
         // Set default model in preferences
-        SharedPreferences prefs = getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString("llm_model_id", AppConstants.DEFAULT_LLM_MODEL);
         editor.apply();
