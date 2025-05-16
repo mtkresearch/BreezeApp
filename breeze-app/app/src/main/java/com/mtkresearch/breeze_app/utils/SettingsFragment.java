@@ -74,9 +74,6 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // Fix corrupted preferences first
-        fixCorruptedPreferences();
-        
         super.onCreate(savedInstanceState);
         // Apply our custom theme
         getContext().getTheme().applyStyle(R.style.PreferenceThemeOverlay_BreezeApp, true);
@@ -132,6 +129,7 @@ public class SettingsFragment extends PreferenceFragmentCompat implements Shared
     @SuppressLint("DefaultLocale")
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+        fixCorruptedPreferences();
         setPreferencesFromResource(R.xml.preferences, rootKey);
 
         // 只在第一次進入設定時寫入 default 值，之後用戶調整不會被覆蓋
