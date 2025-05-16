@@ -1778,7 +1778,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private String getFormattedPrompt(String userMessage) {
         // If history lookback is 1, only use system prompt + current message
         if (AppConstants.CONVERSATION_HISTORY_LOOKBACK == 1) {
-            return PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+            return PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.BREEZE_2);
         }
         
         // Otherwise use history as before
@@ -1796,13 +1796,13 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         }
         
         // Format with history
-        String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.LLAMA_3_2);
+        String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
         
         // Check if prompt might exceed max length (using conservative estimate)
         if (fullPrompt.length() > AppConstants.getLLMMaxInputLength(this) * 3) { // Assuming average of 3 chars per token
             Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
             // Format prompt with empty history list to get just system prompt + user message
-            String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.LLAMA_3_2);
+            String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.BREEZE_2);
             Log.d(TAG, "Reduced prompt without history: " + reducedPrompt);
             return reducedPrompt;
         }

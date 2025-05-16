@@ -22,6 +22,7 @@ public class PromptFormat {
       case LLAMA_3:
       case LLAMA_3_1:
       case LLAMA_3_2:
+      case BREEZE_2:
         return "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n"
             + SYSTEM_PLACEHOLDER
             + "<|eot_id|>";
@@ -42,7 +43,11 @@ public class PromptFormat {
             + USER_PLACEHOLDER
             + "<|eot_id|>"
             + "<|start_header_id|>assistant<|end_header_id|>";
-
+      case BREEZE_2:
+        return "<|start_header_id|>user<|end_header_id|>\n"
+            + USER_PLACEHOLDER
+            + "<|eot_id|>"
+            + "<|start_header_id|>assistant<|end_header_id|>\n\n";
       case LLAVA_1_5:
       default:
         return USER_PLACEHOLDER;
@@ -54,6 +59,7 @@ public class PromptFormat {
       case LLAMA_3:
       case LLAMA_3_1:
       case LLAMA_3_2:
+      case BREEZE_2:
         return getUserPromptTemplate(modelType) + "\n" + ASSISTANT_PLACEHOLDER + "<|eot_id|>";
       case LLAVA_1_5:
         return USER_PLACEHOLDER + " ASSISTANT:";
@@ -67,8 +73,8 @@ public class PromptFormat {
       case LLAMA_3:
       case LLAMA_3_1:
       case LLAMA_3_2:
-        return "<|end_of_text|>";
       case LLAMA_GUARD_3:
+      case BREEZE_2:
         return "<|eot_id|>";
       case LLAVA_1_5:
         return "</s>";

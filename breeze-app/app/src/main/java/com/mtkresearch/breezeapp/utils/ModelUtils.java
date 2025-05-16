@@ -63,10 +63,12 @@ public class ModelUtils {
     public static com.executorch.ModelType getModelType(String modelPath) {
         String modelName = getModelNameFromPath(modelPath).toLowerCase();
         // Both Breeze and Llama models will use LLAMA_3_2 since BREEZE_2 is not available
-        if (modelName.contains("llama") || modelName.contains("breeze")) {
+        if (modelName.contains("llama")) {
             return com.executorch.ModelType.LLAMA_3_2;
+        } else if (modelName.contains("breeze")) {
+            return com.executorch.ModelType.BREEZE_2;
         }
-        return com.executorch.ModelType.LLAMA_3_2; // Default to LLAMA_3_2
+        return com.executorch.ModelType.BREEZE_2; // Default to LLAMA_3_2
     }
 
     /**
