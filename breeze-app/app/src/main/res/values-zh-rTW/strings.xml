@@ -6,21 +6,20 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- 介紹對話框標題 -->
-    <string name="intro_dialog_title_warning">Demo 版本警告</string>
+    <string name="intro_dialog_title_warning"> 讓手機更 AI </string>
     <string name="intro_dialog_title_current_features">目前功能</string>
     <string name="intro_dialog_title_system_requirements">系統需求</string>
 
     <!-- 介紹對話框第 1 頁：Demo 版本警告 -->
     <string name="intro_description">
     <![CDATA[
-    這是一個社群驅動的專案，旨在將 AI 功能直接帶到您的手機，
-    讓您能夠<b>完全離線</b>體驗 AI 功能，無需擔心隱私問題。
-    <br/><br/>
-    作為一個起步專案，我們歡迎開發者和愛好者加入我們，共同改進這款應用。
-    由於我們持續提升使用體驗，您可能會遇到一些穩定性問題。
-    <br/><br/>
-    歡迎透過 GitHub 貢獻、回報問題或提交 PR：
-    <br/>
+    這是一個由社群一起推動的酷炫小專案，目標超簡單：
+    就是要把 AI 魔法搬進你的手機裡，<b>全程離線</b>運作，隱私無壓力、安心又自在！🪄📱
+    <br/><br/> 目前我們還在熱騰騰開發中～
+    誠摯邀請所有開發者與熱血玩家一同加入改造大軍 💪
+    不過呢，因為邊做邊進化，有時可能會小小當機，或冒出一些怪怪的回答（別太驚訝😂）
+    <br/><br/> 有點子、有建議、有 bug？歡迎來 GitHub 找我們串門子、開 issue 或直接來一發 PR 吧 👉
+        <br/>
     <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
     ]]>
     </string>
@@ -30,7 +29,7 @@
     <![CDATA[
     • 本地 LLM 聊天：<br/>
     &nbsp;&nbsp;&nbsp;- 完全離線的 AI 聊天功能<br/>
-    &nbsp;&nbsp;&nbsp;- 支援 CPU 和 MTK NPU<br/>
+    &nbsp;&nbsp;&nbsp;- 支援 CPU，即將推出 MTK NPU 版本<br/>
     &nbsp;&nbsp;&nbsp;- 所有數據皆存於裝置內<br/>
     &nbsp;&nbsp;&nbsp;- 支援文字轉語音 (TTS)
     <br/><br/>

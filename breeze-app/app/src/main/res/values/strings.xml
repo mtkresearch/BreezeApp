@@ -6,20 +6,18 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- Intro Dialog Title -->
-    <string name="intro_dialog_title_warning">Demo Version Warning</string>
+    <string name="intro_dialog_title_warning"> Everything AI </string>
     <string name="intro_dialog_title_current_features">Current Features</string>
     <string name="intro_dialog_title_system_requirements">System Requirements</string>
 
     <!-- Intro Dialog Page 1 : Demo Version Warning -->
     <string name="intro_description">
         <![CDATA[
-        This is a community-driven project aimed at bringing AI capabilities directly to your phone,
-        allowing you to experience <b>AI features completely offline</b> without privacy concerns.
-        <br/><br/>
-        As a kick-off project, we welcome developers and enthusiasts to join us in improving this app.
-        You may encounter some stability issues as we\'re continuously enhancing the experience.
-        <br/><br/>
-        Feel free to contribute, raise issues, or submit PRs on our GitHub repository:
+        This is a fun little community-driven project with one simple mission:
+        to bring AI magic right to your phone — all running <b>completely offline</b>, so your privacy stays totally chill. 🪄📱
+        <br/><br/> We're still in early development, and we'd love to have developers and enthusiasts join the ride! 💪
+        Since the app is evolving fast, you might run into the occasional hiccup or see some responses that are a little… unexpected 😂
+        <br/><br/> Got ideas, found a bug, or want to pitch in? Head over to our GitHub to file an issue or send in a PR 👉
         <br/>
         <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
         ]]>
@@ -30,7 +28,7 @@
         <![CDATA[
         • Local LLM Chat:<br/>
         &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
-        &nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>
+        &nbsp;&nbsp;&nbsp;- Supports CPU, MTK NPU is coming soon<br/>
         &nbsp;&nbsp;&nbsp;- All data stays on device<br/>
         &nbsp;&nbsp;&nbsp;- Text-to-Speech support
         <br/><br/>

@@ -21,6 +21,8 @@ import android.widget.ImageView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.core.view.GravityCompat;
@@ -1362,9 +1364,12 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private final ServiceConnection llmConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Lifecycle lifecycle = ((LifecycleOwner) ChatActivity.this).getLifecycle();
             llmService = ((LLMEngineService.LocalBinder) service).getService();
             if (llmService != null) {
-                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.initializing_model) , Toast.LENGTH_SHORT).show();
+                if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.initializing_model), Toast.LENGTH_SHORT).show();
+                }
                 
                 llmService.initialize().thenAccept(success -> {
                     llmServiceReady = success;
@@ -1385,7 +1390,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         runOnUiThread(() -> {
                             binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_error));
                             binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                            Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.failed_to_initialize_model), Toast.LENGTH_SHORT).show();
+                            if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.failed_to_initialize_model), Toast.LENGTH_SHORT).show();
+                            }
                             updateInteractionState();
                         });
                     }
@@ -1395,7 +1402,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     runOnUiThread(() -> {
                         binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_error));
                         binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                        Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_initializing_model), Toast.LENGTH_SHORT).show();
+                        if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                            Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_initializing_model), Toast.LENGTH_SHORT).show();
+                        }
                         updateInteractionState();
                     });
                     return null;
@@ -1405,13 +1414,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
+            Lifecycle lifecycle = ((LifecycleOwner) ChatActivity.this).getLifecycle();
             Log.d(TAG, "LLM service connected"); 
             llmService = null;
             llmServiceReady = false;
             runOnUiThread(() -> {
                 binding.modelNameText.setText(ChatActivity.this.getString(R.string.model_disconnected));
                 binding.modelNameText.setTextColor(getResources().getColor(R.color.error, getTheme()));
-                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.model_service_disconnected) , Toast.LENGTH_SHORT).show();
+                if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.model_service_disconnected), Toast.LENGTH_SHORT).show();
+                }
                 updateInteractionState();
             });
         }
@@ -1437,6 +1449,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private final ServiceConnection asrConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Lifecycle lifecycle = ((LifecycleOwner) ChatActivity.this).getLifecycle();
             Log.d(TAG, "ASR service connected");
             asrService = ((ASREngineService.LocalBinder) service).getService();
             if (asrService != null) {
@@ -1444,16 +1457,24 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                     asrServiceReady = success;
                     Log.d(TAG, "ASR initialization " + (success ? "successful" : "failed"));
                     if (!success) {
-                        runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                                ChatActivity.this.getString(R.string.ars_initialization_failed), Toast.LENGTH_SHORT ).show());
+                        runOnUiThread(() -> {
+                            if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                                Toast.makeText(ChatActivity.this,
+                                        ChatActivity.this.getString(R.string.ars_initialization_failed), Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     }
                     updateInteractionState();
                 }).exceptionally(throwable -> {
                     Log.e(TAG, "Error initializing ASR", throwable);
                     asrServiceReady = false;
-                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                            ChatActivity.this.getString(R.string.ars_initialization_failed) + throwable.getMessage(),
-                        Toast.LENGTH_SHORT).show());
+                    runOnUiThread(() -> {
+                        if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                            Toast.makeText(ChatActivity.this,
+                                    ChatActivity.this.getString(R.string.ars_initialization_failed) + throwable.getMessage(),
+                                    Toast.LENGTH_SHORT).show();
+                        }
+                    });
                     updateInteractionState();
                     return null;
                 });
@@ -1471,12 +1492,18 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     private final ServiceConnection ttsConnection = new ServiceConnection() {
         @Override
+
         public void onServiceConnected(ComponentName name, IBinder service) {
+            Lifecycle lifecycle = ((LifecycleOwner) ChatActivity.this).getLifecycle();
             Log.d(TAG, "TTS service connected");
             ttsService = ((TTSEngineService.LocalBinder) service).getService();
             if (ttsService != null) {
-                runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                        ChatActivity.this.getString(R.string.initializing_text_to_speech), Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> {
+                    if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                        Toast.makeText(ChatActivity.this,
+                        ChatActivity.this.getString(R.string.initializing_text_to_speech), Toast.LENGTH_SHORT).show();
+                    }
+                });
                 
                 CompletableFuture.runAsync(() -> {
                     try {
@@ -1485,11 +1512,19 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 ttsServiceReady = success;
                                 Log.d(TAG, "TTS initialization " + (success ? "successful" : "failed"));
                                 if (success) {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.text_to_speech_ready), Toast.LENGTH_SHORT).show());
+                                    runOnUiThread(() -> {
+                                        if (lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)){
+                                            Toast.makeText(ChatActivity.this,
+                                                    ChatActivity.this.getString(R.string.text_to_speech_ready), Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                                 } else {
-                                    runOnUiThread(() -> Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.failed_to_initialize_text_to_speech), Toast.LENGTH_SHORT).show());
+                                    runOnUiThread(() -> {
+                                        if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                                            Toast.makeText(ChatActivity.this,
+                                                ChatActivity.this.getString(R.string.failed_to_initialize_text_to_speech), Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
                                 }
                                 updateInteractionState();
                             })
@@ -1497,9 +1532,11 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                                 Log.e(TAG, "Error initializing TTS", throwable);
                                 ttsServiceReady = false;
                                 runOnUiThread(() -> {
-                                    Toast.makeText(ChatActivity.this,
-                                            ChatActivity.this.getString(R.string.error_initialize_text_to_speech) + throwable.getMessage(),
-                                        Toast.LENGTH_SHORT).show();
+                                    if(lifecycle.getCurrentState().isAtLeast(Lifecycle.State.STARTED)) {
+                                        Toast.makeText(ChatActivity.this,
+                                                ChatActivity.this.getString(R.string.error_initialize_text_to_speech) + throwable.getMessage(),
+                                                Toast.LENGTH_SHORT).show();
+                                    }
                                     updateInteractionState();
                                 });
                                 return null;
