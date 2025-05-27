@@ -31,44 +31,34 @@
         android:theme="@style/Theme.BreezeApp"
         tools:targetApi="31">
 
+        <uses-native-library
+            android:name="libapuwareutils_v2.mtk.so"
+            android:required="false" />
 
-        <activity
-            android:name="com.mtkresearch.breezeapp.ChatActivity"
-            android:exported="true"
-            android:windowSoftInputMode="adjustResize"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
-        
-        <activity
-            android:name="com.mtkresearch.breezeapp.MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait" />
-        <activity
-            android:name="com.mtkresearch.breezeapp.AudioChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait" />
-	    
-        <activity
-            android:name="com.mtkresearch.breezeapp.ModelDownloadActivity"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:screenOrientation="portrait"/>
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
-            android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
+        <uses-native-library
+            android:name="libapuwareapusys_v2.mtk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libnir_neon_driver_ndk.mtk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libnir_neon_driver_ndk.mtk.vndk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.vndk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.so"
+            android:required="false" />
+
+        <service android:name="com.mtkresearch.breezeapp.service.LLMEngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.VLMEngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.ASREngineService" />
+        <service android:name="com.mtkresearch.breezeapp.service.TTSEngineService" />
 
         <activity
             android:name="com.mtkresearch.breezeapp.SettingsActivity"

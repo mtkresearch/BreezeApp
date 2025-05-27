@@ -77,6 +77,33 @@ android {
         }
     }
 
+    // 必須定義一個或多個 flavorDimensions
+    flavorDimensions += "environment" // 可以自定義維度名稱，例如 "type", "feature", "version" 等
+
+    productFlavors {
+        // 'serviceMockup' Flavor
+        create("mockup") {
+            dimension = "environment" // 指定它屬於哪個維度
+            applicationIdSuffix = ".mockup" // 避免與其他版本衝突
+            versionNameSuffix = "-mockup" // 版本名稱後綴
+            // 可以添加 Service 團隊專用的配置，例如模擬 API 端點
+            buildConfigField("String", "SERVICE_ENDPOINT", "\"http://mock.api.example.com/service\"")
+            // 你也可以在這裡設置一個標誌，讓 Service 知道它是在模擬模式下運行
+            buildConfigField("Boolean", "IS_MOCK_MODE", "true")
+        }
+
+        // 你可能還會想定義一個 'production' 或 'full' Flavor 來表示正式版本
+        // 這樣在沒有特殊需求的環境下，可以構建一個不帶任何特定 Flavor 後綴的版本
+        create("production") {
+            dimension = "environment"
+            // 不需要特別設置 applicationIdSuffix 和 versionNameSuffix
+            // 因為它會使用 defaultConfig 中的值
+            buildConfigField("String", "SERVICE_ENDPOINT", "\"http://api.example.com/service\"")
+            buildConfigField("Boolean", "IS_MOCK_MODE", "false")
+        }
+    }
+    // --- 新增 Product Flavor 區塊結束 ---
+
     buildFeatures {
         buildConfig = true
         viewBinding = true
@@ -97,6 +124,13 @@ android {
         getByName("main") {
             java.srcDirs("src/main/java")
             jniLibs.srcDirs("libs")
+        }
+        getByName("mockup"){
+            java.srcDirs("src/mockup/java")
+
+        }
+        getByName("production") {
+            java.srcDirs("src/service/java")
         }
     }
 
