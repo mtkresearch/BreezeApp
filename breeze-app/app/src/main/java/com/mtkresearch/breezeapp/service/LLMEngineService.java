@@ -364,7 +364,7 @@ public class LLMEngineService extends BaseEngineService {
                     
                     Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
                     mModule = new LlamaModule(
-                        ModelUtils.getModelCategory(ModelType.LLAMA_3_2),
+                        ModelUtils.getModelCategory(ModelType.BREEZE_2),
                         model_entry_path,
                         Paths.get(modelBasePath, "tokenizer.bin").toString(),
                         temperature
@@ -505,7 +505,7 @@ public class LLMEngineService extends BaseEngineService {
                                         }
 
                                         // Handle both stop tokens - filter out both EOS tokens
-                                        if (token.equals(PromptFormat.getStopToken(ModelType.LLAMA_3_2)) || token.equals("<|eot_id|>")) {
+                                        if (token.equals(PromptFormat.getStopToken(ModelType.BREEZE_2))) {
                                             Log.d(TAG, "Stop token detected: " + token);
                                             String finalResponse = currentStreamingResponse.toString();
                                             if (!currentResponse.isDone()) {
