@@ -2,75 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-
-    <uses-feature android:name="android.hardware.screen.portrait"/>
-
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
-
-    <application
-        android:allowBackup="true"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.BreezeApp"
-        tools:targetApi="31">
-
-        <uses-native-library
-            android:name="libapuwareutils_v2.mtk.so"
-            android:required="false" />
-
-        <uses-native-library
-            android:name="libapuwareapusys_v2.mtk.so"
-            android:required="false" />
-
-        <uses-native-library
-            android:name="libnir_neon_driver_ndk.mtk.so"
-            android:required="false" />
-
-        <uses-native-library
-            android:name="libnir_neon_driver_ndk.mtk.vndk.so"
-            android:required="false" />
-
-        <uses-native-library
-            android:name="libcmdl_ndk.mtk.vndk.so"
-            android:required="false" />
-
-        <uses-native-library
-            android:name="libcmdl_ndk.mtk.so"
-            android:required="false" />
+        <application
+            android:allowBackup="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="BreezeMock"
+            android:roundIcon="@mipmap/ic_launcher"
+            tools:replace="android:label"
+        >
 
         <service android:name="com.mtkresearch.breezeapp.service.LLMEngineService" />
         <service android:name="com.mtkresearch.breezeapp.service.VLMEngineService" />
         <service android:name="com.mtkresearch.breezeapp.service.ASREngineService" />
         <service android:name="com.mtkresearch.breezeapp.service.TTSEngineService" />
-
-        <activity
-            android:name="com.mtkresearch.breezeapp.SettingsActivity"
-            android:label="@string/settings_title"
-            android:parentActivityName="com.mtkresearch.breezeapp.ChatActivity"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait" 
-            android:exported="false">
-            <meta-data
-                android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.mtkresearch.breezeapp.ChatActivity" />
-        </activity>
-    </application>
+        </application>
 
 </manifest>
