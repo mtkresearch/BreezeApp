@@ -635,7 +635,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
         
         // Wait with timeout
-        if (!latch.await(10, TimeUnit.SECONDS)) {
+        if (!latch.await(100, TimeUnit.SECONDS)) {
             throw new TimeoutException("LLM service binding timed out");
         }
         
@@ -1780,34 +1780,34 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         if (AppConstants.CONVERSATION_HISTORY_LOOKBACK == 1) {
             return PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.BREEZE_2);
         }
-        
+
         // Otherwise use history as before
         List<ChatMessage> allMessages = conversationManager.getMessages();
         List<ChatMessage> historyMessages = new ArrayList<>();
-        
+
         if (!allMessages.isEmpty()) {
             // Get messages up to but not including the last one (which would be the current query)
             int endIndex = allMessages.size() - 1;
             int startIndex = Math.max(0, endIndex - AppConstants.CONVERSATION_HISTORY_LOOKBACK);
-            
+
             for (int i = startIndex; i < endIndex; i++) {
                 historyMessages.add(allMessages.get(i));
             }
         }
-        
+
         // Format with history
-        String fullPrompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
-        
+        String prompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
+
         // Check if prompt might exceed max length (using conservative estimate)
-        if (fullPrompt.length() > AppConstants.getLLMMaxInputLength(this) * 3) { // Assuming average of 3 chars per token
+        while(historyMessages.size()> 0 && prompt.length() > AppConstants.getLLMMaxInputLength(this)){
+            // inefficient but a quick fix. should provide latest window in conversation Manager
             Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
+            historyMessages.remove(0);
             // Format prompt with empty history list to get just system prompt + user message
-            String reducedPrompt = PromptManager.formatCompletePrompt(userMessage, new ArrayList<>(), ModelType.BREEZE_2);
-            Log.d(TAG, "Reduced prompt without history: " + reducedPrompt);
-            return reducedPrompt;
+            prompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
         }
-        
-        return fullPrompt;
+
+        return prompt;
     }
 
     private void setupTitleTapCounter() {

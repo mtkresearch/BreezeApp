@@ -96,7 +96,7 @@ public class AppConstants {
     
     // RAM Requirements
     public static final long MIN_RAM_REQUIRED_GB = 5; // Minimum RAM for the app to run
-    public static final long LARGE_MODEL_MIN_RAM_GB =12; // Minimum RAM for large model
+    public static final long LARGE_MODEL_MIN_RAM_GB =7; // Minimum RAM for large model
     
     // Model Selection Key
     public static final String KEY_MODEL_SIZE_PREFERENCE = "model_size_preference";
@@ -296,13 +296,13 @@ public class AppConstants {
             new File(new File(context.getFilesDir(), APP_MODEL_DIR), BREEZE_MODEL_FILE).getAbsolutePath();
     }
 
-    // LLM Sequence Length Constants - these should be calculated based on the current model path
+    // LLM Sequence Length Constants - these should be calculated based on the current model path. It stands for token length not bytes
     public static int getLLMMaxSeqLength(Context context) {
-        return getCurrentModelPath(context).contains("2048") ? 512 : 128;
+        return 8192; // getCurrentModelPath(context).contains("2048") ? 2048 : 128;
     }
 
     public static int getLLMMinOutputLength(Context context) {
-        return getCurrentModelPath(context).contains("2048") ? 512 : 32;
+        return 1024; //getCurrentModelPath(context).contains("2048") ? 512 : 32;
     }
 
     public static int getLLMMaxInputLength(Context context) {
@@ -391,7 +391,7 @@ public class AppConstants {
     public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Conversation History Constants
-    public static final int CONVERSATION_HISTORY_LOOKBACK = BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
+    public static final int CONVERSATION_HISTORY_LOOKBACK = 500; // should be ignore and replace by history window length //BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
 
     // Activity Request Codes
     public static final int PERMISSION_REQUEST_CODE = 123;
