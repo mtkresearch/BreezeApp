@@ -6,21 +6,13 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- Intro Dialog Title -->
-    <string name="intro_dialog_title_warning"> Everything AI </string>
+    <string name="intro_dialog_title_warning"> Under Construction </string>
     <string name="intro_dialog_title_current_features">Current Features</string>
     <string name="intro_dialog_title_system_requirements">System Requirements</string>
 
     <!-- Intro Dialog Page 1 : Demo Version Warning -->
     <string name="intro_description">
-        <![CDATA[
-        This is a fun little community-driven project with one simple mission:
-        to bring AI magic right to your phone — all running <b>completely offline</b>, so your privacy stays totally chill. 🪄📱
-        <br/><br/> We\'re still in early development, and we\'d love to have developers and enthusiasts join the ride! 💪
-        Since the app is evolving fast, you might run into the occasional hiccup or see some responses that are a little… unexpected 😂
-        <br/><br/> Got ideas, found a bug, or want to pitch in? Head over to our GitHub to file an issue or send in a PR 👉
-        <br/>
-        <a href="https://github.com/mtkresearch/BreezeApp">BreezeApp</a>
-        ]]>
+        ...
     </string>
 
     <!-- Intro Dialog Page 2 : Current Features -->
