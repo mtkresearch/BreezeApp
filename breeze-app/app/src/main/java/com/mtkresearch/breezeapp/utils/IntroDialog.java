@@ -62,16 +62,6 @@ public class IntroDialog extends Dialog {
                 R.drawable.ic_warning,
                     context.getString(R.string.intro_dialog_title_warning),
                     context.getString(R.string.intro_description)
-            ),
-            new IntroPage(
-                R.drawable.ic_features,
-                    context.getString(R.string.intro_dialog_title_current_features),
-                    context.getString(R.string.build_features_description)
-            ),
-            new IntroPage(
-                R.drawable.ic_requirements,
-                    context.getString(R.string.intro_dialog_title_system_requirements),
-                buildRequirementsDescription( context )
             )
         );
     }
