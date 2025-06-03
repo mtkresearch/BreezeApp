@@ -298,11 +298,11 @@ public class AppConstants {
 
     // LLM Sequence Length Constants - these should be calculated based on the current model path. It stands for token length not bytes
     public static int getLLMMaxSeqLength(Context context) {
-        return 8192; // getCurrentModelPath(context).contains("2048") ? 2048 : 128;
+        return getCurrentModelPath(context).contains("2048") ? 2048 : 128;
     }
 
     public static int getLLMMinOutputLength(Context context) {
-        return 1024; //getCurrentModelPath(context).contains("2048") ? 512 : 32;
+        return getCurrentModelPath(context).contains("2048") ? 512 : 32;
     }
 
     public static int getLLMMaxInputLength(Context context) {
