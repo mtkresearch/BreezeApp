@@ -14,7 +14,6 @@
 *.iml
 
 # Libraries and dependencies
-*.jar
 *.aar
 *.ap_ 
 *.sha256sums
