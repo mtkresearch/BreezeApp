@@ -6,13 +6,19 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- Intro Dialog Title -->
-    <string name="intro_dialog_title_warning"> Under Construction </string>
+    <string name="intro_dialog_title_warning">Welcome to BreezeApp!</string>
     <string name="intro_dialog_title_current_features">Current Features</string>
     <string name="intro_dialog_title_system_requirements">System Requirements</string>
 
     <!-- Intro Dialog Page 1 : Demo Version Warning -->
     <string name="intro_description">
-        ...
+    <![CDATA[
+    By accessing or using this service, you acknowledge that you have read, understood, and agree to be bound by the following disclaimer and related terms:<br/><br/>
+    • BreezeApp is currently provided solely for academic research purposes. Any commercial use, profit-seeking activities, or use for illegal or non-compliant purposes is strictly prohibited.<br/><br/>
+    • BreezeApp is provided on an “as-is” basis. No guarantee is made for of any kind, express or implied, regarding the completeness, accuracy, legality, timeliness, or security of the content. Users are responsible for exercising their own judgment, verifying information as necessary, and assume all risks associated with the use of this service.<br/><br/>
+    • The content provided by BreezeApp is for reference and fair use only. If any third-party intellectual property rights are involved, you are responsible for obtaining all necessary permissions prior to use and for complying with all applicable laws and regulations.<br/><br/>
+    • To the extent permitted by law, our company and its affiliates shall not be liable for any actions, decisions, or any direct, indirect, special, incidental, consequential, or punitive damages arising from or related to the use of BreezeApp.<br/><br/>
+    ]]>
     </string>
 
     <!-- Intro Dialog Page 2 : Current Features -->

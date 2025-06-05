@@ -24,8 +24,8 @@ android {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 33
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.0.12"
+        versionCode = 27
+        versionName = "1.0.13"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
