@@ -6,13 +6,19 @@
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## IntroDialog.java -->
     <!-- 介紹對話框標題 -->
-    <string name="intro_dialog_title_warning">作業中</string>
+    <string name="intro_dialog_title_warning">歡迎使用 BreezeApp！</string>
     <string name="intro_dialog_title_current_features">目前功能</string>
     <string name="intro_dialog_title_system_requirements">系統需求</string>
 
     <!-- 介紹對話框第 1 頁：Demo 版本警告 -->
     <string name="intro_description">
-    ...
+    <![CDATA[
+    當您使用本服務時，即表示您已閱讀、理解並接受本免責聲明與相關限制：<br/><br/>
+    • BreezeApp 目前僅供學術研究用途，禁止用於任何商業行為或營利目的，亦不得用於任何非法或違規用途。<br/><br/>
+    • BreezeApp 係以「現狀」基礎提供，不保證其內容之完整性、準確性、合法性、時效性或安全性。使用者應自行判斷並驗證相關資訊，並自負使用風險。<br/><br/>
+    • BreezeApp 所提供之內容僅供參考與合理使用，若涉及第三方智慧財產權，請於使用前自行確認並取得相關授權，並自行承擔相關法律責任。<br/><br/>
+    • 在法律允許範圍內，本公司及其關聯企業對因使用 BreezeApp 所產生之任何行為、決策，或因此導致之任何直接、間接、特殊、附帶、後果性或懲罰性損害，均不承擔任何責任。<br/><br/>
+    ]]>
     </string>
 
     <!-- 介紹對話框第 2 頁：目前功能 -->
