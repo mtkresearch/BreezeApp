@@ -35,7 +35,7 @@ public class AppConstants {
 
 
     public static final String DEFAULT_BACKEND = "cpu";  // Default to CPU backend
-    public static final String DEFAULT_LLM_MODEL = "breeze2-3b-spin-250501-cpu";
+    public static final String DEFAULT_LLM_MODEL = "llama3_2-spin-250605-cpu";
 
     // Service Enable Flags
     public static final boolean LLM_ENABLED = true;  // LLM is essential

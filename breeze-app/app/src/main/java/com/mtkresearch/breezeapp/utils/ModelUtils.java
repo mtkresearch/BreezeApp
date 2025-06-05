@@ -81,10 +81,10 @@ public class ModelUtils {
         
         String lowerPath = modelPath.toLowerCase();
         // Check for breeze in either model file name or config file path
-        if (lowerPath.contains("breeze")) {
-            return "Llama-Breeze2-3B";
-        } else if (lowerPath.contains("llama")) {
-            return "llama3_2";
+        if (lowerPath.contains("llama")) {
+            return "Llama-3.2-3B-Instruct";
+        } else if (lowerPath.contains("breeze")) {
+            return "Breeze-2-3B";
         }
         return getModelNameFromPath(modelPath);
     }
