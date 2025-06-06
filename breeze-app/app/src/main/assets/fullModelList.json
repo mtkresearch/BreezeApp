@@ -5,9 +5,9 @@
         "runner": "executorch",
         "backend": "cpu",
         "ramGB": 3,
-        "model_entry_path": "llama3_2-2048.pte",
+        "model_entry_path": "llama3_2-4096.pte",
         "urls": [
-          "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-2048.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-4096.pte?download=true",
           "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/tokenizer.bin?download=true"
         ]
       },
@@ -16,9 +16,9 @@
         "runner": "executorch",
         "backend": "cpu",
         "ramGB": 3,
-        "model_entry_path": "llama3_2-2048-spin.pte",
+        "model_entry_path": "llama3_2-4096-spin.pte",
         "urls": [
-          "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-SpinQuant_INT4_EO8-executorch/resolve/main/llama3_2-2048-spin.pte?download=true",
+          "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-SpinQuant_INT4_EO8-executorch/resolve/main/llama3_2-4096-spin.pte?download=true",
           "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-SpinQuant_INT4_EO8-executorch/resolve/main/tokenizer.bin?download=true"
         ]
       }

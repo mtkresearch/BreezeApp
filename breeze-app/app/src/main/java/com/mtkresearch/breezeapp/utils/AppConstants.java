@@ -358,7 +358,7 @@ public class AppConstants {
     public static final int TEMPERATURE_STEP_SIZE = TEMPERATURE_SCALE / TEMPERATURE_STEPS;
 
     public static final int MAX_TOKEN_MIN = 128;
-    public static final int MAX_TOKEN_MAX = 2048;
+    public static final int MAX_TOKEN_MAX = 4096;
     public static final int MAX_TOKEN_STEP_SIZE = 128;
 
     
