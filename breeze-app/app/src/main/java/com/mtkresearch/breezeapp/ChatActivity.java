@@ -174,6 +174,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
 
+        startNewConversation();
+
         // Set default model in preferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = prefs.edit();
@@ -283,16 +285,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         chatAdapter = new ChatMessageAdapter();
         binding.recyclerView.setAdapter(chatAdapter);
 
-        // Add initial AI message
-        ChatMessage initialAiMessage = new ChatMessage(
-            Html.fromHtml(getString(R.string.init_ai_message), Html.FROM_HTML_MODE_LEGACY).toString(),
-            false
-        );
-        initialAiMessage.setCompleted(true); // Mark as completed so no "thinking" animation shows
-        chatAdapter.addMessage(initialAiMessage);
-        // Ensure watermark is hidden
-        updateWatermarkVisibility();
-
         // Set up click listeners
         chatAdapter.setSpeakerClickListener(this);
         chatAdapter.setOnMessageLongClickListener((message, position) -> {
@@ -302,9 +294,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Set feedback click listener
         chatAdapter.setFeedbackClickListener(isUpvote -> showFeedbackDialog(isUpvote));
-        
-        // Set initial watermark visibility
-        updateWatermarkVisibility();
     }
 
     private void updateWatermarkVisibility() {
@@ -456,6 +445,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             historyManager.clearCurrentActiveHistory();
             // Refresh history list to show the newly saved chat
             refreshHistoryList();
+            startNewConversation();
         };
         binding.newConversationButton.setOnClickListener(newConversationClickListener);
         // Ensure button is initially enabled and clickable
@@ -2301,5 +2291,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             Intent settingsIntent = new Intent(ChatActivity.this, SettingsActivity.class);
             startActivity(settingsIntent);
         });
+    }
+
+    private void startNewConversation() {
+        ChatMessage initialAiMessage = new ChatMessage(
+            Html.fromHtml(getString(R.string.init_ai_message), Html.FROM_HTML_MODE_LEGACY).toString(),
+            false
+        );
+        initialAiMessage.setCompleted(true);
+        conversationManager.addMessage(initialAiMessage);
+        chatAdapter.addMessage(initialAiMessage);
+
+        updateWatermarkVisibility();
     }
 }
