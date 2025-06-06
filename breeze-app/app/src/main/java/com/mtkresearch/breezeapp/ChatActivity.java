@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Html;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.PopupMenu;
@@ -281,6 +282,16 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.recyclerView.setLayoutManager(new LinearLayoutManager(this));
         chatAdapter = new ChatMessageAdapter();
         binding.recyclerView.setAdapter(chatAdapter);
+
+        // Add initial AI message
+        ChatMessage initialAiMessage = new ChatMessage(
+            Html.fromHtml(getString(R.string.init_ai_message), Html.FROM_HTML_MODE_LEGACY).toString(),
+            false
+        );
+        initialAiMessage.setCompleted(true); // Mark as completed so no "thinking" animation shows
+        chatAdapter.addMessage(initialAiMessage);
+        // Ensure watermark is hidden
+        updateWatermarkVisibility();
 
         // Set up click listeners
         chatAdapter.setSpeakerClickListener(this);

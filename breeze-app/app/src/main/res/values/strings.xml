@@ -23,19 +23,19 @@
 
     <!-- Intro Dialog Page 2 : Current Features -->
     <string name="build_features_description">
-        <![CDATA[
-        • Local LLM Chat:<br/>
-        &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
-        &nbsp;&nbsp;&nbsp;- Supports CPU, MTK NPU is coming soon<br/>
-        &nbsp;&nbsp;&nbsp;- All data stays on device<br/>
-        &nbsp;&nbsp;&nbsp;- Text-to-Speech support
-        <br/><br/>
-        • Future Features (Coming Soon):<br/>
-        &nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>
-        &nbsp;&nbsp;&nbsp;- Voice input support (ASR)
-        <br/><br/>
-        Join us in building a privacy-focused AI experience!
-        ]]>
+    <![CDATA[
+    • Local LLM Chat:<br/>
+    &nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>
+    &nbsp;&nbsp;&nbsp;- Supports CPU, MTK NPU is coming soon<br/>
+    &nbsp;&nbsp;&nbsp;- All data stays on device<br/>
+    &nbsp;&nbsp;&nbsp;- Text-to-Speech support
+    <br/><br/>
+    • Future Features (Coming Soon):<br/>
+    &nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>
+    &nbsp;&nbsp;&nbsp;- Voice input support (ASR)
+    <br/><br/>
+    Join us in building a privacy-focused AI experience!
+    ]]>
     </string>
 
     <!-- Intro Dialog Page 3 : System Requirements -->
@@ -387,5 +387,26 @@
     <!-- Memory Warning Dialog -->
     <string name="insufficient_memory_title">Insufficient Memory</string>
     <string name="insufficient_memory_message_with_avail">This model requires %1$d GB of RAM to run. Your device currently has %2$d GB available. Please go to Settings to change the model or clean up background application.</string>
+
+    <!-- New AI Welcome Message -->
+    <string name="init_ai_message"><![CDATA[
+    <b><big>👋 Nice to meet you!</big></b><br/>
+    I\'m your AI assistant on this device, and I look forward to chatting with you! All conversations happen locally on your phone, with full privacy protection.<br/><br/>
+    <b>🔒 Privacy & Security:</b><br/>
+    • Conversations are not uploaded to the cloud or any external servers<br/>
+    • Your personal information stays entirely on your own device<br/><br/>
+    <b>⚠️ Important Reminder:</b><br/>
+    While I’ll do my best to assist you, I’m not all-knowing and may provide inaccurate information:<br/>
+    • Please don’t treat my responses as absolute facts<br/>
+    • Always verify important decisions with reliable sources<br/>
+    • I do not have access to the latest information from the internet<br/><br/>
+    <b>✨ Here’s what I’m good at:</b><br/>
+    • 📝 <b>Text Rewriting</b> – Adjusting tone or style<br/>
+    • 🌐 <b>Chinese-English Translation</b> – Helping with casual conversation or simple text<br/>
+    • ✏️ <b>Text Polishing</b> – Making your writing smoother and more natural<br/>
+    • 💡 <b>Creative Thinking</b> – Assisting with brainstorming or creative writing<br/>
+    • 📃 <b>Formatting</b> – Helping reorganize and structure your content<br/><br/>
+    Let’s explore together! What can I help you with today?
+    ]]></string>
 
 </resources>
