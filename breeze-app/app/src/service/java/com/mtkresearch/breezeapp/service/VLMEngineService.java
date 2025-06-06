@@ -7,8 +7,8 @@ import android.util.Log;
 
 import java.util.concurrent.CompletableFuture;
 
-import org.pytorch.executorch.LlamaCallback;
-import org.pytorch.executorch.LlamaModule;
+import org.pytorch.executorch.extension.llm.LlmCallback;
+import org.pytorch.executorch.extension.llm.LlmModule;
 import com.executorch.ETImage;
 import com.executorch.PromptFormat;
 
@@ -20,12 +20,12 @@ public class VLMEngineService extends BaseEngineService {
     public class LocalBinder extends BaseEngineService.LocalBinder<VLMEngineService> { }
 
     // LLaVA configuration
-    private static final int MODEL_TYPE = LlamaModule.MODEL_TYPE_TEXT_VISION;
+    private static final int MODEL_TYPE = LlmModule.MODEL_TYPE_TEXT_VISION;
     private static final int SEQ_LEN = 512;
     private static final int IMAGE_CHANNELS = 3;
     private static final float TEMPERATURE = 0.8f;
     
-    private LlamaModule mModule;
+    private LlmModule mModule;
     private long startPos = 0;
 
     @Override
@@ -92,7 +92,7 @@ public class VLMEngineService extends BaseEngineService {
                 throw new IllegalStateException("Model or tokenizer files not found");
             }
 
-            mModule = new LlamaModule(MODEL_TYPE, modelPath, tokenizerPath, TEMPERATURE);
+            mModule = new LlmModule(MODEL_TYPE, modelPath, tokenizerPath, TEMPERATURE);
             mModule.load();
             Log.i(TAG, "CPU model initialized successfully");
         } catch (Exception e) {
@@ -161,7 +161,7 @@ public class VLMEngineService extends BaseEngineService {
                 String formattedPrompt = PromptFormat.getLlavaPresetPrompt(); // TODO: Add the user custom prompt field in app
                 Log.d(TAG, "Using formatted prompt: " + formattedPrompt);
 
-                mModule.generateFromPos(formattedPrompt, SEQ_LEN, startPos, new LlamaCallback() {
+                mModule.generateFromPos(formattedPrompt, SEQ_LEN, startPos, new LlmCallback() {
                     public void onToken(String token) {
                         result.append(token);
                     }

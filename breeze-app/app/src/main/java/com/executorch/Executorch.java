@@ -3,8 +3,8 @@ package com.executorch;
 import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
-import org.pytorch.executorch.LlamaModule;
-import org.pytorch.executorch.LlamaCallback;
+import org.pytorch.executorch.extension.llm.LlmModule;
+import org.pytorch.executorch.extension.llm.LlmCallback;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,7 +12,7 @@ import java.io.File;
 
 public class Executorch implements ModelRunnerCallback {
     private static final String TAG = "Executorch";
-    private LlamaModule mModule;
+    private LlmModule mModule;
     private final Context context;
     private final SettingsFields settings;
     private final ExecutorCallback callback;
@@ -80,19 +80,19 @@ public class Executorch implements ModelRunnerCallback {
                 float temperature = (float) settings.getTemperature();
 
                 // Add extra logging for debugging
-                Log.d(TAG, String.format("Initializing LlamaModule - Category: %d, Temperature: %.2f",
+                Log.d(TAG, String.format("Initializing LlmModule - Category: %d, Temperature: %.2f",
                     modelCategory, temperature));
 
                 try {
                     // For emulator, we'll use a different initialization approach
                     if (isEmulator) {
-                        mModule = new LlamaModule(
+                        mModule = new LlmModule(
                             modelPath,
                             tokenizerPath,
                             temperature  // Use direct temperature initialization for emulator
                         );
                     } else {
-                        mModule = new LlamaModule(
+                        mModule = new LlmModule(
                             modelCategory,
                             modelPath,
                             tokenizerPath,
@@ -101,7 +101,7 @@ public class Executorch implements ModelRunnerCallback {
                     }
                     callback.onInitialized(true);
                 } catch (Exception e) {
-                    String errorMsg = String.format("LlamaModule init failed - Emulator: %b, Error: %s",
+                    String errorMsg = String.format("LlmModule init failed - Emulator: %b, Error: %s",
                         isEmulator, e.getMessage());
                     Log.e(TAG, errorMsg, e);
                     callback.onError(errorMsg);
@@ -134,7 +134,7 @@ public class Executorch implements ModelRunnerCallback {
                 long generateStartTime = System.currentTimeMillis();
 
                 if (ModelUtils.getModelCategory(settings.getModelType()) == ModelUtils.VISION_MODEL) {
-                    mModule.generate(finalPrompt, ModelUtils.VISION_MODEL_SEQ_LEN, new LlamaCallback() {
+                    mModule.generate(finalPrompt, ModelUtils.VISION_MODEL_SEQ_LEN, new LlmCallback() {
                         @Override
                         public void onResult(String token) {
                             callback.onGenerating(token);
@@ -148,7 +148,7 @@ public class Executorch implements ModelRunnerCallback {
                 } else if (settings.getModelType() == ModelType.LLAMA_GUARD_3) {
                     // For LlamaGuard, use length + fixed token count
                     int maxTokens = finalPrompt.length() + 64;
-                    mModule.generate(finalPrompt, maxTokens, new LlamaCallback() {
+                    mModule.generate(finalPrompt, maxTokens, new LlmCallback() {
                         @Override
                         public void onResult(String token) {
                             callback.onGenerating(token);
@@ -162,7 +162,7 @@ public class Executorch implements ModelRunnerCallback {
                 } else {
                     // For text models, use proportional length + fixed token count
                     int maxTokens = (int)(finalPrompt.length() * 0.75) + 64;
-                    mModule.generate(finalPrompt, maxTokens, new LlamaCallback() {
+                    mModule.generate(finalPrompt, maxTokens, new LlmCallback() {
                         @Override
                         public void onResult(String token) {
                             callback.onGenerating(token);
