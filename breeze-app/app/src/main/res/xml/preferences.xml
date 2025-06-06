@@ -28,7 +28,7 @@
             app:title="@string/pref_max_token_title"
             app:summary="@string/pref_max_token_summary"
             android:min="128"
-            android:max="2048" />
+            android:max="4096" />
 
         <!-- Repetition Penalty -->
         <SeekBarPreference

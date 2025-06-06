@@ -9,6 +9,7 @@ import android.os.IBinder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Html;
 import android.text.TextWatcher;
 import android.view.View;
 import android.widget.PopupMenu;
@@ -173,6 +174,8 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         historyManager.clearCurrentActiveHistory();
         clearCurrentConversation();
 
+        startNewConversation();
+
         // Set default model in preferences
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         SharedPreferences.Editor editor = prefs.edit();
@@ -291,9 +294,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Set feedback click listener
         chatAdapter.setFeedbackClickListener(isUpvote -> showFeedbackDialog(isUpvote));
-        
-        // Set initial watermark visibility
-        updateWatermarkVisibility();
     }
 
     private void updateWatermarkVisibility() {
@@ -445,6 +445,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             historyManager.clearCurrentActiveHistory();
             // Refresh history list to show the newly saved chat
             refreshHistoryList();
+            startNewConversation();
         };
         binding.newConversationButton.setOnClickListener(newConversationClickListener);
         // Ensure button is initially enabled and clickable
@@ -2290,5 +2291,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
             Intent settingsIntent = new Intent(ChatActivity.this, SettingsActivity.class);
             startActivity(settingsIntent);
         });
+    }
+
+    private void startNewConversation() {
+        ChatMessage initialAiMessage = new ChatMessage(
+            Html.fromHtml(getString(R.string.init_ai_message), Html.FROM_HTML_MODE_LEGACY).toString(),
+            false
+        );
+        initialAiMessage.setCompleted(true);
+        conversationManager.addMessage(initialAiMessage);
+        chatAdapter.addMessage(initialAiMessage);
+
+        updateWatermarkVisibility();
     }
 }

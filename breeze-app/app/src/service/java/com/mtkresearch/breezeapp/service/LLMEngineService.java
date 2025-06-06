@@ -485,15 +485,9 @@ public class LLMEngineService extends BaseEngineService {
                         // Only apply prompt formatting for local CPU backend
                         Log.d(TAG, "Formatted prompt for local CPU: " + prompt);
 
-                        // Calculate sequence length with more generous output space
-                        int seqLen = Math.min(
-                                AppConstants.getLLMMaxSeqLength(context),
-                                prompt.length() + AppConstants.getLLMMinOutputLength(context)
-                        );
-
                         executor.execute(() -> {
                             try {
-                                mModule.generate(prompt, seqLen, new LlmCallback() {
+                                mModule.generate(prompt, AppConstants.MAX_TOKEN_MAX, new LlmCallback() {
                                     @Override
                                     public void onResult(String token) {
                                         if (!isGenerating.get()) {
