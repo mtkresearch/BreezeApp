@@ -63,6 +63,8 @@
     <string name="warning_model_missing"><![CDATA[⚠️ WARNING: Required model files (%1$s or %2$s) are missing.<br/>]]></string>
     <string name="warning_storage"><![CDATA[⚠️ WARNING: Insufficient storage space available (%1$sGB &lt; %2$sGB required).<br/>]]></string>
     <string name="warning_footer"><![CDATA[The application may not function properly.<br/>]]></string>
+    <string name="warning">Warning</string>
+    <string name="prompt_too_long_warning">Input message is too long, please shorten its content.</string>
 
     <!-- status summary -->
     <string name="status_summary">

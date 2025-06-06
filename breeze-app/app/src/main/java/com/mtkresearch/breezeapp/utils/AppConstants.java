@@ -323,11 +323,11 @@ public class AppConstants {
 
     // LLM Sequence Length Constants - these should be calculated based on the current model path. It stands for token length not bytes
     public static int getLLMMaxSeqLength(Context context) {
-        return getCurrentModelPath(context).contains("2048") ? 2048 : 128;
+        return 4096 ; // getCurrentModelPath(context).contains("2048") ? 2048 : 128;
     }
 
     public static int getLLMMinOutputLength(Context context) {
-        return getCurrentModelPath(context).contains("2048") ? 512 : 32;
+        return 1024 ; // getCurrentModelPath(context).contains("2048") ? 512 : 32;
     }
 
     public static int getLLMMaxInputLength(Context context) {
@@ -437,8 +437,6 @@ public class AppConstants {
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
     public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
-
-
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {

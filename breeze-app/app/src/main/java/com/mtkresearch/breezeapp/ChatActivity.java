@@ -87,6 +87,8 @@ import com.mtkresearch.breezeapp.utils.ModelUtils;
 import com.mtkresearch.breezeapp.utils.ModelFilter;
 import androidx.preference.PreferenceManager;
 
+import com.mtkresearch.breezeapp.utils.TokenEstimator;
+
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
     private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
 
@@ -749,6 +751,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void handleTextMessage(String message) {
+        final String originalUserMessage = message;
         if (message.trim().isEmpty()) return;
         
         // Hide keyboard and clear input first
@@ -756,7 +759,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         uiHandler.clearInput();
         
         // Add user message to conversation
-        ChatMessage userMessage = new ChatMessage(message, true);
+        ChatMessage userMessage = new ChatMessage(originalUserMessage, true);
         userMessage.setPromptId(promptId);
         conversationManager.addMessage(userMessage);
         chatAdapter.addMessage(userMessage);
@@ -776,7 +779,49 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         
         // Generate AI response with formatted prompt
         if (llmService != null) {
-            String formattedPrompt = getFormattedPrompt(message);
+            String formattedPrompt = getFormattedPrompt(originalUserMessage);
+
+            int maxTokens = AppConstants.getLLMMaxInputLength(this);
+            int estimatedTokens = TokenEstimator.estimateTokenCount(formattedPrompt);
+
+            if (estimatedTokens > maxTokens) {
+                Log.w(TAG, "Formatted prompt is too long (tokens: " + estimatedTokens + 
+                       " > max: " + maxTokens + "), likely due to user message itself.");
+                
+                // User message itself (after formatting) is too long
+                runOnUiThread(() -> {
+                    String warningMessage = getString(R.string.prompt_too_long_warning);
+                    
+                    new AlertDialog.Builder(ChatActivity.this)
+                        .setTitle(R.string.warning)
+                        .setMessage(warningMessage)
+                        .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                            if (binding.expandedInput.getVisibility() == View.VISIBLE) {
+                                binding.messageInputExpanded.setText(originalUserMessage);
+                                binding.messageInputExpanded.requestFocus();
+                                binding.messageInputExpanded.setSelection(originalUserMessage.length());
+                            } else {
+                                binding.messageInput.setText(originalUserMessage);
+                                binding.messageInput.requestFocus();
+                                binding.messageInput.setSelection(originalUserMessage.length());
+                            }
+                            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                            View currentFocusView = getCurrentFocus();
+                            if (currentFocusView != null) {
+                                imm.showSoftInput(currentFocusView, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                            }
+                        })
+                        .setCancelable(false)
+                        .show();
+                });
+
+                // Remove the thinking bubble and the user message that was added optimistically
+                chatAdapter.removeLastMessage(); // Removes AI thinking bubble
+                chatAdapter.removeLastMessage(); // Removes user message
+                conversationManager.removeLastMessage(); // Removes user message from conversation history
+                updateWatermarkVisibility(); // Show watermark again if no messages are left
+                return; // Stop further processing
+            }
             
             // Set UI to generation state BEFORE starting generation
             setSendButtonsAsStop(true);
@@ -798,7 +843,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                         conversationManager.addMessage(aiMessage);
                     }
 
-                    runOnUiThread(() -> {
+                runOnUiThread(() -> {
                         currentResponse.append(token);
                         aiMessage.updateText(currentResponse.toString());
                         // Keep message as not completed while still generating
@@ -1799,15 +1844,25 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Format with history
         String prompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
 
-        // Check if prompt might exceed max length (using conservative estimate)
-        while(historyMessages.size()> 0 && prompt.length() > AppConstants.getLLMMaxInputLength(this)){
-            // inefficient but a quick fix. should provide latest window in conversation Manager
-            Log.w(TAG, "Prompt too long with history, removing history to fit token limit");
-            historyMessages.remove(0);
-            // Format prompt with empty history list to get just system prompt + user message
-            prompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
+        // Check if prompt might exceed max token limit using TokenEstimator
+        int maxTokens = AppConstants.getLLMMaxInputLength(this);
+        
+        while(historyMessages.size() > 0) {
+            int estimatedTokens = TokenEstimator.estimateTokenCount(prompt);
+            
+            if (estimatedTokens > maxTokens && historyMessages.size() > 0) {
+                Log.w(TAG, "Prompt too long with history (tokens: " + estimatedTokens + 
+                       " > max: " + maxTokens + "), removing oldest history message");
+                historyMessages.remove(0);
+                
+                prompt = PromptManager.formatCompletePrompt(userMessage, historyMessages, ModelType.BREEZE_2);
+            } else {
+                Log.d(TAG, "Final prompt token estimate: " + estimatedTokens + " (max: " + maxTokens + ")");
+                break;
+            }
         }
 
+        // Return the potentially history-truncated prompt
         return prompt;
     }
 
