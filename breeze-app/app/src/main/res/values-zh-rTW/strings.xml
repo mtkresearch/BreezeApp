@@ -56,6 +56,9 @@
     <string name="warning_model_missing"><![CDATA[⚠️ 警告：所需模型文件（%1$s 或 %2$s）缺失。<br/>]]></string>
     <string name="warning_storage"><![CDATA[⚠️ 警告：存儲空間不足（%1$sGB &lt; 需求 %2$sGB）。<br/>]]></string>
     <string name="warning_footer"><![CDATA[應用程式可能無法正常運行。<br/>]]></string>
+    <string name="warning">警告</string>
+    <string name="prompt_too_long_warning">輸入訊息過長，請縮短其內容。</string>
+
 
     <!-- 狀態摘要 -->
     <string name="status_summary" translatable="false">
