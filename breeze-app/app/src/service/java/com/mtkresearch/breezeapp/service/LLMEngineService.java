@@ -12,8 +12,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import androidx.preference.PreferenceManager;
 
-import org.pytorch.executorch.LlamaModule;
-import org.pytorch.executorch.LlamaCallback;
+import org.pytorch.executorch.extension.llm.LlmModule;
+import org.pytorch.executorch.extension.llm.LlmCallback;
 import com.executorch.ModelUtils;
 import com.executorch.PromptFormat;
 import com.executorch.ModelType;
@@ -50,8 +50,8 @@ public class LLMEngineService extends BaseEngineService {
     private final StringBuilder currentStreamingResponse = new StringBuilder();
     private ExecutorService executor;
     
-    // CPU backend (LlamaModule)
-    private LlamaModule mModule = null;
+    // CPU backend (LlmModule)
+    private LlmModule mModule = null;
     private String model_entry_path = null;  // Set from intent
     private String modelBasePath = null;  // Set from intent
     
@@ -333,14 +333,14 @@ public class LLMEngineService extends BaseEngineService {
                 // 確保先完全釋放舊的資源
                 if (mModule != null) {
                     try {
-                        final LlamaModule moduleToRelease = mModule;
+                        final LlmModule moduleToRelease = mModule;
                         mModule = null; // 先置空，避免其他線程訪問
                         moduleToRelease.stop(); // 如果有生成進行中，先停止
                         Thread.sleep(100); // 短暫等待確保停止生效
                         moduleToRelease.resetNative();
-                        Log.d(TAG, "Release legacy LlamaModule ");
+                        Log.d(TAG, "Release legacy LlmModule ");
                     } catch (Exception e) {
-                        Log.e(TAG, "Error on releasing legacy LlamaModule", e);
+                        Log.e(TAG, "Error on releasing legacy LlmModule", e);
                     }
                     System.gc(); // 主動請求垃圾回收
                     Thread.sleep(200); // 給GC一些時間
@@ -356,27 +356,27 @@ public class LLMEngineService extends BaseEngineService {
                 // Record loading time
                 long runStartTime = System.currentTimeMillis();
                 
-                // Initialize LlamaModule with model parameters
+                // Initialize LlmModule with model parameters
                 try {
                     // Read temperature directly from SharedPreferences
                     LLMInferenceParams llmInferenceParams = LLMInferenceParams.fromSharedPreferences(this);
                     float temperature = llmInferenceParams.getTemperature();
                     
-                    Log.d(TAG, "Init CPU LlamaModule with temperature: " + temperature);
-                    mModule = new LlamaModule(
+                    Log.d(TAG, "Init CPU LlmModule with temperature: " + temperature);
+                    mModule = new LlmModule(
                         ModelUtils.getModelCategory(ModelType.BREEZE_2),
                         model_entry_path,
                         Paths.get(modelBasePath, "tokenizer.bin").toString(),
                         temperature
                     );
                 } catch (Exception e) {
-                    Log.e(TAG, "Error constructing LlamaModule instance", e);
+                    Log.e(TAG, "Error constructing LlmModule instance", e);
                     isModuleInitializing = false;
                     return false;
                 }
                 
                 // timeout mechanism
-                final LlamaModule currentModule = mModule;
+                final LlmModule currentModule = mModule;
                 Future<Integer> loadFuture = Executors.newSingleThreadExecutor().submit(() -> {
                     return currentModule.load();
                 });
@@ -493,7 +493,7 @@ public class LLMEngineService extends BaseEngineService {
 
                         executor.execute(() -> {
                             try {
-                                mModule.generate(prompt, seqLen, new LlamaCallback() {
+                                mModule.generate(prompt, seqLen, new LlmCallback() {
                                     @Override
                                     public void onResult(String token) {
                                         if (!isGenerating.get()) {
@@ -658,22 +658,22 @@ public class LLMEngineService extends BaseEngineService {
                 if (mModule != null) {
                     try {
                         // 先確保停止生成
-                        final LlamaModule moduleToRelease = mModule;
+                        final LlmModule moduleToRelease = mModule;
                         mModule = null; // 先置空，避免其他線程訪問
 
-                        // 停止並釋放 LlamaModule
+                        // 停止並釋放 LlmModule
                         try {
                             moduleToRelease.stop();
                             Thread.sleep(100); // 確保停止完成
                         } catch (Exception e) {
-                            Log.w(TAG, "Error on stop LlamaModule", e);
+                            Log.w(TAG, "Error on stop LlmModule", e);
                         }
 
                         // 釋放本地資源
                         try {
                             moduleToRelease.resetNative();
                         } catch (Exception e) {
-                            Log.e(TAG, "Error on reset LlamaModule", e);
+                            Log.e(TAG, "Error on reset LlmModule", e);
                         }
 
                         Log.d(TAG, "Released CPU resources");
@@ -757,7 +757,7 @@ public void onDestroy() {
         Log.d(TAG, "onDestroy 完成，耗時: " + (System.currentTimeMillis() - startTime) + "ms");
     }
     
-    private void releaseLlamaModule(LlamaModule module) {
+    private void releaseLlmModule(LlmModule module) {
         if (module == null) return;
         
         try {
@@ -770,7 +770,7 @@ public void onDestroy() {
                     // 釋放本地資源
                     module.resetNative();
                 } catch (Exception e) {
-                    Log.e(TAG, "釋放 LlamaModule 時出錯", e);
+                    Log.e(TAG, "釋放 LlmModule 時出錯", e);
                 }
             });
             
@@ -778,11 +778,11 @@ public void onDestroy() {
             try {
                 future.get(1000, TimeUnit.MILLISECONDS);
             } catch (TimeoutException e) {
-                Log.w(TAG, "釋放 LlamaModule 超時");
+                Log.w(TAG, "釋放 LlmModule 超時");
                 future.cancel(true);
             }
         } catch (Exception e) {
-            Log.e(TAG, "管理 LlamaModule 釋放過程時出錯", e);
+            Log.e(TAG, "管理 LlmModule 釋放過程時出錯", e);
         }
     }    
     public String getCurrentBackend() {
