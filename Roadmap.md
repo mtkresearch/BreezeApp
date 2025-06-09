@@ -1,3 +1,8 @@
+News update on 2025-06-09
+==========================
+MTK Research is releasing a new, streamlined [API Specification][https://github.com/mtkresearch/BreezeApp/new/main/docs/architecture/EdgeAI], which will include planned support for [AIDL][https://developer.android.com/develop/background-work/services/aidl?hl=en] to improve developer convenience. This interface will be formally managed to ensure the stability and growth of our developer ecosystem. 
+
+
 Image QA
 ===========
 
