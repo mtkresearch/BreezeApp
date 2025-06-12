@@ -420,7 +420,7 @@ public class MainActivity extends AppCompatActivity {
             intent.putExtra("model_path", LLAMA_MODEL_PATH + selectedLlmModel);
             // Add backend preference and temperature for LLM service
             String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, "cpu");
-            float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
+            float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE_VALUE, 0.0f);
             intent.putExtra("preferred_backend", savedBackend);
             intent.putExtra("temperature", savedTemp);
             Log.d(TAG, "Starting LLM service with backend: " + savedBackend + ", temperature: " + savedTemp);
@@ -704,7 +704,7 @@ public class MainActivity extends AppCompatActivity {
         backendSpinner.setAdapter(backendAdapter);
 
         // Load saved settings
-        float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE, 0.0f);
+        float savedTemp = settings.getFloat(AppConstants.KEY_TEMPERATURE_VALUE, 0.0f);
         String savedBackend = settings.getString(AppConstants.KEY_PREFERRED_BACKEND, AppConstants.DEFAULT_BACKEND);
         
         temperatureInput.setText(String.valueOf(savedTemp));
@@ -729,7 +729,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     float temp = s.length() > 0 ? Float.parseFloat(s.toString()) : 0.0f;
                     if (temp >= 0.0f && temp <= 2.0f) {
-                        settings.edit().putFloat(AppConstants.KEY_TEMPERATURE, temp).apply();
+                        settings.edit().putFloat(AppConstants.KEY_TEMPERATURE_VALUE, temp).apply();
                     }
                 } catch (NumberFormatException e) {
                     Log.w(TAG, "Invalid temperature value");
