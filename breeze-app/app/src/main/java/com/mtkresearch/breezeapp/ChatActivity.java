@@ -751,6 +751,17 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     }
 
     private void handleTextMessage(String message) {
+        if (llmService == null || !llmService.isReady()) {
+            // Show dialog and return early
+            new AlertDialog.Builder(this)
+                .setTitle(R.string.llm_not_ready_title)
+                .setMessage(R.string.llm_not_ready_message)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+            // Do NOT clear the input, just return
+            return;
+        }
+
         final String originalUserMessage = message;
         if (message.trim().isEmpty()) return;
         
@@ -778,140 +789,138 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         chatAdapter.addMessage(aiMessage);
         
         // Generate AI response with formatted prompt
-        if (llmService != null) {
-            String formattedPrompt = getFormattedPrompt(originalUserMessage);
+        String formattedPrompt = getFormattedPrompt(originalUserMessage);
 
-            int maxTokens = AppConstants.getLLMMaxInputLength(this);
-            int estimatedTokens = TokenEstimator.estimateTokenCount(formattedPrompt);
+        int maxTokens = AppConstants.getLLMMaxInputLength(this);
+        int estimatedTokens = TokenEstimator.estimateTokenCount(formattedPrompt);
 
-            if (estimatedTokens > maxTokens) {
-                Log.w(TAG, "Formatted prompt is too long (tokens: " + estimatedTokens + 
-                       " > max: " + maxTokens + "), likely due to user message itself.");
+        if (estimatedTokens > maxTokens) {
+            Log.w(TAG, "Formatted prompt is too long (tokens: " + estimatedTokens + 
+                    " > max: " + maxTokens + "), likely due to user message itself.");
+            
+            // User message itself (after formatting) is too long
+            runOnUiThread(() -> {
+                String warningMessage = getString(R.string.prompt_too_long_warning);
                 
-                // User message itself (after formatting) is too long
-                runOnUiThread(() -> {
-                    String warningMessage = getString(R.string.prompt_too_long_warning);
-                    
-                    new AlertDialog.Builder(ChatActivity.this)
-                        .setTitle(R.string.warning)
-                        .setMessage(warningMessage)
-                        .setPositiveButton(android.R.string.ok, (dialog, which) -> {
-                            if (binding.expandedInput.getVisibility() == View.VISIBLE) {
-                                binding.messageInputExpanded.setText(originalUserMessage);
-                                binding.messageInputExpanded.requestFocus();
-                                binding.messageInputExpanded.setSelection(originalUserMessage.length());
-                            } else {
-                                binding.messageInput.setText(originalUserMessage);
-                                binding.messageInput.requestFocus();
-                                binding.messageInput.setSelection(originalUserMessage.length());
-                            }
-                            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                            View currentFocusView = getCurrentFocus();
-                            if (currentFocusView != null) {
-                                imm.showSoftInput(currentFocusView, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
-                            }
-                        })
-                        .setCancelable(false)
-                        .show();
-                });
-
-                // Remove the thinking bubble and the user message that was added optimistically
-                chatAdapter.removeLastMessage(); // Removes AI thinking bubble
-                chatAdapter.removeLastMessage(); // Removes user message
-                conversationManager.removeLastMessage(); // Removes user message from conversation history
-                updateWatermarkVisibility(); // Show watermark again if no messages are left
-                return; // Stop further processing
-            }
-            
-            // Set UI to generation state BEFORE starting generation
-            setSendButtonsAsStop(true);
-            
-            hasReceivedResponse = false;  // Reset at start of generation
-            LLMInferenceParams llmInferenceParams = LLMInferenceParams.fromSharedPreferences(this);
-            llmService.generateStreamingResponse(formattedPrompt, llmInferenceParams, new LLMEngineService.StreamingResponseCallback() {
-                private final StringBuilder currentResponse = new StringBuilder();
-                private boolean isGenerating = true;
-
-                @Override
-                public void onToken(String token) {
-                    if (!isGenerating || token == null || token.isEmpty()) {
-                        return;
-                    }
-
-                    if (!hasReceivedResponse) {
-                        hasReceivedResponse = true;
-                        conversationManager.addMessage(aiMessage);
-                    }
-
-                runOnUiThread(() -> {
-                        currentResponse.append(token);
-                        aiMessage.updateText(currentResponse.toString());
-                        // Keep message as not completed while still generating
-                        aiMessage.setCompleted(false);
-                        chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    });
-                }
-            }).thenAccept(finalResponse -> {
-                runOnUiThread(() -> {
-                    if (finalResponse != null) {
-                        // Use the response text directly without JSON parsing
-                        String finalResponseText = finalResponse.trim();
-                        
-                        if (finalResponseText.isEmpty()) {
-                            finalResponseText = getString(R.string.LLM_empty_response_error);
-                            aiMessage.setError(true);
-                        } else if (finalResponseText.equals(getString(R.string.LLM_default_error))) {
-                            aiMessage.setError(true);
-                        }
-
-                        if (!finalResponseText.isEmpty()) {
-                            aiMessage.updateText(finalResponseText);
-                            promptId++;
+                new AlertDialog.Builder(ChatActivity.this)
+                    .setTitle(R.string.warning)
+                    .setMessage(warningMessage)
+                    .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                        if (binding.expandedInput.getVisibility() == View.VISIBLE) {
+                            binding.messageInputExpanded.setText(originalUserMessage);
+                            binding.messageInputExpanded.requestFocus();
+                            binding.messageInputExpanded.setSelection(originalUserMessage.length());
                         } else {
-                            aiMessage.updateText(getString(R.string.LLM_default_error));
-                            aiMessage.setError(true);
+                            binding.messageInput.setText(originalUserMessage);
+                            binding.messageInput.requestFocus();
+                            binding.messageInput.setSelection(originalUserMessage.length());
                         }
+                        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                        View currentFocusView = getCurrentFocus();
+                        if (currentFocusView != null) {
+                            imm.showSoftInput(currentFocusView, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                        }
+                    })
+                    .setCancelable(false)
+                    .show();
+            });
+
+            // Remove the thinking bubble and the user message that was added optimistically
+            chatAdapter.removeLastMessage(); // Removes AI thinking bubble
+            chatAdapter.removeLastMessage(); // Removes user message
+            conversationManager.removeLastMessage(); // Removes user message from conversation history
+            updateWatermarkVisibility(); // Show watermark again if no messages are left
+            return; // Stop further processing
+        }
+        
+        // Set UI to generation state BEFORE starting generation
+        setSendButtonsAsStop(true);
+        
+        hasReceivedResponse = false;  // Reset at start of generation
+        LLMInferenceParams llmInferenceParams = LLMInferenceParams.fromSharedPreferences(this);
+        llmService.generateStreamingResponse(formattedPrompt, llmInferenceParams, new LLMEngineService.StreamingResponseCallback() {
+            private final StringBuilder currentResponse = new StringBuilder();
+            private boolean isGenerating = true;
+
+            @Override
+            public void onToken(String token) {
+                if (!isGenerating || token == null || token.isEmpty()) {
+                    return;
+                }
+
+                if (!hasReceivedResponse) {
+                    hasReceivedResponse = true;
+                    conversationManager.addMessage(aiMessage);
+                }
+
+            runOnUiThread(() -> {
+                    currentResponse.append(token);
+                    aiMessage.updateText(currentResponse.toString());
+                    // Keep message as not completed while still generating
+                    aiMessage.setCompleted(false);
+                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                });
+            }
+        }).thenAccept(finalResponse -> {
+            runOnUiThread(() -> {
+                if (finalResponse != null) {
+                    // Use the response text directly without JSON parsing
+                    String finalResponseText = finalResponse.trim();
+                    
+                    if (finalResponseText.isEmpty()) {
+                        finalResponseText = getString(R.string.LLM_empty_response_error);
+                        aiMessage.setError(true);
+                    } else if (finalResponseText.equals(getString(R.string.LLM_default_error))) {
+                        aiMessage.setError(true);
+                    }
+
+                    if (!finalResponseText.isEmpty()) {
+                        aiMessage.updateText(finalResponseText);
+                        promptId++;
                     } else {
                         aiMessage.updateText(getString(R.string.LLM_default_error));
                         aiMessage.setError(true);
                     }
-                    
-                    // Set message as completed only after generation is fully finished
-                    aiMessage.setCompleted(true);
-                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    
-                    // Only scroll to the latest message when the response is complete
-                    UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
-                    
-                    // Re-enable input and restore send button AFTER response is complete
-                    setSendButtonsAsStop(false);
-                    
-                    // Ensure generation is fully stopped to clean up resources
-                    if (llmService != null) {
-                        llmService.stopGeneration();
-                    }
-                    
-                    // Save the chat with the completed message
-                    saveCurrentChat();
-                    refreshHistoryList();
-                });
-            }).exceptionally(throwable -> {
-                Log.e(TAG, "Error generating response", throwable);
-                runOnUiThread(() -> {
-                    if (!aiMessage.hasContent()) {
-                        aiMessage.updateText("Error: Unable to generate response. Please try again later.");
-                        aiMessage.setError(true);
-                    }
-                    // Set message as completed even if there was an error or if generation was stopped
-                    aiMessage.setCompleted(true);
-                    chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
-                    Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_generating_response), Toast.LENGTH_SHORT).show();
-                    
-                    setSendButtonsAsStop(false);
-                });
-                return null;
+                } else {
+                    aiMessage.updateText(getString(R.string.LLM_default_error));
+                    aiMessage.setError(true);
+                }
+                
+                // Set message as completed only after generation is fully finished
+                aiMessage.setCompleted(true);
+                chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                
+                // Only scroll to the latest message when the response is complete
+                UiUtils.scrollToLatestMessage(binding.recyclerView, chatAdapter.getItemCount(), true);
+                
+                // Re-enable input and restore send button AFTER response is complete
+                setSendButtonsAsStop(false);
+                
+                // Ensure generation is fully stopped to clean up resources
+                if (llmService != null) {
+                    llmService.stopGeneration();
+                }
+                
+                // Save the chat with the completed message
+                saveCurrentChat();
+                refreshHistoryList();
             });
-        }
+        }).exceptionally(throwable -> {
+            Log.e(TAG, "Error generating response", throwable);
+            runOnUiThread(() -> {
+                if (!aiMessage.hasContent()) {
+                    aiMessage.updateText("Error: Unable to generate response. Please try again later.");
+                    aiMessage.setError(true);
+                }
+                // Set message as completed even if there was an error or if generation was stopped
+                aiMessage.setCompleted(true);
+                chatAdapter.notifyItemChanged(chatAdapter.getItemCount() - 1);
+                Toast.makeText(ChatActivity.this, ChatActivity.this.getString(R.string.error_generating_response), Toast.LENGTH_SHORT).show();
+                
+                setSendButtonsAsStop(false);
+            });
+            return null;
+        });
     }
 
     private void setSendButtonsAsStop(boolean isStop) {

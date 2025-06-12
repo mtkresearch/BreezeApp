@@ -411,10 +411,11 @@ public class LLMEngineService extends BaseEngineService {
 
     public CompletableFuture<String> generateStreamingResponse(String prompt, LLMInferenceParams params, StreamingResponseCallback callback) {
         if (!isInitialized) {
+            String errorMsg = context.getString(R.string.LLM_default_error);
             if (callback != null) {
-                callback.onToken(String.valueOf(R.string.LLM_default_error));
+                callback.onToken(errorMsg);
             }
-            return CompletableFuture.completedFuture(String.valueOf(R.string.LLM_default_error));
+            return CompletableFuture.completedFuture(errorMsg);
         }
 
         hasSeenAssistantMarker = false;
