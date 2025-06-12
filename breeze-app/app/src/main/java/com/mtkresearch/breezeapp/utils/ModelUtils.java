@@ -44,51 +44,7 @@ public class ModelUtils {
             return "Unknown";
         }
     }
-
-    /**
-     * Gets a formatted display string including model name and backend type.
-     * @param modelPath Full path to the model file
-     * @param backend Backend type string
-     * @return Formatted string with model name and backend type
-     */
-    public static String getModelDisplayString(String modelPath, String backend) {
-        return getModelNameFromPath(modelPath);
-    }
-
-    /**
-     * Gets the model type based on the model file name.
-     * @param modelPath Full path to the model file
-     * @return ModelType enum value
-     */
-    public static com.executorch.ModelType getModelType(String modelPath) {
-        String modelName = getModelNameFromPath(modelPath).toLowerCase();
-        // Both Breeze and Llama models will use LLAMA_3_2 since BREEZE_2 is not available
-        if (modelName.contains("llama")) {
-            return com.executorch.ModelType.LLAMA_3_2;
-        } else if (modelName.contains("breeze")) {
-            return com.executorch.ModelType.BREEZE_2;
-        }
-        return com.executorch.ModelType.BREEZE_2; // Default to LLAMA_3_2
-    }
-
-    /**
-     * Gets a user-friendly display name for the model.
-     * @param modelPath Full path to the model file or config file
-     * @return User-friendly model name
-     */
-    public static String getModelDisplayName(String modelPath) {
-        if (modelPath == null) return "Unknown";
-        
-        String lowerPath = modelPath.toLowerCase();
-        // Check for breeze in either model file name or config file path
-        if (lowerPath.contains("llama")) {
-            return "Llama-3.2-3B-Instruct";
-        } else if (lowerPath.contains("breeze")) {
-            return "Breeze-2-3B";
-        }
-        return getModelNameFromPath(modelPath);
-    }
-
+    
     /**
      * Converts backend identifier to display name.
      * @param backend Backend identifier string

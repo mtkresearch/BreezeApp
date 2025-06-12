@@ -88,13 +88,8 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public String getModelName() {
-        if (model_entry_path == null) {
-            if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                return "Llama-Breeze2-3B";  // Default to Breeze2 for MTK backend
-            }
-            return "Unknown";
-        }
-        return com.mtkresearch.breezeapp.utils.ModelUtils.getModelDisplayName(model_entry_path);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        return prefs.getString("llm_model_id", "null");
     }
 
     public interface StreamingResponseCallback {
