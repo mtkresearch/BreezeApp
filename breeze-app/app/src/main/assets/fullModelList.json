@@ -1,18 +1,18 @@
 {
   "models": [
+   {
+     "id": "Llama3_2-3b-4096-250606-cpu",
+     "runner": "executorch",
+     "backend": "cpu",
+     "ramGB": 7,
+     "model_entry_path": "llama3_2-4096.pte",
+     "urls": [
+       "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-4096.pte?download=true",
+       "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/tokenizer.bin?download=true"
+     ]
+   },
     {
-      "id": "llama3_2-3b-4096-250606-cpu",
-      "runner": "executorch",
-      "backend": "cpu",
-      "ramGB": 7,
-      "model_entry_path": "llama3_2-4096.pte",
-      "urls": [
-        "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-4096.pte?download=true",
-        "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/tokenizer.bin?download=true"
-      ]
-    },
-    {
-      "id": "llama3_2-3b-4096-spin-250605-cpu",
+      "id": "Llama3_2-3b-4096-spin-250605-cpu",
       "runner": "executorch",
       "backend": "cpu",
       "ramGB": 3,
