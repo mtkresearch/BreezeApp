@@ -344,6 +344,8 @@
     <string name="LLM_empty_response_error">很抱歉，無法生成適當的回應。請嘗試重新表述您的問題。</string>
     <string name="LLM_input_too_long_error">很抱歉，您的輸入太長。請嘗試將其分成較小的部分。</string>
     <string name="LLM_invalid_token_error">### 因ExecuTorch已知問題，導致語言模型無法針對上述內容進行回應 ###</string>
+    <string name="llm_not_ready_title">模型未準備就緒</string>
+    <string name="llm_not_ready_message">語言模型仍在初始化中。請稍候再試。</string>
     <string name="error_binding_services">服務綁定失敗</string>
 
     <!-- New error messages for ChatActivity -->
