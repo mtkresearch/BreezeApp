@@ -43,12 +43,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        
-        <activity
-            android:name="com.mtkresearch.breezeapp.MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait" />
 
         <activity
             android:name="com.mtkresearch.breezeapp.ModelDownloadActivity"

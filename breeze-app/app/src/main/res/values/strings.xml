@@ -131,15 +131,6 @@
     <string name="error_showing_image_preview">Error showing image preview</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## MainActivity.java -->
-    <string name="failed_to_initialize">Failed to initialize: </string>
-    <string name="model_directory_not_found">Model directory not found</string>
-    <string name="no_llm_models_found">No LLM models found. Please ensure either %1$s or %2$s model is available."</string>
-    <string name="please_select_a_model_first">Please select a model first</string>
-    <string name="waiting_for_services_to_initialize">Waiting for services to initialize</string>
-    <string name="speech_recognition_requires_audio_permission">Speech recognition requires audio permission</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="tts_processing_message">Converting text to speech...</string>
 

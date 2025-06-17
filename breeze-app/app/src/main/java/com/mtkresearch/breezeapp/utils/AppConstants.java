@@ -406,7 +406,6 @@ public class AppConstants {
 
     // Activity Tags
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
-    public static final String MAIN_ACTIVITY_TAG = "MainActivity";
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {

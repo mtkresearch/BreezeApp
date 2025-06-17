@@ -126,9 +126,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private DrawerLayout drawerLayout;
 
     private AlertDialog ttsProcessDialog;
-
-    private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = AppConstants.CONVERSATION_HISTORY_LOOKBACK;
-
     // Add promptId field at the top of the class
     private int promptId = 0;
 
@@ -262,7 +259,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeChat();
         setupButtons();
         setupInputHandling();
-        setupTitleTapCounter();
         
         // Initialize feedback dialog after views are set up
         setupFeedbackDialog();
@@ -1155,13 +1151,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         });
     }
 
-    private void navigateToHome() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-        finish();
-    }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -1847,29 +1836,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Return the potentially history-truncated prompt
         return prompt;
-    }
-
-    private void setupTitleTapCounter() {
-        binding.modelNameText.setOnClickListener(v -> {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastTapTime > TAP_TIMEOUT_MS) {
-                titleTapCount = 0;
-            }
-            lastTapTime = currentTime;
-            
-            titleTapCount++;
-            if (titleTapCount == TAPS_TO_SHOW_MAIN) {
-                titleTapCount = 0;
-                // Launch MainActivity
-                Intent intent = new Intent(this, MainActivity.class);
-                startActivity(intent);
-            } else if (titleTapCount >= TAPS_TO_SHOW_MAIN - 2) {
-                // Show feedback when close to activation
-                int remaining = TAPS_TO_SHOW_MAIN - titleTapCount;
-                String message = this.getString(R.string.more_taps, remaining, (remaining == 1 ? "" : "s"));
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     private void showMessageOptions(ChatMessage message) {
