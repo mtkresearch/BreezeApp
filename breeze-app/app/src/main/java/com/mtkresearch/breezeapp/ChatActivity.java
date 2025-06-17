@@ -90,7 +90,7 @@ import androidx.preference.PreferenceManager;
 import com.mtkresearch.breezeapp.utils.TokenEstimator;
 
 public class ChatActivity extends AppCompatActivity implements ChatMessageAdapter.OnSpeakerClickListener {
-    private static final String TAG = AppConstants.CHAT_ACTIVITY_TAG;
+    private static final String TAG = "ChatActivity";
 
     // Request codes
     private static final int PERMISSION_REQUEST_CODE = AppConstants.PERMISSION_REQUEST_CODE;
@@ -114,7 +114,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
     // Adapters
     private ChatMessageAdapter chatAdapter;
-    private AudioListAdapter audioListAdapter;
     private ChatHistoryAdapter historyAdapter;
 
     // Services
@@ -129,35 +128,23 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     // Add promptId field at the top of the class
     private int promptId = 0;
 
-    private int titleTapCount = 0;
-    private static final int TAPS_TO_SHOW_MAIN = AppConstants.TAPS_TO_SHOW_MAIN;
-    private static final long TAP_TIMEOUT_MS = AppConstants.TAP_TIMEOUT_MS;
-    private long lastTapTime = 0;
-
     // Add these fields at the top of the class with other fields
     private boolean llmServiceReady = false;
     private boolean vlmServiceReady = false;
     private boolean asrServiceReady = false;
     private boolean ttsServiceReady = false;
 
-    // Add a flag to track MTK support status
-    private static boolean mtkBackendChecked = false;
-    private static boolean mtkBackendSupported = true;
 
     // Add new fields for initialization state
     private boolean isInitializing = false;
     private boolean isFirstLaunch = true;
     private final Object initLock = new Object();
-    private static final int INIT_DELAY_MS = AppConstants.INIT_DELAY_MS;
-
     private boolean hasReceivedResponse = false;  // Add class field
 
     private int ttsAnimatingPosition = -1;
 
     // Add dialog members
     private android.app.Dialog feedbackDialog;
-    private android.os.Handler feedbackHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private Runnable feedbackDismissRunnable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

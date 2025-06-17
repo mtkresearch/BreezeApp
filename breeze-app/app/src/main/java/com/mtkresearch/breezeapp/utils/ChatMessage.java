@@ -9,7 +9,6 @@ import com.mtkresearch.breezeapp.R;
 import java.io.Serializable;
 
 public class ChatMessage implements Serializable {
-    private static final long serialVersionUID = 1L;
     private String text;
     private final boolean isUser;
     private transient Uri imageUri; // Mark as transient since Uri is not serializable
@@ -36,12 +35,6 @@ public class ChatMessage implements Serializable {
 
     public void updateText(@Nullable String newText) {
         this.text = newText != null ? newText : "";
-    }
-
-    public void appendText(@Nullable String newText) {
-        if (newText != null) {
-            this.text = getText() + newText;
-        }
     }
 
     public boolean hasText() {

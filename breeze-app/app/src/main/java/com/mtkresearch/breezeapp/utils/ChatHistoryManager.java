@@ -95,8 +95,4 @@ public class ChatHistoryManager {
         currentActiveHistory = null;
     }
 
-    public void updateHistory(ChatHistory history, List<ChatMessage> messages) {
-        history.updateMessages(messages);
-        saveHistory(history);
-    }
 } 

@@ -12,8 +12,7 @@ import java.util.ArrayList;
  * and conversation context handling.
  */
 public class PromptManager {
-    private static final double TOKENS_PER_CHAR_ESTIMATE = 0.4;  // Rough estimate of tokens per character
-    
+
     private static Context appContext;
     
     public static void initialize(Context context) {
@@ -22,11 +21,6 @@ public class PromptManager {
 
     private static int getHistoryLookback() {
         return AppConstants.CONVERSATION_HISTORY_LOOKBACK;
-    }
-
-    private static int getMaxSequenceLength() {
-        if (appContext == null) return AppConstants.getLLMMaxSeqLength(null);
-        return AppConstants.getLLMMaxSeqLength(appContext);
     }
 
     /**
@@ -84,19 +78,5 @@ public class PromptManager {
         }
         
         return history.toString();
-    }
-    
-    /**
-     * Gets the stop token for the specified model type.
-     */
-    public static String getStopToken(ModelType modelType) {
-        return PromptFormat.getStopToken(modelType);
-    }
-    
-    /**
-     * Gets the default lookback window size for conversation history.
-     */
-    public static int getDefaultHistoryLookback() {
-        return getHistoryLookback();
     }
 } 
