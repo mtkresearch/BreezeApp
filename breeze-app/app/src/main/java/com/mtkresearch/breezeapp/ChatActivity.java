@@ -126,9 +126,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
     private DrawerLayout drawerLayout;
 
     private AlertDialog ttsProcessDialog;
-
-    private static final int CONVERSATION_HISTORY_MESSAGE_LOOKBACK = AppConstants.CONVERSATION_HISTORY_LOOKBACK;
-
     // Add promptId field at the top of the class
     private int promptId = 0;
 
@@ -262,7 +259,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         initializeChat();
         setupButtons();
         setupInputHandling();
-        setupTitleTapCounter();
         
         // Initialize feedback dialog after views are set up
         setupFeedbackDialog();
@@ -372,21 +368,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         // Set initial send icon
         binding.sendButton.setBackgroundResource(R.drawable.bg_send_button);
         binding.sendButtonExpanded.setBackgroundResource(R.drawable.bg_send_button);
-        
-        // Always use send icon when AUDIO_CHAT_ENABLED is false
-        if (!AppConstants.AUDIO_CHAT_ENABLED) {
-            binding.sendButton.setImageResource(R.drawable.ic_send);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
-            // Hide voice buttons when audio chat is disabled
-            binding.voiceButton.setVisibility(View.GONE);
-            binding.voiceButtonExpanded.setVisibility(View.GONE);
-        } else {
-            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
-            // Show voice buttons when audio chat is enabled
-            binding.voiceButton.setVisibility(View.VISIBLE);
-            binding.voiceButtonExpanded.setVisibility(View.VISIBLE);
-        }
+
+        binding.sendButton.setImageResource(R.drawable.ic_send);
+        binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
 
         // Initial button state (only if uiHandler is initialized)
         if (uiHandler != null) {
@@ -416,7 +400,7 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         boolean hasText = !uiHandler.getCurrentInputText().trim().isEmpty();
         boolean hasImage = uiHandler.getPendingImageUri() != null;
-        boolean shouldEnable = hasText || hasImage || AppConstants.AUDIO_CHAT_ENABLED;
+        boolean shouldEnable = hasText || hasImage;
 
         // Update button state
         binding.sendButton.setEnabled(shouldEnable);
@@ -428,12 +412,9 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
         binding.sendButtonExpanded.setAlpha(alpha);
 
         // Update icon based on content
-        if (!AppConstants.AUDIO_CHAT_ENABLED || hasText || hasImage) {
+        if (hasText || hasImage) {
             binding.sendButton.setImageResource(R.drawable.ic_send);
             binding.sendButtonExpanded.setImageResource(R.drawable.ic_send);
-        } else {
-            binding.sendButton.setImageResource(R.drawable.ic_audio_wave);
-            binding.sendButtonExpanded.setImageResource(R.drawable.ic_audio_wave);
         }
     }
 
@@ -741,12 +722,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 handleTextMessage(message);
             }
             uiHandler.clearInput();
-        } else if (AppConstants.AUDIO_CHAT_ENABLED && AppConstants.ASR_ENABLED) {
-            // Only start audio chat if both AUDIO_CHAT_ENABLED and ASR_ENABLED are true
-            startAudioChat();
-        } else if (AppConstants.AUDIO_CHAT_ENABLED) {
-            // Show a message if audio chat is enabled but ASR is disabled
-            Toast.makeText(this, this.getString( R.string.speech_recognition_is_disabled), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1174,18 +1149,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
                 }
             }
         });
-    }
-
-    private void navigateToHome() {
-        Intent intent = new Intent(this, MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-        finish();
-    }
-
-    private void startAudioChat() {
-        Intent intent = new Intent(this, AudioChatActivity.class);
-        startActivity(intent);
     }
 
     @Override
@@ -1873,29 +1836,6 @@ public class ChatActivity extends AppCompatActivity implements ChatMessageAdapte
 
         // Return the potentially history-truncated prompt
         return prompt;
-    }
-
-    private void setupTitleTapCounter() {
-        binding.modelNameText.setOnClickListener(v -> {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastTapTime > TAP_TIMEOUT_MS) {
-                titleTapCount = 0;
-            }
-            lastTapTime = currentTime;
-            
-            titleTapCount++;
-            if (titleTapCount == TAPS_TO_SHOW_MAIN) {
-                titleTapCount = 0;
-                // Launch MainActivity
-                Intent intent = new Intent(this, MainActivity.class);
-                startActivity(intent);
-            } else if (titleTapCount >= TAPS_TO_SHOW_MAIN - 2) {
-                // Show feedback when close to activation
-                int remaining = TAPS_TO_SHOW_MAIN - titleTapCount;
-                String message = this.getString(R.string.more_taps, remaining, (remaining == 1 ? "" : "s"));
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
-            }
-        });
     }
 
     private void showMessageOptions(ChatMessage message) {

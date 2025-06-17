@@ -1,9 +1,9 @@
 package com.mtkresearch.breezeapp.utils;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import com.executorch.ModelType;
 import com.executorch.PromptFormat;
-import com.mtkresearch.breezeapp.MainActivity;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,14 +12,21 @@ import java.util.ArrayList;
  * and conversation context handling.
  */
 public class PromptManager {
-    public static final int DEFAULT_HISTORY_LOOKBACK = 20;
-    public static final int MAX_SEQUENCE_LENGTH = 2048;  // Maximum sequence length for the model
     private static final double TOKENS_PER_CHAR_ESTIMATE = 0.4;  // Rough estimate of tokens per character
     
     private static Context appContext;
     
     public static void initialize(Context context) {
         appContext = context.getApplicationContext();
+    }
+
+    private static int getHistoryLookback() {
+        return AppConstants.CONVERSATION_HISTORY_LOOKBACK;
+    }
+
+    private static int getMaxSequenceLength() {
+        if (appContext == null) return AppConstants.getLLMMaxSeqLength(null);
+        return AppConstants.getLLMMaxSeqLength(appContext);
     }
 
     /**
@@ -49,9 +56,7 @@ public class PromptManager {
             return "";
         }
         
-        int historyLookback = appContext != null ? 
-            MainActivity.getHistoryLookback(appContext) : 
-            DEFAULT_HISTORY_LOOKBACK;
+        int historyLookback = getHistoryLookback();
         
         // Get recent messages based on lookback window
         List<ChatMessage> recentMessages = new ArrayList<>();
@@ -92,8 +97,6 @@ public class PromptManager {
      * Gets the default lookback window size for conversation history.
      */
     public static int getDefaultHistoryLookback() {
-        return appContext != null ? 
-            MainActivity.getHistoryLookback(appContext) : 
-            DEFAULT_HISTORY_LOOKBACK;
+        return getHistoryLookback();
     }
 } 

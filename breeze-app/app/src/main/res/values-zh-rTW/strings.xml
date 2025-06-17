@@ -131,22 +131,6 @@
     <string name="error_showing_image_preview">顯示圖片預覽時發生錯誤</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## AudioChatActivity.java -->
-    <string name="camera_switched">已切換至 %1$s 相機</string>
-    <string name="camera_front">前置</string>
-    <string name="camera_back">後置</string>
-    <string name="menu_options">選單選項</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## MainActivity.java -->
-    <string name="failed_to_initialize" translatable="false">初始化失敗：</string>
-    <string name="model_directory_not_found" translatable="false">找不到模型目錄</string>
-    <string name="no_llm_models_found" translatable="false">未找到 LLM 模型。請確保 %1$s 或 %2$s 模型可用。</string>
-    <string name="please_select_a_model_first" translatable="false">請先選擇模型</string>
-    <string name="waiting_for_services_to_initialize" translatable="false">正在等待服務初始化</string>
-    <string name="speech_recognition_requires_audio_permission" translatable="false">語音識別需要音訊權限</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="error_initializing_services" translatable="false">初始化服務時發生錯誤：</string>
     <string name="initializing_model_with" translatable="false">正在初始化模型</string>
