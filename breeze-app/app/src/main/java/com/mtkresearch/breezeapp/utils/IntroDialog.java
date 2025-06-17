@@ -45,7 +45,6 @@ public class IntroDialog extends Dialog {
     private boolean hasRequiredStorage = true;
     private final List<IntroPage> introPages;
     private OnFinalButtonClickListener finalButtonClickListener;
-    private RadioGroup modelSizeRadioGroup; // Add RadioGroup for model selection
 
     public interface OnFinalButtonClickListener {
         void onFinalButtonClick();
@@ -242,122 +241,6 @@ public class IntroDialog extends Dialog {
         }
     }
 
-    /**
-     * Shows a dialog for selecting model size before downloading
-     */
-    private void showModelSelectionDialog(Context context) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        View dialogView = LayoutInflater.from(context).inflate(R.layout.model_selection_dialog, null);
-        
-        TextView titleText = dialogView.findViewById(R.id.modelSelectionTitle);
-        TextView descriptionText = dialogView.findViewById(R.id.modelSelectionDescription);
-        modelSizeRadioGroup = dialogView.findViewById(R.id.modelSizeRadioGroup);
-        RadioButton largeModelRadio = dialogView.findViewById(R.id.largeModelRadio);
-        RadioButton smallModelRadio = dialogView.findViewById(R.id.smallModelRadio);
-        Button continueButton = dialogView.findViewById(R.id.continueButton);
-        
-        // Set up the dialog content
-        titleText.setText(R.string.model_selection_title);
-        
-        // Check device RAM and set recommended option
-        boolean canUselargeModel = AppConstants.canUseLargeModel(context);
-        String recommendedModel = canUselargeModel ? 
-            context.getString(R.string.large_model_recommended) : 
-            context.getString(R.string.small_model_recommended);
-        
-        // Build description with quantization notice
-        StringBuilder description = new StringBuilder();
-        description.append(context.getString(R.string.model_selection_description, recommendedModel));
-        
-        // Get available RAM
-        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
-        ((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).getMemoryInfo(memoryInfo);
-        long totalRamGB = memoryInfo.totalMem / (1024 * 1024 * 1024);
-        
-        // Add quantization notice for devices with less RAM
-        if (totalRamGB < AppConstants.MIN_RAM_REQUIRED_GB || !canUselargeModel) {
-            description.append("\n\n").append(context.getString(R.string.quantization_notice));
-        }
-        
-        descriptionText.setText(description.toString());
-        
-        // Rename the options to show Breeze model variants
-        largeModelRadio.setText(context.getString(R.string.large_model_option, 
-            AppConstants.LARGE_LLM_MODEL_DISPLAY_NAME, 
-            formatStorageSize(2048L))); // ~2GB for high performance Breeze variant
-            
-        smallModelRadio.setText(context.getString(R.string.small_model_option, 
-            AppConstants.SMALL_LLM_MODEL_DISPLAY_NAME, 
-            formatStorageSize(1024L))); // ~1GB for small Breeze variant
-        
-        // Pre-select recommended model
-        if (canUselargeModel) {
-            largeModelRadio.setChecked(true);
-        } else {
-            smallModelRadio.setChecked(true);
-            // Disable large model option if device doesn't have enough RAM
-            largeModelRadio.setEnabled(false);
-            largeModelRadio.setAlpha(0.5f);
-        }
-        
-        // Build and show the dialog
-        AlertDialog dialog = builder.setView(dialogView).setCancelable(false).create();
-        
-        // Set up continue button
-        continueButton.setOnClickListener(v -> {
-            // Save the selected model size preference
-            saveModelSizePreference(context);
-            dialog.dismiss();
-            
-            // Show the model download dialog
-            Log.d("IntroDialog", "Showing LLM model download dialog");
-            ModelDownloadDialog downloadDialog = new ModelDownloadDialog(context, IntroDialog.this, ModelDownloadDialog.DownloadMode.LLM);
-            downloadDialog.setOnDismissListener(d -> {
-                checkSystemRequirements();
-                // Update the requirements description
-                ((IntroPagerAdapter) viewPager.getAdapter()).updateRequirementsPage(
-                    buildRequirementsDescription(context));
-                // Update button state and text
-                updateButtonState(context);
-                updateButtonText(context);
-            });
-            downloadDialog.show();
-        });
-        
-        dialog.show();
-    }
-    
-    /**
-     * Saves the user's model size preference to SharedPreferences
-     */
-    private void saveModelSizePreference(Context context) {
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        SharedPreferences.Editor editor = prefs.edit();
-        
-        int selectedId = modelSizeRadioGroup.getCheckedRadioButtonId();
-        if (selectedId == R.id.largeModelRadio) {
-            editor.putString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_LARGE);
-            Log.d("IntroDialog", "User selected high performance Breeze model");
-        } else {
-            editor.putString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_SMALL);
-            Log.d("IntroDialog", "User selected standard Breeze model");
-        }
-        
-        editor.apply();
-    }
-    
-    /**
-     * Formats storage size in a human-readable format
-     */
-    private String formatStorageSize(long sizeInMB) {
-        if (sizeInMB < 1024) {
-            return sizeInMB + " MB";
-        } else {
-            float sizeInGB = sizeInMB / 1024f;
-            return String.format(Locale.getDefault(), "%.1f GB", sizeInGB);
-        }
-    }
-
     private void updateButtonState(Context context) {
         boolean meetsRequirements = meetsAllRequirements();
         
@@ -402,22 +285,6 @@ public class IntroDialog extends Dialog {
             btnNext.setText(context.getString(R.string.next));
         }
     }
-
-    /*
-    private String buildFeaturesDescription() {
-        return "• Local LLM Chat:<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Completely offline chat with AI<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Supports both CPU and MTK NPU<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Privacy-first: all data stays on device<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Text-to-Speech support" +
-               "<br/><br/>" +
-               "• Future Features (Coming Soon):<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Vision understanding (VLM)<br/>" +
-               "&nbsp;&nbsp;&nbsp;- Voice input support (ASR)" +
-               "<br/><br/>" +
-               "Join us in building a privacy-focused AI experience!";
-    }
-     */
 
     String buildRequirementsDescription(Context context) {
         ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
@@ -552,26 +419,6 @@ public class IntroDialog extends Dialog {
             warningMessages.toString(), linebreak,
             context.getString(R.string.requirements_footer)
         );
-    }
-
-    /**
-     * Determines if the model selection dialog should be shown based on device capabilities
-     * and user preferences
-     */
-    private boolean shouldShowModelSelectionDialog(Context context) {
-        // Always show dialog to let users choose their preferred model size
-        // This ensures that even on high-RAM devices, users get to select their preference
-        return true;
-        
-        // Previous implementation:
-        // SharedPreferences prefs = context.getSharedPreferences(AppConstants.PREFS_NAME, Context.MODE_PRIVATE);
-        // String modelSizePreference = prefs.getString(AppConstants.KEY_MODEL_SIZE_PREFERENCE, AppConstants.MODEL_SIZE_AUTO);
-        // boolean hasEnoughRam = AppConstants.canUseLargeModel(context);
-        
-        // Show dialog if:
-        // 1. Device has enough RAM (give user the choice between different Breeze model sizes)
-        // 2. OR user hasn't made an explicit choice yet (preference is still AUTO)
-        // return hasEnoughRam || modelSizePreference.equals(AppConstants.MODEL_SIZE_AUTO);
     }
 
     private static class IntroPage {

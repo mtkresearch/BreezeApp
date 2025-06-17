@@ -19,33 +19,6 @@ public class ModelUtils {
     private static final String TAG = "ModelUtils";
 
     /**
-     * Extracts a clean model name from a model path.
-     * @param modelPath Full path to the model file
-     * @return Clean model name without path and extension, or "Unknown" if path is invalid
-     */
-    public static String getModelNameFromPath(String modelPath) {
-        if (modelPath == null) {
-            return "Unknown";
-        }
-        try {
-            // Extract filename from path
-            String[] parts = modelPath.split("/");
-            String filename = parts.length > 0 ? parts[parts.length - 1] : "Unknown";
-            
-            // Remove file extension
-            int lastDotIndex = filename.lastIndexOf('.');
-            if (lastDotIndex > 0) {
-                filename = filename.substring(0, lastDotIndex);
-            }
-            
-            return filename;
-        } catch (Exception e) {
-            Log.e(TAG, "Error extracting model name from path: " + modelPath, e);
-            return "Unknown";
-        }
-    }
-    
-    /**
      * Converts backend identifier to display name.
      * @param backend Backend identifier string
      * @return User-friendly backend display name
@@ -60,30 +33,6 @@ public class ModelUtils {
             default:
                 return backend.toUpperCase();
         }
-    }
-
-    /**
-     * Determines the preferred backend based on device hardware capabilities.
-     * @return The preferred backend identifier ("mtk" or "cpu")
-     */
-    public static String getPreferredBackend() {
-        // If MTK backend is disabled via flag, always return CPU
-        if (!AppConstants.MTK_BACKEND_ENABLED) {
-            Log.i(TAG, "MTK backend is disabled by flag, using CPU backend");
-            return "cpu";
-        }
-
-        try {
-            // Check if the device has MT6991 chipset
-            if (HWCompatibility.isSupportedHW() == "mtk") {
-                return "mtk";
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error detecting chipset", e);
-        }
-        
-        Log.i(TAG, "MT6991 chipset not detected, using CPU backend");
-        return "cpu";
     }
 
     public static Map<String, String> getPrefModelInfo(Context context) {

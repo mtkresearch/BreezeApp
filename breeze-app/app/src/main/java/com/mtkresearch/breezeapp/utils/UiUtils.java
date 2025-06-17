@@ -76,58 +76,6 @@ public class UiUtils {
     }
 
     /**
-     * Shows attachment options in a popup menu
-     * @param context The context to use for the popup menu
-     * @param anchorView The view to anchor the popup menu to
-     * @param listener Listener for attachment option selection
-     */
-    public static void showAttachmentOptions(Context context, View anchorView,
-                                           AttachmentOptionsListener listener) {
-        PopupMenu popup = new PopupMenu(new ContextThemeWrapper(context, R.style.PopupMenuStyle),
-                                      anchorView);
-
-        popup.getMenu().add(0, 1, 0, "Attach Photos").setIcon(R.drawable.ic_gallery);
-        popup.getMenu().add(0, 2, 0, "Take Photo").setIcon(R.drawable.ic_camera);
-        popup.getMenu().add(0, 3, 0, "Attach Files").setIcon(R.drawable.ic_folder);
-
-        // Force showing icons
-        try {
-            Method method = popup.getMenu().getClass()
-                    .getDeclaredMethod("setOptionalIconsVisible", Boolean.TYPE);
-            method.setAccessible(true);
-            method.invoke(popup.getMenu(), true);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        popup.setOnMenuItemClickListener(item -> {
-            switch (item.getItemId()) {
-                case 1:
-                    listener.onGallerySelected();
-                    break;
-                case 2:
-                    listener.onCameraSelected();
-                    break;
-                case 3:
-                    listener.onFileSelected();
-                    break;
-            }
-            return true;
-        });
-
-        popup.show();
-    }
-
-    /**
-     * Listener interface for attachment option selection
-     */
-    public interface AttachmentOptionsListener {
-        void onGallerySelected();
-        void onCameraSelected();
-        void onFileSelected();
-    }
-
-    /**
      * Scrolls a RecyclerView to its latest item
      */
     public static void scrollToLatestMessage(RecyclerView recyclerView, int itemCount, boolean smooth) {
@@ -138,14 +86,6 @@ public class UiUtils {
                 recyclerView.scrollToPosition(itemCount - 1);
             }
         }
-    }
-
-    /**
-     * Sets up a RecyclerView with chat-style configuration
-     */
-    public static void setupChatRecyclerView(RecyclerView recyclerView, RecyclerView.Adapter adapter) {
-        recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
-        recyclerView.setAdapter(adapter);
     }
 
     /**
@@ -168,20 +108,5 @@ public class UiUtils {
 
         dialog.getWindow().setBackgroundDrawableResource(R.drawable.bg_dialog);
         dialog.show();
-    }
-
-    public static TextWatcher createTextWatcher(Runnable onTextChanged) {
-        return new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                onTextChanged.run();
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
-        };
     }
 }
