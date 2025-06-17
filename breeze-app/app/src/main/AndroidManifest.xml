@@ -49,12 +49,7 @@
             android:exported="false"
             android:theme="@style/Theme.BreezeApp"
             android:screenOrientation="portrait" />
-        <activity
-            android:name="com.mtkresearch.breezeapp.AudioChatActivity"
-            android:exported="false"
-            android:theme="@style/Theme.BreezeApp"
-            android:screenOrientation="portrait" />
-	    
+
         <activity
             android:name="com.mtkresearch.breezeapp.ModelDownloadActivity"
             android:exported="true"

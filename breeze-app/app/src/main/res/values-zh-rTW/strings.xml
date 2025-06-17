@@ -131,13 +131,6 @@
     <string name="error_showing_image_preview">顯示圖片預覽時發生錯誤</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## AudioChatActivity.java -->
-    <string name="camera_switched">已切換至 %1$s 相機</string>
-    <string name="camera_front">前置</string>
-    <string name="camera_back">後置</string>
-    <string name="menu_options">選單選項</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## MainActivity.java -->
     <string name="failed_to_initialize" translatable="false">初始化失敗：</string>
     <string name="model_directory_not_found" translatable="false">找不到模型目錄</string>

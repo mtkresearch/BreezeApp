@@ -385,10 +385,6 @@ public class AppConstants {
     public static final int DEFAULT_REPETITION_PENALTY_INT = (int)(DEFAULT_LLM_REPETITION_PENALTY * REPETITION_PENALTY_SCALE);
     public static final int DEFAULT_FREQUENCY_PENALTY_INT = (int)(DEFAULT_LLM_FREQUENCY_PENALTY * FREQUENCY_PENALTY_SCALE);
     public static final int DEFAULT_TOP_P_INT = (int)(DEFAULT_LLM_TOP_P * TOP_P_SCALE);
-    
-    // When false: Send button always shows send icon and only sends messages
-    // When true: Send button toggles between send and audio chat mode
-    public static final boolean AUDIO_CHAT_ENABLED = false;
 
     // Conversation History Constants
     public static final int CONVERSATION_HISTORY_LOOKBACK = 500; // should be ignore and replace by history window length //BREEZE_MODEL_FILE.contains("2048") ? 1 : 1;
@@ -411,7 +407,6 @@ public class AppConstants {
     // Activity Tags
     public static final String CHAT_ACTIVITY_TAG = "ChatActivity";
     public static final String MAIN_ACTIVITY_TAG = "MainActivity";
-    public static final String AUDIO_CHAT_ACTIVITY_TAG = "AudioChatActivity";
 
     // HTTP Headers
     public static final String[][] DOWNLOAD_HEADERS = {

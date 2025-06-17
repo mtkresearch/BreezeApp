@@ -131,13 +131,6 @@
     <string name="error_showing_image_preview">Error showing image preview</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## AudioChatActivity.java -->
-    <string name="camera_switched">Switched to %1$s camera</string>
-    <string name="camera_front">front</string>
-    <string name="camera_back">back</string>
-    <string name="menu_options">Menu options</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## MainActivity.java -->
     <string name="failed_to_initialize">Failed to initialize: </string>
     <string name="model_directory_not_found">Model directory not found</string>
