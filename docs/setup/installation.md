@@ -37,7 +37,7 @@
         git clone https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile
         
         # Push to Android device
-        adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
+        adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1-2048-spin.pte /data/local/tmp/llama/
         adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
 
@@ -67,7 +67,7 @@
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
         ```
 
-5. Download aar file
+5. Download ExecuTorch aar file
     - Open the "Project tab" in the left panel of Android Studio
     - Click the dropdown and select "Project" instead of Android view
     - Find "download_prebuilt_lib.sh" inside breeze-app
@@ -77,28 +77,3 @@
     ```
 
 6. Build the project in Android Studio
-
-## Changing Default Backend
-
-To change the default backend (CPU to MTK), follow these steps:
-
-1. Open the "AppConstants.java" file, located at:
-   ```bash
-   cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/breeze_app/utils/AppConstants.java
-   ```
-2. Use your preferred programming tools to modify the following constants:
-   ```java
-   // Backend Constants
-   public static final String BACKEND_CPU = "cpu" ;
-   public static final String BACKEND_MTK = "mtk" ;
-   public static final String BACKEND_DEFAULT = BACKEND_MTK ; // Change to desired backend
-   ```
-   
-   By default, the backend is set to "CPU". If you want to use "MTK" as the application backend, modify the following line:
-   ```java
-   // Backend Constants
-   ...
-   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // Change to desired backend
-   ```
-
-3. After modifying the backend, "rebuild" the project in Android Studio to apply the changes. 
