@@ -173,6 +173,8 @@ dependencies {
     testImplementation("junit:junit:${Versions.JUNIT}")
     androidTestImplementation("androidx.test.ext:junit:${Versions.ANDROID_JUNIT}")
     androidTestImplementation("androidx.test.espresso:espresso-core:${Versions.ESPRESSO}")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:core:1.6.1")
 
     // Firebase dependencies only if google-services.json exists
     if (hasGoogleServices) {
