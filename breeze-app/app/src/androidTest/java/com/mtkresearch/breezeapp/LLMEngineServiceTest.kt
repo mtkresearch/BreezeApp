@@ -27,8 +27,6 @@ class LLMEngineServiceTest {
 
     companion object {
 
-        private var modelConfig: LLMModelConfig? = null
-
         @BeforeClass
         @JvmStatic
         fun setupOnce() {
@@ -37,7 +35,6 @@ class LLMEngineServiceTest {
                     val context = ApplicationProvider.getApplicationContext<Context>()
                     val jsonString = context.assets.open("fullModelList.json").bufferedReader().use { it.readText() }
                     val config = Gson().fromJson(jsonString, LLMModelConfig::class.java)
-                    modelConfig = config
                     assertTrue(config.models.isNotEmpty())
 
                     val modelsDir = File(context.filesDir, "models")
@@ -77,30 +74,36 @@ class LLMEngineServiceTest {
     val serviceRule = ServiceTestRule()
 
     @Test
-    fun testHelloWorld() {
-        Log.d("testHelloWorld", "TODO...")
-
-    }
-
-    @Test
     fun checkModelFiles() {
-//        val context = ApplicationProvider.getApplicationContext<Context>()
-//        val fileNames = modelUrls.map { url ->
-//            val path = URL(url).path               // Extracts the path part of the URL
-//            path.substringAfterLast("/")           // Gets the file name
-//                .substringBefore("?")              // Strips query parameters like ?download=true
-//        }
-//
-//        val modelsDir = File(context.filesDir, "models")
-//
-//        for (fileName in fileNames) {
-//            val file = File(modelsDir, fileName)
-//            if (file.exists()) {
-//                Log.d("checkModelFiles", "File exists: ${file.absolutePath}, size: ${file.length()} bytes")
-//            } else {
-//                Log.d("checkModelFiles", "File NOT found: ${file.absolutePath}")
-//            }
-//        }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val modelsDir = File(context.filesDir, "models")
+        assertTrue("Expected 'models' directory does not exist!", modelsDir.exists())
+
+        val jsonString =
+            context.assets.open("fullModelList.json").bufferedReader().use { it.readText() }
+        val config = Gson().fromJson(jsonString, LLMModelConfig::class.java)
+
+        for (model in config.models) {
+            val modelDir = File(modelsDir, model.id)
+            assertTrue(
+                "Model directory for '${model.id}' is shockingly missing!",
+                modelDir.exists()
+            )
+
+            for (modelURL in model.urls) {
+                val cleanFileName = modelURL.substringAfterLast("/").substringBefore("?")
+                val modelFile = File(modelDir, cleanFileName)
+
+                assertTrue("Model file '$cleanFileName' is tragically absent!", modelFile.exists())
+                assertTrue(
+                    "Model file '$cleanFileName' is heartbreakingly empty!",
+                    modelFile.length() > 0
+                )
+            }
+        }
+
+        // TODO. 檢視ModelDownloadDialog.saveDownloadedModelList()內容
+        // TODO. 需寫入檔案downloadedModelList.json
 
     }
 
