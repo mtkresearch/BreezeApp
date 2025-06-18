@@ -131,22 +131,6 @@
     <string name="error_showing_image_preview">Error showing image preview</string>
 
     <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## AudioChatActivity.java -->
-    <string name="camera_switched">Switched to %1$s camera</string>
-    <string name="camera_front">front</string>
-    <string name="camera_back">back</string>
-    <string name="menu_options">Menu options</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-    <!-- ## MainActivity.java -->
-    <string name="failed_to_initialize">Failed to initialize: </string>
-    <string name="model_directory_not_found">Model directory not found</string>
-    <string name="no_llm_models_found">No LLM models found. Please ensure either %1$s or %2$s model is available."</string>
-    <string name="please_select_a_model_first">Please select a model first</string>
-    <string name="waiting_for_services_to_initialize">Waiting for services to initialize</string>
-    <string name="speech_recognition_requires_audio_permission">Speech recognition requires audio permission</string>
-
-    <!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
     <!-- ## ChatActivity.java -->
     <string name="tts_processing_message">Converting text to speech...</string>
 
@@ -350,6 +334,8 @@
     <string name="LLM_empty_response_error">I apologize, but I couldn\'t generate a proper response. Please try rephrasing your question.</string>
     <string name="LLM_input_too_long_error">I apologize, but your input is too long. Please try breaking it into smaller parts.</string>
     <string name="LLM_invalid_token_error">### Due to known ExecuTorch issues, the language model is unable to respond to the above content ###</string>
+    <string name="llm_not_ready_title">Model Not Ready</string>
+    <string name="llm_not_ready_message">The language model is still initializing. Please wait a moment and try again.</string>
     <string name="error_binding_services">Fail to bind services</string>
 
     <!-- New error messages for ChatActivity -->

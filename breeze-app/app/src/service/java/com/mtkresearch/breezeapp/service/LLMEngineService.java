@@ -88,13 +88,8 @@ public class LLMEngineService extends BaseEngineService {
     }
 
     public String getModelName() {
-        if (model_entry_path == null) {
-            if (currentBackend.equals(AppConstants.BACKEND_MTK)) {
-                return "Llama-Breeze2-3B";  // Default to Breeze2 for MTK backend
-            }
-            return "Unknown";
-        }
-        return com.mtkresearch.breezeapp.utils.ModelUtils.getModelDisplayName(model_entry_path);
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        return prefs.getString("llm_model_id", "null");
     }
 
     public interface StreamingResponseCallback {
@@ -416,10 +411,11 @@ public class LLMEngineService extends BaseEngineService {
 
     public CompletableFuture<String> generateStreamingResponse(String prompt, LLMInferenceParams params, StreamingResponseCallback callback) {
         if (!isInitialized) {
+            String errorMsg = context.getString(R.string.LLM_default_error);
             if (callback != null) {
-                callback.onToken(String.valueOf(R.string.LLM_default_error));
+                callback.onToken(errorMsg);
             }
-            return CompletableFuture.completedFuture(String.valueOf(R.string.LLM_default_error));
+            return CompletableFuture.completedFuture(errorMsg);
         }
 
         hasSeenAssistantMarker = false;

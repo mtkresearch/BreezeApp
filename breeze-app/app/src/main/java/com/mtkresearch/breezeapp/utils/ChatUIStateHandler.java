@@ -31,22 +31,6 @@ public class ChatUIStateHandler {
         this.binding = binding;
         setupInputHandling();
     }
-
-    // Add methods to set click listeners
-    public void setSendButtonListener(View.OnClickListener listener) {
-        this.sendButtonListener = listener;
-        setupButtonVibration();
-    }
-    
-    public void setVoiceButtonListener(View.OnClickListener listener) {
-        this.voiceButtonListener = listener;
-        setupButtonVibration();
-    }
-    
-    public void setAttachButtonListener(View.OnClickListener listener) {
-        this.attachButtonListener = listener;
-        setupButtonVibration();
-    }
     
     /**
      * Call this method after all button click listeners are set up in the activity

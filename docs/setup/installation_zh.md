@@ -37,7 +37,7 @@
         git clone https://huggingface.co/MediaTek-Research/Breeze-Tiny-Instruct-v0_1-mobile
         
         # 推送到 Android 裝置
-        adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1.pte /data/local/tmp/llama/
+        adb push Breeze-Tiny-Instruct-v0_1-mobile/Breeze-Tiny-Instruct-v0_1-2048-spin.pte /data/local/tmp/llama/
         adb push Breeze-Tiny-Instruct-v0_1-mobile/tokenizer.bin /data/local/tmp/llama/
         ```
 
@@ -67,7 +67,7 @@
         git clone https://huggingface.co/MediaTek-Research/Breeze2-VITS-onnx
         ```
 
-5. 下載 aar 檔案
+5. 下載 ExecuTorch aar 檔案
     - 在 Android Studio 左側面板中開啟 "Project" 選項卡
     - 點擊下拉選單並選擇 "Project" 而不是 Android 視圖
     - 在 breeze-app 中找到 "download_prebuilt_lib.sh"
@@ -77,28 +77,3 @@
     ```
 
 6. 在 Android Studio 中建構專案
-
-## 變更預設後端
-
-要變更預設後端（從 CPU 到 MTK），請依照以下步驟：
-
-1. 開啟 "AppConstants.java" 檔案，位於：
-   ```bash
-   cd {YOURPATH}/BreezeApp-main/breeze-app/app/src/main/java/com/mtkresearch/breeze_app/utils/AppConstants.java
-   ```
-2. 使用您偏好的程式設計工具修改以下常數：
-   ```java
-   // 後端常數
-   public static final String BACKEND_CPU = "cpu" ;
-   public static final String BACKEND_MTK = "mtk" ;
-   public static final String BACKEND_DEFAULT = BACKEND_MTK ; // 變更為所需後端
-   ```
-   
-   預設情況下，後端設定為 "CPU"。如果您想使用 "MTK" 作為應用程式後端，請修改以下行：
-   ```java
-   // 後端常數
-   ...
-   public static final String BACKEND_DEFAULT = BACKEND_CPU ; // 變更為所需後端
-   ```
-
-3. 修改後端後，在 Android Studio 中 "重新建構" 專案以套用變更。 
