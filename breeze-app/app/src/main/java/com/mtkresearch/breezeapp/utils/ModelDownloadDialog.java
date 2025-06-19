@@ -228,8 +228,7 @@ public class ModelDownloadDialog extends Dialog {
         setCancelable(false);
     }
 
-    private File getModelDir(String modelId) {
-        Context context = getContext();
+    private static File getModelDir(Context context, String modelId) {
         if (context == null || modelId == null) return null;
 
         // Get base directory
@@ -537,7 +536,7 @@ public class ModelDownloadDialog extends Dialog {
         return String.format("%.2f %s", size / Math.pow(1000, digitGroups), AppConstants.FILE_SIZE_UNITS[digitGroups]);
     }
     
-    private String getFileNameFromUrl(String url) {
+    private static String getFileNameFromUrl(String url) {
         String[] parts = url.split("/");
         String lastPart = parts[parts.length - 1];
         int queryIndex = lastPart.indexOf('?');
@@ -766,7 +765,7 @@ public class ModelDownloadDialog extends Dialog {
                 }
 
                 // Get model directory using the model ID
-                File modelDir = getModelDir(fileInfo.modelId);
+                File modelDir = getModelDir(getContext(), fileInfo.modelId);
                 if (modelDir == null) {
                     throw new IOException("Failed to create directory for model: " + fileInfo.modelId);
                 }
@@ -1189,7 +1188,7 @@ public class ModelDownloadDialog extends Dialog {
                     // Save the downloaded model list
                     JSONObject filteredModelList = ModelFilter.readFilteredModelList(getContext());
                     if (filteredModelList != null) {
-                        saveDownloadedModelList(filteredModelList);
+                        saveDownloadedModelList(getContext(), filteredModelList);
                     }
                     android.app.Activity activity = (android.app.Activity) getContext();
                     activity.runOnUiThread(() -> {
@@ -1285,7 +1284,7 @@ public class ModelDownloadDialog extends Dialog {
         }
     }
 
-    public void saveDownloadedModelList(JSONObject filteredModelList) {
+    public static void saveDownloadedModelList(Context context, JSONObject filteredModelList) {
         try {
             JSONObject downloadedModels = new JSONObject();
             JSONArray modelsArray = new JSONArray();
@@ -1298,7 +1297,7 @@ public class ModelDownloadDialog extends Dialog {
                     String modelId = model.getString("id");
                     
                     // Get the model directory
-                    File modelDir = getModelDir(modelId);
+                    File modelDir = getModelDir(context, modelId);
                     if (modelDir == null) {
                         Log.e(TAG, "Failed to get model directory for model: " + modelId);
                         continue;
@@ -1341,7 +1340,7 @@ public class ModelDownloadDialog extends Dialog {
             downloadedModels.put("models", modelsArray);
 
             // Write to file
-            File file = new File(getContext().getFilesDir(), "downloadedModelList.json");
+            File file = new File(context.getFilesDir(), "downloadedModelList.json");
             try (FileOutputStream fos = new FileOutputStream(file)) {
                 fos.write(downloadedModels.toString(2).getBytes(StandardCharsets.UTF_8));
                 Log.i(TAG, "Successfully wrote downloaded model list to " + file.getAbsolutePath() + 
@@ -1351,7 +1350,7 @@ public class ModelDownloadDialog extends Dialog {
             // Update preferences with the downloaded models
             if (!modelIds.isEmpty()) {
                 // 使用 AppConstants 的 getAvailableRamGB 取得可用記憶體
-                long usableRamGB = AppConstants.getAvailableRamGB(getContext());
+                long usableRamGB = AppConstants.getAvailableRamGB(context);
                 Log.d(TAG, "Usable RAM (GB, via AppConstants): " + usableRamGB);
 
                 // Check hardware support
@@ -1394,7 +1393,7 @@ public class ModelDownloadDialog extends Dialog {
 
                 // Save to SharedPreferences
                 if (!defaultModel.isEmpty()) {
-                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+                    SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
                     SharedPreferences.Editor editor = prefs.edit();
                     editor.putString("llm_model_id", defaultModel);
                     editor.apply();

@@ -112,11 +112,7 @@ class LLMEngineServiceTest {
         ModelFilter.writeFilteredModelListToFile(context)
         val filteredModelList = ModelFilter.readFilteredModelList(context)
         if (filteredModelList != null) {
-            ModelDownloadDialog(
-                context,
-                null,
-                ModelDownloadDialog.DownloadMode.LLM
-            ).saveDownloadedModelList(filteredModelList)
+            ModelDownloadDialog.saveDownloadedModelList(context, filteredModelList)
         }
 
         // TODO. 確認AppConstants.needsModelDownload return false, 避免LLMEngineService啟動失敗
