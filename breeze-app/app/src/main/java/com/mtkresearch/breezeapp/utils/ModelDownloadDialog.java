@@ -65,7 +65,6 @@ public class ModelDownloadDialog extends Dialog {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private AtomicBoolean isPaused = new AtomicBoolean(false);
     private List<AppConstants.DownloadFileInfo> downloadFiles = new ArrayList<>();
-    private JSONObject filteredModelList = null;
 
     public ModelDownloadDialog(Context context, IntroDialog parentDialog, DownloadMode mode) {
         super(context);
@@ -311,6 +310,7 @@ public class ModelDownloadDialog extends Dialog {
     private void prepareDownloadFileList() {
         downloadFiles.clear();
         try {
+            JSONObject filteredModelList = ModelFilter.readFilteredModelList(getContext());
             if (filteredModelList != null) {
                 JSONArray models = filteredModelList.getJSONArray("models");
                 for (int i = 0; i < models.length(); i++) {
@@ -1169,9 +1169,6 @@ public class ModelDownloadDialog extends Dialog {
             pauseResumeButton.setVisibility(View.GONE);
             
             if (success) {
-                // Save the downloaded model list
-                saveDownloadedModelList();
-                
                 statusText.setText(R.string.download_complete);
                 progressBar.setProgress(100);
                 
@@ -1189,6 +1186,11 @@ public class ModelDownloadDialog extends Dialog {
                 
                 // Ensure we recheck system requirements before dismissing
                 if (getContext() instanceof android.app.Activity) {
+                    // Save the downloaded model list
+                    JSONObject filteredModelList = ModelFilter.readFilteredModelList(getContext());
+                    if (filteredModelList != null) {
+                        saveDownloadedModelList(filteredModelList);
+                    }
                     android.app.Activity activity = (android.app.Activity) getContext();
                     activity.runOnUiThread(() -> {
                         // Recheck requirements to update status
@@ -1275,19 +1277,15 @@ public class ModelDownloadDialog extends Dialog {
 
     /**
      * Sets the filtered model list to use for downloads
-     * @param filteredModelList JSONObject containing the filtered model list
      */
-    public void setFilteredModelList(JSONObject filteredModelList) {
-        this.filteredModelList = filteredModelList;
-        Log.d(TAG, "Filtered model list set: " + (filteredModelList != null ? "contains data" : "null"));
-        
+    public void setFilteredModelList() {
         // If file adapter already initialized, prepare download file list again
         if (fileAdapter != null) {
             prepareDownloadFileList();
         }
     }
 
-    private void saveDownloadedModelList() {
+    public void saveDownloadedModelList(JSONObject filteredModelList) {
         try {
             JSONObject downloadedModels = new JSONObject();
             JSONArray modelsArray = new JSONArray();

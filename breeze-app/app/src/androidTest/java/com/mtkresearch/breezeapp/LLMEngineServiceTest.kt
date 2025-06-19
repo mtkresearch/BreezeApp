@@ -9,7 +9,10 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.ServiceTestRule
 import com.google.gson.Gson
 import com.mtkresearch.breezeapp.service.LLMEngineService
+import com.mtkresearch.breezeapp.utils.AppConstants
 import com.mtkresearch.breezeapp.utils.LLMInferenceParams
+import com.mtkresearch.breezeapp.utils.ModelDownloadDialog
+import com.mtkresearch.breezeapp.utils.ModelFilter
 import com.mtkresearch.breezeapp.utils.ModelUtils
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotNull
@@ -27,13 +30,17 @@ class LLMEngineServiceTest {
 
     companion object {
 
+        /**
+         * Download LLM models according to fullModelList.json description.
+         */
         @BeforeClass
         @JvmStatic
         fun setupOnce() {
             runBlocking {
                 try {
                     val context = ApplicationProvider.getApplicationContext<Context>()
-                    val jsonString = context.assets.open("fullModelList.json").bufferedReader().use { it.readText() }
+                    val jsonString = context.assets.open("fullModelList.json").bufferedReader()
+                        .use { it.readText() }
                     val config = Gson().fromJson(jsonString, LLMModelConfig::class.java)
                     assertTrue(config.models.isNotEmpty())
 
@@ -73,6 +80,9 @@ class LLMEngineServiceTest {
     @get:Rule
     val serviceRule = ServiceTestRule()
 
+    /**
+     * Verify model existence
+     */
     @Test
     fun checkModelFiles() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -93,17 +103,26 @@ class LLMEngineServiceTest {
             for (modelURL in model.urls) {
                 val cleanFileName = modelURL.substringAfterLast("/").substringBefore("?")
                 val modelFile = File(modelDir, cleanFileName)
-
                 assertTrue("Model file '$cleanFileName' is tragically absent!", modelFile.exists())
-                assertTrue(
-                    "Model file '$cleanFileName' is heartbreakingly empty!",
-                    modelFile.length() > 0
-                )
+                assertTrue("Model file '$cleanFileName' is empty!", modelFile.length() > 0)
             }
         }
 
-        // TODO. 檢視ModelDownloadDialog.saveDownloadedModelList()內容
-        // TODO. 需寫入檔案downloadedModelList.json
+        // Save the downloaded model list
+        ModelFilter.writeFilteredModelListToFile(context)
+        val filteredModelList = ModelFilter.readFilteredModelList(context)
+        if (filteredModelList != null) {
+            ModelDownloadDialog(
+                context,
+                null,
+                ModelDownloadDialog.DownloadMode.LLM
+            ).saveDownloadedModelList(filteredModelList)
+        }
+
+        // TODO. 確認AppConstants.needsModelDownload return false, 避免LLMEngineService啟動失敗
+        assertTrue(!AppConstants.needsModelDownload(context))
+
+
 
     }
 
