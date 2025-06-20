@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.mtkresearch.breezeapp"
+    namespace = "com.mtkresearch.breezeapp_kotlin"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtkresearch.breezeapp"
+        applicationId = "com.mtkresearch.breezeapp_kotlin"
         minSdk = 34
         targetSdk = 35
         versionCode = 1
@@ -47,19 +47,21 @@ dependencies {
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.activity)
-    
+
     // Kotlin Coroutines
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    
+
     // AndroidX Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    
+    implementation(libs.androidx.junit.ktx)
+    implementation(libs.androidx.runtime)
+
     // Testing
     testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.kotlinx.coroutines.test.v160)
+
 }

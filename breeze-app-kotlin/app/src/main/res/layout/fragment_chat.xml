@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    tools:context=".presentation.chat.fragment.ChatFragment">
+
+    <!-- 錯誤狀態視圖 -->
+    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.ErrorView
+        android:id="@+id/errorView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/spacing_medium"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- 載入狀態視圖 -->
+    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.LoadingView
+        android:id="@+id/loadingView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/spacing_medium"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/errorView" />
+
+    <!-- 主要聊天內容區域 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/chatContentLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/inputSection"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/loadingView">
+
+        <!-- AI狀態指示器 -->
+        <TextView
+            android:id="@+id/textViewAIStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@color/ai_message_bg"
+            android:gravity="center"
+            android:padding="@dimen/spacing_small"
+            android:text="AI正在回應中..."
+            android:textColor="@color/ai_message_text"
+            android:textSize="14sp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
+
+        <!-- 訊息列表 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewMessages"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:clipToPadding="false"
+            android:paddingTop="@dimen/spacing_small"
+            android:paddingBottom="@dimen/spacing_small"
+            android:scrollbars="vertical"
+            app:layout_constraintBottom_toTopOf="@+id/textViewTypingIndicator"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textViewAIStatus"
+            tools:listitem="@layout/item_chat_message" />
+
+        <!-- 打字指示器 -->
+        <TextView
+            android:id="@+id/textViewTypingIndicator"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:background="@color/ai_message_bg"
+            android:drawablePadding="@dimen/spacing_small"
+            android:gravity="center_vertical"
+            android:padding="@dimen/spacing_medium"
+            android:text="AI正在輸入..."
+            android:textColor="@color/ai_message_text"
+            android:textSize="14sp"
+            android:visibility="gone"
+            app:drawableStartCompat="@drawable/ic_typing"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            tools:visibility="visible" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 輸入區域 -->
+    <LinearLayout
+        android:id="@+id/inputSection"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        android:elevation="4dp"
+        android:orientation="vertical"
+        android:padding="@dimen/spacing_medium"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <!-- 語音狀態指示器 -->
+        <TextView
+            android:id="@+id/textViewVoiceStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_ai_message"
+            android:drawablePadding="@dimen/spacing_small"
+            android:gravity="center_vertical"
+            android:padding="@dimen/spacing_small"
+            android:text="正在聽取語音..."
+            android:textColor="@color/ai_message_text"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:drawableStartCompat="@drawable/ic_mic"
+            tools:visibility="visible" />
+
+        <!-- 輸入框和按鈕區域 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!-- 語音按鈕 -->
+            <Button
+                android:id="@+id/buttonVoice"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/spacing_small"
+                android:drawableTop="@drawable/ic_mic"
+                android:minWidth="60dp"
+                android:padding="@dimen/spacing_small"
+                android:text="語音"
+                android:textSize="12sp" />
+
+            <!-- 輸入框 -->
+            <EditText
+                android:id="@+id/editTextMessage"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_input_container"
+                android:hint="輸入訊息..."
+                android:imeOptions="actionSend"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="4"
+                android:minHeight="48dp"
+                android:padding="@dimen/spacing_medium"
+                android:textColorHint="@color/text_secondary"
+                android:textSize="16sp" />
+
+            <!-- 發送按鈕 -->
+            <Button
+                android:id="@+id/buttonSend"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="@dimen/spacing_small"
+                android:drawableTop="@drawable/ic_send"
+                android:minWidth="60dp"
+                android:padding="@dimen/spacing_small"
+                android:text="發送"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- 輔助按鈕區域 (可選) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:gravity="center"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <Button
+                android:id="@+id/buttonClearChat"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/spacing_medium"
+                android:text="清空聊天"
+                android:textSize="12sp" />
+
+            <Button
+                android:id="@+id/buttonNewChat"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="新對話"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout> 

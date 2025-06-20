@@ -1,5 +1,43 @@
 <resources>
-    <string name="app_name">My Application</string>
+    <string name="app_name">BreezeApp</string>
+    
+    <!-- Common UI Strings -->
+    <string name="loading">載入中…</string>
+    <string name="cancel">取消</string>
+    <string name="retry">重試</string>
+    <string name="close">關閉</string>
+    <string name="ok">確定</string>
+    <string name="error_title">發生錯誤</string>
+    <string name="error_message">請稍後再試</string>
+    
+    <!-- Message Bubble Strings -->
+    <string name="generating_response">正在產生回應…</string>
+    <string name="error_generating_response">回應產生失敗</string>
+    <string name="ai_is_typing">AI正在輸入…</string>
+    <string name="play_audio">播放語音</string>
+    <string name="like_message">讚</string>
+    <string name="dislike_message">不讚</string>
+    
+    <!-- Error Type Titles -->
+    <string name="error_network_title">網路連線失敗</string>
+    <string name="error_server_title">服務器錯誤</string>
+    <string name="error_validation_title">輸入驗證失敗</string>
+    <string name="error_permission_title">權限不足</string>
+    <string name="error_model_loading_title">模型載入失敗</string>
+    <string name="error_ai_processing_title">AI處理失敗</string>
+    <string name="error_file_access_title">檔案存取失敗</string>
+    <string name="error_unknown_title">未知錯誤</string>
+    
+    <!-- Error Type Messages -->
+    <string name="error_network_message">請檢查網路連線並重試</string>
+    <string name="error_server_message">服務器暫時無法回應，請稍後再試</string>
+    <string name="error_validation_message">請檢查輸入內容是否正確</string>
+    <string name="error_permission_message">應用程式需要相關權限才能正常運作</string>
+    <string name="error_model_loading_message">AI模型載入失敗，請重新下載或重試</string>
+    <string name="error_ai_processing_message">AI處理過程中發生錯誤，請重試</string>
+    <string name="error_file_access_message">無法存取檔案，請檢查存儲權限</string>
+    <string name="error_unknown_message">發生未預期的錯誤，請重試或聯絡支援</string>
+    
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
     <string name="second_fragment_label">Second Fragment</string>
@@ -42,4 +80,46 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+
+    <!-- Chat Fragment -->
+    <string name="input_hint">輸入訊息…</string>
+    <string name="button_send">發送</string>
+    <string name="button_voice">語音</string>
+    <string name="button_stop">停止</string>
+    <string name="button_clear_chat">清空聊天</string>
+    <string name="button_new_chat">新對話</string>
+    
+    <!-- Chat Status -->
+    <string name="status_ai_responding">AI正在回應中…</string>
+    <string name="status_ai_typing">AI正在輸入…</string>
+    <string name="status_voice_listening">正在聽取語音…</string>
+    <string name="status_voice_processing">正在處理語音…</string>
+    
+    <!-- Chat Actions -->
+    <string name="action_copy_message">複製文字</string>
+    <string name="action_regenerate_response">重新生成回應</string>
+    <string name="action_share_message">分享訊息</string>
+    <string name="action_message_operations">訊息操作</string>
+    
+    <!-- Dialog Messages -->
+    <string name="dialog_clear_chat_title">清空聊天記錄</string>
+    <string name="dialog_clear_chat_message">確定要清空所有聊天記錄嗎？此操作無法復原。</string>
+    <string name="dialog_confirm">確定</string>
+    <string name="dialog_cancel">取消</string>
+    
+    <!-- Feedback Messages -->
+    <string name="feedback_message_copied">訊息已複製到剪貼簿</string>
+    <string name="feedback_positive_feedback">感謝您的正面回饋</string>
+    <string name="feedback_negative_feedback">我們會改進AI回應品質</string>
+    <string name="feedback_feature_in_development">此功能正在開發中</string>
+    <string name="feedback_permission_required">需要錄音權限才能使用語音識別功能</string>
+    
+    <!-- Share Intent -->
+    <string name="share_subject">來自BreezeApp的對話</string>
+    <string name="share_chooser_title">分享訊息</string>
+    
+    <!-- Main Activity Navigation -->
+    <string name="chat">聊天</string>
+    <string name="settings">設定</string>
+    <string name="download">下載</string>
 </resources>

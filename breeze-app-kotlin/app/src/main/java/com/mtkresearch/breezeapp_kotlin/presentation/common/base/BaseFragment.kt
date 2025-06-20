@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.presentation.common.base
+package com.mtkresearch.breezeapp_kotlin.presentation.common.base
 
 import android.Manifest
 import android.content.pm.PackageManager

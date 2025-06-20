@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- LoadingView 自定義屬性 -->
+    <declare-styleable name="LoadingView">
+        <attr name="loadingStyle" format="enum">
+            <enum name="circular" value="0" />
+            <enum name="horizontal" value="1" />
+            <enum name="dots" value="2" />
+            <enum name="spinner" value="3" />
+        </attr>
+        <attr name="loadingSize" format="enum">
+            <enum name="small" value="0" />
+            <enum name="medium" value="1" />
+            <enum name="large" value="2" />
+        </attr>
+        <attr name="loadingMessage" format="string" />
+        <attr name="loadingSubtitle" format="string" />
+        <attr name="showCancel" format="boolean" />
+    </declare-styleable>
+
+    <!-- ErrorView 自定義屬性 -->
+    <declare-styleable name="ErrorView">
+        <attr name="errorType" format="enum">
+            <enum name="network" value="0" />
+            <enum name="server" value="1" />
+            <enum name="validation" value="2" />
+            <enum name="permission" value="3" />
+            <enum name="model_loading" value="4" />
+            <enum name="ai_processing" value="5" />
+            <enum name="file_access" value="6" />
+            <enum name="unknown" value="7" />
+        </attr>
+        <attr name="errorSeverity" format="enum">
+            <enum name="info" value="0" />
+            <enum name="warning" value="1" />
+            <enum name="error" value="2" />
+            <enum name="critical" value="3" />
+        </attr>
+        <attr name="errorTitle" format="string" />
+        <attr name="errorMessage" format="string" />
+        <attr name="showRetry" format="boolean" />
+        <attr name="showClose" format="boolean" />
+    </declare-styleable>
+
+    <!-- MessageBubbleView 自定義屬性 -->
+    <declare-styleable name="MessageBubbleView">
+        <attr name="messageType" format="enum">
+            <enum name="user" value="0" />
+            <enum name="ai" value="1" />
+            <enum name="system" value="2" />
+        </attr>
+        <attr name="messageState" format="enum">
+            <enum name="normal" value="0" />
+            <enum name="loading" value="1" />
+            <enum name="error" value="2" />
+            <enum name="typing" value="3" />
+        </attr>
+        <attr name="messageText" format="string" />
+        <attr name="showButtons" format="boolean" />
+    </declare-styleable>
+
+</resources> 

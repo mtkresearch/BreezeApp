@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="@dimen/spacing_small"
+    android:paddingEnd="@dimen/spacing_small"
+    android:paddingTop="@dimen/spacing_micro"
+    android:paddingBottom="@dimen/spacing_micro">
+
+    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.MessageBubbleView
+        android:id="@+id/messageBubble"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+</LinearLayout> 

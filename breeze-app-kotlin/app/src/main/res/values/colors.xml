@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Material Design Colors -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -7,4 +8,44 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+
+    <!-- UI Surface Colors -->
+    <color name="surface">#FFFFFFFF</color>
+    <color name="surface_dark">#FF121212</color>
+    <color name="background">#FFFFFFFF</color>
+    <color name="background_dark">#FF000000</color>
+    <color name="outline">#FF79747E</color>
+    <color name="outline_dark">#FF938F99</color>
+
+    <!-- Text Colors -->
+    <color name="text_primary">#DE000000</color>
+    <color name="text_primary_dark">#FFFFFFFF</color>
+    <color name="text_secondary">#99000000</color>
+    <color name="text_secondary_dark">#B3FFFFFF</color>
+
+    <!-- Error Colors -->
+    <color name="error">#FFB00020</color>
+    <color name="error_dark">#FFCF6679</color>
+    <color name="error_info_color">#FF2196F3</color>
+    <color name="error_warning_color">#FFFF9800</color>
+    <color name="error_error_color">#FFF44336</color>
+    <color name="error_critical_color">#FFD32F2F</color>
+
+    <!-- Success and Status Colors -->
+    <color name="success">#FF4CAF50</color>
+    <color name="warning">#FFFF9800</color>
+    <color name="info">#FF2196F3</color>
+
+    <!-- Component Colors -->
+    <color name="primary">#FF6200EE</color>
+    <color name="primary_dark">#FF3700B3</color>
+    <color name="primary_variant">#FF3700B3</color>
+    <color name="secondary">#FF03DAC6</color>
+    <color name="secondary_variant">#FF018786</color>
+
+    <!-- Message Colors -->
+    <color name="ai_message_bg">#FFF5F5F5</color>
+    <color name="user_message_bg">#FF6200EE</color>
+    <color name="ai_message_text">#DE000000</color>
+    <color name="user_message_text">#FFFFFFFF</color>
 </resources>
