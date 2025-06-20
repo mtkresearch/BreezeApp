@@ -1,16 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:paddingStart="@dimen/spacing_small"
-    android:paddingEnd="@dimen/spacing_small"
-    android:paddingTop="@dimen/spacing_micro"
-    android:paddingBottom="@dimen/spacing_micro">
+    android:paddingStart="1dp"
+    android:paddingEnd="1dp"
+    android:paddingTop="1dp"
+    android:paddingBottom="1dp">
 
     <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.MessageBubbleView
         android:id="@+id/messageBubble"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:maxWidth="@dimen/message_bubble_max_width" />
 
-</LinearLayout> 
+</FrameLayout> 

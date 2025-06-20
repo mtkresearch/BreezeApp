@@ -1,32 +1,40 @@
 package com.mtkresearch.breezeapp_kotlin.presentation.common.widget
 
 import android.content.Context
+import android.content.res.TypedArray
 import android.util.AttributeSet
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.Button
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+
 import com.mtkresearch.breezeapp_kotlin.R
-import com.mtkresearch.breezeapp_kotlin.databinding.WidgetErrorBinding
+import com.mtkresearch.breezeapp_kotlin.core.utils.ColorUtils
+import com.mtkresearch.breezeapp_kotlin.core.utils.ErrorSeverity
+import com.mtkresearch.breezeapp_kotlin.core.utils.ErrorType
 
 /**
- * 可重複使用的錯誤狀態UI組件
+ * 錯誤狀態UI組件
  * 
  * 功能特色:
- * - 支援多種錯誤類型 (網路、服務、驗證等)
- * - 可配置錯誤標題、訊息和操作按鈕
- * - 自動顯示對應的錯誤圖示
- * - 支援重試和自定義操作
- * - 可配置是否可關閉
+ * - 八種錯誤類型 (網路、伺服器、驗證、權限、模型載入、AI處理、檔案存取、未知)
+ * - 四種嚴重程度 (資訊、警告、錯誤、關鍵)
+ * - 智能圖示和顏色管理，根據錯誤類型自動選擇
+ * - 主題感知的顏色系統，確保最佳對比度
+ * - 可配置重試按鈕、詳細資訊、聯絡支援
+ * - 支援自訂錯誤訊息和建議操作
  * 
  * 使用方式:
  * ```kotlin
  * errorView.showError(
  *     type = ErrorType.NETWORK,
- *     title = "網路連線失敗",
- *     message = "請檢查網路設定後重試",
+ *     message = "網路連接失敗",
  *     showRetry = true,
- *     showClose = true
+ *     suggestion = "請檢查網路設定並重試"
  * )
  * ```
  */
@@ -36,147 +44,154 @@ class ErrorView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
-    /**
-     * 錯誤類型，決定顯示的圖示和預設訊息
-     */
-    enum class ErrorType {
-        NETWORK,        // 網路錯誤
-        SERVER,         // 服務器錯誤  
-        VALIDATION,     // 驗證錯誤
-        PERMISSION,     // 權限錯誤
-        MODEL_LOADING,  // 模型載入錯誤
-        AI_PROCESSING,  // AI處理錯誤
-        FILE_ACCESS,    // 檔案存取錯誤
-        UNKNOWN         // 未知錯誤
-    }
+    // UI組件
+    private lateinit var errorContainer: View
+    private lateinit var errorIcon: ImageView
+    private lateinit var errorTitle: TextView
+    private lateinit var errorMessage: TextView
+    private lateinit var errorSuggestion: TextView
+    private lateinit var retryButton: Button
+    private lateinit var detailsButton: Button
+    private lateinit var supportButton: Button
 
-    /**
-     * 錯誤嚴重程度
-     */
-    enum class ErrorSeverity {
-        INFO,     // 資訊 (藍色)
-        WARNING,  // 警告 (橘色)
-        ERROR,    // 錯誤 (紅色)
-        CRITICAL  // 嚴重 (深紅色)
-    }
+    // 當前狀態
+    private var currentErrorType = ErrorType.UNKNOWN
+    private var currentSeverity = ErrorSeverity.ERROR
 
-    private val binding: WidgetErrorBinding = 
-        WidgetErrorBinding.inflate(LayoutInflater.from(context), this, true)
-
-    private var currentType: ErrorType = ErrorType.UNKNOWN
-    private var currentSeverity: ErrorSeverity = ErrorSeverity.ERROR
-    
     // 回調函數
-    private var onRetryClickListener: (() -> Unit)? = null
-    private var onCloseClickListener: (() -> Unit)? = null
-    private var onCustomActionClickListener: (() -> Unit)? = null
+    private var onRetryListener: (() -> Unit)? = null
+    private var onDetailsListener: (() -> Unit)? = null
+    private var onSupportListener: (() -> Unit)? = null
 
     init {
-        setupViews()
-        setupClickListeners()
+        initializeView()
         parseAttributes(attrs)
+        setupClickListeners()
+        applyDefaultStyle()
     }
 
-    private fun setupViews() {
-        orientation = VERTICAL
-        setPadding(
-            resources.getDimensionPixelSize(R.dimen.spacing_medium),
-            resources.getDimensionPixelSize(R.dimen.spacing_medium),
-            resources.getDimensionPixelSize(R.dimen.spacing_medium),
-            resources.getDimensionPixelSize(R.dimen.spacing_medium)
-        )
+    /**
+     * 初始化視圖
+     */
+    private fun initializeView() {
+        LayoutInflater.from(context).inflate(R.layout.widget_error, this, true)
         
-        // 預設隱藏
+        // 綁定UI組件
+        errorContainer = findViewById(R.id.errorContainer)
+        errorIcon = findViewById(R.id.errorIcon)
+        errorTitle = findViewById(R.id.errorTitle)
+        errorMessage = findViewById(R.id.errorMessage)
+        errorSuggestion = findViewById(R.id.errorSuggestion)
+        retryButton = findViewById(R.id.retryButton)
+        detailsButton = findViewById(R.id.detailsButton)
+        supportButton = findViewById(R.id.supportButton)
+        
+        // 設置預設配置
+        orientation = VERTICAL
         isVisible = false
     }
 
-    private fun setupClickListeners() {
-        binding.retryButton.setOnClickListener {
-            onRetryClickListener?.invoke()
-        }
-        
-        binding.closeButton.setOnClickListener {
-            hide()
-            onCloseClickListener?.invoke()
-        }
-        
-        binding.customActionButton.setOnClickListener {
-            onCustomActionClickListener?.invoke()
-        }
-        
-        // 點擊背景不隱藏
-        setOnClickListener { /* 吸收點擊事件 */ }
-    }
-
+    /**
+     * 解析XML屬性
+     */
     private fun parseAttributes(attrs: AttributeSet?) {
-        if (attrs == null) return
-        
-        val typedArray = context.obtainStyledAttributes(attrs, R.styleable.ErrorView)
-        try {
-            // 讀取自定義屬性
-            val typeIndex = typedArray.getInt(R.styleable.ErrorView_errorType, 7)
-            currentType = ErrorType.values()[typeIndex]
+        attrs?.let {
+            val typedArray: TypedArray = context.obtainStyledAttributes(
+                it, R.styleable.ErrorView, 0, 0
+            )
             
-            val severityIndex = typedArray.getInt(R.styleable.ErrorView_errorSeverity, 2)
-            currentSeverity = ErrorSeverity.values()[severityIndex]
-            
-            val title = typedArray.getString(R.styleable.ErrorView_errorTitle)
-            val message = typedArray.getString(R.styleable.ErrorView_errorMessage)
-            val showRetry = typedArray.getBoolean(R.styleable.ErrorView_showRetry, false)
-            val showClose = typedArray.getBoolean(R.styleable.ErrorView_showClose, true)
-            
-            // 應用屬性
-            if (!title.isNullOrEmpty() || !message.isNullOrEmpty()) {
-                showError(currentType, currentSeverity, title ?: "", message ?: "", showRetry, showClose)
+            try {
+                // 解析錯誤類型
+                val errorTypeIndex = typedArray.getInt(
+                    R.styleable.ErrorView_errorType, 
+                    ErrorType.UNKNOWN.ordinal
+                )
+                currentErrorType = ErrorType.values()[errorTypeIndex]
+                
+                // 解析嚴重程度
+                val severityIndex = typedArray.getInt(
+                    R.styleable.ErrorView_errorSeverity,
+                    ErrorSeverity.ERROR.ordinal
+                )
+                currentSeverity = ErrorSeverity.values()[severityIndex]
+                
+                // 解析是否顯示重試按鈕
+                val showRetry = typedArray.getBoolean(
+                    R.styleable.ErrorView_showRetry,
+                    false
+                )
+                retryButton.isVisible = showRetry
+                
+                // 解析錯誤訊息
+                val errorMessage = typedArray.getString(R.styleable.ErrorView_errorMessage)
+                errorMessage?.let { this.errorMessage.text = it }
+                
+            } finally {
+                typedArray.recycle()
             }
-            
-        } finally {
-            typedArray.recycle()
         }
     }
 
     /**
-     * 顯示錯誤訊息
+     * 設置點擊監聽器
+     */
+    private fun setupClickListeners() {
+        retryButton.setOnClickListener { 
+            onRetryListener?.invoke()
+        }
+        
+        detailsButton.setOnClickListener {
+            onDetailsListener?.invoke()
+        }
+        
+        supportButton.setOnClickListener {
+            onSupportListener?.invoke()
+        }
+    }
+
+    /**
+     * 應用預設樣式
+     */
+    private fun applyDefaultStyle() {
+        applyErrorStyle()
+        applyThemeColors()
+    }
+
+    /**
+     * 顯示錯誤
      */
     fun showError(
         type: ErrorType = ErrorType.UNKNOWN,
-        severity: ErrorSeverity = ErrorSeverity.ERROR,
-        title: String = "",
-        message: String = "",
+        message: String,
+        suggestion: String = "",
         showRetry: Boolean = false,
-        showClose: Boolean = true,
-        customActionText: String = ""
+        showDetails: Boolean = false,
+        showSupport: Boolean = false,
+        severity: ErrorSeverity = ErrorSeverity.ERROR
     ) {
-        currentType = type
+        currentErrorType = type
         currentSeverity = severity
         
-        // 設置錯誤圖示
-        setErrorIcon(type, severity)
+        // 設置錯誤訊息
+        errorMessage.text = message
+        errorMessage.isVisible = message.isNotEmpty()
         
-        // 設置標題
-        val errorTitle = title.ifEmpty { getDefaultTitle(type) }
-        binding.errorTitle.text = errorTitle
-        binding.errorTitle.isVisible = errorTitle.isNotEmpty()
-        
-        // 設置訊息
-        val errorMessage = message.ifEmpty { getDefaultMessage(type) }
-        binding.errorMessage.text = errorMessage
-        binding.errorMessage.isVisible = errorMessage.isNotEmpty()
-        
-        // 設置按鈕
-        binding.retryButton.isVisible = showRetry
-        binding.closeButton.isVisible = showClose
-        
-        // 設置自定義操作按鈕
-        if (customActionText.isNotEmpty()) {
-            binding.customActionButton.text = customActionText
-            binding.customActionButton.isVisible = true
+        // 設置建議文字
+        if (suggestion.isNotEmpty()) {
+            errorSuggestion.text = suggestion
+            errorSuggestion.isVisible = true
         } else {
-            binding.customActionButton.isVisible = false
+            errorSuggestion.isVisible = false
         }
         
-        // 應用嚴重程度樣式
-        applySeverityStyle(severity)
+        // 設置按鈕顯示
+        retryButton.isVisible = showRetry
+        detailsButton.isVisible = showDetails
+        supportButton.isVisible = showSupport
+        
+        // 應用樣式
+        applyErrorStyle()
+        applyThemeColors()
         
         // 顯示視圖
         isVisible = true
@@ -190,127 +205,153 @@ class ErrorView @JvmOverloads constructor(
     }
 
     /**
-     * 切換顯示狀態
-     */
-    fun toggle() {
-        if (isVisible) hide() else showError()
-    }
-
-    /**
-     * 設置錯誤圖示
-     */
-    private fun setErrorIcon(type: ErrorType, severity: ErrorSeverity) {
-        val iconRes = when (type) {
-            ErrorType.NETWORK -> R.drawable.ic_wifi_off
-            ErrorType.SERVER -> R.drawable.ic_cloud_off
-            ErrorType.VALIDATION -> R.drawable.ic_warning
-            ErrorType.PERMISSION -> R.drawable.ic_lock
-            ErrorType.MODEL_LOADING -> R.drawable.ic_download_off
-            ErrorType.AI_PROCESSING -> R.drawable.ic_smart_toy_off
-            ErrorType.FILE_ACCESS -> R.drawable.ic_folder_off
-            ErrorType.UNKNOWN -> R.drawable.ic_error
-        }
-        
-        binding.errorIcon.setImageResource(iconRes)
-        
-        // 根據嚴重程度設置圖示顏色
-        val tintColor = when (severity) {
-            ErrorSeverity.INFO -> ContextCompat.getColor(context, R.color.primary)
-            ErrorSeverity.WARNING -> ContextCompat.getColor(context, R.color.primary_dark)
-            ErrorSeverity.ERROR -> ContextCompat.getColor(context, R.color.error)
-            ErrorSeverity.CRITICAL -> ContextCompat.getColor(context, R.color.error)
-        }
-        
-        binding.errorIcon.setColorFilter(tintColor)
-    }
-
-    /**
-     * 獲取預設標題
-     */
-    private fun getDefaultTitle(type: ErrorType): String {
-        return when (type) {
-            ErrorType.NETWORK -> context.getString(R.string.error_network_title)
-            ErrorType.SERVER -> context.getString(R.string.error_server_title)
-            ErrorType.VALIDATION -> context.getString(R.string.error_validation_title)
-            ErrorType.PERMISSION -> context.getString(R.string.error_permission_title)
-            ErrorType.MODEL_LOADING -> context.getString(R.string.error_model_loading_title)
-            ErrorType.AI_PROCESSING -> context.getString(R.string.error_ai_processing_title)
-            ErrorType.FILE_ACCESS -> context.getString(R.string.error_file_access_title)
-            ErrorType.UNKNOWN -> context.getString(R.string.error_unknown_title)
-        }
-    }
-
-    /**
-     * 獲取預設訊息
-     */
-    private fun getDefaultMessage(type: ErrorType): String {
-        return when (type) {
-            ErrorType.NETWORK -> context.getString(R.string.error_network_message)
-            ErrorType.SERVER -> context.getString(R.string.error_server_message)
-            ErrorType.VALIDATION -> context.getString(R.string.error_validation_message)
-            ErrorType.PERMISSION -> context.getString(R.string.error_permission_message)
-            ErrorType.MODEL_LOADING -> context.getString(R.string.error_model_loading_message)
-            ErrorType.AI_PROCESSING -> context.getString(R.string.error_ai_processing_message)
-            ErrorType.FILE_ACCESS -> context.getString(R.string.error_file_access_message)
-            ErrorType.UNKNOWN -> context.getString(R.string.error_unknown_message)
-        }
-    }
-
-    /**
-     * 應用嚴重程度樣式
-     */
-    private fun applySeverityStyle(severity: ErrorSeverity) {
-        val backgroundColor = when (severity) {
-            ErrorSeverity.INFO -> ContextCompat.getColor(context, R.color.surface)
-            ErrorSeverity.WARNING -> ContextCompat.getColor(context, R.color.surface)
-            ErrorSeverity.ERROR -> ContextCompat.getColor(context, R.color.surface)
-            ErrorSeverity.CRITICAL -> ContextCompat.getColor(context, R.color.surface)
-        }
-        
-        binding.errorContainer.setBackgroundColor(backgroundColor)
-        
-        // 根據嚴重程度調整文字顏色
-        val textColor = when (severity) {
-            ErrorSeverity.INFO -> ContextCompat.getColor(context, R.color.text_primary)
-            ErrorSeverity.WARNING -> ContextCompat.getColor(context, R.color.text_primary)
-            ErrorSeverity.ERROR -> ContextCompat.getColor(context, R.color.text_primary)
-            ErrorSeverity.CRITICAL -> ContextCompat.getColor(context, R.color.text_primary)
-        }
-        
-        binding.errorTitle.setTextColor(textColor)
-        binding.errorMessage.setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
-    }
-
-    /**
-     * 設置重試按鈕點擊監聽器
-     */
-    fun setOnRetryClickListener(listener: () -> Unit) {
-        onRetryClickListener = listener
-    }
-
-    /**
-     * 設置關閉按鈕點擊監聽器
-     */
-    fun setOnCloseClickListener(listener: () -> Unit) {
-        onCloseClickListener = listener
-    }
-
-    /**
-     * 設置自定義操作按鈕點擊監聽器
-     */
-    fun setOnCustomActionClickListener(listener: () -> Unit) {
-        onCustomActionClickListener = listener
-    }
-
-    /**
      * 更新錯誤訊息
      */
-    fun updateError(title: String, message: String) {
-        binding.errorTitle.text = title
-        binding.errorTitle.isVisible = title.isNotEmpty()
+    fun updateMessage(message: String, suggestion: String = "") {
+        errorMessage.text = message
+        errorMessage.isVisible = message.isNotEmpty()
         
-        binding.errorMessage.text = message
-        binding.errorMessage.isVisible = message.isNotEmpty()
+        if (suggestion.isNotEmpty()) {
+            errorSuggestion.text = suggestion
+            errorSuggestion.isVisible = true
+        } else if (suggestion.isEmpty()) {
+            errorSuggestion.isVisible = false
+        }
+    }
+
+    /**
+     * 應用錯誤樣式
+     */
+    private fun applyErrorStyle() {
+        // 設置標題和圖示
+        val (titleRes, iconRes) = getErrorStyleResources(currentErrorType)
+        errorTitle.setText(titleRes)
+        errorIcon.setImageResource(iconRes)
+        
+        // 根據嚴重程度設置顏色
+        val severityColors = ColorUtils.getSeverityColors(context, currentSeverity)
+        
+        // 設置容器背景色 (淡化版本)
+        val backgroundColor = ColorUtils.adjustAlpha(severityColors.backgroundColor, 0.1f)
+        errorContainer.setBackgroundColor(backgroundColor)
+        
+        // 設置圖示顏色
+        errorIcon.imageTintList = android.content.res.ColorStateList.valueOf(severityColors.backgroundColor)
+    }
+
+    /**
+     * 應用主題顏色
+     */
+    private fun applyThemeColors() {
+        // 設置文字顏色
+        val primaryTextColor = ContextCompat.getColor(context, R.color.text_primary)
+        val secondaryTextColor = ContextCompat.getColor(context, R.color.text_secondary)
+        
+        errorTitle.setTextColor(primaryTextColor)
+        errorMessage.setTextColor(primaryTextColor)
+        errorSuggestion.setTextColor(secondaryTextColor)
+        
+        // 設置按鈕顏色
+        applyButtonTheme()
+    }
+
+    /**
+     * 應用按鈕主題
+     */
+    private fun applyButtonTheme() {
+        // 重試按鈕 - 使用主色調
+        val retryColors = ColorUtils.getButtonColors(context, enabled = true)
+        retryButton.setTextColor(retryColors.textColor)
+        retryButton.setBackgroundColor(retryColors.backgroundColor)
+        
+        // 詳細資訊按鈕 - 使用次要顏色
+        val secondaryTextColor = ContextCompat.getColor(context, R.color.text_secondary)
+        detailsButton.setTextColor(secondaryTextColor)
+        detailsButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline)
+        
+        // 聯絡支援按鈕 - 使用警告顏色
+        val warningColor = ContextCompat.getColor(context, R.color.warning)
+        supportButton.setTextColor(warningColor)
+        supportButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline)
+    }
+
+    /**
+     * 獲取錯誤樣式資源
+     */
+    private fun getErrorStyleResources(errorType: ErrorType): Pair<Int, Int> {
+        return when (errorType) {
+            ErrorType.NETWORK -> Pair(
+                R.string.error_network_title,
+                R.drawable.ic_network_error
+            )
+            ErrorType.SERVER -> Pair(
+                R.string.error_server_title,
+                R.drawable.ic_server_error
+            )
+            ErrorType.VALIDATION -> Pair(
+                R.string.error_validation_title,
+                R.drawable.ic_validation_error
+            )
+            ErrorType.PERMISSION -> Pair(
+                R.string.error_permission_title,
+                R.drawable.ic_permission_error
+            )
+            ErrorType.MODEL_LOADING -> Pair(
+                R.string.error_model_loading_title,
+                R.drawable.ic_model_error
+            )
+            ErrorType.AI_PROCESSING -> Pair(
+                R.string.error_ai_processing_title,
+                R.drawable.ic_ai_error
+            )
+            ErrorType.FILE_ACCESS -> Pair(
+                R.string.error_file_access_title,
+                R.drawable.ic_file_error
+            )
+            ErrorType.UNKNOWN -> Pair(
+                R.string.error_unknown_title,
+                R.drawable.ic_unknown_error
+            )
+        }
+    }
+
+    /**
+     * 設置重試監聽器
+     */
+    fun setOnRetryListener(listener: (() -> Unit)?) {
+        onRetryListener = listener
+    }
+    
+    /**
+     * 設置重試點擊監聽器 (別名)
+     */
+    fun setOnRetryClickListener(listener: (() -> Unit)?) {
+        onRetryListener = listener
+    }
+
+    /**
+     * 設置詳細資訊監聽器
+     */
+    fun setOnDetailsListener(listener: (() -> Unit)?) {
+        onDetailsListener = listener
+    }
+
+    /**
+     * 設置支援監聽器
+     */
+    fun setOnSupportListener(listener: (() -> Unit)?) {
+        onSupportListener = listener
+    }
+    
+    /**
+     * 設置關閉點擊監聽器
+     */
+    fun setOnCloseClickListener(listener: (() -> Unit)?) {
+        // 關閉即隱藏錯誤視圖
+        setOnClickListener { 
+            hide()
+            listener?.invoke()
+        }
     }
 
     /**
@@ -319,45 +360,124 @@ class ErrorView @JvmOverloads constructor(
     fun isShowing(): Boolean = isVisible
 
     /**
-     * 獲取當前錯誤類型
-     */
-    fun getCurrentType(): ErrorType = currentType
-
-    /**
-     * 獲取當前嚴重程度
-     */
-    fun getCurrentSeverity(): ErrorSeverity = currentSeverity
-
-    /**
      * 快速顯示網路錯誤
      */
-    fun showNetworkError(showRetry: Boolean = true) {
+    fun showNetworkError(
+        customMessage: String? = null,
+        showRetry: Boolean = true
+    ) {
+        val message = customMessage ?: context.getString(R.string.error_network_default_message)
+        val suggestion = context.getString(R.string.error_network_suggestion)
+        
         showError(
             type = ErrorType.NETWORK,
-            severity = ErrorSeverity.ERROR,
-            showRetry = showRetry
+            message = message,
+            suggestion = suggestion,
+            showRetry = showRetry,
+            severity = ErrorSeverity.ERROR
         )
     }
 
     /**
-     * 快速顯示服務器錯誤
+     * 快速顯示伺服器錯誤
      */
-    fun showServerError(showRetry: Boolean = true) {
+    fun showServerError(
+        customMessage: String? = null,
+        showRetry: Boolean = true,
+        showSupport: Boolean = true
+    ) {
+        val message = customMessage ?: context.getString(R.string.error_server_default_message)
+        val suggestion = context.getString(R.string.error_server_suggestion)
+        
         showError(
             type = ErrorType.SERVER,
-            severity = ErrorSeverity.ERROR,
-            showRetry = showRetry
+            message = message,
+            suggestion = suggestion,
+            showRetry = showRetry,
+            showSupport = showSupport,
+            severity = ErrorSeverity.ERROR
+        )
+    }
+
+    /**
+     * 快速顯示權限錯誤
+     */
+    fun showPermissionError(
+        customMessage: String? = null,
+        showDetails: Boolean = true
+    ) {
+        val message = customMessage ?: context.getString(R.string.error_permission_default_message)
+        val suggestion = context.getString(R.string.error_permission_suggestion)
+        
+        showError(
+            type = ErrorType.PERMISSION,
+            message = message,
+            suggestion = suggestion,
+            showDetails = showDetails,
+            severity = ErrorSeverity.WARNING
         )
     }
 
     /**
      * 快速顯示AI處理錯誤
      */
-    fun showAIError(showRetry: Boolean = true) {
+    fun showAIError(
+        customMessage: String? = null,
+        showRetry: Boolean = true
+    ) {
+        val message = customMessage ?: context.getString(R.string.error_ai_default_message)
+        val suggestion = context.getString(R.string.error_ai_suggestion)
+        
         showError(
             type = ErrorType.AI_PROCESSING,
-            severity = ErrorSeverity.WARNING,
-            showRetry = showRetry
+            message = message,
+            suggestion = suggestion,
+            showRetry = showRetry,
+            severity = ErrorSeverity.ERROR
         )
+    }
+
+    /**
+     * 快速顯示資訊訊息
+     */
+    fun showInfo(
+        message: String,
+        suggestion: String = ""
+    ) {
+        showError(
+            type = ErrorType.UNKNOWN,
+            message = message,
+            suggestion = suggestion,
+            showRetry = false,
+            severity = ErrorSeverity.INFO
+        )
+    }
+
+    /**
+     * 快速顯示警告訊息
+     */
+    fun showWarning(
+        message: String,
+        suggestion: String = "",
+        showDetails: Boolean = false
+    ) {
+        showError(
+            type = ErrorType.UNKNOWN,
+            message = message,
+            suggestion = suggestion,
+            showDetails = showDetails,
+            severity = ErrorSeverity.WARNING
+        )
+    }
+
+    /**
+     * 驗證顏色對比度 (用於開發階段檢測)
+     */
+    private fun validateColorContrast() {
+        // 顏色對比度驗證已移至ColorUtils，這裡保留空方法以備未來使用
+    }
+
+    companion object {
+        private const val TAG = "ErrorView"
     }
 } 

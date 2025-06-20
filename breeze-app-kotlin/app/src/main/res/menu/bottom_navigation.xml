@@ -2,9 +2,9 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     
     <item
-        android:id="@+id/nav_chat"
-        android:icon="@drawable/ic_smart_toy_off"
-        android:title="@string/chat" />
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_home"
+        android:title="@string/home" />
     
     <item
         android:id="@+id/nav_settings"

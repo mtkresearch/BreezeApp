@@ -20,6 +20,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        
+        <activity
+            android:name=".presentation.chat.ChatActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ChatActivity"
+            android:parentActivityName=".presentation.MainActivity"
+            android:windowSoftInputMode="adjustNothing">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".presentation.MainActivity" />
+        </activity>
     </application>
 
 </manifest>

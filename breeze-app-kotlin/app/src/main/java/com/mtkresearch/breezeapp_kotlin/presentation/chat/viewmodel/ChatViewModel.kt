@@ -34,9 +34,7 @@ class ChatViewModel : BaseViewModel() {
     private val _inputText = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText.asStateFlow()
 
-    // 是否正在輸入
-    private val _isTyping = MutableStateFlow(false)
-    val isTyping: StateFlow<Boolean> = _isTyping.asStateFlow()
+
 
     // 是否可以發送訊息
     private val _canSendMessage = MutableStateFlow(true)
@@ -64,7 +62,14 @@ class ChatViewModel : BaseViewModel() {
      */
     fun updateInputText(text: String) {
         _inputText.value = text
-        _canSendMessage.value = text.trim().isNotEmpty() && !_isAIResponding.value
+        updateCanSendMessageState()
+    }
+
+    /**
+     * 更新canSendMessage狀態
+     */
+    private fun updateCanSendMessageState() {
+        _canSendMessage.value = _inputText.value.trim().isNotEmpty() && !_isAIResponding.value && !_isListening.value
     }
 
     /**
@@ -72,16 +77,17 @@ class ChatViewModel : BaseViewModel() {
      */
     fun sendMessage(text: String = _inputText.value) {
         val messageText = text.trim()
-        if (messageText.isEmpty() || _isAIResponding.value) return
+        // 檢查是否在語音識別中或AI回應中，如果是則直接返回不執行
+        if (messageText.isEmpty() || _isAIResponding.value || _isListening.value) return
 
         if (!validateInput(messageText.isNotBlank(), "訊息不能為空")) return
 
         launchSafely(showLoading = false) {
-            // 創建用戶訊息
+            // 創建用戶訊息 - 直接設為正常狀態
             val userMessage = ChatMessage(
                 text = messageText,
                 isFromUser = true,
-                state = ChatMessage.MessageState.SENDING
+                state = ChatMessage.MessageState.NORMAL
             )
 
             // 添加用戶訊息到列表
@@ -91,10 +97,6 @@ class ChatViewModel : BaseViewModel() {
             _inputText.value = ""
             _canSendMessage.value = false
             _isAIResponding.value = true
-
-            // 短暫延遲後將用戶訊息狀態改為正常
-            delay(500)
-            updateMessageState(userMessage.id, ChatMessage.MessageState.NORMAL)
 
             // 開始AI回應流程
             generateAIResponse(messageText)
@@ -106,9 +108,6 @@ class ChatViewModel : BaseViewModel() {
      */
     private suspend fun generateAIResponse(userInput: String) {
         try {
-            // 顯示AI正在輸入指示器
-            _isTyping.value = true
-            
             // 創建AI回應訊息 (初始為載入狀態)
             val aiMessage = ChatMessage(
                 text = "正在思考中...",
@@ -135,9 +134,9 @@ class ChatViewModel : BaseViewModel() {
         } catch (e: Exception) {
             handleAIResponseError(e)
         } finally {
-            _isTyping.value = false
             _isAIResponding.value = false
-            _canSendMessage.value = _inputText.value.trim().isNotEmpty()
+            // AI回應完成後，更新canSendMessage狀態
+            updateCanSendMessageState()
         }
     }
 
@@ -161,19 +160,33 @@ class ChatViewModel : BaseViewModel() {
     fun retryLastAIResponse() {
         val lastUserMessage = _messages.value.lastOrNull { it.isFromUser }
         if (lastUserMessage != null && !_isAIResponding.value) {
-            // 移除錯誤的AI回應
-            val messagesWithoutLastAI = _messages.value.toMutableList()
-            val lastAIIndex = messagesWithoutLastAI.indexOfLast { !it.isFromUser }
-            if (lastAIIndex != -1) {
-                messagesWithoutLastAI.removeAt(lastAIIndex)
-                _messages.value = messagesWithoutLastAI
-            }
-
-            // 重新生成回應
             launchSafely(showLoading = false) {
                 _isAIResponding.value = true
                 _canSendMessage.value = false
-                generateAIResponse(lastUserMessage.text)
+                
+                // 找到並更新最後一條AI訊息，而不是移除它
+                val lastAIMessage = _messages.value.lastOrNull { !it.isFromUser }
+                if (lastAIMessage != null) {
+                    // 重置AI訊息為載入狀態
+                    updateMessageText(lastAIMessage.id, "正在思考中...")
+                    updateMessageState(lastAIMessage.id, ChatMessage.MessageState.TYPING)
+                    
+                    // 模擬AI思考時間
+                    delay((1500 + (0..1000).random()).toLong())
+                    
+                    // 生成新的回應
+                    val response = generateMockResponse(lastUserMessage.text)
+                    updateMessageText(lastAIMessage.id, response)
+                    updateMessageState(lastAIMessage.id, ChatMessage.MessageState.NORMAL)
+                    
+                    setSuccess("AI回應重試完成")
+                } else {
+                    // 如果沒有AI訊息，創建新的
+                    generateAIResponse(lastUserMessage.text)
+                }
+                
+                _isAIResponding.value = false
+                updateCanSendMessageState()
             }
         }
     }
@@ -197,8 +210,8 @@ class ChatViewModel : BaseViewModel() {
             _canSendMessage.value = recognizedText.isNotEmpty()
             
             setSuccess("語音識別完成")
+            _isListening.value = false
         }
-        _isListening.value = false
     }
 
     /**
@@ -217,8 +230,9 @@ class ChatViewModel : BaseViewModel() {
         _inputText.value = ""
         _canSendMessage.value = true
         _isAIResponding.value = false
-        _isTyping.value = false
+        _isListening.value = false
         setSuccess("聊天記錄已清空")
+        // 不自動重新載入歡迎訊息，讓測試可以驗證空狀態
     }
 
     /**
@@ -376,16 +390,14 @@ class ChatViewModel : BaseViewModel() {
      * 加載歡迎訊息
      */
     private fun loadWelcomeMessage() {
-        launchSafely(showLoading = false) {
-            delay(500) // 稍微延遲以模擬載入
-            val welcomeMessage = ChatMessage(
-                text = "您好！我是BreezeApp AI助手。我可以幫助您解答問題、進行對話或協助處理各種任務。請告訴我您需要什麼幫助？",
-                isFromUser = false,
-                state = ChatMessage.MessageState.NORMAL
-            )
-            addMessage(welcomeMessage)
-            updateCurrentSession()
-        }
+        // 同步加載歡迎訊息，避免測試中的異步問題
+        val welcomeMessage = ChatMessage(
+            text = "您好！我是BreezeApp AI助手。我可以幫助您解答問題、進行對話或協助處理各種任務。請告訴我您需要什麼幫助？",
+            isFromUser = false,
+            state = ChatMessage.MessageState.NORMAL
+        )
+        addMessage(welcomeMessage)
+        updateCurrentSession()
     }
 
     /**

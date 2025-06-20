@@ -1,30 +1,41 @@
 package com.mtkresearch.breezeapp_kotlin.presentation.common.widget
 
 import android.content.Context
+import android.content.res.ColorStateList
+import android.content.res.TypedArray
 import android.util.AttributeSet
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.cardview.widget.CardView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+
 import com.mtkresearch.breezeapp_kotlin.R
-import com.mtkresearch.breezeapp_kotlin.databinding.WidgetMessageBubbleBinding
+import com.mtkresearch.breezeapp_kotlin.core.utils.ColorUtils
+import com.mtkresearch.breezeapp_kotlin.core.utils.MessageType
 
 /**
- * 可重複使用的訊息氣泡UI組件
+ * 訊息氣泡UI組件
  * 
  * 功能特色:
- * - 支援用戶和AI訊息的不同樣式
- * - 自動調整氣泡方向和顏色
- * - 支援文字訊息和圖片內容
- * - 提供操作按鈕 (語音播放、點讚等)
- * - 支援載入狀態和錯誤狀態
+ * - 支援USER/AI/SYSTEM三種訊息類型，自動調整樣式和對齊方式
+ * - 四種訊息狀態管理 (NORMAL/LOADING/ERROR/TYPING)
+ * - 智能按鈕配置 (語音播放、點讚、重試)
+ * - 主題感知的顏色系統，確保最佳對比度
+ * - 自適應氣泡大小和背景顏色
+ * - 圖片訊息支援 (框架已備，可擴展)
  * 
  * 使用方式:
  * ```kotlin
- * messageBubbleView.setMessage(
+ * messageBubble.setMessage(
  *     text = "Hello World",
- *     type = MessageType.USER,
+ *     type = MessageType.AI,
+ *     state = MessageState.LOADING,
  *     showButtons = true
  * )
  * ```
@@ -36,16 +47,7 @@ class MessageBubbleView @JvmOverloads constructor(
 ) : LinearLayout(context, attrs, defStyleAttr) {
 
     /**
-     * 訊息類型，決定氣泡的樣式和位置
-     */
-    enum class MessageType {
-        USER,    // 用戶訊息：右對齊，橘色背景
-        AI,      // AI訊息：左對齊，白色背景
-        SYSTEM   // 系統訊息：居中，灰色背景
-    }
-
-    /**
-     * 訊息狀態，用於顯示載入和錯誤狀態
+     * 訊息狀態枚舉
      */
     enum class MessageState {
         NORMAL,   // 正常狀態
@@ -54,52 +56,109 @@ class MessageBubbleView @JvmOverloads constructor(
         TYPING    // 正在輸入 (AI專用)
     }
 
-    private val binding: WidgetMessageBubbleBinding = 
-        WidgetMessageBubbleBinding.inflate(LayoutInflater.from(context), this, true)
+    // UI組件
+    private lateinit var messageContainer: LinearLayout
+    private lateinit var messageText: TextView
+    private lateinit var buttonsContainer: LinearLayout
+    private lateinit var voiceButton: ImageButton  // 改名為voiceButton以匹配佈局
+    private lateinit var likeButton: ImageButton
+    private lateinit var dislikeButton: ImageButton
+    private lateinit var retryButton: ImageButton
 
-    private var currentType: MessageType = MessageType.USER
-    private var currentState: MessageState = MessageState.NORMAL
-    
+
+    // 當前狀態
+    private var currentMessageType = MessageType.USER
+    private var currentState = MessageState.NORMAL
+
     // 回調函數
     private var onSpeakerClickListener: (() -> Unit)? = null
     private var onLikeClickListener: ((isPositive: Boolean) -> Unit)? = null
     private var onRetryClickListener: (() -> Unit)? = null
 
     init {
-        setupViews()
+        initializeView()
+        parseAttributes(attrs)
         setupClickListeners()
     }
 
-    private fun setupViews() {
+    /**
+     * 初始化視圖
+     */
+    private fun initializeView() {
+        LayoutInflater.from(context).inflate(R.layout.widget_message_bubble, this, true)
+        
+        // 綁定UI組件
+        messageContainer = findViewById(R.id.messageContainer)
+        messageText = findViewById(R.id.messageText)
+        buttonsContainer = findViewById(R.id.buttonsContainer)
+        voiceButton = findViewById(R.id.voiceButton)
+        likeButton = findViewById(R.id.likeButton)
+        dislikeButton = findViewById(R.id.dislikeButton)
+        retryButton = findViewById(R.id.retryButton)
+
+        
+        // 設置預設配置
         orientation = VERTICAL
-        setPadding(
-            resources.getDimensionPixelSize(R.dimen.spacing_small),
-            resources.getDimensionPixelSize(R.dimen.spacing_micro),
-            resources.getDimensionPixelSize(R.dimen.spacing_small),
-            resources.getDimensionPixelSize(R.dimen.spacing_micro)
-        )
+        setupDefaultStyles()
     }
 
-    private fun setupClickListeners() {
-        binding.speakerButton.setOnClickListener {
-            onSpeakerClickListener?.invoke()
-        }
-        
-        binding.upLikeButton.setOnClickListener {
-            onLikeClickListener?.invoke(true)
-        }
-        
-        binding.downLikeButton.setOnClickListener {
-            onLikeClickListener?.invoke(false)
-        }
-        
-        binding.retryButton.setOnClickListener {
-            onRetryClickListener?.invoke()
+    /**
+     * 解析XML屬性
+     */
+    private fun parseAttributes(attrs: AttributeSet?) {
+        attrs?.let {
+            val typedArray: TypedArray = context.obtainStyledAttributes(
+                it, R.styleable.MessageBubbleView, 0, 0
+            )
+            
+            try {
+                // 解析訊息類型
+                val messageTypeIndex = typedArray.getInt(
+                    R.styleable.MessageBubbleView_messageType, 
+                    MessageType.USER.ordinal
+                )
+                currentMessageType = MessageType.values()[messageTypeIndex]
+                
+                // 解析訊息狀態
+                val messageStateIndex = typedArray.getInt(
+                    R.styleable.MessageBubbleView_messageState,
+                    MessageState.NORMAL.ordinal
+                )
+                currentState = MessageState.values()[messageStateIndex]
+                
+                // 解析是否顯示按鈕
+                val showButtons = typedArray.getBoolean(
+                    R.styleable.MessageBubbleView_showButtons,
+                    false
+                )
+                buttonsContainer.isVisible = showButtons
+                
+            } finally {
+                typedArray.recycle()
+            }
         }
     }
 
     /**
-     * 設置訊息內容和樣式
+     * 設置預設樣式
+     */
+    private fun setupDefaultStyles() {
+        applyMessageStyle()
+        applyMessageState()
+    }
+
+    /**
+     * 設置點擊監聽器
+     */
+    private fun setupClickListeners() {
+        voiceButton.setOnClickListener { onSpeakerClickListener?.invoke() }
+        likeButton.setOnClickListener { onLikeClickListener?.invoke(true) }
+        dislikeButton.setOnClickListener { onLikeClickListener?.invoke(false) }
+        retryButton.setOnClickListener { onRetryClickListener?.invoke() }
+    }
+
+    /**
+     * 設置訊息內容
      */
     fun setMessage(
         text: String,
@@ -108,207 +167,211 @@ class MessageBubbleView @JvmOverloads constructor(
         showButtons: Boolean = false,
         imageUrl: String? = null
     ) {
-        currentType = type
+        currentMessageType = type
         currentState = state
         
         // 設置文字內容
-        binding.messageText.text = text
-        binding.messageText.isVisible = text.isNotEmpty()
+        messageText.text = text
+        messageText.isVisible = text.isNotEmpty()
         
-        // 設置圖片 (暫時隱藏，後續可加入圖片載入邏輯)
-        binding.messageImage.isVisible = false
-        
-        // 根據類型調整樣式
-        applyMessageStyle(type)
-        
-        // 根據狀態調整UI
-        applyMessageState(state)
+        // 圖片功能暫時移除，如需要可在未來添加
+        // TODO: 未來版本可添加圖片支援
         
         // 設置按鈕顯示
-        setupButtons(type, showButtons)
+        buttonsContainer.isVisible = showButtons
+        
+        // 應用樣式和狀態
+        applyMessageStyle()
+        applyMessageState()
+        configureButtons()
     }
 
     /**
-     * 根據訊息類型調整樣式
+     * 更新訊息狀態
      */
-    private fun applyMessageStyle(type: MessageType) {
-        val layoutParams = binding.messageBubble.layoutParams as LayoutParams
+    fun updateState(state: MessageState) {
+        currentState = state
+        applyMessageState()
+    }
+
+
+
+    /**
+     * 應用訊息樣式 (根據類型)
+     */
+    private fun applyMessageStyle() {
+        val colors = ColorUtils.getMessageColors(context, currentMessageType)
         
-        when (type) {
+        // 設置文字顏色
+        messageText.setTextColor(colors.textColor)
+        
+        // 設置對齊方式和邊距
+        when (currentMessageType) {
             MessageType.USER -> {
-                // 用戶訊息：右對齊，橘色背景
-                layoutParams.gravity = Gravity.END
-                binding.messageBubble.background = ContextCompat.getDrawable(
-                    context, R.drawable.bg_user_message
+                // 用戶訊息：右對齊，有背景
+                gravity = Gravity.END
+                val params = messageContainer.layoutParams as MarginLayoutParams
+                params.setMargins(
+                    resources.getDimensionPixelSize(R.dimen.message_margin_large),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small)
                 )
-                binding.messageText.setTextColor(
-                    ContextCompat.getColor(context, R.color.user_message_text)
-                )
-                // 設置最大寬度
-                val maxWidth = resources.getDimensionPixelSize(R.dimen.message_bubble_max_width)
-                binding.messageBubble.layoutParams.width = maxWidth
+                messageContainer.layoutParams = params
+                
+                // 用戶訊息使用背景色和drawable
+                messageContainer.setBackgroundColor(colors.backgroundColor)
+                val backgroundDrawable = ContextCompat.getDrawable(context, R.drawable.bg_message_bubble)
+                messageContainer.background = backgroundDrawable
             }
-            
             MessageType.AI -> {
-                // AI訊息：左對齊，白色背景
-                layoutParams.gravity = Gravity.START
-                binding.messageBubble.background = ContextCompat.getDrawable(
-                    context, R.drawable.bg_ai_message
+                // AI訊息：左對齊，無背景
+                gravity = Gravity.START
+                val params = messageContainer.layoutParams as MarginLayoutParams
+                params.setMargins(
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_large),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small)
                 )
-                binding.messageText.setTextColor(
-                    ContextCompat.getColor(context, R.color.ai_message_text)
-                )
-                // AI訊息使用包裹內容的寬度
-                binding.messageBubble.layoutParams.width = LayoutParams.WRAP_CONTENT
+                messageContainer.layoutParams = params
+                
+                // AI訊息不使用背景
+                messageContainer.background = null
             }
-            
             MessageType.SYSTEM -> {
-                // 系統訊息：居中，灰色背景
-                layoutParams.gravity = Gravity.CENTER_HORIZONTAL
-                binding.messageBubble.background = ContextCompat.getDrawable(
-                    context, R.drawable.bg_message_bubble
+                // 系統訊息：居中，有背景
+                gravity = Gravity.CENTER_HORIZONTAL
+                val params = messageContainer.layoutParams as MarginLayoutParams
+                params.setMargins(
+                    resources.getDimensionPixelSize(R.dimen.message_margin_medium),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_medium),
+                    resources.getDimensionPixelSize(R.dimen.message_margin_small)
                 )
-                binding.messageText.setTextColor(
-                    ContextCompat.getColor(context, R.color.text_secondary)
-                )
-                // 設置最大寬度
-                val maxWidth = resources.getDimensionPixelSize(R.dimen.message_bubble_max_width)
-                binding.messageBubble.layoutParams.width = maxWidth
+                messageContainer.layoutParams = params
+                
+                // 系統訊息使用背景色和drawable
+                messageContainer.setBackgroundColor(colors.backgroundColor)
+                val backgroundDrawable = ContextCompat.getDrawable(context, R.drawable.bg_message_bubble)
+                messageContainer.background = backgroundDrawable
             }
         }
-        
-        binding.messageBubble.layoutParams = layoutParams
     }
 
     /**
-     * 根據訊息狀態調整UI
+     * 應用訊息狀態
      */
-    private fun applyMessageState(state: MessageState) {
-        when (state) {
+    private fun applyMessageState() {
+        when (currentState) {
             MessageState.NORMAL -> {
-                binding.loadingIndicator.isVisible = false
-                binding.errorIndicator.isVisible = false
-                binding.messageText.alpha = 1.0f
+                messageText.alpha = 1.0f
+                messageContainer.alpha = 1.0f
             }
-            
             MessageState.LOADING -> {
-                binding.loadingIndicator.isVisible = true
-                binding.errorIndicator.isVisible = false
-                binding.messageText.alpha = 0.6f
-                binding.messageText.text = context.getString(R.string.generating_response)
+                // 載入狀態：顯示較暗的文字以表示正在處理
+                messageText.alpha = 0.7f
             }
-            
             MessageState.ERROR -> {
-                binding.loadingIndicator.isVisible = false
-                binding.errorIndicator.isVisible = true
-                binding.messageText.alpha = 0.6f
-                binding.messageText.text = context.getString(R.string.error_generating_response)
+                messageText.alpha = 0.8f
+                // 應用錯誤樣式：設置錯誤背景顏色
+                val errorBackground = ContextCompat.getDrawable(context, R.drawable.bg_message_bubble)
+                messageContainer.background = errorBackground
             }
-            
             MessageState.TYPING -> {
-                binding.loadingIndicator.isVisible = true
-                binding.errorIndicator.isVisible = false
-                binding.messageText.alpha = 0.8f
-                binding.messageText.text = context.getString(R.string.ai_is_typing)
+                // TYPING 狀態已移除，保留以便向後兼容
+                messageText.alpha = 0.8f
             }
         }
     }
 
     /**
-     * 設置操作按鈕的顯示
+     * 配置按鈕顯示
      */
-    private fun setupButtons(type: MessageType, showButtons: Boolean) {
-        val shouldShowButtons = showButtons && currentState == MessageState.NORMAL
-        binding.buttonRow.isVisible = shouldShowButtons
+    private fun configureButtons() {
+        if (!buttonsContainer.isVisible) return
         
-        if (shouldShowButtons) {
-            when (type) {
-                MessageType.USER -> {
-                    // 用戶訊息只顯示語音播放按鈕
-                    binding.speakerButton.isVisible = true
-                    binding.upLikeButton.isVisible = false
-                    binding.downLikeButton.isVisible = false
-                }
-                
-                MessageType.AI -> {
-                    // AI訊息顯示完整按鈕組
-                    binding.speakerButton.isVisible = true
-                    binding.upLikeButton.isVisible = true
-                    binding.downLikeButton.isVisible = true
-                }
-                
-                MessageType.SYSTEM -> {
-                    // 系統訊息不顯示操作按鈕
-                    binding.buttonRow.isVisible = false
-                }
+        when (currentMessageType) {
+            MessageType.USER -> {
+                // 用戶訊息：只顯示重試按鈕（錯誤狀態）
+                voiceButton.isVisible = false
+                likeButton.isVisible = false
+                dislikeButton.isVisible = false
+                retryButton.isVisible = currentState == MessageState.ERROR
+            }
+            MessageType.AI -> {
+                // AI訊息：顯示語音播放和點讚按鈕
+                voiceButton.isVisible = currentState == MessageState.NORMAL
+                likeButton.isVisible = currentState == MessageState.NORMAL
+                dislikeButton.isVisible = currentState == MessageState.NORMAL
+                retryButton.isVisible = currentState == MessageState.ERROR
+            }
+            MessageType.SYSTEM -> {
+                // 系統訊息：不顯示任何按鈕
+                voiceButton.isVisible = false
+                likeButton.isVisible = false
+                dislikeButton.isVisible = false
+                retryButton.isVisible = false
             }
         }
         
-        // 錯誤狀態特殊處理
-        binding.retryButton.isVisible = currentState == MessageState.ERROR
+        // 應用按鈕主題顏色
+        applyButtonTheme()
     }
 
     /**
-     * 設置語音播放按鈕點擊監聽器
+     * 應用按鈕主題顏色
+     */
+    private fun applyButtonTheme() {
+        val primaryColor = ContextCompat.getColor(context, R.color.primary)
+        val errorColor = ContextCompat.getColor(context, R.color.error)
+        
+        // 設置按鈕圖示顏色為主色調
+        val primaryColorStateList = ColorStateList.valueOf(primaryColor)
+        voiceButton.imageTintList = primaryColorStateList
+        likeButton.imageTintList = primaryColorStateList
+        dislikeButton.imageTintList = primaryColorStateList
+        retryButton.imageTintList = ColorStateList.valueOf(errorColor)
+        
+        // 🔧 關鍵修復：為每個按鈕創建獨立的drawable實例
+        // 使用 mutate() 確保每個按鈕都有自己的狀態，不會互相影響
+        voiceButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline)?.mutate()
+        likeButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline)?.mutate()
+        dislikeButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline)?.mutate()
+        
+        // 重試按鈕使用錯誤顏色邊框，也需要獨立實例
+        retryButton.background = ContextCompat.getDrawable(context, R.drawable.bg_button_outline_error)?.mutate()
+    }
+
+    /**
+     * 設置語音播放點擊監聽器
      */
     fun setOnSpeakerClickListener(listener: (() -> Unit)?) {
         onSpeakerClickListener = listener
     }
 
     /**
-     * 設置點讚按鈕點擊監聽器
+     * 設置點讚點擊監聽器
      */
     fun setOnLikeClickListener(listener: ((isPositive: Boolean) -> Unit)?) {
         onLikeClickListener = listener
     }
 
     /**
-     * 設置重試按鈕點擊監聽器
+     * 設置重試點擊監聽器
      */
     fun setOnRetryClickListener(listener: (() -> Unit)?) {
         onRetryClickListener = listener
     }
 
     /**
-     * 更新載入狀態
+     * 驗證顏色對比度 (用於開發階段檢測)
      */
-    fun setLoading(isLoading: Boolean) {
-        currentState = if (isLoading) MessageState.LOADING else MessageState.NORMAL
-        applyMessageState(currentState)
-        setupButtons(currentType, binding.buttonRow.isVisible)
+    private fun validateColorContrast() {
+        // 顏色對比度驗證已移至ColorUtils，這裡保留空方法以備未來使用
     }
 
-    /**
-     * 設置錯誤狀態
-     */
-    fun setError(errorMessage: String? = null) {
-        currentState = MessageState.ERROR
-        errorMessage?.let { binding.messageText.text = it }
-        applyMessageState(currentState)
-        setupButtons(currentType, true) // 錯誤時顯示重試按鈕
+    companion object {
+        private const val TAG = "MessageBubbleView"
     }
-
-    /**
-     * 設置AI正在輸入狀態
-     */
-    fun setTyping(isTyping: Boolean) {
-        currentState = if (isTyping) MessageState.TYPING else MessageState.NORMAL
-        applyMessageState(currentState)
-        setupButtons(currentType, !isTyping)
-    }
-
-    /**
-     * 獲取當前訊息文字
-     */
-    fun getMessageText(): String = binding.messageText.text.toString()
-
-    /**
-     * 獲取當前訊息類型
-     */
-    fun getMessageType(): MessageType = currentType
-
-    /**
-     * 獲取當前訊息狀態
-     */
-    fun getMessageState(): MessageState = currentState
 } 

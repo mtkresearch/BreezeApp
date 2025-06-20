@@ -1,9 +1,15 @@
 package com.mtkresearch.breezeapp_kotlin.presentation.chat.fragment
 
+import android.content.Context
+import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -12,6 +18,7 @@ import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.adapter.MessageAdapter
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.viewmodel.ChatViewModel
+import com.mtkresearch.breezeapp_kotlin.core.utils.ErrorType
 
 /**
  * 聊天Fragment
@@ -51,6 +58,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         setupInputSection()
         setupButtons()
         setupErrorAndLoadingViews()
+        setupKeyboardListener()
     }
 
     override fun observeUIState() {
@@ -63,7 +71,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
                 com.mtkresearch.breezeapp_kotlin.presentation.common.base.UiState.ERROR -> {
                     binding.loadingView.hide()
                     binding.errorView.showError(
-                        type = com.mtkresearch.breezeapp_kotlin.presentation.common.widget.ErrorView.ErrorType.AI_PROCESSING,
+                        type = ErrorType.AI_PROCESSING,
                         message = state.message,
                         showRetry = true
                     )
@@ -109,7 +117,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 觀察AI回應狀態
         viewModel.isAIResponding.collectSafely { isResponding ->
             binding.textViewAIStatus.visibility = if (isResponding) View.VISIBLE else View.GONE
-            binding.textViewAIStatus.text = if (isResponding) "AI正在回應中..." else ""
+            binding.textViewAIStatus.text = if (isResponding) "AI正在思考和回應中..." else ""
         }
 
         // 觀察語音識別狀態
@@ -119,10 +127,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             binding.textViewVoiceStatus.text = if (isListening) "正在聽取語音..." else ""
         }
 
-        // 觀察打字狀態
-        viewModel.isTyping.collectSafely { isTyping ->
-            binding.textViewTypingIndicator.visibility = if (isTyping) View.VISIBLE else View.GONE
-        }
+
     }
 
     override fun onDestroyView() {
@@ -163,8 +168,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 輸入框焦點變化
         binding.editTextMessage.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
-                // 當輸入框獲得焦點時，滾動到最新訊息
-                scrollToLatestMessage()
+                // 當輸入框獲得焦點時，延遲滾動到最新訊息，等待鍵盤動畫完成
+                binding.root.postDelayed({
+                    scrollToLatestMessage()
+                }, 300) // 給鍵盤動畫一些時間
             }
         }
 
@@ -236,6 +243,11 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         if (messageText.isNotEmpty()) {
             viewModel.sendMessage(messageText)
             // 清空輸入框在ViewModel中處理
+            
+            // 發送訊息後滾動到最新位置
+            binding.root.postDelayed({
+                scrollToLatestMessage()
+            }, 100)
         }
     }
 
@@ -260,12 +272,20 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun updateVoiceButton(isListening: Boolean) {
         binding.buttonVoice.isSelected = isListening
-        binding.buttonVoice.text = if (isListening) "停止" else "語音"
+        // 改變按鈕圖示來表示狀態
+        binding.buttonVoice.setImageResource(
+            if (isListening) com.mtkresearch.breezeapp_kotlin.R.drawable.ic_mic_off 
+            else com.mtkresearch.breezeapp_kotlin.R.drawable.ic_mic
+        )
+        binding.buttonVoice.contentDescription = if (isListening) "停止語音輸入" else "開始語音輸入"
         
         // 如果正在聽取語音，禁用發送按鈕
         if (isListening) {
             binding.buttonSend.isEnabled = false
             binding.buttonSend.alpha = 0.5f
+        } else {
+            binding.buttonSend.isEnabled = true
+            binding.buttonSend.alpha = 1.0f
         }
     }
 
@@ -274,7 +294,23 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun scrollToLatestMessage() {
         if (messageAdapter.itemCount > 0) {
-            binding.recyclerViewMessages.smoothScrollToPosition(messageAdapter.itemCount - 1)
+            val lastPosition = messageAdapter.itemCount - 1
+            val layoutManager = binding.recyclerViewMessages.layoutManager as? LinearLayoutManager
+            
+            // 如果最後一個item已經完全可見，使用smoothScrollToPosition
+            // 否則直接跳到最後位置以避免長時間滾動
+            if (layoutManager != null) {
+                val lastVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
+                if (lastPosition - lastVisiblePosition <= 3) {
+                    // 相差不多，使用平滑滾動
+                    binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
+                } else {
+                    // 相差很多，直接跳到最後
+                    binding.recyclerViewMessages.scrollToPosition(lastPosition)
+                }
+            } else {
+                binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
+            }
         }
     }
 
@@ -324,6 +360,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             message,
             isPositive
         )
+        
+        // 在頂部狀態欄顯示反饋訊息
+        val feedbackText = if (isPositive) "已對此回應表示讚同" else "已對此回應表示不讚同"
+        showFeedbackMessage(feedbackText)
     }
 
     override fun onRetryClick(message: ChatMessage) {
@@ -406,6 +446,135 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             putExtra(android.content.Intent.EXTRA_SUBJECT, "來自BreezeApp的對話")
         }
         startActivity(android.content.Intent.createChooser(shareIntent, "分享訊息"))
+    }
+
+    /**
+     * 顯示反饋訊息在頂部狀態欄
+     */
+    private fun showFeedbackMessage(message: String) {
+        binding.textViewAIStatus.apply {
+            text = message
+            visibility = View.VISIBLE
+        }
+        
+        // 3秒後自動隱藏
+        binding.textViewAIStatus.postDelayed({
+            if (binding.textViewAIStatus.text == message) {
+                binding.textViewAIStatus.visibility = View.GONE
+            }
+        }, 3000)
+    }
+
+    /**
+     * 重寫showSuccess方法，讓成功訊息也顯示在頂部
+     */
+    override fun showSuccess(message: String) {
+        showFeedbackMessage(message)
+    }
+
+    /**
+     * 設置鍵盤監聽器
+     */
+    private fun setupKeyboardListener() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
+            val systemBarsInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            
+            // 鍵盤高度
+            val keyboardHeight = imeInsets.bottom
+            val isKeyboardVisible = keyboardHeight > 0
+            
+            // 調整輸入區域的位置，讓它始終保持在鍵盤上方
+            val inputLayoutParams = binding.inputSection.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+            inputLayoutParams.bottomMargin = keyboardHeight
+            binding.inputSection.layoutParams = inputLayoutParams
+            
+            // 不需要額外調整chatContentLayout的bottomMargin
+            // 因為它已經通過constraint約束到inputSection的頂部
+            // 只需要保持原有的spacing即可
+            
+            if (isKeyboardVisible) {
+                // 延遲滾動確保佈局調整完成
+                binding.root.postDelayed({
+                    scrollToLatestMessage()
+                }, 200)
+            }
+            
+            // 保持RecyclerView的原始padding，不需要動態調整
+            // 因為chatContentLayout到inputSection的約束已經提供了足夠的間距
+            
+            // 返回CONSUMED表示我們已經處理了這些insets
+            WindowInsetsCompat.CONSUMED
+        }
+    }
+
+    /**
+     * 處理返回按鈕事件
+     * 
+     * @return true 如果Fragment處理了返回事件，false 如果應該由Activity處理
+     */
+    fun onBackPressed(): Boolean {
+        // 如果正在語音識別，停止識別
+        if (viewModel.isListening.value) {
+            viewModel.stopVoiceRecognition()
+            return true
+        }
+        
+        // 如果輸入框有內容，清空內容
+        if (binding.editTextMessage.text.isNotEmpty()) {
+            binding.editTextMessage.text.clear()
+            return true
+        }
+        
+        // 如果有錯誤顯示，隱藏錯誤
+        if (binding.errorView.visibility == View.VISIBLE) {
+            binding.errorView.hide()
+            return true
+        }
+        
+        // 其他情況讓Activity處理（返回主頁面）
+        return false
+    }
+
+    /**
+     * 處理點擊鍵盤外區域收起鍵盤
+     * 
+     * @param event 觸摸事件
+     */
+    fun handleTouchOutsideKeyboard(event: MotionEvent) {
+        // 檢查輸入框是否有焦點（即鍵盤是否顯示）
+        if (!binding.editTextMessage.hasFocus()) {
+            return
+        }
+        
+        // 獲取輸入區域的位置
+        val inputRect = Rect()
+        binding.inputSection.getGlobalVisibleRect(inputRect)
+        
+        // 檢查觸摸點是否在輸入區域外
+        val touchX = event.x.toInt()
+        val touchY = event.y.toInt()
+        
+        if (!inputRect.contains(touchX, touchY)) {
+            // 點擊在輸入區域外，收起鍵盤
+            hideKeyboard()
+        }
+    }
+
+    /**
+     * 隱藏軟鍵盤
+     */
+    private fun hideKeyboard() {
+        val inputMethodManager = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        
+        // 清除輸入框焦點
+        binding.editTextMessage.clearFocus()
+        
+        // 隱藏鍵盤
+        inputMethodManager.hideSoftInputFromWindow(
+            binding.editTextMessage.windowToken,
+            0
+        )
     }
 
     companion object {

@@ -57,38 +57,24 @@
             tools:visibility="visible" />
 
         <!-- 訊息列表 -->
+
+        <!-- 打字指示器 -->
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewMessages"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:clipToPadding="false"
             android:paddingTop="@dimen/spacing_small"
-            android:paddingBottom="@dimen/spacing_small"
+            android:paddingBottom="@dimen/spacing_medium"
             android:scrollbars="vertical"
-            app:layout_constraintBottom_toTopOf="@+id/textViewTypingIndicator"
+            app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/textViewAIStatus"
             tools:listitem="@layout/item_chat_message" />
 
-        <!-- 打字指示器 -->
-        <TextView
-            android:id="@+id/textViewTypingIndicator"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:background="@color/ai_message_bg"
-            android:drawablePadding="@dimen/spacing_small"
-            android:gravity="center_vertical"
-            android:padding="@dimen/spacing_medium"
-            android:text="AI正在輸入..."
-            android:textColor="@color/ai_message_text"
-            android:textSize="14sp"
-            android:visibility="gone"
-            app:drawableStartCompat="@drawable/ic_typing"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            tools:visibility="visible" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -130,17 +116,17 @@
             android:orientation="horizontal">
 
             <!-- 語音按鈕 -->
-            <Button
+            <ImageButton
                 android:id="@+id/buttonVoice"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_marginEnd="@dimen/spacing_small"
-                android:drawableTop="@drawable/ic_mic"
-                android:minWidth="60dp"
-                android:padding="@dimen/spacing_small"
-                android:text="語音"
-                android:textSize="12sp" />
+                android:background="@drawable/bg_circle_button"
+                android:src="@drawable/ic_mic"
+                android:contentDescription="語音輸入"
+                android:scaleType="centerInside"
+                android:padding="12dp"
+                app:tint="@color/on_primary" />
 
             <!-- 輸入框 -->
             <EditText
@@ -156,20 +142,21 @@
                 android:minHeight="48dp"
                 android:padding="@dimen/spacing_medium"
                 android:textColorHint="@color/text_secondary"
+                android:textColor="@color/text_primary"
                 android:textSize="16sp" />
 
             <!-- 發送按鈕 -->
-            <Button
+            <ImageButton
                 android:id="@+id/buttonSend"
-                style="@style/Widget.Material3.Button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_marginStart="@dimen/spacing_small"
-                android:drawableTop="@drawable/ic_send"
-                android:minWidth="60dp"
-                android:padding="@dimen/spacing_small"
-                android:text="發送"
-                android:textSize="12sp" />
+                android:background="@drawable/bg_circle_button"
+                android:src="@drawable/ic_send"
+                android:contentDescription="發送訊息"
+                android:scaleType="centerInside"
+                android:padding="12dp"
+                app:tint="@color/on_primary" />
 
         </LinearLayout>
 

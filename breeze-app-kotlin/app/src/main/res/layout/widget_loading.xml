@@ -1,51 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:gravity="center"
-    android:background="@color/surface"
-    android:clickable="true"
-    android:focusable="true">
+    android:layout_height="match_parent">
+
+    <!-- Background Overlay -->
+    <View
+        android:id="@+id/backgroundOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/overlay_light"
+        android:visibility="gone" />
 
     <!-- Loading Container -->
     <LinearLayout
         android:id="@+id/loadingContainer"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_gravity="center"
         android:orientation="vertical"
         android:gravity="center"
-        android:background="@drawable/bg_dialog"
         android:padding="@dimen/loading_container_padding"
-        android:minWidth="200dp"
-        android:elevation="@dimen/card_elevation">
+        android:background="@drawable/bg_loading_container_light">
 
-        <!-- Circular Progress Bar -->
+        <!-- Circular Progress -->
         <ProgressBar
             android:id="@+id/circularProgress"
-            android:layout_width="@dimen/loading_circle_size"
-            android:layout_height="@dimen/loading_circle_size"
+            android:layout_width="@dimen/loading_progress_size"
+            android:layout_height="@dimen/loading_progress_size"
             android:layout_marginBottom="@dimen/spacing_medium"
-            android:indeterminate="true"
-            android:indeterminateTint="@color/primary"
-            android:visibility="visible" />
+            android:indeterminateDrawable="@drawable/progress_circular" />
 
-        <!-- Horizontal Progress Bar -->
+        <!-- Linear Progress -->
         <ProgressBar
-            android:id="@+id/horizontalProgress"
-            style="@android:style/Widget.ProgressBar.Horizontal"
-            android:layout_width="200dp"
+            android:id="@+id/linearProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="@dimen/loading_progress_width"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_medium"
-            android:indeterminate="true"
-            android:progressTint="@color/primary"
-            android:indeterminateTint="@color/primary"
             android:visibility="gone" />
 
-        <!-- Dots Animation Container -->
+        <!-- Dots Container -->
         <LinearLayout
-            android:id="@+id/dotsAnimation"
+            android:id="@+id/dotsContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_medium"
@@ -54,65 +50,42 @@
             android:visibility="gone">
 
             <View
-                android:id="@+id/dot1"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_circle"
-                android:backgroundTint="@color/primary" />
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
 
             <View
-                android:id="@+id/dot2"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_circle"
-                android:backgroundTint="@color/primary" />
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
 
             <View
-                android:id="@+id/dot3"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_circle"
-                android:backgroundTint="@color/primary" />
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
 
         </LinearLayout>
 
-        <!-- Loading Message -->
-        <TextView
-            android:id="@+id/loadingMessage"
+        <!-- Custom Container -->
+        <FrameLayout
+            android:id="@+id/customContainer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/loading"
-            android:textSize="@dimen/loading_text_size"
-            android:textColor="@color/text_primary"
-            android:gravity="center"
-            android:layout_marginBottom="@dimen/spacing_small" />
-
-        <!-- Loading Subtitle -->
-        <TextView
-            android:id="@+id/loadingSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
             android:layout_marginBottom="@dimen/spacing_medium"
             android:visibility="gone" />
 
-        <!-- Cancel Button -->
-        <Button
-            android:id="@+id/cancelButton"
+        <!-- Loading Text -->
+        <TextView
+            android:id="@+id/loadingText"
             android:layout_width="wrap_content"
-            android:layout_height="@dimen/error_button_height"
-            android:minWidth="@dimen/error_button_min_width"
-            android:text="@string/cancel"
-            android:textSize="14sp"
-            android:background="@drawable/bg_circle_button"
-            android:textColor="@color/text_secondary"
-            android:visibility="gone" />
+            android:layout_height="wrap_content"
+            android:text="@string/loading"
+            android:textSize="@dimen/text_size_medium"
+            android:gravity="center" />
 
     </LinearLayout>
 
-</LinearLayout> 
+</FrameLayout> 

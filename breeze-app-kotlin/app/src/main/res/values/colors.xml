@@ -1,6 +1,193 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material Design Colors -->
+    <!-- ================================ -->
+    <!-- Primary Brand Colors (橙色系統) -->
+    <!-- ================================ -->
+
+    <!-- Main Orange Brand Colors -->
+    <color name="primary">#F99A1B</color>              <!-- 主橙色 -->
+    <color name="primary_dark">#E07D00</color>          <!-- 深橙色 -->
+    <color name="primary_light">#FFB74D</color>         <!-- 淺橙色 -->
+    <color name="primary_variant">#FF8F00</color>       <!-- 橙色變體 -->
+
+    <!-- Secondary Colors -->
+    <color name="secondary">#03DAC6</color>             <!-- 青綠色輔助色 -->
+    <color name="secondary_dark">#018786</color>        <!-- 深青綠色 -->
+    <color name="secondary_light">#4DD0E1</color>       <!-- 淺青綠色 -->
+
+    <!-- ================================ -->
+    <!-- Light Theme Colors (淺色主題) -->
+    <!-- ================================ -->
+
+    <!-- Surface & Background -->
+    <color name="surface">#FFFFFF</color>               <!-- 白色表面 -->
+    <color name="background">#FAFAFA</color>            <!-- 淺灰背景 -->
+    <color name="surface_variant">#F5F5F5</color>       <!-- 表面變體 -->
+    <color name="outline">#79747E</color>               <!-- 邊框顏色 -->
+    <color name="outline_variant">#C4C7C5</color>       <!-- 邊框變體 -->
+
+    <!-- Text Colors -->
+    <color name="text_primary">#1C1B1F</color>          <!-- 主要文字 - 深灰黑 -->
+    <color name="text_secondary">#49454F</color>        <!-- 次要文字 - 中灰 -->
+    <color name="text_tertiary">#6B6B6B</color>         <!-- 第三級文字 -->
+    <color name="text_disabled">#9E9E9E</color>         <!-- 禁用文字 -->
+
+    <!-- On Primary Colors (在主色背景上的文字) -->
+    <color name="on_primary">#FFFFFF</color>            <!-- 在橙色背景上用白色文字 -->
+    <color name="on_secondary">#FFFFFF</color>          <!-- 在青綠色背景上用白色文字 -->
+    <color name="on_surface">#1C1B1F</color>           <!-- 在表面背景上用深色文字 -->
+    <color name="on_background">#1C1B1F</color>        <!-- 在背景上用深色文字 -->
+
+    <!-- ================================ -->
+    <!-- Dark Theme Colors (深色主題) -->
+    <!-- ================================ -->
+
+    <!-- Surface & Background -->
+    <color name="surface_dark">#1C1B1F</color>          <!-- 深色表面 -->
+    <color name="background_dark">#121212</color>       <!-- 深色背景 -->
+    <color name="surface_variant_dark">#2B2930</color>  <!-- 深色表面變體 -->
+    <color name="outline_dark">#938F99</color>          <!-- 深色邊框 -->
+    <color name="outline_variant_dark">#49454F</color>  <!-- 深色邊框變體 -->
+
+    <!-- Text Colors -->
+    <color name="text_primary_dark">#E6E1E5</color>     <!-- 深色主題主要文字 -->
+    <color name="text_secondary_dark">#CAC4D0</color>   <!-- 深色主題次要文字 -->
+    <color name="text_tertiary_dark">#9E9E9E</color>    <!-- 深色主題第三級文字 -->
+    <color name="text_disabled_dark">#616161</color>    <!-- 深色主題禁用文字 -->
+
+    <!-- On Primary Colors (深色主題) -->
+    <color name="on_primary_dark">#FFFFFF</color>       <!-- 深色主題在主色背景上的文字 -->
+    <color name="on_secondary_dark">#003735</color>     <!-- 深色主題在次要色背景上的文字 -->
+    <color name="on_surface_dark">#E6E1E5</color>      <!-- 深色主題在表面背景上的文字 -->
+    <color name="on_background_dark">#E6E1E5</color>   <!-- 深色主題在背景上的文字 -->
+
+    <!-- ================================ -->
+    <!-- Message System Colors (訊息系統) -->
+    <!-- ================================ -->
+
+    <!-- User Message (用戶訊息) -->
+    <color name="user_message_bg">#F99A1B</color>       <!-- 用戶訊息背景 - 主橙色 -->
+    <color name="user_message_bg_dark">#E07D00</color>  <!-- 深色主題用戶訊息背景 -->
+    <color name="user_message_text">#FFFFFF</color>     <!-- 用戶訊息文字 - 白色 -->
+    <color name="user_message_text_dark">#FFFFFF</color><!-- 深色主題用戶訊息文字 -->
+
+    <!-- AI Message (AI訊息) -->
+    <color name="ai_message_bg">#F5F5F5</color>         <!-- AI訊息背景 - 淺灰 -->
+    <color name="ai_message_bg_dark">#2B2930</color>    <!-- 深色主題AI訊息背景 -->
+    <color name="ai_message_text">#1C1B1F</color>       <!-- AI訊息文字 - 深色 -->
+    <color name="ai_message_text_dark">#E6E1E5</color>  <!-- 深色主題AI訊息文字 -->
+
+    <!-- System Message (系統訊息) -->
+    <color name="system_message_bg">#E3F2FD</color>     <!-- 系統訊息背景 - 淺藍 -->
+    <color name="system_message_bg_dark">#1E3A5F</color><!-- 深色主題系統訊息背景 -->
+    <color name="system_message_text">#1565C0</color>   <!-- 系統訊息文字 - 藍色 -->
+    <color name="system_message_text_dark">#90CAF9</color><!-- 深色主題系統訊息文字 -->
+
+    <!-- ================================ -->
+    <!-- Status Colors (狀態顏色) -->
+    <!-- ================================ -->
+
+    <!-- Success -->
+    <color name="success">#4CAF50</color>               <!-- 成功 - 綠色 -->
+    <color name="success_dark">#81C784</color>          <!-- 深色主題成功色 -->
+    <color name="on_success">#FFFFFF</color>            <!-- 成功背景上的文字 -->
+    <color name="on_success_dark">#1B5E20</color>       <!-- 深色主題成功背景上的文字 -->
+
+    <!-- Error -->
+    <color name="error">#F44336</color>                 <!-- 錯誤 - 紅色 -->
+    <color name="error_dark">#E57373</color>            <!-- 深色主題錯誤色 -->
+    <color name="error_container">#FFEBEE</color>       <!-- 錯誤容器背景 -->
+    <color name="on_error">#FFFFFF</color>              <!-- 錯誤背景上的文字 -->
+    <color name="on_error_dark">#FFEBEE</color>         <!-- 深色主題錯誤背景上的文字 -->
+
+    <!-- Warning -->
+    <color name="warning">#FF9800</color>               <!-- 警告 - 橙色 -->
+    <color name="warning_dark">#FFB74D</color>          <!-- 深色主題警告色 -->
+    <color name="on_warning">#FFFFFF</color>            <!-- 警告背景上的文字 -->
+    <color name="on_warning_dark">#E65100</color>       <!-- 深色主題警告背景上的文字 -->
+
+    <!-- Info -->
+    <color name="info">#2196F3</color>                  <!-- 資訊 - 藍色 -->
+    <color name="info_dark">#64B5F6</color>             <!-- 深色主題資訊色 -->
+    <color name="on_info">#FFFFFF</color>               <!-- 資訊背景上的文字 -->
+    <color name="on_info_dark">#0D47A1</color>          <!-- 深色主題資訊背景上的文字 -->
+
+    <!-- Critical -->
+    <color name="critical">#D32F2F</color>              <!-- 嚴重錯誤 - 深紅色 -->
+    <color name="critical_dark">#F44336</color>         <!-- 深色主題嚴重錯誤色 -->
+    <color name="on_critical">#FFFFFF</color>           <!-- 嚴重錯誤背景上的文字 -->
+    <color name="on_critical_dark">#FFEBEE</color>      <!-- 深色主題嚴重錯誤背景上的文字 -->
+
+    <!-- ================================ -->
+    <!-- Error Type Specific Colors -->
+    <!-- ================================ -->
+
+    <color name="error_network">#F44336</color>         <!-- 網路錯誤 -->
+    <color name="error_server">#FF5722</color>          <!-- 服務器錯誤 -->
+    <color name="error_validation">#FF9800</color>      <!-- 驗證錯誤 -->
+    <color name="error_permission">#9C27B0</color>      <!-- 權限錯誤 -->
+    <color name="error_model_loading">#3F51B5</color>   <!-- 模型載入錯誤 -->
+    <color name="error_ai_processing">#607D8B</color>   <!-- AI處理錯誤 -->
+    <color name="error_file_access">#795548</color>     <!-- 檔案存取錯誤 -->
+    <color name="error_unknown">#9E9E9E</color>         <!-- 未知錯誤 -->
+
+    <!-- ================================ -->
+    <!-- Interactive Colors (互動元素) -->
+    <!-- ================================ -->
+
+    <!-- Button States -->
+    <color name="button_enabled">#F99A1B</color>        <!-- 啟用按鈕 -->
+    <color name="button_disabled">#BDBDBD</color>       <!-- 禁用按鈕 -->
+    <color name="button_pressed">#E07D00</color>        <!-- 按下狀態 -->
+
+    <!-- Disabled States -->
+    <color name="disabled_bg">#BDBDBD</color>           <!-- 禁用背景 -->
+    <color name="disabled_bg_dark">#424242</color>      <!-- 深色主題禁用背景 -->
+    <color name="disabled_text">#9E9E9E</color>         <!-- 禁用文字 -->
+    <color name="disabled_text_dark">#616161</color>    <!-- 深色主題禁用文字 -->
+
+    <!-- Input Fields -->
+    <color name="input_container_bg">#F5F5F5</color>    <!-- 輸入框背景 -->
+    <color name="input_container_bg_dark">#2B2930</color><!-- 深色主題輸入框背景 -->
+    <color name="input_border">#C4C7C5</color>          <!-- 輸入框邊框 -->
+    <color name="input_border_dark">#49454F</color>     <!-- 深色主題輸入框邊框 -->
+    <color name="input_border_focused">#F99A1B</color>  <!-- 聚焦輸入框邊框 -->
+
+    <!-- Dividers -->
+    <color name="divider">#E0E0E0</color>               <!-- 分隔線 -->
+    <color name="divider_dark">#3C3C3C</color>          <!-- 深色主題分隔線 -->
+
+    <!-- ================================ -->
+    <!-- Semantic Colors (語義化顏色) -->
+    <!-- ================================ -->
+
+    <!-- Loading -->
+    <color name="loading_bg">#F5F5F5</color>            <!-- 載入背景 -->
+    <color name="loading_bg_dark">#2B2930</color>       <!-- 深色主題載入背景 -->
+    <color name="loading_indicator">#F99A1B</color>     <!-- 載入指示器 -->
+
+    <!-- Selection -->
+    <color name="selection_bg">#FFE0B2</color>          <!-- 選中背景 -->
+    <color name="selection_bg_dark">#4A3B2A</color>     <!-- 深色主題選中背景 -->
+
+    <!-- Hover Effects -->
+    <color name="hover_overlay">#1AF99A1B</color>       <!-- 懸停覆蓋 (10% 主色) -->
+    <color name="ripple_color">#26F99A1B</color>        <!-- 波紋效果 (15% 主色) -->
+
+    <!-- Overlay Colors -->
+    <color name="overlay_light">#80FFFFFF</color>       <!-- 淺色覆蓋層 -->
+    <color name="overlay_dark">#80000000</color>        <!-- 深色覆蓋層 -->
+    <color name="surface_light">#FFFFFF</color>         <!-- 淺色表面 -->
+
+    <!-- Stroke Colors -->
+    <color name="strokeColor">#E0E0E0</color>           <!-- 邊框顏色 -->
+    <color name="strokeWidth">#BDBDBD</color>           <!-- 邊框寬度顏色 -->
+
+    <!-- ================================ -->
+    <!-- Legacy Compatibility -->
+    <!-- ================================ -->
+
+    <!-- Material Design Colors for compatibility -->
     <color name="purple_200">#FFBB86FC</color>
     <color name="purple_500">#FF6200EE</color>
     <color name="purple_700">#FF3700B3</color>
@@ -8,44 +195,5 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-
-    <!-- UI Surface Colors -->
-    <color name="surface">#FFFFFFFF</color>
-    <color name="surface_dark">#FF121212</color>
-    <color name="background">#FFFFFFFF</color>
-    <color name="background_dark">#FF000000</color>
-    <color name="outline">#FF79747E</color>
-    <color name="outline_dark">#FF938F99</color>
-
-    <!-- Text Colors -->
-    <color name="text_primary">#DE000000</color>
-    <color name="text_primary_dark">#FFFFFFFF</color>
-    <color name="text_secondary">#99000000</color>
-    <color name="text_secondary_dark">#B3FFFFFF</color>
-
-    <!-- Error Colors -->
-    <color name="error">#FFB00020</color>
-    <color name="error_dark">#FFCF6679</color>
-    <color name="error_info_color">#FF2196F3</color>
-    <color name="error_warning_color">#FFFF9800</color>
-    <color name="error_error_color">#FFF44336</color>
-    <color name="error_critical_color">#FFD32F2F</color>
-
-    <!-- Success and Status Colors -->
-    <color name="success">#FF4CAF50</color>
-    <color name="warning">#FFFF9800</color>
-    <color name="info">#FF2196F3</color>
-
-    <!-- Component Colors -->
-    <color name="primary">#FF6200EE</color>
-    <color name="primary_dark">#FF3700B3</color>
-    <color name="primary_variant">#FF3700B3</color>
-    <color name="secondary">#FF03DAC6</color>
-    <color name="secondary_variant">#FF018786</color>
-
-    <!-- Message Colors -->
-    <color name="ai_message_bg">#FFF5F5F5</color>
-    <color name="user_message_bg">#FF6200EE</color>
-    <color name="ai_message_text">#DE000000</color>
-    <color name="user_message_text">#FFFFFFFF</color>
+    
 </resources>
