@@ -39,16 +39,15 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
-        implementation(libs.androidx.activity)
+    implementation(libs.androidx.activity)
     implementation(libs.androidx.recyclerview)
-    
+
     // Kotlin Coroutines
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
@@ -57,20 +56,27 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Espresso / Rules / Runtime
     implementation(libs.androidx.junit.ktx)
     implementation(libs.androidx.runtime)
     implementation(libs.androidx.espresso.contrib)
     implementation(libs.androidx.rules)
     implementation(libs.androidx.espresso.intents)
 
-    // Testing
-    testImplementation(libs.junit)
+    // ✅ Unit Testing (JUnit5 + Coroutine + Mock)
+    testImplementation(libs.junit) // JUnit4 - 保留以防部分 lib 相依
+    testImplementation(libs.junit.jupiter.api)
+    testRuntimeOnly(libs.junit.jupiter.engine)
+
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
-    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.androidx.arch.core.testing)
     testImplementation(libs.robolectric)
-    
+    testImplementation(libs.mockk)
+    testImplementation(libs.androidx.fragment.testing)
+
     // Android Testing
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -78,17 +84,14 @@ dependencies {
     androidTestImplementation(libs.androidx.core)
     androidTestImplementation(libs.androidx.runner)
     androidTestImplementation(libs.androidx.recyclerview)
-    // To use the androidx.test.core APIs
     androidTestImplementation(libs.core)
-    // Kotlin extensions for androidx.test.core
     androidTestImplementation(libs.core.ktx)
-
-    // Kotlin extensions for androidx.test.ext.junit
     androidTestImplementation(libs.androidx.junit.ktx)
-
-    // To use the Truth Extension APIs
     androidTestImplementation(libs.androidx.truth)
-
-    // To use android test orchestrator
     androidTestUtil(libs.androidx.orchestrator)
+}
+
+// ✅ 使用 JUnit5 測試平台
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

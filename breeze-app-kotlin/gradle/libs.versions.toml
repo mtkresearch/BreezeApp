@@ -1,5 +1,7 @@
 [versions]
 agp = "8.7.3"
+core = "1.6.1"
+coreKtxVersion = "1.6.1"
 kotlin = "1.9.24"
 coreKtx = "1.16.0"
 junit = "4.13.2"
@@ -16,17 +18,29 @@ activity = "1.10.1"
 coroutines = "1.7.3"
 lifecycle = "2.8.7"
 junitKtx = "1.2.1"
+orchestrator = "1.5.1"
+runner = "1.6.2"
 runtime = "1.0.0-alpha04"
 mockitoKotlin = "5.2.1"
 archCore = "2.2.0"
 robolectric = "4.11.1"
 fragmentTesting = "1.6.2"
 recyclerview = "1.2.1"
+truth = "1.6.0"
+espressoContrib = "3.6.1"
+rules = "1.6.1"
+espressoIntents = "3.6.1"
+mockk = "1.13.8"
+junit5 = "5.10.2"
 
 [libraries]
 androidx-core = { module = "androidx.test:core" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-orchestrator = { module = "androidx.test:orchestrator", version.ref = "orchestrator" }
 androidx-runner = { module = "androidx.test:runner" }
+androidx-truth = { module = "androidx.test.ext:truth", version.ref = "truth" }
+core = { module = "androidx.test:core", version.ref = "core" }
+core-ktx = { module = "androidx.test:core-ktx", version.ref = "coreKtxVersion" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -37,6 +51,8 @@ androidx-constraintlayout = { group = "androidx.constraintlayout", name = "const
 androidx-navigation-fragment-ktx = { group = "androidx.navigation", name = "navigation-fragment-ktx", version.ref = "navigationFragmentKtx" }
 androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation-ui-ktx", version.ref = "navigationUiKtx" }
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
+junit-jupiter-api = { group = "org.junit.jupiter", name = "junit-jupiter-api", version.ref = "junit5" }
+junit-jupiter-engine = { group = "org.junit.jupiter", name = "junit-jupiter-engine", version.ref = "junit5" }
 
 # Kotlin Coroutines
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
@@ -55,6 +71,12 @@ androidx-fragment-testing = { module = "androidx.fragment:fragment-testing", ver
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
 androidx-junit-ktx = { group = "androidx.test.ext", name = "junit-ktx", version.ref = "junitKtx" }
 androidx-runtime = { group = "androidx.xr.runtime", name = "runtime", version.ref = "runtime" }
+runner = { module = "androidx.test:runner", version.ref = "runner" }
+androidx-espresso-contrib = { group = "androidx.test.espresso", name = "espresso-contrib", version.ref = "espressoContrib" }
+androidx-rules = { group = "androidx.test", name = "rules", version.ref = "rules" }
+androidx-espresso-intents = { group = "androidx.test.espresso", name = "espresso-intents", version.ref = "espressoIntents" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+mockk-android = { group = "io.mockk", name = "mockk-android", version.ref = "mockk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
