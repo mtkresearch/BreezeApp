@@ -25,22 +25,6 @@ data class RuntimeSettings(
      * 重置為預設設定
      */
     fun resetToDefault(): RuntimeSettings = RuntimeSettings()
-    
-    /**
-     * 驗證所有參數是否在有效範圍內
-     */
-    fun validateAll(): ValidationResult {
-        val results = listOf(
-            llmParams.validate(),
-            vlmParams.validate(),
-            asrParams.validate(),
-            ttsParams.validate(),
-            generalParams.validate()
-        )
-        
-        val errors = results.flatMap { it.errors }
-        return ValidationResult(errors.isEmpty(), errors)
-    }
 }
 
 /**
@@ -55,32 +39,7 @@ data class LLMParameters(
     val frequencyPenalty: Float = 1.0f,      // 頻率懲罰 (1.0-2.0)
     val systemPrompt: String = "",           // 系統提示詞
     val enableStreaming: Boolean = true      // 串流輸出
-) {
-    fun validate(): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (temperature !in 0.0f..1.0f) {
-            errors.add("Temperature 必須在 0.0-1.0 範圍內")
-        }
-        if (topK !in 1..100) {
-            errors.add("Top-K 必須在 1-100 範圍內")
-        }
-        if (topP !in 0.0f..1.0f) {
-            errors.add("Top-P 必須在 0.0-1.0 範圍內")
-        }
-        if (maxTokens !in 128..4096) {
-            errors.add("Max Tokens 必須在 128-4096 範圍內")
-        }
-        if (repetitionPenalty !in 1.0f..2.0f) {
-            errors.add("Repetition Penalty 必須在 1.0-2.0 範圍內")
-        }
-        if (frequencyPenalty !in 1.0f..2.0f) {
-            errors.add("Frequency Penalty 必須在 1.0-2.0 範圍內")
-        }
-        
-        return ValidationResult(errors.isEmpty(), errors)
-    }
-}
+)
 
 /**
  * VLM (視覺語言模型) 參數
@@ -91,20 +50,7 @@ data class VLMParameters(
     val maxImageTokens: Int = 512,                                 // 最大圖像Token數 (256-1024)
     val enableImageAnalysis: Boolean = true,                       // 啟用圖像分析
     val cropImages: Boolean = true                                 // 自動裁切圖像
-) {
-    fun validate(): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (visionTemperature !in 0.0f..1.0f) {
-            errors.add("Vision Temperature 必須在 0.0-1.0 範圍內")
-        }
-        if (maxImageTokens !in 256..1024) {
-            errors.add("Max Image Tokens 必須在 256-1024 範圍內")  
-        }
-        
-        return ValidationResult(errors.isEmpty(), errors)
-    }
-}
+)
 
 /**
  * ASR (語音識別) 參數
@@ -115,20 +61,7 @@ data class ASRParameters(
     val vadThreshold: Float = 0.5f,           // 語音活動檢測閾值 (0.1-0.9)
     val enableNoiseSuppression: Boolean = true, // 噪音抑制
     val enableEchoCancellation: Boolean = true  // 回音消除
-) {
-    fun validate(): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (beamSize !in 1..10) {
-            errors.add("Beam Size 必須在 1-10 範圍內")
-        }
-        if (vadThreshold !in 0.1f..0.9f) {
-            errors.add("VAD Threshold 必須在 0.1-0.9 範圍內")
-        }
-        
-        return ValidationResult(errors.isEmpty(), errors)
-    }
-}
+)
 
 /**
  * TTS (文字轉語音) 參數
@@ -136,29 +69,10 @@ data class ASRParameters(
 data class TTSParameters(
     val speakerId: Int = 0,                   // 說話者ID (0-10)
     val speedRate: Float = 1.0f,              // 語速比例 (0.5-2.0)
-    val pitchScale: Float = 1.0f,             // 音調比例 (0.5-2.0)
+    val pitch: Float = 1.0f,                  // 音調比例 (0.5-2.0)
     val volume: Float = 1.0f,                 // 音量 (0.0-1.0)
     val enableSpeechEnhancement: Boolean = true // 語音增強
-) {
-    fun validate(): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (speakerId !in 0..10) {
-            errors.add("Speaker ID 必須在 0-10 範圍內")
-        }
-        if (speedRate !in 0.5f..2.0f) {
-            errors.add("Speed Rate 必須在 0.5-2.0 範圍內")
-        }
-        if (pitchScale !in 0.5f..2.0f) {
-            errors.add("Pitch Scale 必須在 0.5-2.0 範圍內")
-        }
-        if (volume !in 0.0f..1.0f) {
-            errors.add("Volume 必須在 0.0-1.0 範圍內")
-        }
-        
-        return ValidationResult(errors.isEmpty(), errors)
-    }
-}
+)
 
 /**
  * 通用推論參數
@@ -169,20 +83,7 @@ data class GeneralParameters(
     val maxConcurrentTasks: Int = 2,            // 最大並發任務數
     val timeoutSeconds: Int = 30,               // 推論超時時間 (秒)
     val enableDebugLogging: Boolean = false     // 除錯日誌
-) {
-    fun validate(): ValidationResult {
-        val errors = mutableListOf<String>()
-        
-        if (maxConcurrentTasks !in 1..8) {
-            errors.add("Max Concurrent Tasks 必須在 1-8 範圍內")
-        }
-        if (timeoutSeconds !in 5..300) {
-            errors.add("Timeout 必須在 5-300 秒範圍內")
-        }
-        
-        return ValidationResult(errors.isEmpty(), errors)
-    }
-}
+)
 
 /**
  * 圖像解析度選項
@@ -191,12 +92,4 @@ enum class ImageResolution(val width: Int, val height: Int, val displayName: Str
     LOW(224, 224, "低 (224x224)"),
     MEDIUM(512, 512, "中 (512x512)"),
     HIGH(1024, 1024, "高 (1024x1024)")
-}
-
-/**
- * 驗證結果
- */
-data class ValidationResult(
-    val isValid: Boolean,
-    val errors: List<String> = emptyList()
-) 
+} 

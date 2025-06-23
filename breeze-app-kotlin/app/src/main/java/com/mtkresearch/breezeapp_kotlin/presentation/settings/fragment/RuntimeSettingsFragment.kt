@@ -12,7 +12,7 @@ import com.mtkresearch.breezeapp_kotlin.R
 import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.model.*
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.ParameterCategory
-import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.RuntimeApplyStatus
+
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.RuntimeSettingsViewModel
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.RuntimeSettingsViewModelFactory
 
@@ -157,9 +157,9 @@ class RuntimeSettingsFragment : BaseFragment() {
      */
     private fun setupButtons() {
         applyButton.setOnClickListener {
-            // 應用按鈕只在有變更時才可見，直接通過ViewModel應用設定
+            // 應用按鈕只在有變更時才可見，直接通過ViewModel保存設定
             // ViewModel會負責保存到Repository（遵循MVVM原則）
-            viewModel.applySettings()
+            viewModel.saveSettings()
             
             // 更新原始值為當前值
             originalValues.putAll(currentValues)
@@ -198,6 +198,8 @@ class RuntimeSettingsFragment : BaseFragment() {
         // 觀察預覽設定
         viewModel.previewSettings.observe(viewLifecycleOwner) { settings ->
             updateParameterValues(settings)
+            // 同步Fragment的變更記錄狀態
+            syncFragmentStateWithPreviewSettings(settings)
         }
         
         // 觀察當前設定以初始化原始值
@@ -321,6 +323,67 @@ class RuntimeSettingsFragment : BaseFragment() {
             ParameterCategory.TTS -> createTTSParameterUI()
             ParameterCategory.GENERAL -> createGeneralParameterUI()
         }
+    }
+
+    /**
+     * 同步Fragment狀態與預覽設定
+     * 當ViewModel的previewSettings變化時，同步Fragment的變更記錄
+     */
+    private fun syncFragmentStateWithPreviewSettings(previewSettings: RuntimeSettings) {
+        
+        // 清除之前的變更記錄
+        changedParameters.clear()
+        
+        // 更新當前值為preview設定中的值
+        currentValues["Temperature"] = previewSettings.llmParams.temperature
+        currentValues["Top-K"] = previewSettings.llmParams.topK
+        currentValues["Top-P"] = previewSettings.llmParams.topP
+        currentValues["Max Tokens"] = previewSettings.llmParams.maxTokens
+        currentValues["Streaming"] = previewSettings.llmParams.enableStreaming
+        
+        currentValues["視覺溫度"] = previewSettings.vlmParams.visionTemperature
+        currentValues["圖像解析度"] = previewSettings.vlmParams.imageResolution.ordinal
+        currentValues["圖像分析"] = previewSettings.vlmParams.enableImageAnalysis
+        
+        currentValues["識別語言"] = getLanguageIndex(previewSettings.asrParams.languageModel)
+        currentValues["Beam大小"] = previewSettings.asrParams.beamSize
+        currentValues["噪音抑制"] = previewSettings.asrParams.enableNoiseSuppression
+        
+        currentValues["說話者聲音"] = previewSettings.ttsParams.speakerId
+        currentValues["語音速度"] = previewSettings.ttsParams.speedRate
+        currentValues["音量"] = previewSettings.ttsParams.volume
+        
+        currentValues["GPU加速"] = previewSettings.generalParams.enableGPUAcceleration
+        currentValues["NPU加速"] = previewSettings.generalParams.enableNPUAcceleration
+        currentValues["並發任務數"] = previewSettings.generalParams.maxConcurrentTasks
+        currentValues["除錯日誌"] = previewSettings.generalParams.enableDebugLogging
+        
+        // 重新檢查所有參數，將真正改變的加入變更記錄
+        currentValues.forEach { (parameterName, currentValue) ->
+            val originalValue = originalValues[parameterName]
+            val isChanged = when {
+                originalValue == null -> true
+                originalValue is Float && currentValue is Float -> {
+                    kotlin.math.abs(originalValue - currentValue) > 0.001f
+                }
+                originalValue is Double && currentValue is Double -> {
+                    kotlin.math.abs(originalValue - currentValue) > 0.001
+                }
+                originalValue is Int && currentValue is Float -> {
+                    kotlin.math.abs(originalValue.toFloat() - currentValue) > 0.001f
+                }
+                originalValue is Float && currentValue is Int -> {
+                    kotlin.math.abs(originalValue - currentValue.toFloat()) > 0.001f
+                }
+                else -> originalValue != currentValue
+            }
+            
+            if (isChanged) {
+                changedParameters.add(parameterName)
+            }
+        }
+        
+        updateChangeDisplay()
     }
 
     /**

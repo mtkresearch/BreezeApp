@@ -10,20 +10,25 @@ import com.mtkresearch.breezeapp_kotlin.presentation.settings.model.RuntimeSetti
  * 符合Clean Architecture的Domain Layer
  */
 class SaveRuntimeSettingsUseCase(
-    private val repository: RuntimeSettingsRepository
+    private val repository: RuntimeSettingsRepository,
+    private val validateRuntimeSettingsUseCase: ValidateRuntimeSettingsUseCase
 ) {
     
     suspend operator fun invoke(settings: RuntimeSettings): Result<Unit> {
         return try {
-            // 可以在這裡添加業務邏輯驗證
-            val validationResult = settings.validateAll()
-            if (!validationResult.isValid) {
-                return Result.failure(
-                    IllegalArgumentException("設定驗證失敗: ${validationResult.errors.joinToString(", ")}")
-                )
+            // 使用驗證用例進行業務邏輯驗證
+            val validationResult = validateRuntimeSettingsUseCase(settings)
+            when (validationResult) {
+                is ValidationResult.Invalid -> {
+                    return Result.failure(
+                        IllegalArgumentException("設定驗證失敗: ${validationResult.errors.joinToString(", ")}")
+                    )
+                }
+                else -> {
+                    // 驗證通過或僅有警告，繼續保存
+                    repository.saveSettings(settings)
+                }
             }
-            
-            repository.saveSettings(settings)
         } catch (e: Exception) {
             Result.failure(e)
         }
