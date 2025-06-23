@@ -12,6 +12,7 @@ import androidx.fragment.app.commit
 import com.mtkresearch.breezeapp_kotlin.R
 import com.mtkresearch.breezeapp_kotlin.databinding.ActivityChatBinding
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.fragment.ChatFragment
+import com.mtkresearch.breezeapp_kotlin.presentation.settings.fragment.RuntimeSettingsFragment
 
 /**
  * 聊天Activity
@@ -38,6 +39,9 @@ class ChatActivity : AppCompatActivity() {
         
         // 設置邊緣到邊緣顯示
         setupEdgeToEdge()
+        
+        // 設置UI事件
+        setupUIEvents()
         
         // 載入聊天Fragment
         loadChatFragment()
@@ -95,6 +99,16 @@ class ChatActivity : AppCompatActivity() {
     }
 
     /**
+     * 設置UI事件
+     */
+    private fun setupUIEvents() {
+        // 設定按鈕點擊事件
+        binding.btnSettings.setOnClickListener {
+            showRuntimeSettingsDialog()
+        }
+    }
+
+    /**
      * 載入聊天Fragment
      */
     private fun loadChatFragment() {
@@ -102,6 +116,77 @@ class ChatActivity : AppCompatActivity() {
             replace(R.id.fragmentContainer, ChatFragment.newInstance())
             setReorderingAllowed(true)
         }
+    }
+
+    /**
+     * 顯示AI參數設定對話框
+     */
+    private fun showRuntimeSettingsDialog() {
+        // 檢查是否已經有設定Fragment在顯示
+        val existingFragment = supportFragmentManager.findFragmentByTag("runtime_settings")
+        if (existingFragment != null) {
+            return // 已經在顯示，不重複開啟
+        }
+        
+        // 建立RuntimeSettingsFragment
+        val runtimeSettingsFragment = RuntimeSettingsFragment.newInstance()
+        
+        // 顯示遮罩和設定容器
+        binding.settingsOverlay.visibility = android.view.View.VISIBLE
+        binding.settingsContainer.visibility = android.view.View.VISIBLE
+        
+        // 將Fragment添加到設定容器中
+        supportFragmentManager.commit {
+            replace(R.id.settings_container, runtimeSettingsFragment, "runtime_settings")
+            setReorderingAllowed(true)
+        }
+        
+        // 設定遮罩點擊事件 - 只有點擊遮罩區域（不是設定容器）才關閉設定面板
+        binding.settingsOverlay.setOnTouchListener { view, event ->
+            if (event.action == android.view.MotionEvent.ACTION_DOWN) {
+                // 獲取設定容器的位置和大小
+                val containerLocation = IntArray(2)
+                binding.settingsContainer.getLocationOnScreen(containerLocation)
+                val containerLeft = containerLocation[0]
+                val containerTop = containerLocation[1]
+                val containerRight = containerLeft + binding.settingsContainer.width
+                val containerBottom = containerTop + binding.settingsContainer.height
+                
+                // 獲取點擊位置
+                val rawX = event.rawX.toInt()
+                val rawY = event.rawY.toInt()
+                
+                // 檢查點擊是否在設定容器外部
+                if (rawX < containerLeft || rawX > containerRight || 
+                    rawY < containerTop || rawY > containerBottom) {
+                    // 點擊在容器外部，關閉對話框
+                    hideRuntimeSettingsDialog()
+                    return@setOnTouchListener true
+                }
+            }
+            false // 讓事件繼續傳遞
+        }
+    }
+
+    /**
+     * 隱藏AI參數設定對話框
+     */
+    private fun hideRuntimeSettingsDialog() {
+        // 隱藏遮罩和設定容器
+        binding.settingsOverlay.visibility = android.view.View.GONE
+        binding.settingsContainer.visibility = android.view.View.GONE
+        
+        // 移除Fragment
+        val fragment = supportFragmentManager.findFragmentByTag("runtime_settings")
+        if (fragment != null) {
+            supportFragmentManager.commit {
+                remove(fragment)
+                setReorderingAllowed(true)
+            }
+        }
+        
+        // 移除遮罩觸摸監聽器
+        binding.settingsOverlay.setOnTouchListener(null)
     }
 
     /**
@@ -134,6 +219,12 @@ class ChatActivity : AppCompatActivity() {
      * 處理系統返回按鈕
      */
     override fun onBackPressed() {
+        // 首先檢查是否有設定面板在顯示
+        if (binding.settingsContainer.visibility == android.view.View.VISIBLE) {
+            hideRuntimeSettingsDialog()
+            return
+        }
+        
         // 檢查Fragment是否處理了返回事件
         val chatFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer) as? ChatFragment
         

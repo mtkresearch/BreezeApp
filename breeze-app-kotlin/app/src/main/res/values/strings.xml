@@ -125,6 +125,9 @@
     <string name="settings">設定</string>
     <string name="download">下載</string>
     
+    <!-- Settings -->
+    <string name="settings_description">AI參數設定</string>
+    
     <!-- Home page -->
     <string name="welcome_title">歡迎使用 BreezeApp</string>
     <string name="welcome_subtitle">您的AI助手</string>
