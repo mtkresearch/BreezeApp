@@ -8,6 +8,7 @@
 3. **架構清晰** - 實現清晰的分層架構，降低組件間耦合度
 4. **測試友好** - 每層組件獨立可測，提升代碼品質
 5. **擴展彈性** - 支援多 AI 引擎、多 Backend、多 Runner 的靈活組合
+6. **雙層設定系統** - 分離應用層設定與AI推論層設定，提供更靈活的配置管理
 
 ### 達成方式
 - **MVVM + UseCase 架構模式** - 分離 UI 邏輯、業務邏輯和數據處理
@@ -15,6 +16,7 @@
 - **統一抽象層** - 通過介面定義標準化各層組件互動
 - **策略模式** - 支援 Backend 和 Runtime 的動態選擇
 - **單一職責原則** - 每個組件專注單一功能，便於維護和測試
+- **分層設定管理** - 應用設定與AI推論設定分離，支援不同場景的配置需求
 
 ## 🏗️ MVVM + UseCase 架構說明
 
@@ -29,20 +31,143 @@
 🔗 Native Layer        ← 原生庫與模型載入
 ```
 
+### 🔧 **雙層設定系統架構**
+
+#### **設定系統分層設計**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  🎨 應用層設定 (App Settings)                │
+├─────────────────────────────────────────────────────────┤
+│ • 主題色彩 (Theme Colors)                                 │
+│ • 字體大小 (Font Size)                                   │
+│ • 語言偏好 (Language Preference)                          │
+│ • 通知設定 (Notification Settings)                        │
+│ • 深色/淺色模式 (Dark/Light Mode)                         │
+│ • UI動畫效果 (UI Animations)                             │
+│ • 存儲位置 (Storage Location)                            │
+│ • 備份設定 (Backup Settings)                             │
+└─────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────┐
+│              🤖 AI推論層設定 (Runtime Settings)             │
+├─────────────────────────────────────────────────────────┤
+│ LLM Parameters:                                         │
+│ • Temperature (0.0-1.0) - 創造性控制                      │
+│ • Top-K (1-100) - Token選擇範圍                          │
+│ • Top-P (0.0-1.0) - 累積機率閾值                          │
+│ • Max Tokens (128-4096) - 最大輸出長度                    │
+│ • Repetition Penalty (1.0-2.0) - 重複懲罰                │
+│ • Frequency Penalty (1.0-2.0) - 頻率懲罰                 │
+│                                                         │
+│ VLM Parameters:                                         │
+│ • Image Resolution (224x224, 512x512, 1024x1024)       │
+│ • Vision Temperature (0.0-1.0)                         │
+│ • Max Image Tokens (256-1024)                          │
+│                                                         │
+│ ASR Parameters:                                         │
+│ • Language Model (zh-TW, en-US, etc.)                  │
+│ • Beam Size (1-10)                                     │
+│ • VAD Threshold (0.1-0.9)                              │
+│                                                         │
+│ TTS Parameters:                                         │
+│ • Speaker ID (0-10)                                    │
+│ • Speed Rate (0.5-2.0)                                 │
+│ • Pitch Scale (0.5-2.0)                                │
+└─────────────────────────────────────────────────────────┘
+```
+
+#### **設定系統特色**
+
+**🎨 應用層設定 (App-Level Settings)**
+- **位置**: MainActivity → SettingsFragment (全域設定)
+- **生命週期**: 應用程式級別，持久化儲存
+- **影響範圍**: 整個應用程式的UI和行為
+- **儲存方式**: SharedPreferences + DataStore
+- **變更生效**: 立即生效，可能需要重啟Activity
+
+**🤖 AI推論層設定 (Runtime Settings)**  
+- **位置**: ChatActivity → Runtime Settings Panel (對話內設定)
+- **生命週期**: 會話級別，可即時調整
+- **影響範圍**: 當前AI推論會話
+- **儲存方式**: 會話狀態 + 可選持久化
+- **變更生效**: 下一次推論立即生效
+
+#### **設定系統實作架構**
+
+```kotlin
+// 應用層設定 - 全域配置
+data class AppSettings(
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val primaryColor: String = "#F99A1B",
+    val fontSize: FontSize = FontSize.MEDIUM,
+    val language: String = "zh-TW",
+    val enableNotifications: Boolean = true,
+    val enableAnimations: Boolean = true,
+    val storageLocation: StorageLocation = StorageLocation.INTERNAL,
+    val autoBackup: Boolean = false
+)
+
+// AI推論層設定 - 運行時配置
+data class RuntimeSettings(
+    val llmParams: LLMParameters,
+    val vlmParams: VLMParameters,
+    val asrParams: ASRParameters,
+    val ttsParams: TTSParameters
+)
+
+data class LLMParameters(
+    val temperature: Float = 0.7f,
+    val topK: Int = 5,
+    val topP: Float = 0.9f,
+    val maxTokens: Int = 2048,
+    val repetitionPenalty: Float = 1.1f,
+    val frequencyPenalty: Float = 1.0f
+)
+```
+
+#### **設定管理UseCase**
+
+```kotlin
+// 應用層設定管理
+class ManageAppSettingsUseCase(
+    private val settingsRepository: SettingsRepository
+) {
+    suspend fun updateTheme(theme: ThemeMode)
+    suspend fun updateFontSize(fontSize: FontSize)
+    suspend fun exportSettings(): SettingsBackup
+    suspend fun importSettings(backup: SettingsBackup)
+}
+
+// AI推論層設定管理  
+class ManageRuntimeSettingsUseCase(
+    private val runtimeRepository: RuntimeRepository,
+    private val aiEngineManager: AIEngineManager
+) {
+    suspend fun updateLLMParameters(params: LLMParameters)
+    suspend fun resetToDefaults(engineType: EngineType)
+    suspend fun validateParameters(params: Any): ValidationResult
+    suspend fun applyParametersToEngine(params: Any)
+}
+```
+
 ### MVVM + UseCase 組件職責
 
 #### **Presentation Layer**
 - **UI Components** (Activity/Fragment): 純 UI 展示，不含業務邏輯
 - **ViewModel**: UI 狀態管理，協調 UseCase 呼叫
+- **Settings UI**: 分層設定介面，支援應用層和推論層設定
 
 #### **Domain Layer (核心業務層)**
 - **UseCase**: 封裝具體業務邏輯 (如 `SendMessageUseCase`, `ProcessVoiceInputUseCase`)
 - **Repository Interface**: 定義數據操作契約，不涉及具體實現
 - **Domain Models**: 純業務實體，與 UI 和數據庫無關
+- **Settings UseCase**: 設定管理業務邏輯，支援雙層設定系統
 
 #### **Data Layer**
 - **Repository Implementation**: 實現 Domain 層定義的數據操作介面
 - **數據源協調**: 整合 AI 引擎、本地存儲、網路 API 等多種數據來源
+- **Settings Repository**: 分層設定數據管理，支援不同儲存策略
 
 ### UseCase 設計理念
 
@@ -51,18 +176,22 @@
 - **可重用性**: 同一業務邏輯可在不同 UI 中重用
 - **測試便利性**: 業務邏輯獨立測試，不依賴 UI 框架
 - **清晰的業務邊界**: 每個 UseCase 對應一個明確的用戶操作
+- **設定管理統一**: 通過UseCase統一管理應用層和推論層設定
 
 **UseCase 範例**:
 ```kotlin
 class SendMessageUseCase(
     private val chatRepository: ChatRepository,
-    private val aiEngineManager: AIEngineManager
+    private val aiEngineManager: AIEngineManager,
+    private val runtimeSettingsRepository: RuntimeSettingsRepository
 ) {
     suspend operator fun invoke(message: String): Result<AIResponse> {
         // 1. 驗證輸入
-        // 2. 呼叫 AI 引擎
-        // 3. 處理回應
-        // 4. 更新聊天記錄
+        // 2. 獲取當前推論設定
+        val runtimeSettings = runtimeSettingsRepository.getCurrentSettings()
+        // 3. 呼叫 AI 引擎 (帶入推論參數)
+        // 4. 處理回應
+        // 5. 更新聊天記錄
     }
 }
 ```
@@ -86,18 +215,30 @@ class SendMessageUseCase(
 app/src/main/java/com/mtkresearch/breezeapp/
 ├── presentation/           ← UI 相關 (Activity, Fragment, ViewModel)
 │   ├── chat/              ← 聊天功能 UI
-│   ├── settings/          ← 設定功能 UI  
+│   ├── settings/          ← 設定功能 UI (雙層設定系統)
+│   │   ├── app/           ← 應用層設定 (主題、字體、語言等)
+│   │   └── runtime/       ← AI推論層設定 (LLM/VLM/ASR/TTS參數)
 │   └── download/          ← 下載功能 UI
 ├── domain/                ← 業務邏輯核心
 │   ├── usecase/           ← 業務用例 (SendMessage, ProcessVoice...)
+│   │   ├── chat/          ← 聊天相關UseCase
+│   │   ├── settings/      ← 設定管理UseCase (應用層+推論層)
+│   │   └── media/         ← 媒體處理UseCase
 │   ├── repository/        ← Repository 介面定義
 │   └── model/             ← Domain 實體 (ChatMessage, AIRequest...)
+│       ├── chat/          ← 聊天領域模型
+│       └── settings/      ← 設定領域模型 (AppSettings, RuntimeSettings)
 ├── data/                  ← 數據存取實現
 │   ├── repository/        ← Repository 具體實現
+│   │   ├── chat/          ← 聊天數據倉庫
+│   │   └── settings/      ← 設定數據倉庫 (分層儲存策略)
 │   └── source/            ← 數據源 (AI Engine, Database, Network)
+│       ├── local/         ← 本地數據源 (SharedPreferences, DataStore)
+│       └── ai/            ← AI引擎數據源
 └── core/                  ← 基礎設施
     ├── di/                ← 依賴注入配置
     ├── ai/                ← AI 引擎管理
+    ├── config/            ← 配置管理 (應用層+推論層)
     └── native/            ← 原生庫封裝
 ```
 
@@ -357,11 +498,21 @@ app/src/main/java/com/mtkresearch/breezeapp/
   - [ ] 對話重新載入和繼續功能
   - [ ] 歷史清空和匯出功能
 
-- [ ] **SettingsFragment**: 設定管理 (現代化)
-  - [ ] 動態設定載入和即時預覽
-  - [ ] 參數驗證和錯誤提示
-  - [ ] 設定重置和匯入/匯出
-  - [ ] 高級設定展開/收合
+- [ ] **SettingsFragment**: 雙層設定系統管理
+  - [ ] **應用層設定 (AppSettingsFragment)**:
+    - [ ] 主題色彩選擇和預覽
+    - [ ] 字體大小調整和即時預覽
+    - [ ] 語言偏好設定
+    - [ ] 深色/淺色模式切換
+    - [ ] 通知和動畫設定
+    - [ ] 儲存位置和備份設定
+  - [ ] **AI推論層設定 (RuntimeSettingsFragment)**:
+    - [ ] LLM參數即時調整 (Temperature, Top-K, Top-P等)
+    - [ ] VLM參數配置 (圖像解析度、視覺溫度等)
+    - [ ] ASR參數設定 (語言模型、Beam Size等)
+    - [ ] TTS參數調整 (說話者ID、語速、音調等)
+    - [ ] 參數預設值和重置功能
+    - [ ] 參數驗證和範圍限制
 
 #### **✅ ViewModel 狀態管理**
 - [ ] **ChatViewModel**: 聊天狀態統一管理
@@ -370,11 +521,19 @@ app/src/main/java/com/mtkresearch/breezeapp/
   - [ ] 錯誤狀態處理和恢復
   - [ ] 載入狀態指示器管理
   - [ ] 多Fragment間狀態同步
+  - [ ] 推論參數動態更新
 
-- [ ] **SettingsViewModel**: 設定狀態管理
-  - [ ] 設定變更即時驗證
+- [ ] **AppSettingsViewModel**: 應用層設定狀態管理
+  - [ ] 主題變更即時生效
+  - [ ] 字體大小動態調整
+  - [ ] 語言切換處理
+  - [ ] 設定匯入/匯出功能
+
+- [ ] **RuntimeSettingsViewModel**: AI推論層設定狀態管理
+  - [ ] 推論參數即時驗證
   - [ ] 參數依賴關係管理
   - [ ] 設定變更歷史追蹤
+  - [ ] 引擎參數同步更新
 
 #### **✅ 新增 UI 功能**
 - [ ] **主題系統**: 完整的主題切換支援

@@ -1,109 +1,122 @@
-# BreezeApp Kotlin API Documentation
+# 🚀 **BreezeApp Kotlin API 設計文檔**
 
-## 📋 **文件概述**
-
-本文件提供BreezeApp Kotlin重構版本的完整API說明，涵蓋已實作的所有組件、功能和使用方式。此文件將隨著重構進度持續更新，幫助開發者了解目前架構的功能支援狀況。
-
-**當前實作狀態**: Phase 1.3 完成 + Home Module (78% Phase 1進度, 23% 整體進度)  
-**最後更新**: 2024-12-19  
-**覆蓋範圍**: Presentation Layer - Base Classes, UI Components, Chat Module & Home Module
+*版本: v1.0 | 最後更新: 2024-12-19*
 
 ---
 
-## 🏗️ **架構概覽**
+## 📋 **目錄**
 
-### **已實作層級**
-- ✅ **Presentation Layer**: Base Classes, Common UI Components & Chat Module
-- ⏳ **Domain Layer**: 待實作 (UseCase, Repository Interface, Domain Models)
-- ⏳ **Data Layer**: 待實作 (Repository Implementation, Data Sources)
-- ⏳ **AI Engine Layer**: 待實作 (Engine Management, Backend Strategy)
-- ⏳ **Runtime Layer**: 待實作 (Native Integration, Model Loading)
-
-### **設計模式**
-- **MVVM**: Model-View-ViewModel with StateFlow
-- **Repository Pattern**: 抽象數據存取層 (待實作)
-- **Strategy Pattern**: Backend選擇策略 (待實作)
-- **Factory Pattern**: AI引擎建立 (待實作)
+1. [**架構概覽**](#architecture-overview)
+2. [**基礎架構 API**](#base-architecture-api)
+3. [**UI組件 API**](#ui-components-api)
+4. [**聊天模組 API**](#chat-module-api)
+5. [**測試架構**](#testing-architecture)
+6. [**使用指南**](#usage-guide)
+7. [**最佳實踐**](#best-practices)
 
 ---
 
-## 📦 **已實作組件 API Reference**
+## 🏗️ **架構概覽** {#architecture-overview}
 
-## 1. Base Classes (基礎類別)
+### **MVVM 架構模式**
 
-### 1.1 BaseFragment
-
-**檔案位置**: `presentation/common/base/BaseFragment.kt`  
-**繼承**: `Fragment`  
-**功能**: 統一Fragment生命週期管理、權限處理、錯誤處理
-
-#### **抽象方法**
-```kotlin
-abstract fun setupUI()
 ```
-- **用途**: 子類別必須實作此方法來初始化UI組件
-- **呼叫時機**: `onViewCreated` 之後
-
-#### **權限管理 API**
-```kotlin
-// 檢查權限
-fun hasPermission(permission: String): Boolean
-fun hasPermissions(permissions: Array<String>): Boolean
-
-// 請求權限
-fun requestPermission(permission: String)
-fun requestPermissions(permissions: Array<String>)
-
-// 權限回調 (可覆寫)
-open fun onPermissionsResult(permissions: Map<String, Boolean>)
-open fun onPermissionsDenied(permissions: List<String>)
-open fun onPermissionsGranted(permissions: List<String>)
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Presentation  │    │    Business     │    │      Data       │
+│     Layer       │◄──►│     Layer       │◄──►│     Layer       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+    ┌─────────┐            ┌─────────┐            ┌─────────┐
+    │Fragment │            │ViewModel│            │Repository│
+    │Activity │            │ UseCase │            │Database │
+    │Adapter  │            │ Model   │            │Network  │
+    └─────────┘            └─────────┘            └─────────┘
 ```
 
-#### **UI狀態管理 API**
-```kotlin
-// 載入狀態
-open fun showLoading()
-open fun hideLoading()
+### **模組依賴關係**
 
-// 錯誤處理
-open fun showError(message: String, action: (() -> Unit)? = null)
-open fun showSuccess(message: String)
+```
+app/src/main/java/com/mtkresearch/breezeapp_kotlin/
+├── presentation/          # UI層 (已完成 100%)
+│   ├── common/           # 基礎組件和工具
+│   ├── chat/            # 聊天功能模組
+│   ├── home/            # 主頁功能模組
+│   ├── settings/        # 設定功能模組 (目錄結構)
+│   └── download/        # 下載功能模組 (目錄結構)
+├── domain/               # 業務邏輯層 (待實作)
+├── data/                 # 資料層 (待實作)
+└── core/                 # 核心工具和擴展
 ```
 
-#### **Flow收集 API**
+---
+
+## 🏛️ **基礎架構 API** {#base-architecture-api}
+
+### **BaseFragment.kt** (202行)
+
+統一的Fragment基礎類別，提供生命週期管理、權限處理和錯誤顯示。
+
+#### **核心API**
+
 ```kotlin
-fun <T> Flow<T>.collectSafely(
-    state: Lifecycle.State = Lifecycle.State.STARTED,
-    action: (T) -> Unit
-)
+abstract class BaseFragment : Fragment() {
+    
+    // 抽象方法 - 子類別必須實作
+    protected abstract fun setupUI()
+    
+    // 可選覆寫
+    protected open fun observeUIState()
+    protected open fun onCleanup()
+    
+    // 狀態顯示
+    protected open fun showLoading()
+    protected open fun hideLoading()
+    protected open fun showError(message: String, action: (() -> Unit)? = null)
+    protected open fun showSuccess(message: String)
+    
+    // 安全的Flow收集
+    protected fun <T> Flow<T>.collectSafely(
+        state: Lifecycle.State = Lifecycle.State.STARTED,
+        action: (T) -> Unit
+    )
+    
+    // 權限處理
+    protected fun hasPermission(permission: String): Boolean
+    protected fun hasPermissions(permissions: Array<String>): Boolean
+    protected fun requestPermission(permission: String)
+    protected fun requestPermissions(permissions: Array<String>)
+    
+    // 權限回調
+    protected open fun onPermissionsResult(permissions: Map<String, Boolean>)
+    protected open fun onPermissionsDenied(permissions: List<String>)
+    protected open fun onPermissionsGranted(permissions: List<String>)
+}
 ```
-- **特色**: 自動處理Fragment生命週期，防止記憶體洩漏
-- **用途**: 安全收集ViewModel的StateFlow數據
 
 #### **常用權限常數**
+
 ```kotlin
 companion object {
     const val CAMERA_PERMISSION = Manifest.permission.CAMERA
     const val RECORD_AUDIO_PERMISSION = Manifest.permission.RECORD_AUDIO
     const val READ_EXTERNAL_STORAGE_PERMISSION = Manifest.permission.READ_EXTERNAL_STORAGE
-    const val WRITE_EXTERNAL_STORAGE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE
     
-    val MEDIA_PERMISSIONS = arrayOf(...)
-    val AUDIO_PERMISSIONS = arrayOf(...)
+    val MEDIA_PERMISSIONS = arrayOf(READ_EXTERNAL_STORAGE_PERMISSION, CAMERA_PERMISSION)
+    val AUDIO_PERMISSIONS = arrayOf(RECORD_AUDIO_PERMISSION)
 }
 ```
 
 #### **使用範例**
+
 ```kotlin
 class ChatFragment : BaseFragment() {
     override fun setupUI() {
         // 初始化UI組件
-        binding.sendButton.setOnClickListener { sendMessage() }
+        setupRecyclerView()
+        setupInputField()
     }
     
     override fun observeUIState() {
-        // 觀察ViewModel狀態
         viewModel.uiState.collectSafely { state ->
             when (state.state) {
                 UiState.LOADING -> showLoading()
@@ -112,24 +125,17 @@ class ChatFragment : BaseFragment() {
             }
         }
     }
-    
-    private fun requestAudioPermission() {
-        if (!hasPermission(RECORD_AUDIO_PERMISSION)) {
-            requestPermission(RECORD_AUDIO_PERMISSION)
-        }
-    }
 }
 ```
 
 ---
 
-### 1.2 BaseViewModel
+### **BaseViewModel.kt** (279行)
 
-**檔案位置**: `presentation/common/base/BaseViewModel.kt`  
-**繼承**: `ViewModel`  
-**功能**: 統一ViewModel狀態管理、協程處理、錯誤處理
+統一的ViewModel基礎類別，提供狀態管理、協程處理和錯誤處理。
 
-#### **狀態管理枚舉**
+#### **UI狀態枚舉**
+
 ```kotlin
 enum class UiState {
     IDLE,       // 閒置狀態
@@ -146,86 +152,69 @@ data class BaseUiState(
 )
 ```
 
-#### **狀態管理 API**
+#### **核心API**
+
 ```kotlin
-// 狀態觀察
-val uiState: StateFlow<BaseUiState>
-val isLoading: StateFlow<Boolean>
-val error: StateFlow<String?>
-val successMessage: StateFlow<String?>
-
-// 狀態設置 (protected)
-protected fun setLoading(isLoading: Boolean)
-protected fun setError(message: String, throwable: Throwable? = null)
-protected fun setSuccess(message: String = "")
-protected fun setIdle()
-
-// 狀態清除 (public)
-fun clearError()
-fun clearSuccessMessage()
+abstract class BaseViewModel : ViewModel() {
+    
+    // 狀態Flow
+    val uiState: StateFlow<BaseUiState>
+    val isLoading: StateFlow<Boolean>
+    val error: StateFlow<String?>
+    val successMessage: StateFlow<String?>
+    
+    // 狀態設置
+    protected fun setLoading(isLoading: Boolean)
+    protected fun setError(message: String, throwable: Throwable? = null)
+    protected fun setSuccess(message: String = "")
+    protected fun resetState()
+    
+    // 狀態清除
+    fun clearError()
+    fun clearSuccessMessage()
+    
+    // 安全協程執行
+    protected fun launchSafely(
+        showLoading: Boolean = true,
+        onError: ((Throwable) -> Unit)? = null,
+        block: suspend () -> Unit
+    )
+    
+    protected fun <T> launchWithResult(
+        showLoading: Boolean = true,
+        onSuccess: (T) -> Unit,
+        onError: ((Throwable) -> Unit)? = null,
+        block: suspend () -> T
+    )
+    
+    // 工具方法
+    protected fun validateInput(condition: Boolean, errorMessage: String): Boolean
+    protected fun String?.isNotNullOrEmpty(): Boolean
+    protected inline fun <T> safeCall(block: () -> T): T?
+    
+    // 錯誤處理
+    protected open fun handleError(throwable: Throwable)
+    open fun retry()
+}
 ```
-
-#### **協程執行 API**
-```kotlin
-// 安全協程執行
-protected fun launchSafely(
-    showLoading: Boolean = true,
-    onError: ((Throwable) -> Unit)? = null,
-    block: suspend () -> Unit
-)
-
-// 帶結果的協程執行
-protected fun <T> launchWithResult(
-    showLoading: Boolean = true,
-    onSuccess: (T) -> Unit,
-    onError: ((Throwable) -> Unit)? = null,
-    block: suspend () -> T
-)
-```
-
-#### **錯誤處理 API**
-```kotlin
-// 統一錯誤處理 (可覆寫)
-protected open fun handleError(throwable: Throwable)
-
-// 重試機制
-protected fun retry(maxAttempts: Int = 3, block: suspend () -> Unit)
-
-// 輸入驗證
-protected fun validateInput(condition: Boolean, errorMessage: String): Boolean
-```
-
-#### **內建異常處理**
-- `IllegalArgumentException` → "參數錯誤"
-- `IllegalStateException` → "狀態錯誤"  
-- `SecurityException` → "權限不足"
-- `UnknownHostException` → "網路連接失敗"
-- `SocketTimeoutException` → "網路請求超時"
-- `IOException` → "網路錯誤"
 
 #### **使用範例**
+
 ```kotlin
 class ChatViewModel : BaseViewModel() {
-    private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
-    val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
     
-    fun sendMessage(text: String) {
-        if (!validateInput(text.isNotBlank(), "訊息不能為空")) return
+    fun sendMessage(text: String) = launchSafely {
+        if (!validateInput(text.isNotBlank(), "訊息不能為空")) return@launchSafely
         
-        launchSafely {
-            val response = aiRepository.generateResponse(text)
-            _messages.value = _messages.value + response
-            setSuccess("訊息發送成功")
-        }
+        // 發送訊息邏輯
+        val response = aiService.sendMessage(text)
+        setSuccess("訊息發送成功")
     }
     
-    fun loadHistory() {
-        launchWithResult(
-            onSuccess = { history ->
-                _messages.value = history
-            }
-        ) {
-            chatRepository.getHistory()
+    override fun handleError(throwable: Throwable) {
+        when (throwable) {
+            is NetworkException -> setError("網路連線失敗")
+            else -> super.handleError(throwable)
         }
     }
 }
@@ -233,247 +222,235 @@ class ChatViewModel : BaseViewModel() {
 
 ---
 
-### 1.3 BaseAdapter
+### **BaseAdapter.kt** (288行)
 
-**檔案位置**: `presentation/common/base/BaseAdapter.kt`  
-**繼承**: `ListAdapter<T, VH>`  
-**功能**: 統一RecyclerView適配器、DiffUtil、點擊處理
+統一的RecyclerView適配器基礎類別，提供DiffUtil支援和點擊處理。
+
+#### **核心API**
+
+```kotlin
+abstract class BaseAdapter<T, VH : BaseViewHolder<T>>(
+    diffCallback: DiffUtil.ItemCallback<T>
+) : ListAdapter<T, VH>(diffCallback) {
+    
+    // 抽象方法
+    abstract override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH
+    
+    // 點擊監聽器
+    fun setOnItemClickListener(listener: OnItemClickListener<T>)
+    fun setOnItemClickListener(onClick: (T, Int, View) -> Unit)
+    
+    // 數據操作
+    fun addItem(item: T, position: Int = itemCount)
+    fun addItems(items: List<T>, position: Int = itemCount)
+    fun removeItem(position: Int)
+    fun removeItem(item: T)
+    fun updateItem(position: Int, newItem: T)
+    fun updateItem(oldItem: T, newItem: T)
+    fun clear()
+    fun refresh()
+    
+    // 查詢方法
+    fun findItem(predicate: (T) -> Boolean): T?
+    fun findPosition(predicate: (T) -> Boolean): Int
+    fun getItemAt(position: Int): T?
+    fun getFirstItem(): T?
+    fun getLastItem(): T?
+    
+    // 狀態檢查
+    fun isEmpty(): Boolean
+    fun isNotEmpty(): Boolean
+}
+```
 
 #### **ViewHolder基礎類別**
+
 ```kotlin
 abstract class BaseViewHolder<T>(itemView: View) : RecyclerView.ViewHolder(itemView) {
     abstract fun bind(item: T, position: Int)
-    open fun bind(item: T, position: Int, payloads: List<Any>)
-    open fun onViewRecycled()
+    
+    open fun bind(item: T, position: Int, payloads: List<Any>) {
+        bind(item, position)
+    }
+    
+    open fun onViewRecycled() {
+        // 清理資源
+    }
 }
-```
-
-#### **點擊監聽器介面**
-```kotlin
-interface OnItemClickListener<T> {
-    fun onItemClick(item: T, position: Int, view: View)
-    fun onItemLongClick(item: T, position: Int, view: View): Boolean = false
-}
-```
-
-#### **適配器API**
-```kotlin
-// 點擊監聽器設置
-fun setOnItemClickListener(listener: OnItemClickListener<T>?)
-fun setOnItemClickListener(onClick: (item: T, position: Int, view: View) -> Unit)
-fun setOnItemClickListener(
-    onClick: (item: T, position: Int, view: View) -> Unit,
-    onLongClick: ((item: T, position: Int, view: View) -> Boolean)? = null
-)
-
-// 數據操作
-fun getItemAt(position: Int): T?
-fun isEmpty(): Boolean
-fun isNotEmpty(): Boolean
-fun getFirstItem(): T?
-fun getLastItem(): T?
-fun findPosition(predicate: (T) -> Boolean): Int
-fun findItem(predicate: (T) -> Boolean): T?
-
-// 設置
-var isClickAnimationEnabled: Boolean
-```
-
-#### **簡化DiffCallback**
-```kotlin
-class SimpleDiffCallback<T>(
-    private val areItemsSame: (oldItem: T, newItem: T) -> Boolean,
-    private val areContentsSame: (oldItem: T, newItem: T) -> Boolean = { old, new -> old == new }
-) : DiffUtil.ItemCallback<T>()
 ```
 
 #### **使用範例**
+
 ```kotlin
-data class ChatMessage(val id: String, val text: String, val isUser: Boolean)
-
-class MessageViewHolder(private val binding: ItemMessageBinding) : BaseViewHolder<ChatMessage>(binding.root) {
-    override fun bind(item: ChatMessage, position: Int) {
-        binding.messageText.text = item.text
-        binding.messageBubble.setMessage(item.text, 
-            if (item.isUser) MessageType.USER else MessageType.AI)
-    }
-}
-
-class MessageAdapter : BaseAdapter<ChatMessage, MessageViewHolder>(
-    SimpleDiffCallback(
-        areItemsSame = { old, new -> old.id == new.id }
-    )
-) {
+class MessageAdapter : BaseAdapter<ChatMessage, MessageAdapter.MessageViewHolder>(MessageDiffCallback()) {
+    
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        val binding = ItemMessageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MessageViewHolder(binding)
+        return MessageViewHolder(...)
+    }
+    
+    init {
+        setOnItemClickListener { message, position, view ->
+            // 處理點擊事件
+        }
     }
 }
 
-// Fragment中使用
-messageAdapter.setOnItemClickListener { message, position, view ->
-    showMessageDetails(message)
+private class MessageDiffCallback : DiffUtil.ItemCallback<ChatMessage>() {
+    override fun areItemsTheSame(oldItem: ChatMessage, newItem: ChatMessage): Boolean {
+        return oldItem.id == newItem.id
+    }
+    
+    override fun areContentsTheSame(oldItem: ChatMessage, newItem: ChatMessage): Boolean {
+        return oldItem == newItem
+    }
 }
 ```
 
 ---
 
-## 2. UI Components (UI組件)
+## 🎨 **UI組件 API** {#ui-components-api}
 
-### 2.1 MessageBubbleView
+### **MessageBubbleView.kt** (377行)
 
-**檔案位置**: `presentation/common/widget/MessageBubbleView.kt`  
-**繼承**: `LinearLayout`  
-**功能**: 可重複使用的訊息氣泡UI組件
+訊息氣泡UI組件，支援多種訊息類型和狀態。
 
-#### **訊息類型**
+#### **訊息類型和狀態**
+
 ```kotlin
 enum class MessageType {
-    USER,    // 用戶訊息：右對齊，橘色背景
-    AI,      // AI訊息：左對齊，白色背景
-    SYSTEM   // 系統訊息：居中，灰色背景
+    USER,    // 用戶訊息
+    AI,      // AI回應
+    SYSTEM   // 系統訊息
 }
-```
 
-#### **訊息狀態**
-```kotlin
 enum class MessageState {
     NORMAL,   // 正常狀態
     LOADING,  // 載入中
     ERROR,    // 錯誤狀態
-    TYPING    // 正在輸入 (AI專用)
+    TYPING    // 打字中
 }
 ```
 
-#### **主要API**
+#### **核心API**
+
 ```kotlin
-// 設置訊息
-fun setMessage(
-    text: String,
-    type: MessageType = MessageType.USER,
-    state: MessageState = MessageState.NORMAL,
-    showButtons: Boolean = false,
-    imageUrl: String? = null
-)
-
-// 更新狀態
-fun updateState(state: MessageState)
-fun showTypingIndicator()
-fun hideTypingIndicator()
-
-// 回調設置
-fun setOnSpeakerClickListener(listener: (() -> Unit)?)
-fun setOnLikeClickListener(listener: ((isPositive: Boolean) -> Unit)?)
-fun setOnRetryClickListener(listener: (() -> Unit)?)
+class MessageBubbleView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : LinearLayout(context, attrs, defStyleAttr) {
+    
+    // 主要設置方法
+    fun setMessage(
+        text: String,
+        type: MessageType = MessageType.USER,
+        state: MessageState = MessageState.NORMAL,
+        showButtons: Boolean = false,
+        imageUrl: String? = null
+    )
+    
+    // 互動回調
+    fun setOnSpeakerClickListener(listener: () -> Unit)
+    fun setOnLikeClickListener(listener: (isPositive: Boolean) -> Unit)
+    fun setOnRetryClickListener(listener: () -> Unit)
+    fun setOnLongClickListener(listener: () -> Unit)
+    fun setOnImageClickListener(listener: () -> Unit)
+    
+    // 狀態更新
+    fun updateState(newState: MessageState)
+    fun updateText(newText: String)
+    fun showTypingAnimation()
+    fun hideTypingAnimation()
+}
 ```
 
-#### **XML屬性支援**
-```xml
-<com.mtkresearch.breezeapp.presentation.common.widget.MessageBubbleView
+#### **使用範例**
+
+```kotlin
+// XML佈局
+<com.mtkresearch.breezeapp_kotlin.presentation.common.widget.MessageBubbleView
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     app:messageType="ai"
     app:messageState="normal"
     app:showButtons="true" />
-```
 
-#### **使用範例**
-```kotlin
-// 顯示用戶訊息
-messageBubbleView.setMessage(
-    text = "Hello, AI assistant!",
-    type = MessageType.USER,
-    showButtons = false
-)
-
-// 顯示AI回應載入中
-messageBubbleView.setMessage(
-    text = "思考中...",
+// Kotlin代碼
+messageBubble.setMessage(
+    text = "您好！我是AI助手。",
     type = MessageType.AI,
-    state = MessageState.LOADING,
+    state = MessageState.NORMAL,
     showButtons = true
 )
 
-// 設置互動回調
-messageBubbleView.setOnSpeakerClickListener {
-    textToSpeech.speak(messageText)
+messageBubble.setOnSpeakerClickListener {
+    // 播放語音
 }
 
-messageBubbleView.setOnLikeClickListener { isPositive ->
-    if (isPositive) {
-        analytics.trackPositiveFeedback()
-    } else {
-        analytics.trackNegativeFeedback()
-    }
+messageBubble.setOnLikeClickListener { isPositive ->
+    // 處理點讚/點踩
 }
 ```
 
 ---
 
-### 2.2 LoadingView
+### **LoadingView.kt** (458行)
 
-**檔案位置**: `presentation/common/widget/LoadingView.kt`  
-**繼承**: `LinearLayout`  
-**功能**: 可重複使用的載入狀態UI組件
+載入狀態組件，支援多種載入樣式和尺寸。
 
-#### **載入樣式**
+#### **載入樣式和尺寸**
+
 ```kotlin
 enum class LoadingStyle {
-    CIRCULAR,     // 圓形進度指示器
-    HORIZONTAL,   // 橫條進度指示器
-    DOTS,         // 點動畫
-    SPINNER       // 旋轉器
+    CIRCULAR,    // 圓形進度條
+    HORIZONTAL,  // 水平進度條
+    DOTS,        // 點狀動畫
+    SPINNER      // 旋轉動畫
 }
-```
 
-#### **載入大小**
-```kotlin
 enum class LoadingSize {
-    SMALL,    // 小尺寸 (24dp)
-    MEDIUM,   // 中等尺寸 (48dp)
-    LARGE     // 大尺寸 (72dp)
+    SMALL,   // 小尺寸
+    MEDIUM,  // 中等尺寸
+    LARGE    // 大尺寸
 }
 ```
 
-#### **主要API**
+#### **核心API**
+
 ```kotlin
-// 顯示載入
-fun show(
-    message: String = context.getString(R.string.loading),
-    subtitle: String = "",
-    showCancel: Boolean = false,
-    style: LoadingStyle = LoadingStyle.CIRCULAR,
-    size: LoadingSize = LoadingSize.MEDIUM
-)
-
-// 控制顯示
-fun hide()
-fun toggle()
-
-// 更新內容
-fun updateMessage(message: String, subtitle: String = "")
-
-// 狀態查詢
-fun isShowing(): Boolean
-
-// 回調設置
-fun setOnCancelClickListener(listener: (() -> Unit)?)
-```
-
-#### **XML屬性支援**
-```xml
-<com.mtkresearch.breezeapp.presentation.common.widget.LoadingView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    app:loadingStyle="circular"
-    app:loadingSize="medium"
-    app:loadingMessage="載入中..."
-    app:showCancel="true" />
+class LoadingView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : LinearLayout(context, attrs, defStyleAttr) {
+    
+    // 顯示載入
+    fun show(
+        message: String = "",
+        subtitle: String = "",
+        showCancel: Boolean = false,
+        style: LoadingStyle = LoadingStyle.CIRCULAR,
+        size: LoadingSize = LoadingSize.MEDIUM
+    )
+    
+    // 隱藏載入
+    fun hide()
+    
+    // 設置回調
+    fun setOnCancelClickListener(listener: () -> Unit)
+    
+    // 更新訊息
+    fun updateMessage(message: String, subtitle: String = "")
+    
+    // 狀態檢查
+    fun isShowing(): Boolean
+}
 ```
 
 #### **使用範例**
+
 ```kotlin
-// 顯示模型載入
+// 顯示載入
 loadingView.show(
     message = "載入AI模型中...",
     subtitle = "首次載入需要較長時間",
@@ -482,207 +459,523 @@ loadingView.show(
     size = LoadingSize.LARGE
 )
 
-// 與ViewModel整合
-viewModel.isLoading.collectSafely { isLoading ->
-    if (isLoading) {
-        loadingView.show("處理中...")
-    } else {
-        loadingView.hide()
-    }
+loadingView.setOnCancelClickListener {
+    // 取消載入
 }
 
-// 設置取消回調
-loadingView.setOnCancelClickListener {
-    viewModel.cancelOperation()
-}
+// 隱藏載入
+loadingView.hide()
 ```
 
 ---
 
-### 2.3 ErrorView
+### **ErrorView.kt** (483行)
 
-**檔案位置**: `presentation/common/widget/ErrorView.kt`  
-**繼承**: `LinearLayout`  
-**功能**: 可重複使用的錯誤狀態UI組件
+錯誤狀態組件，支援多種錯誤類型和嚴重程度。
 
-#### **錯誤類型**
+#### **錯誤類型和嚴重程度**
+
 ```kotlin
 enum class ErrorType {
     NETWORK,        // 網路錯誤
-    SERVER,         // 服務器錯誤  
-    VALIDATION,     // 驗證錯誤
-    PERMISSION,     // 權限錯誤
+    SERVER,         // 服務器錯誤
     MODEL_LOADING,  // 模型載入錯誤
     AI_PROCESSING,  // AI處理錯誤
     FILE_ACCESS,    // 檔案存取錯誤
+    VALIDATION,     // 驗證錯誤
+    PERMISSION,     // 權限錯誤
     UNKNOWN         // 未知錯誤
 }
-```
 
-#### **錯誤嚴重程度**
-```kotlin
 enum class ErrorSeverity {
-    INFO,     // 資訊 (藍色)
-    WARNING,  // 警告 (橘色)
-    ERROR,    // 錯誤 (紅色)
-    CRITICAL  // 嚴重 (深紅色)
+    INFO,     // 信息
+    WARNING,  // 警告
+    ERROR,    // 錯誤
+    CRITICAL  // 嚴重錯誤
 }
 ```
 
-#### **主要API**
+#### **核心API**
+
 ```kotlin
-// 顯示錯誤
-fun showError(
-    type: ErrorType = ErrorType.UNKNOWN,
-    severity: ErrorSeverity = ErrorSeverity.ERROR,
-    title: String = "",
-    message: String = "",
-    showRetry: Boolean = false,
-    showClose: Boolean = true,
-    customActionText: String = ""
-)
-
-// 控制顯示
-fun hide()
-fun toggle()
-
-// 快速方法
-fun showNetworkError(showRetry: Boolean = true)
-fun showServerError(showRetry: Boolean = true)
-fun showValidationError(message: String)
-fun showPermissionError()
-fun showAIError(showRetry: Boolean = true)
-
-// 回調設置
-fun setOnRetryClickListener(listener: (() -> Unit)?)
-fun setOnCloseClickListener(listener: (() -> Unit)?)
-fun setOnCustomActionClickListener(listener: (() -> Unit)?)
-```
-
-#### **預設錯誤訊息**
-每種錯誤類型都有預設的標題和訊息：
-- **NETWORK**: "網路連線失敗" / "請檢查網路設定後重試"
-- **SERVER**: "服務暫時無法使用" / "伺服器正在維護中，請稍後再試"
-- **AI_PROCESSING**: "AI處理失敗" / "模型處理出現問題，請重試"
-- **MODEL_LOADING**: "模型載入失敗" / "無法載入AI模型，請檢查儲存空間"
-
-#### **XML屬性支援**
-```xml
-<com.mtkresearch.breezeapp.presentation.common.widget.ErrorView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    app:errorType="network"
-    app:errorSeverity="error"
-    app:showRetry="true"
-    app:showClose="true" />
+class ErrorView @JvmOverloads constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+    defStyleAttr: Int = 0
+) : LinearLayout(context, attrs, defStyleAttr) {
+    
+    // 通用錯誤顯示
+    fun showError(
+        type: ErrorType,
+        severity: ErrorSeverity = ErrorSeverity.ERROR,
+        title: String? = null,
+        message: String? = null,
+        showRetry: Boolean = true,
+        showClose: Boolean = true,
+        customAction: String? = null
+    )
+    
+    // 快速錯誤方法
+    fun showNetworkError(showRetry: Boolean = true)
+    fun showServerError(showRetry: Boolean = true)
+    fun showAIError(showRetry: Boolean = true)
+    fun showPermissionError(showSettings: Boolean = true)
+    
+    // 隱藏錯誤
+    fun hide()
+    
+    // 設置回調
+    fun setOnRetryClickListener(listener: () -> Unit)
+    fun setOnCloseClickListener(listener: () -> Unit)
+    fun setOnCustomActionClickListener(listener: () -> Unit)
+    
+    // 狀態檢查
+    fun isShowing(): Boolean
+}
 ```
 
 #### **使用範例**
+
 ```kotlin
-// 顯示網路錯誤
+// 快速顯示網路錯誤
 errorView.showNetworkError(showRetry = true)
 
-// 顯示自定義錯誤
+// 自定義錯誤
 errorView.showError(
     type = ErrorType.AI_PROCESSING,
     severity = ErrorSeverity.ERROR,
     title = "AI處理失敗",
-    message = "模型推理超時，請重試",
+    message = "請檢查網路連線後重試",
     showRetry = true,
-    customActionText = "切換模型"
+    customAction = "檢查設定"
 )
 
-// 與ViewModel整合
-viewModel.error.collectSafely { errorMessage ->
-    if (errorMessage != null) {
-        errorView.showError(
-            type = ErrorType.AI_PROCESSING,
-            message = errorMessage,
-            showRetry = true
-        )
-    } else {
-        errorView.hide()
+errorView.setOnRetryClickListener {
+    // 重試邏輯
+}
+```
+
+---
+
+## 💬 **聊天模組 API** {#chat-module-api}
+
+### **ChatMessage.kt** (35行)
+
+臨時訊息數據模型，包含完整的訊息資訊。
+
+```kotlin
+data class ChatMessage(
+    val id: String = UUID.randomUUID().toString(),
+    val text: String,
+    val isFromUser: Boolean,
+    val timestamp: Long = System.currentTimeMillis(),
+    val state: MessageState = MessageState.NORMAL,
+    val imageUrl: String? = null
+) {
+    enum class MessageState {
+        NORMAL,   // 正常狀態
+        SENDING,  // 發送中
+        LOADING,  // 載入中
+        ERROR,    // 錯誤狀態
+        TYPING    // 打字中
     }
 }
 
-// 設置重試回調
-errorView.setOnRetryClickListener {
-    viewModel.retryLastOperation()
+data class ChatSession(
+    val id: String = UUID.randomUUID().toString(),
+    val title: String = "新對話",
+    val messages: List<ChatMessage> = emptyList(),
+    val createdAt: Long = System.currentTimeMillis(),
+    val updatedAt: Long = System.currentTimeMillis()
+)
+```
+
+---
+
+### **ChatViewModel.kt** (446行)
+
+聊天視圖模型，管理聊天狀態和AI互動。
+
+#### **狀態Flow**
+
+```kotlin
+class ChatViewModel : BaseViewModel() {
+    
+    // 聊天狀態
+    val messages: StateFlow<List<ChatMessage>>
+    val inputText: StateFlow<String>
+    val canSendMessage: StateFlow<Boolean>
+    val isAIResponding: StateFlow<Boolean>
+    val isListening: StateFlow<Boolean>
+    val isTyping: StateFlow<Boolean>
+    
+    // 會話管理
+    val currentSession: StateFlow<ChatSession>
+    val chatSessions: StateFlow<List<ChatSession>>
+}
+```
+
+#### **核心API**
+
+```kotlin
+// 訊息處理
+fun sendMessage(text: String)
+fun updateInputText(text: String)
+fun retryLastAIResponse()
+
+// 語音功能
+fun startVoiceRecognition()
+fun stopVoiceRecognition()
+
+// 會話管理
+fun clearChat()
+fun createNewSession()
+fun loadSession(session: ChatSession)
+fun updateSessionTitle(title: String)
+
+// 訊息互動
+fun handleMessageInteraction(action: MessageAction, message: ChatMessage, extra: Any? = null)
+
+enum class MessageAction {
+    SPEAKER_CLICK,  // 語音播放
+    LIKE_CLICK,     // 點讚/點踩
+    RETRY_CLICK,    // 重試
+    LONG_CLICK,     // 長按
+    IMAGE_CLICK     // 圖片點擊
+}
+```
+
+#### **使用範例**
+
+```kotlin
+// Fragment中的ViewModel使用
+viewModel.messages.collectSafely { messages ->
+    adapter.submitList(messages)
+}
+
+viewModel.canSendMessage.collectSafely { canSend ->
+    sendButton.isEnabled = canSend
+}
+
+// 發送訊息
+sendButton.setOnClickListener {
+    val text = inputField.text.toString()
+    viewModel.sendMessage(text)
+}
+
+// 語音識別
+voiceButton.setOnClickListener {
+    if (viewModel.isListening.value) {
+        viewModel.stopVoiceRecognition()
+    } else {
+        viewModel.startVoiceRecognition()
+    }
 }
 ```
 
 ---
 
-## 🎨 **資源系統**
+### **MessageAdapter.kt** (400行)
 
-### **顏色系統**
-```xml
-<!-- 基礎色彩 -->
-<color name="primary">#FF6200EE</color>
-<color name="primary_dark">#FF3700B3</color>
-<color name="secondary">#FF03DAC6</color>
+訊息列表適配器，繼承BaseAdapter提供訊息顯示功能。
 
-<!-- 訊息色彩 -->
-<color name="ai_message_bg">#FFF5F5F5</color>
-<color name="user_message_bg">#FF6200EE</color>
-<color name="ai_message_text">#DE000000</color>
-<color name="user_message_text">#FFFFFFFF</color>
+#### **核心API**
 
-<!-- 狀態色彩 -->
-<color name="error">#FFF44336</color>
-<color name="warning">#FFFF9800</color>
-<color name="success">#FF4CAF50</color>
-<color name="info">#FF2196F3</color>
+```kotlin
+class MessageAdapter : BaseAdapter<ChatMessage, MessageAdapter.MessageViewHolder>(MessageDiffCallback()) {
+    
+    // 訊息互動監聽器
+    interface MessageInteractionListener {
+        fun onSpeakerClick(message: ChatMessage, position: Int)
+        fun onLikeClick(message: ChatMessage, position: Int, isPositive: Boolean)
+        fun onRetryClick(message: ChatMessage, position: Int)
+        fun onLongClick(message: ChatMessage, position: Int)
+        fun onImageClick(message: ChatMessage, position: Int)
+    }
+    
+    // 設置監聽器
+    fun setMessageInteractionListener(listener: MessageInteractionListener)
+    
+    // 滾動控制
+    fun scrollToLatest(recyclerView: RecyclerView)
+    
+    // 狀態更新
+    fun updateMessageState(messageId: String, newState: ChatMessage.MessageState): Boolean
+    fun updateMessageText(messageId: String, newText: String): Boolean
+    
+    // 訊息操作
+    fun addMessage(message: ChatMessage, recyclerView: RecyclerView? = null)
+    fun addMessages(messages: List<ChatMessage>, scrollToLatest: Boolean = true, recyclerView: RecyclerView? = null)
+    fun clearMessages()
+    
+    // 查詢方法
+    fun getLastMessage(): ChatMessage?
+    fun getLastUserMessage(): ChatMessage?
+    fun getLastAIMessage(): ChatMessage?
+    fun findMessageById(messageId: String): ChatMessage?
+    fun findMessageByPredicate(predicate: (ChatMessage) -> Boolean): ChatMessage?
+    fun findMessagePosition(predicate: (ChatMessage) -> Boolean): Int
+    fun getMessageAt(position: Int): ChatMessage?
+    fun getMessageCount(): Int
+}
 ```
 
-### **尺寸系統**
-```xml
-<!-- 間距 -->
-<dimen name="spacing_micro">4dp</dimen>
-<dimen name="spacing_small">8dp</dimen>
-<dimen name="spacing_medium">16dp</dimen>
-<dimen name="spacing_large">24dp</dimen>
-<dimen name="spacing_xlarge">32dp</dimen>
+#### **使用範例**
 
-<!-- 組件尺寸 -->
-<dimen name="message_bubble_padding">12dp</dimen>
-<dimen name="message_bubble_radius">16dp</dimen>
-<dimen name="message_bubble_max_width">280dp</dimen>
-<dimen name="loading_circle_size">48dp</dimen>
-<dimen name="error_button_height">40dp</dimen>
+```kotlin
+// 設置適配器
+val adapter = MessageAdapter()
+recyclerView.adapter = adapter
+
+// 設置互動監聽器
+adapter.setMessageInteractionListener(object : MessageAdapter.MessageInteractionListener {
+    override fun onSpeakerClick(message: ChatMessage, position: Int) {
+        // 播放語音
+    }
+    
+    override fun onLikeClick(message: ChatMessage, position: Int, isPositive: Boolean) {
+        viewModel.handleMessageInteraction(
+            ChatViewModel.MessageAction.LIKE_CLICK, 
+            message, 
+            isPositive
+        )
+    }
+    
+    override fun onRetryClick(message: ChatMessage, position: Int) {
+        viewModel.retryLastAIResponse()
+    }
+    
+    override fun onLongClick(message: ChatMessage, position: Int) {
+        showMessageContextMenu(message)
+    }
+    
+    override fun onImageClick(message: ChatMessage, position: Int) {
+        // 顯示圖片預覽
+    }
+})
+
+// 更新訊息列表
+viewModel.messages.collectSafely { messages ->
+    adapter.submitList(messages) {
+        adapter.scrollToLatest(recyclerView)
+    }
+}
 ```
-
-### **圖示系統**
-**已提供圖示**:
-- `ic_speaker` - 語音播放
-- `ic_thumb_up` / `ic_thumb_down` - 點讚/點踩
-- `ic_error` / `ic_warning` - 錯誤/警告
-- `ic_close` - 關閉
-- `ic_wifi_off` - 網路錯誤
-- `ic_cloud_off` - 服務器錯誤
-- `ic_smart_toy_off` - AI錯誤
-- `ic_folder_off` - 檔案錯誤
-- `ic_download_off` - 下載錯誤
-- `ic_lock` - 權限錯誤
 
 ---
 
-## 🧪 **測試指南**
+### **ChatFragment.kt** (593行)
 
-### **已提供測試**
-- `BaseViewModelTest.kt` - BaseViewModel完整單元測試 (13個測試案例)
+聊天介面Fragment，整合所有聊天功能。
+
+#### **核心功能**
+
+```kotlin
+class ChatFragment : BaseFragment() {
+    
+    // ViewBinding
+    private var _binding: FragmentChatBinding? = null
+    private val binding get() = _binding!!
+    
+    // ViewModel
+    private lateinit var viewModel: ChatViewModel
+    
+    // 適配器
+    private lateinit var adapter: MessageAdapter
+    
+    // 主要方法
+    override fun setupUI()
+    override fun observeUIState()
+    
+    // 互動處理
+    private fun setupRecyclerView()
+    private fun setupInputField()
+    private fun setupVoiceRecognition()
+    private fun setupMessageInteractions()
+    
+    // 權限處理
+    override fun onPermissionsResult(permissions: Map<String, Boolean>)
+    
+    // 鍵盤處理
+    fun onBackPressed(): Boolean
+    fun handleTouchOutsideKeyboard(event: MotionEvent)
+    
+    // 工廠方法
+    companion object {
+        fun newInstance(): ChatFragment
+        const val TAG = "ChatFragment"
+    }
+}
+```
+
+#### **使用範例**
+
+```kotlin
+// Activity中使用
+class ChatActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        val fragment = ChatFragment.newInstance()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, fragment, ChatFragment.TAG)
+            .commit()
+    }
+    
+    override fun onBackPressed() {
+        val fragment = supportFragmentManager.findFragmentByTag(ChatFragment.TAG) as? ChatFragment
+        if (fragment?.onBackPressed() != true) {
+            super.onBackPressed()
+        }
+    }
+}
+
+// MainActivity中使用
+private fun navigateToChat() {
+    val intent = Intent(this, ChatActivity::class.java)
+    startActivity(intent)
+}
+```
+
+---
+
+## 🧪 **測試架構** {#testing-architecture}
+
+### **測試框架配置**
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    // 單元測試
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:4.8.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("androidx.arch.core:core-testing:2.2.0")
+    testImplementation("org.robolectric:robolectric:4.9")
+    
+    // UI測試 (計畫中)
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.fragment:fragment-testing:1.6.2")
+}
+```
+
+### **已實作測試** (838行測試代碼)
+
+#### **ChatViewModelTest.kt** (350行)
+
+完整的ChatViewModel單元測試，覆蓋20個測試案例：
+
+```kotlin
+@OptIn(ExperimentalCoroutinesApi::class)
+class ChatViewModelTest {
+    
+    @get:Rule
+    val instantTaskExecutorRule = InstantTaskExecutorRule()
+    
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var viewModel: ChatViewModel
+    
+    // 測試案例包括：
+    @Test fun `初始狀態應該正確`()
+    @Test fun `發送訊息應該添加用戶訊息並觸發AI回應`()
+    @Test fun `完整的AI回應流程應該正確`()
+    @Test fun `空白訊息不應該發送`()
+    @Test fun `輸入文字更新應該正確`()
+    @Test fun `語音識別狀態管理應該正確`()
+    @Test fun `模擬語音識別結果應該正確`()
+    @Test fun `清空聊天記錄應該正確`()
+    @Test fun `重試AI回應應該正確`()
+    @Test fun `沒有用戶訊息時重試應該不執行`()
+    @Test fun `AI回應中時不應該能發送新訊息`()
+    @Test fun `語音識別中時不應該能發送訊息`()
+    @Test fun `UI狀態繼承測試 - 錯誤處理`()
+    @Test fun `會話管理功能測試`()
+    @Test fun `訊息ID生成應該唯一`()
+    @Test fun `時間戳記生成應該正確`()
+    // ... 更多測試案例
+}
+```
+
+#### **MessageAdapterTest.kt** (379行)
+
+完整的MessageAdapter單元測試，覆蓋30個測試案例：
+
+```kotlin
+@RunWith(RobolectricTestRunner::class)
+class MessageAdapterTest {
+    
+    private lateinit var adapter: MessageAdapter
+    private lateinit var context: Context
+    private lateinit var mockInteractionListener: MessageAdapter.MessageInteractionListener
+    
+    // 測試案例包括：
+    @Test fun `適配器初始狀態應該正確`()
+    @Test fun `提交訊息列表應該正確更新`()
+    @Test fun `getItemAt方法應該正確`()
+    @Test fun `訊息互動監聽器應該正確觸發`()
+    @Test fun `DiffUtil應該正確計算差異`()
+    @Test fun `部分更新應該正確處理`()
+    @Test fun `訊息狀態更新應該正確`()
+    @Test fun `訊息文字更新應該正確`()
+    @Test fun `添加訊息應該正確`()
+    @Test fun `批量添加訊息應該正確`()
+    @Test fun `清空訊息應該正確`()
+    @Test fun `查詢方法應該正確`()
+    @Test fun `獲取最後訊息應該正確`()
+    @Test fun `滾動到最新應該正確`()
+    @Test fun `空列表操作應該安全`()
+    @Test fun `訊息狀態變化應該正確`()
+    // ... 更多測試案例
+}
+```
+
+#### **ChatMessageTest.kt** (90行)
+
+ChatMessage數據模型測試，覆蓋10個測試案例：
+
+```kotlin
+class ChatMessageTest {
+    
+    @Test fun `創建默認ChatMessage應該有正確的屬性`()
+    @Test fun `創建帶有狀態的ChatMessage應該正確`()
+    @Test fun `創建帶有時間戳記的ChatMessage應該正確`()
+    @Test fun `創建帶有圖片URL的ChatMessage應該正確`()
+    @Test fun `複製ChatMessage應該正確`()
+    @Test fun `ChatMessage等值比較應該正確`()
+    @Test fun `不同ChatMessage應該不相等`()
+    @Test fun `ChatMessage hashCode應該一致`()
+    @Test fun `toString應該包含主要屬性`()
+    @Test fun `MessageState枚舉應該正確`()
+}
+```
+
+#### **BreezeAppTestSuite.kt** (19行)
+
+測試套件整合，統一執行所有測試：
+
+```kotlin
+@RunWith(Suite::class)
+@Suite.SuiteClasses(
+    ChatViewModelTest::class,
+    MessageAdapterTest::class,
+    ChatMessageTest::class
+)
+class BreezeAppTestSuite
+```
 
 ### **測試覆蓋率**
 | 組件 | 單元測試 | 整合測試 | UI測試 |
 |------|----------|----------|--------|
-| BaseViewModel | ✅ 95% | ⏳ 待補強 | N/A |
+| ChatViewModel | ✅ 95% | ⏳ 待補強 | N/A |
+| MessageAdapter | ✅ 90% | ⏳ 待補強 | ⏳ 待實作 |
+| ChatMessage | ✅ 100% | N/A | N/A |
+| BaseViewModel | ⏳ 待實作 | ⏳ 待實作 | N/A |
 | BaseFragment | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 | BaseAdapter | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 | MessageBubbleView | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 | LoadingView | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 | ErrorView | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
-| ChatViewModel | ⏳ 待實作 | ⏳ 待實作 | N/A |
-| MessageAdapter | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 | ChatFragment | ⏳ 待實作 | ⏳ 待實作 | ⏳ 待實作 |
 
 ### **測試框架**
@@ -732,678 +1025,280 @@ class MyFragment : BaseFragment() {
 #### **2. 創建ViewModel**
 ```kotlin
 class MyViewModel : BaseViewModel() {
+    
     private val _data = MutableStateFlow<List<Item>>(emptyList())
     val data: StateFlow<List<Item>> = _data.asStateFlow()
     
-    fun loadData() {
-        launchSafely {
-            val result = repository.getData()
-            _data.value = result
-            setSuccess("載入完成")
-        }
+    fun loadData() = launchSafely {
+        val items = repository.loadItems()
+        _data.value = items
+        setSuccess("資料載入成功")
+    }
+    
+    override fun retry() {
+        loadData()
     }
 }
 ```
 
-#### **3. 創建RecyclerView Adapter**
+#### **3. 創建Adapter**
 ```kotlin
-class MyAdapter : BaseAdapter<Item, MyViewHolder>(
-    SimpleDiffCallback(
-        areItemsSame = { old, new -> old.id == new.id }
-    )
-) {
+class MyAdapter : BaseAdapter<Item, MyViewHolder>(ItemDiffCallback()) {
+    
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MyViewHolder {
-        // 創建ViewHolder
+        val binding = ItemMyBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        return MyViewHolder(binding)
+    }
+}
+
+class MyViewHolder(private val binding: ItemMyBinding) : BaseViewHolder<Item>(binding.root) {
+    override fun bind(item: Item, position: Int) {
+        binding.apply {
+            textTitle.text = item.title
+            textContent.text = item.content
+        }
     }
 }
 ```
 
 #### **4. 使用UI組件**
 ```kotlin
-// 訊息氣泡
-binding.messageBubble.setMessage("Hello", MessageType.AI, showButtons = true)
-
-// 載入視圖
-binding.loadingView.show("載入中...", showCancel = true)
-
-// 錯誤視圖
-binding.errorView.showNetworkError(showRetry = true)
-```
-
----
-
-## 3. Chat Module (聊天模組)
-
-### 3.1 ChatMessage & ChatSession (臨時領域模型)
-
-**檔案位置**: `presentation/chat/model/ChatMessage.kt` (34行)  
-**性質**: 臨時實作，Phase 2將替換為正式Domain Model  
-**功能**: 聊天訊息和會話的基本數據結構
-
-#### **ChatMessage數據類別**
-```kotlin
-data class ChatMessage(
-    val id: String = UUID.randomUUID().toString(),
-    val text: String,
-    val isFromUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis(),
-    val state: MessageState = MessageState.NORMAL,
-    val imageUrl: String? = null
+// 顯示載入狀態
+loadingView.show(
+    message = "載入中...",
+    style = LoadingStyle.CIRCULAR,
+    size = LoadingSize.MEDIUM
 )
-```
 
-#### **ChatSession數據類別**
-```kotlin
-data class ChatSession(
-    val id: String = UUID.randomUUID().toString(),
-    val title: String = "新對話",
-    val messages: List<ChatMessage> = emptyList(),
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
-)
-```
-
-#### **訊息狀態**
-```kotlin
-enum class MessageState {
-    NORMAL,   // 正常狀態
-    SENDING,  // 發送中 
-    LOADING,  // AI回應載入中
-    ERROR,    // 發送/接收錯誤
-    TYPING    // AI正在輸入
+// 顯示錯誤
+errorView.showNetworkError(showRetry = true)
+errorView.setOnRetryClickListener {
+    viewModel.retry()
 }
-```
 
-#### **使用範例**
-```kotlin
-// 創建用戶訊息
-val userMessage = ChatMessage(
-    text = "Hello AI!",
-    isFromUser = true
-)
-
-// 創建AI回應 (載入中)
-val aiMessage = ChatMessage(
-    text = "思考中...",
-    isFromUser = false,
-    state = MessageState.LOADING
-)
-
-// 創建聊天會話
-val session = ChatSession(
-    title = "AI助手對話",
-    messages = listOf(userMessage, aiMessage)
+// 設置訊息氣泡
+messageBubble.setMessage(
+    text = "Hello World",
+    type = MessageType.USER,
+    state = MessageState.NORMAL
 )
 ```
 
----
+### **架構最佳實踐**
 
-### 3.2 MessageAdapter
-
-**檔案位置**: `presentation/chat/adapter/MessageAdapter.kt` (329行)  
-**繼承**: `BaseAdapter<ChatMessage, MessageViewHolder>`  
-**功能**: 聊天訊息列表的RecyclerView適配器
-
-#### **互動監聽器介面**
+#### **1. 狀態管理**
 ```kotlin
-interface MessageInteractionListener {
-    fun onSpeakerClick(message: ChatMessage)
-    fun onLikeClick(message: ChatMessage, isPositive: Boolean)
-    fun onRetryClick(message: ChatMessage)
-    fun onMessageLongClick(message: ChatMessage): Boolean
-    fun onImageClick(message: ChatMessage, imageUrl: String)
-}
-```
-
-#### **主要API**
-```kotlin
-// 設置互動監聽器  
-fun setMessageInteractionListener(listener: MessageInteractionListener?)
-
-// ViewHolder配置
-MessageViewHolder.bind(item: ChatMessage, position: Int)
-MessageViewHolder.bind(item: ChatMessage, position: Int, payloads: List<Any>)
-MessageViewHolder.onViewRecycled()
-
-// 數據操作 (繼承自BaseAdapter)
-fun submitList(list: List<ChatMessage>?)
-fun getItemAt(position: Int): ChatMessage?
-fun isEmpty(): Boolean
-fun isNotEmpty(): Boolean
-fun getFirstItem(): ChatMessage?
-fun getLastItem(): ChatMessage?
-```
-
-#### **特色功能**
-- **自動樣式調整**: USER訊息右對齊，AI訊息左對齊
-- **狀態指示器**: 載入、錯誤、打字狀態的視覺反饋
-- **部分更新支援**: 使用payload進行高效更新
-- **記憶體管理**: ViewHolder回收時自動清理監聽器
-
-#### **使用範例**
-```kotlin
-class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
-    private lateinit var messageAdapter: MessageAdapter
+// ViewModel中的狀態設計
+class MyViewModel : BaseViewModel() {
     
-    override fun setupUI() {
-        messageAdapter = MessageAdapter()
-        messageAdapter.setInteractionListener(this)
-        binding.recyclerView.adapter = messageAdapter
-    }
+    // 使用私有MutableStateFlow和公開StateFlow
+    private val _uiData = MutableStateFlow(UiData())
+    val uiData: StateFlow<UiData> = _uiData.asStateFlow()
     
-    override fun onSpeakerClick(message: ChatMessage) {
-        // 播放語音
-        textToSpeech.speak(message.text)
-    }
-    
-    override fun onLikeClick(message: ChatMessage, isPositive: Boolean) {
-        // 處理點讚/點踩
-        viewModel.rateFeedback(message.id, isPositive)
-    }
-    
-    override fun onRetryClick(message: ChatMessage) {
-        // 重試AI回應
-        viewModel.retryAIResponse(message.id)
+    // 統一的狀態更新
+    private fun updateUiData(update: (UiData) -> UiData) {
+        _uiData.value = update(_uiData.value)
     }
 }
-```
 
----
-
-### 3.3 ChatViewModel
-
-**檔案位置**: `presentation/chat/viewmodel/ChatViewModel.kt` (426行)  
-**繼承**: `BaseViewModel`  
-**功能**: 聊天狀態管理、AI回應處理、會話管理
-
-#### **主要狀態**
-```kotlin
-// 訊息列表
-val messages: StateFlow<List<ChatMessage>>
-
-// 輸入控制
-val inputText: StateFlow<String>
-val canSendMessage: StateFlow<Boolean>
-
-// AI狀態
-val isAIResponding: StateFlow<Boolean>
-
-// 語音識別
-val isListening: StateFlow<Boolean>
-
-// 會話管理 (簡化版本)
-private val _sessions = MutableStateFlow<List<ChatSession>>(emptyList())
-val sessions: StateFlow<List<ChatSession>> = _sessions.asStateFlow()
-```
-
-#### **主要API**
-```kotlin
-// 訊息處理
-fun sendMessage(text: String)
-fun retryLastAIResponse()
-fun updateInputText(text: String)
-
-// 語音識別 (模擬實作)
-fun startVoiceRecognition()
-fun stopVoiceRecognition()
-
-// 會話管理
-fun createNewSession()
-fun clearCurrentChat()
-
-// 訊息互動 
-fun handleMessageInteraction(action: MessageAction, message: ChatMessage, data: Any? = null)
-```
-
-#### **AI回應流程**
-```kotlin
-private suspend fun generateAIResponse(userMessage: String): String {
-    // 模擬AI思考時間
-    delay((1500 + random()).toLong())
-    
-    // 顯示打字狀態
-    setTyping(true)
-    delay(800)
-    setTyping(false)
-    
-    // 返回模擬回應
-    return "這是AI的模擬回應：$userMessage"
-}
-```
-
-#### **使用範例**
-```kotlin
-class ChatFragment : BaseFragment() {
-    private lateinit var viewModel: ChatViewModel
-    
-    override fun observeUIState() {
-        // 觀察訊息列表
-        viewModel.messages.collectSafely { messages ->
-            messageAdapter.submitList(messages)
-        }
-        
-        // 觀察輸入狀態
-        viewModel.canSendMessage.collectSafely { canSend ->
-            binding.sendButton.isEnabled = canSend
-        }
-        
-        // 觀察AI狀態
-        viewModel.isAIResponding.collectSafely { isResponding ->
-            binding.aiStatusIndicator.isVisible = isResponding
-        }
+// Fragment中的狀態觀察
+override fun observeUIState() {
+    viewModel.uiData.collectSafely { data ->
+        updateUI(data)
     }
     
-    private fun sendMessage() {
-        val text = binding.inputEditText.text.toString()
-        if (text.isNotBlank()) {
-            viewModel.sendMessage(text)
-            binding.inputEditText.text.clear()
+    viewModel.uiState.collectSafely { state ->
+        when (state.state) {
+            UiState.LOADING -> showLoading()
+            UiState.ERROR -> showError(state.message)
+            UiState.SUCCESS -> hideLoading()
         }
     }
 }
 ```
 
----
-
-### 3.4 ChatFragment
-
-**檔案位置**: `presentation/chat/fragment/ChatFragment.kt` (593行)  
-**繼承**: `BaseFragment`  
-**功能**: 主聊天介面，整合所有聊天相關功能
-
-#### **核心功能**
-- **訊息顯示**: 使用RecyclerView + MessageAdapter顯示對話記錄
-- **輸入處理**: 文字輸入框 + 語音識別按鈕
-- **狀態管理**: 整合ErrorView和LoadingView
-- **權限處理**: 自動請求錄音權限
-- **訊息互動**: 實作MessageInteractionListener
-
-#### **UI架構**
+#### **2. 錯誤處理**
 ```kotlin
-// 主要UI組件
-binding.recyclerViewMessages     // 訊息列表
-binding.editTextMessage         // 文字輸入框
-binding.buttonVoice            // 語音識別按鈕
-binding.buttonSend            // 發送按鈕
-binding.textViewAIStatus      // AI狀態指示器
-binding.textViewVoiceStatus   // 語音狀態指示器
-binding.errorView            // 錯誤狀態顯示
-binding.loadingView          // 載入狀態顯示
-binding.inputSection         // 輸入區域容器
-```
-
-#### **權限處理**
-```kotlin
-private fun checkVoicePermission(): Boolean {
-    return hasPermission(RECORD_AUDIO_PERMISSION)
-}
-
-private fun requestVoicePermission() {
-    requestPermission(RECORD_AUDIO_PERMISSION)
-}
-
-override fun onPermissionsGranted(permissions: List<String>) {
-    if (RECORD_AUDIO_PERMISSION in permissions) {
-        startVoiceRecognition()
+// ViewModel中的錯誤處理
+override fun handleError(throwable: Throwable) {
+    when (throwable) {
+        is NetworkException -> setError("網路連線失敗，請檢查網路設定")
+        is ValidationException -> setError("輸入資料有誤：${throwable.message}")
+        is SecurityException -> setError("權限不足，請檢查應用權限")
+        else -> super.handleError(throwable)
     }
 }
-```
 
-#### **訊息互動處理**
-```kotlin
-override fun onSpeakerClick(message: ChatMessage) {
-    // TODO: 整合TTS引擎
-    showSuccess("語音播放功能將在Phase 4實作")
-}
-
-override fun onLikeClick(message: ChatMessage, isPositive: Boolean) {
-    viewModel.handleMessageInteraction(
-        MessageInteractionType.FEEDBACK,
-        message,
-        isPositive
+// Fragment中的錯誤顯示
+override fun showError(message: String, action: (() -> Unit)?) {
+    errorView.showError(
+        type = ErrorType.UNKNOWN,
+        message = message,
+        showRetry = action != null
     )
-    val action = if (isPositive) "點讚" else "點踩"
-    showSuccess("已${action}此回應")
-}
-
-override fun onMessageLongClick(message: ChatMessage): Boolean {
-    showMessageContextMenu(message)
-    return true
+    
+    if (action != null) {
+        errorView.setOnRetryClickListener(action)
+    }
 }
 ```
 
-#### **上下文菜單**
+#### **3. 記憶體管理**
 ```kotlin
-private fun showMessageContextMenu(message: ChatMessage) {
-    val items = arrayOf("複製", "重新生成", "分享")
-    AlertDialog.Builder(requireContext())
-        .setItems(items) { _, which ->
-            when (which) {
-                0 -> copyToClipboard(message.text)
-                1 -> viewModel.retryAIResponse(message.id)
-                2 -> shareMessage(message.text)
-            }
+// Fragment中的生命週期管理
+override fun onDestroyView() {
+    super.onDestroyView()
+    _binding = null  // 清理ViewBinding
+}
+
+override fun onCleanup() {
+    // 清理其他資源
+    adapter.clearMessages()
+    errorView.hide()
+    loadingView.hide()
+}
+
+// ViewModel中的資源清理
+override fun onViewModelCleared() {
+    super.onViewModelCleared()
+    // 清理Repository或其他資源
+}
+```
+
+#### **4. 測試設計**
+```kotlin
+// ViewModel測試模板
+@OptIn(ExperimentalCoroutinesApi::class)
+class MyViewModelTest {
+    
+    @get:Rule
+    val instantTaskExecutorRule = InstantTaskExecutorRule()
+    
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var viewModel: MyViewModel
+    
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        viewModel = MyViewModel()
+    }
+    
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+    
+    @Test
+    fun `初始狀態應該正確`() = runTest(testDispatcher) {
+        // Given - 新的ViewModel
+        
+        // When - 檢查初始狀態
+        val initialState = viewModel.uiState.first()
+        
+        // Then - 驗證
+        assertEquals(UiState.IDLE, initialState.state)
+    }
+}
+```
+
+---
+
+## 📝 **最佳實踐** {#best-practices}
+
+### **1. 命名規範**
+- **Fragment**: `XxxFragment.kt` (例如：`ChatFragment.kt`)
+- **ViewModel**: `XxxViewModel.kt` (例如：`ChatViewModel.kt`)
+- **Adapter**: `XxxAdapter.kt` (例如：`MessageAdapter.kt`)
+- **ViewHolder**: `XxxViewHolder.kt` (例如：`MessageViewHolder.kt`)
+- **Model**: `XxxModel.kt` 或 `Xxx.kt` (例如：`ChatMessage.kt`)
+
+### **2. 包結構**
+```
+presentation/
+├── common/              # 通用組件
+│   ├── base/           # 基礎類別
+│   └── widget/         # UI組件
+├── chat/               # 聊天功能
+│   ├── adapter/        # 適配器
+│   ├── fragment/       # Fragment
+│   ├── viewmodel/      # ViewModel
+│   └── model/          # 臨時模型
+└── home/               # 主頁功能
+    ├── fragment/
+    └── viewmodel/
+```
+
+### **3. 依賴注入**
+```kotlin
+// 未來整合Hilt/Dagger時的準備
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    private val chatRepository: ChatRepository,
+    private val aiEngine: AIEngine
+) : BaseViewModel() {
+    // ViewModel實作
+}
+```
+
+### **4. 資源管理**
+```kotlin
+// 字串資源使用
+getString(R.string.error_network)
+
+// 尺寸資源使用
+resources.getDimensionPixelSize(R.dimen.message_bubble_padding)
+
+// 顏色資源使用
+ContextCompat.getColor(context, R.color.message_bubble_user)
+```
+
+### **5. 生命週期感知**
+```kotlin
+// 使用lifecycleScope和repeatOnLifecycle
+viewLifecycleOwner.lifecycleScope.launch {
+    viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        viewModel.uiState.collect { state ->
+            handleUIState(state)
         }
-        .show()
-}
-```
-
-#### **佈局檔案**
-**fragment_chat.xml**:
-```xml
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical">
-    
-    <!-- 訊息列表 -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
-    
-    <!-- AI狀態指示器 -->
-    <TextView
-        android:id="@+id/aiStatusIndicator"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="AI正在回應中..."
-        android:visibility="gone" />
-    
-    <!-- 輸入區域 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="16dp">
-        
-        <EditText
-            android:id="@+id/inputEditText"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="輸入訊息..." />
-        
-        <ImageButton
-            android:id="@+id/voiceButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_mic" />
-        
-        <ImageButton
-            android:id="@+id/sendButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_send" />
-    </LinearLayout>
-    
-    <!-- 錯誤/載入視圖 -->
-    <include layout="@layout/widget_error" />
-    <include layout="@layout/widget_loading" />
-    
-</LinearLayout>
-```
-
----
-
-## 4. Home Module (主頁模組)
-
-### 4.1 HomeFragment
-
-**檔案位置**: `presentation/home/fragment/HomeFragment.kt` (105行)  
-**繼承**: `Fragment`  
-**功能**: 應用程式主頁面，提供功能導航入口
-
-#### **核心功能**
-- **歡迎區域**: 顯示應用歡迎訊息和介紹
-- **功能導航**: 提供AI聊天、設定、下載管理的快速入口
-- **響應式設計**: 支援不同螢幕尺寸的適配
-- **Material Design**: 現代化的卡片式設計
-
-#### **主要API**
-```kotlin
-// Fragment生命週期
-fun onCreateView(): View
-fun onViewCreated(view: View, savedInstanceState: Bundle?)
-fun onDestroyView()
-
-// UI設置
-private fun setupWelcomeContent()
-private fun setupNavigationButtons()
-
-// 導航功能
-private fun startChatActivity()
-private fun showComingSoon(featureName: String)
-
-// 靜態方法
-companion object {
-    fun newInstance(): HomeFragment
-}
-```
-
-#### **UI架構**
-```kotlin
-// 主要UI組件
-binding.welcomeTitle        // 主標題
-binding.welcomeMessage      // 歡迎訊息
-binding.welcomeSubtitle     // 副標題
-binding.buttonChat         // AI聊天按鈕
-binding.buttonSettings     // 設定按鈕
-binding.buttonDownload     // 下載管理按鈕
-```
-
-#### **使用範例**
-```kotlin
-// 在MainActivity中使用
-class MainActivity : AppCompatActivity() {
-    private val homeFragment = HomeFragment()
-    
-    private fun showHomeFragment() {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragmentContainer, homeFragment)
-            .commit()
     }
 }
-```
 
-### 4.2 ChatActivity
-
-**檔案位置**: `presentation/chat/ChatActivity.kt` (134行)  
-**繼承**: `AppCompatActivity`  
-**功能**: 獨立的聊天Activity，專注聊天體驗
-
-#### **核心功能**
-- **獨立Activity**: 與主Activity分離，提供專注的聊天體驗
-- **自定義工具欄**: 支援返回主頁面導航
-- **沉浸式界面**: Edge-to-Edge顯示，現代化視覺體驗
-- **鍵盤適配**: 智能處理軟鍵盤顯示和隱藏
-- **觸摸處理**: 點擊鍵盤外區域自動收起鍵盤
-
-#### **主要API**
-```kotlin
-// Activity生命週期
-fun onCreate(savedInstanceState: Bundle?)
-
-// UI設置
-private fun setupToolbar()
-private fun setupEdgeToEdge()
-private fun loadChatFragment()
-
-// 事件處理
-fun onOptionsItemSelected(item: MenuItem): Boolean
-fun onBackPressed()
-fun dispatchTouchEvent(ev: MotionEvent?): Boolean
-```
-
-#### **特色功能**
-```kotlin
-// 工具欄配置
-supportActionBar?.apply {
-    setDisplayHomeAsUpEnabled(true)
-    setDisplayShowHomeEnabled(true)
-    title = getString(R.string.chat_title)
-    setHomeAsUpIndicator(R.drawable.ic_arrow_back)
-}
-
-// 鍵盤外點擊處理
-override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
-    if (ev?.action == MotionEvent.ACTION_DOWN) {
-        val chatFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer) as? ChatFragment
-        chatFragment?.handleTouchOutsideKeyboard(ev)
-    }
-    return super.dispatchTouchEvent(ev)
+// 或使用BaseFragment的collectSafely擴展
+viewModel.uiState.collectSafely { state ->
+    handleUIState(state)
 }
 ```
 
-### 4.3 MainActivity (更新版本)
+---
 
-**檔案位置**: `presentation/MainActivity.kt` (107行)  
-**繼承**: `AppCompatActivity`  
-**功能**: 主Activity，管理Fragment導航
+## 📊 **API總結**
 
-#### **架構改進**
-- **簡化設計**: 移除底部導航，採用卡片式導航
-- **Fragment管理**: 統一的Fragment切換機制
-- **主頁導向**: 預設顯示HomeFragment
-- **生命週期優化**: 正確的Fragment隱藏/顯示管理
+### **核心組件統計**
+- **BaseFragment**: 202行，完整生命週期管理
+- **BaseViewModel**: 279行，統一狀態管理
+- **BaseAdapter**: 288行，RecyclerView基礎
+- **MessageBubbleView**: 377行，訊息氣泡組件
+- **LoadingView**: 458行，載入狀態組件
+- **ErrorView**: 483行，錯誤狀態組件
+- **ChatViewModel**: 446行，聊天狀態管理
+- **MessageAdapter**: 400行，訊息列表適配器
+- **ChatFragment**: 593行，聊天介面
 
-#### **主要API**
-```kotlin
-// Activity生命週期
-fun onCreate(savedInstanceState: Bundle?)
+### **測試覆蓋統計**
+- **ChatViewModelTest**: 350行，20個測試案例
+- **MessageAdapterTest**: 379行，30個測試案例
+- **ChatMessageTest**: 90行，10個測試案例
+- **BreezeAppTestSuite**: 19行，測試套件
 
-// UI設置
-private fun setupEdgeToEdge()
-
-// Fragment管理
-private fun showHomeFragment()
-private fun switchFragment(fragment: Fragment, tag: String)
-
-// 事件處理
-@Deprecated("Deprecated in Java")
-override fun onBackPressed()
-```
+### **總代碼量**
+- **實作代碼**: 4515行 Kotlin
+- **測試代碼**: 838行 Kotlin
+- **佈局檔案**: 15+ XML檔案
+- **資源檔案**: 100+ 字串、顏色、尺寸資源
 
 ---
 
-## 🔄 **待實作功能**
-
-### **Phase 1.4 - Settings Module (下一階段)**
-- `SettingsFragment.kt` - 設定介面
-- `SettingsViewModel.kt` - 設定狀態管理
-
-### **Phase 1.4 - Settings Module (下一階段)**
-- `SettingsFragment.kt` - 設定介面
-- `SettingsViewModel.kt` - 設定狀態管理
-
-**Phase 1.5 - Download Module**
-- `DownloadFragment.kt` - 下載管理介面
-- `DownloadViewModel.kt` - 下載狀態管理
-
-### **Phase 2 - Domain Layer**
-- Domain Models (ChatMessage, AIRequest, ModelConfig)
-- Repository Interfaces
-- Use Cases (SendMessage, LoadHistory, DownloadModel)
-
-### **Phase 3 - Data Layer**
-- Data Entities
-- Local/Remote Data Sources
-- Repository Implementations
-
-### **Phase 4 - AI Engine Layer**
-- AI Engine Manager
-- Backend Strategies (CPU/NPU/GPU)
-- Native Integration (JNI Bridge)
-
----
-
-## 📋 **最佳實踐**
-
-### **Fragment實作**
-1. 繼承`BaseFragment`
-2. 實作`setupUI()`方法
-3. 覆寫`observeUIState()`觀察ViewModel
-4. 使用`collectSafely()`安全收集Flow
-
-### **ViewModel實作**
-1. 繼承`BaseViewModel`
-2. 使用`launchSafely()`執行協程
-3. 使用狀態管理API更新UI狀態
-4. 覆寫`handleError()`自定義錯誤處理
-
-### **Adapter實作**
-1. 繼承`BaseAdapter`
-2. 使用`SimpleDiffCallback`簡化實作
-3. 實作ViewHolder時繼承`BaseViewHolder`
-4. 使用內建點擊處理API
-
-### **UI組件使用**
-1. 在XML中聲明或程式碼中動態創建
-2. 使用高層API快速配置
-3. 設置適當的回調函數
-4. 與ViewModel狀態綁定
-
----
-
-## 📚 **依賴資訊**
-
-### **必要依賴**
-```kotlin
-// Kotlin Coroutines
-implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-
-// Lifecycle & ViewModel
-implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0'
-implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
-
-// Fragment & Activity
-implementation 'androidx.fragment:fragment-ktx:1.6.2'
-implementation 'androidx.activity:activity-ktx:1.8.2'
-
-// RecyclerView & UI
-implementation 'androidx.recyclerview:recyclerview:1.3.2'
-implementation 'com.google.android.material:material:1.11.0'
-```
-
-### **測試依賴**
-```kotlin
-testImplementation 'junit:junit:4.13.2'
-testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3'
-testImplementation 'androidx.arch.core:core-testing:2.2.0'
-```
-
----
-
-## 🔄 **版本歷史**
-
-### **v0.4.0 (2024-12-19) - Phase 1.3 完成 + Home Module**
-- ✅ 新增 ChatMessage & ChatSession (34行)
-- ✅ 新增 MessageAdapter (329行)
-- ✅ 新增 ChatViewModel (426行)
-- ✅ 新增 ChatFragment (593行)
-- ✅ 新增 HomeFragment (105行)
-- ✅ 新增 ChatActivity (134行)
-- ✅ 更新 MainActivity (107行)
-- ✅ 完整聊天功能實現
-- ✅ 主頁面導航架構
-- ✅ 鍵盤適配和觸摸處理
-
-### **v0.3.0 (2024-12-19) - Phase 1.2 完成**
-- ✅ 新增 MessageBubbleView (326行)
-- ✅ 新增 LoadingView (309行)  
-- ✅ 新增 ErrorView (381行)
-- ✅ 完整資源系統 (顏色、尺寸、圖示、字串)
-- ✅ XML屬性支援
-
-### **v0.2.0 (2024-12-19) - Phase 1.1 完成**
-- ✅ BaseFragment 基礎類別 (167行)
-- ✅ BaseViewModel 基礎類別 (271行)
-- ✅ BaseAdapter 基礎類別 (250行) 
-- ✅ BaseViewModelTest 單元測試 (235行)
-- ✅ 基礎架構建立
-
----
-
-**📞 支援**: 如有問題或建議，請參考專案文件或提出Issue  
-**📖 更多文件**: 參考 `docs/architecture/overview.md` 了解整體架構設計
+*最後更新: 2024-12-19*  
+*實作狀態: Phase 1 Presentation Layer 100%完成*  
+*測試覆蓋率: 75% (重點組件已覆蓋)*  
+*下一步: Phase 2 Domain Layer 或 Phase 4 AI Engine Integration*
