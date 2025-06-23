@@ -8,8 +8,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.*
 
 /**
  * LoadRuntimeSettingsUseCase 單元測試（JUnit 5 版）
@@ -17,7 +16,7 @@ import org.junit.jupiter.api.Assertions.assertNotNull
  * 測試範圍：
  * - 正常設定載入流程
  * - Repository 異常處理
- * - 預設值回傳機制
+ * - Result 封裝驗證
  * - 數據完整性驗證
  */
 class LoadRuntimeSettingsUseCaseTest {
@@ -40,27 +39,43 @@ class LoadRuntimeSettingsUseCaseTest {
 
         val result = loadUseCase()
 
-        assertEquals(expectedSettings, result, "Should return settings from repository")
+        assertTrue(result.isSuccess, "Should return success result")
+        assertEquals(expectedSettings, result.getOrNull(), "Should return settings from repository")
         verify(mockRepository).loadSettings()
     }
 
     @Test
-    fun `invokeRepositoryExceptionShouldReturnDefaultSettings`() = runTest {
-        `when`(mockRepository.loadSettings()).thenThrow(RuntimeException("Database error"))
+    fun `invokeRepositoryExceptionShouldReturnFailure`() = runTest {
+        val exception = RuntimeException("Database error")
+        `when`(mockRepository.loadSettings()).thenThrow(exception)
 
         val result = loadUseCase()
 
-        assertEquals(RuntimeSettings(), result, "Should return default settings on exception")
+        assertTrue(result.isFailure, "Should return failure result on exception")
+        assertEquals(exception, result.exceptionOrNull(), "Should contain the original exception")
         verify(mockRepository).loadSettings()
     }
 
     @Test
-    fun `invokeShouldAlwaysReturnNonNullSettings`() = runTest {
+    fun `invokeShouldAlwaysReturnNonNullResult`() = runTest {
         `when`(mockRepository.loadSettings()).thenReturn(RuntimeSettings())
 
         val result = loadUseCase()
 
         assertNotNull(result, "Result should never be null")
+        assertTrue(result.isSuccess, "Should be successful with default settings")
+    }
+
+    @Test
+    fun `invokeWithNullRepositoryResponseShouldReturnSuccess`() = runTest {
+        val defaultSettings = RuntimeSettings()
+        `when`(mockRepository.loadSettings()).thenReturn(defaultSettings)
+
+        val result = loadUseCase()
+
+        assertTrue(result.isSuccess, "Should return success even with default settings")
+        assertEquals(defaultSettings, result.getOrNull(), "Should return default settings")
+        verify(mockRepository).loadSettings()
     }
 
     private fun createTestSettings(): RuntimeSettings {
