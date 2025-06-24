@@ -1168,6 +1168,11 @@ public class ModelDownloadDialog extends Dialog {
             pauseResumeButton.setVisibility(View.GONE);
             
             if (success) {
+                // Save the downloaded model list
+                JSONObject filteredModelList = ModelFilter.readFilteredModelList(getContext());
+                if (filteredModelList != null) {
+                    saveDownloadedModelList(getContext(), filteredModelList);
+                }
                 statusText.setText(R.string.download_complete);
                 progressBar.setProgress(100);
                 
@@ -1185,11 +1190,6 @@ public class ModelDownloadDialog extends Dialog {
                 
                 // Ensure we recheck system requirements before dismissing
                 if (getContext() instanceof android.app.Activity) {
-                    // Save the downloaded model list
-                    JSONObject filteredModelList = ModelFilter.readFilteredModelList(getContext());
-                    if (filteredModelList != null) {
-                        saveDownloadedModelList(getContext(), filteredModelList);
-                    }
                     android.app.Activity activity = (android.app.Activity) getContext();
                     activity.runOnUiThread(() -> {
                         // Recheck requirements to update status
