@@ -7,8 +7,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.mockito.Mock
-import org.mockito.Mockito.*
+import org.mockito.kotlin.*
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.any
+import org.mockito.kotlin.never
 
 /**
  * SaveRuntimeSettingsUseCase 單元測試（JUnit 5 版）
@@ -38,8 +40,8 @@ class SaveRuntimeSettingsUseCaseTest {
     @Test
     fun `invokeValidSettingsShouldSaveSuccessfully`() = runTest {
         val validSettings = createValidSettings()
-        `when`(mockValidateUseCase(validSettings)).thenReturn(ValidationResult.Valid)
-        `when`(mockRepository.saveSettings(validSettings)).thenReturn(Result.success(Unit))
+        whenever(mockValidateUseCase(validSettings)).thenReturn(ValidationResult.Valid)
+        whenever(mockRepository.saveSettings(validSettings)).thenReturn(Result.success(Unit))
 
         val result = saveUseCase(validSettings)
 
@@ -52,13 +54,13 @@ class SaveRuntimeSettingsUseCaseTest {
     fun `invokeInvalidSettingsShouldFailValidation`() = runTest {
         val invalidSettings = createInvalidSettings()
         val validationErrors = listOf("Temperature out of range", "TopK too high")
-        `when`(mockValidateUseCase(invalidSettings)).thenReturn(ValidationResult.Invalid(validationErrors))
+        whenever(mockValidateUseCase(invalidSettings)).thenReturn(ValidationResult.Invalid(validationErrors))
 
         val result = saveUseCase(invalidSettings)
 
         assertTrue(result.isFailure, "Save should fail")
         verify(mockValidateUseCase).invoke(invalidSettings)
-        verify(mockRepository, never()).saveSettings(any())
+        verify(mockRepository, never()).saveSettings(any<RuntimeSettings>())
         
         val exception = result.exceptionOrNull()
         assertTrue(exception is IllegalArgumentException, "Should be IllegalArgumentException")
@@ -69,8 +71,8 @@ class SaveRuntimeSettingsUseCaseTest {
     fun `invokeRepositorySaveFailureShouldReturnFailure`() = runTest {
         val validSettings = createValidSettings()
         val saveError = RuntimeException("Disk full")
-        `when`(mockValidateUseCase(validSettings)).thenReturn(ValidationResult.Valid)
-        `when`(mockRepository.saveSettings(validSettings)).thenReturn(Result.failure(saveError))
+        whenever(mockValidateUseCase(validSettings)).thenReturn(ValidationResult.Valid)
+        whenever(mockRepository.saveSettings(validSettings)).thenReturn(Result.failure(saveError))
 
         val result = saveUseCase(validSettings)
 
@@ -84,8 +86,8 @@ class SaveRuntimeSettingsUseCaseTest {
     fun `invokeSettingsWithWarningsShouldStillSave`() = runTest {
         val warningSettings = createWarningSettings()
         val warnings = listOf("High temperature setting detected")
-        `when`(mockValidateUseCase(warningSettings)).thenReturn(ValidationResult.Warning(warnings))
-        `when`(mockRepository.saveSettings(warningSettings)).thenReturn(Result.success(Unit))
+        whenever(mockValidateUseCase(warningSettings)).thenReturn(ValidationResult.Warning(warnings))
+        whenever(mockRepository.saveSettings(warningSettings)).thenReturn(Result.success(Unit))
 
         val result = saveUseCase(warningSettings)
 

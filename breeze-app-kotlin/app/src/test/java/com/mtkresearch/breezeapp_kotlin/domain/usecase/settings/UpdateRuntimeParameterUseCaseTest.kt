@@ -5,8 +5,8 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.*
 import org.mockito.Mock
-import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.*
 
 /**
  * UpdateRuntimeParameterUseCase 單元測試（JUnit 5 版）
@@ -29,7 +29,7 @@ class UpdateRuntimeParameterUseCaseTest {
     fun setUp() {
         MockitoAnnotations.openMocks(this)
         // Setup default mock behavior - return Valid for most cases
-        `when`(mockValidateUseCase(any())).thenReturn(ValidationResult.Valid)
+        whenever(mockValidateUseCase(any<RuntimeSettings>())).thenReturn(ValidationResult.Valid)
         updateUseCase = UpdateRuntimeParameterUseCase(mockValidateUseCase)
     }
 
@@ -51,6 +51,14 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update LLM temperature - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.LLM.Temperature(-0.5f)
+        
+        // Mock validation to return invalid for this specific case
+        val updatedSettings = originalSettings.copy(
+            llmParams = originalSettings.llmParams.copy(temperature = -0.5f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Temperature must be between 0.0 and 2.0"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -90,6 +98,12 @@ class UpdateRuntimeParameterUseCaseTest {
 
         // Test invalid value
         val updateInvalid = ParameterUpdate.LLM.TopK(150)
+        val invalidSettings = originalSettings.copy(
+            llmParams = originalSettings.llmParams.copy(topK = 150)
+        )
+        whenever(mockValidateUseCase(invalidSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("TopK must be between 1 and 100"))
+        )
         val resultInvalid = updateUseCase(originalSettings, updateInvalid)
         assertTrue(resultInvalid.isFailure, "Invalid TopK should fail")
     }
@@ -110,6 +124,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update LLM topP - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.LLM.TopP(1.5f)
+        
+        val updatedSettings = originalSettings.copy(
+            llmParams = originalSettings.llmParams.copy(topP = 1.5f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("TopP must be between 0.0 and 1.0"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -133,6 +154,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update LLM maxTokens - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.LLM.MaxTokens(10000)
+        
+        val updatedSettings = originalSettings.copy(
+            llmParams = originalSettings.llmParams.copy(maxTokens = 10000)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("MaxTokens must be between 1 and 4096"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -172,6 +200,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update VLM visionTemperature - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.VLM.VisionTemperature(-0.5f)
+        
+        val updatedSettings = originalSettings.copy(
+            vlmParams = originalSettings.vlmParams.copy(visionTemperature = -0.5f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Vision temperature must be between 0.0 and 2.0"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -209,6 +244,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update VLM maxImageTokens - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.VLM.MaxImageTokens(3000)
+        
+        val updatedSettings = originalSettings.copy(
+            vlmParams = originalSettings.vlmParams.copy(maxImageTokens = 3000)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Max image tokens must be between 1 and 2048"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -246,6 +288,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update ASR languageModel - empty value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.ASR.LanguageModel("")
+        
+        val updatedSettings = originalSettings.copy(
+            asrParams = originalSettings.asrParams.copy(languageModel = "")
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Language model cannot be empty"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -269,6 +318,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update ASR beamSize - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.ASR.BeamSize(25)
+        
+        val updatedSettings = originalSettings.copy(
+            asrParams = originalSettings.asrParams.copy(beamSize = 25)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Beam size must be between 1 and 20"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -308,6 +364,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update TTS speakerId - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.TTS.SpeakerId(15)
+        
+        val updatedSettings = originalSettings.copy(
+            ttsParams = originalSettings.ttsParams.copy(speakerId = 15)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Speaker ID must be between 0 and 10"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -331,6 +394,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update TTS speedRate - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.TTS.SpeedRate(5.0f)
+        
+        val updatedSettings = originalSettings.copy(
+            ttsParams = originalSettings.ttsParams.copy(speedRate = 5.0f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Speed rate must be between 0.5 and 3.0"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -354,6 +424,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update TTS volume - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.TTS.Volume(1.5f)
+        
+        val updatedSettings = originalSettings.copy(
+            ttsParams = originalSettings.ttsParams.copy(volume = 1.5f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Volume must be between 0.0 and 1.0"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -407,6 +484,13 @@ class UpdateRuntimeParameterUseCaseTest {
     fun `update General maxConcurrentTasks - invalid value should fail`() {
         val originalSettings = RuntimeSettings()
         val update = ParameterUpdate.General.MaxConcurrentTasks(20)
+        
+        val updatedSettings = originalSettings.copy(
+            generalParams = originalSettings.generalParams.copy(maxConcurrentTasks = 20)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Max concurrent tasks must be between 1 and 16"))
+        )
 
         val result = updateUseCase(originalSettings, update)
 
@@ -463,6 +547,13 @@ class UpdateRuntimeParameterUseCaseTest {
         )
         
         val update = ParameterUpdate.LLM.Temperature(-0.5f) // Invalid value
+        val updatedSettings = originalSettings.copy(
+            llmParams = originalSettings.llmParams.copy(temperature = -0.5f)
+        )
+        whenever(mockValidateUseCase(updatedSettings)).thenReturn(
+            ValidationResult.Invalid(listOf("Temperature must be between 0.0 and 2.0"))
+        )
+        
         val result = updateUseCase(originalSettings, update)
 
         assertTrue(result.isFailure, "Update should fail")

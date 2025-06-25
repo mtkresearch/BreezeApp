@@ -6,7 +6,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
-import org.mockito.Mockito.*
+import org.mockito.kotlin.*
 import org.mockito.MockitoAnnotations
 import org.junit.jupiter.api.Assertions.*
 
@@ -35,7 +35,7 @@ class LoadRuntimeSettingsUseCaseTest {
     @Test
     fun `invokeSuccessfulLoadShouldReturnSettingsFromRepository`() = runTest {
         val expectedSettings = createTestSettings()
-        `when`(mockRepository.loadSettings()).thenReturn(expectedSettings)
+        whenever(mockRepository.loadSettings()).thenReturn(expectedSettings)
 
         val result = loadUseCase()
 
@@ -47,7 +47,7 @@ class LoadRuntimeSettingsUseCaseTest {
     @Test
     fun `invokeRepositoryExceptionShouldReturnFailure`() = runTest {
         val exception = RuntimeException("Database error")
-        `when`(mockRepository.loadSettings()).thenThrow(exception)
+        whenever(mockRepository.loadSettings()).thenThrow(exception)
 
         val result = loadUseCase()
 
@@ -58,7 +58,7 @@ class LoadRuntimeSettingsUseCaseTest {
 
     @Test
     fun `invokeShouldAlwaysReturnNonNullResult`() = runTest {
-        `when`(mockRepository.loadSettings()).thenReturn(RuntimeSettings())
+        whenever(mockRepository.loadSettings()).thenReturn(RuntimeSettings())
 
         val result = loadUseCase()
 
@@ -69,7 +69,7 @@ class LoadRuntimeSettingsUseCaseTest {
     @Test
     fun `invokeWithNullRepositoryResponseShouldReturnSuccess`() = runTest {
         val defaultSettings = RuntimeSettings()
-        `when`(mockRepository.loadSettings()).thenReturn(defaultSettings)
+        whenever(mockRepository.loadSettings()).thenReturn(defaultSettings)
 
         val result = loadUseCase()
 

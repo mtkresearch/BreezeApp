@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.Assertions.*
 import org.mockito.Mock
-import org.mockito.Mockito.*
 import org.mockito.MockitoAnnotations
+import org.mockito.kotlin.*
 import org.robolectric.annotation.Config
 
 /**
@@ -61,11 +61,11 @@ class RuntimeSettingsViewModelTest {
         
         // Setup default mock behaviors using runTest for suspend functions
         runTest {
-            `when`(mockLoadUseCase()).thenReturn(Result.success(RuntimeSettings()))
-            `when`(mockSaveUseCase(any())).thenReturn(Result.success(Unit))
+            whenever(mockLoadUseCase()).thenReturn(Result.success(RuntimeSettings()))
+            whenever(mockSaveUseCase(any<RuntimeSettings>())).thenReturn(Result.success(Unit))
         }
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(RuntimeSettings()))
-        `when`(mockValidateUseCase(any())).thenReturn(ValidationResult.Valid)
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(RuntimeSettings()))
+        whenever(mockValidateUseCase(any<RuntimeSettings>())).thenReturn(ValidationResult.Valid)
 
         viewModel = RuntimeSettingsViewModel(
             mockLoadUseCase,
@@ -100,7 +100,7 @@ class RuntimeSettingsViewModelTest {
     @Test
     fun `viewModel initialization - load failure should handle gracefully`() = runTest(testDispatcher) {
         val testException = RuntimeException("Load failed")
-        `when`(mockLoadUseCase()).thenReturn(Result.failure(testException))
+        whenever(mockLoadUseCase()).thenReturn(Result.failure(testException))
 
         viewModel.currentSettings.observeForever(mockCurrentSettingsObserver)
         viewModel.loadSettings()
@@ -114,7 +114,7 @@ class RuntimeSettingsViewModelTest {
     @Test
     fun `loadSettings - successful load should update state correctly`() = runTest(testDispatcher) {
         val testSettings = createTestSettings()
-        `when`(mockLoadUseCase()).thenReturn(Result.success(testSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(testSettings))
 
         viewModel.currentSettings.observeForever(mockCurrentSettingsObserver)
         viewModel.previewSettings.observeForever(mockPreviewSettingsObserver)
@@ -128,7 +128,7 @@ class RuntimeSettingsViewModelTest {
     @Test
     fun `loadSettings - failure should handle gracefully and use defaults`() = runTest(testDispatcher) {
         val exception = RuntimeException("Database error")
-        `when`(mockLoadUseCase()).thenReturn(Result.failure(exception))
+        whenever(mockLoadUseCase()).thenReturn(Result.failure(exception))
 
         viewModel.currentSettings.observeForever(mockCurrentSettingsObserver)
         viewModel.loadSettings()
@@ -140,7 +140,7 @@ class RuntimeSettingsViewModelTest {
     @Test
     fun `loadSettings - multiple calls should not cause issues`() = runTest(testDispatcher) {
         val testSettings = createTestSettings()
-        `when`(mockLoadUseCase()).thenReturn(Result.success(testSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(testSettings))
 
         viewModel.currentSettings.observeForever(mockCurrentSettingsObserver)
 
@@ -163,8 +163,8 @@ class RuntimeSettingsViewModelTest {
             llmParams = LLMParameters(temperature = 1.1f)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockSaveUseCase(modifiedSettings)).thenReturn(Result.success(Unit))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockSaveUseCase(modifiedSettings)).thenReturn(Result.success(Unit))
         
         viewModel.loadSettings()
         
@@ -173,7 +173,7 @@ class RuntimeSettingsViewModelTest {
         viewModel.currentSettings.observeForever(mockCurrentSettingsObserver)
         
         // Simulate parameter update
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(modifiedSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(modifiedSettings))
         viewModel.updateLLMTemperature(1.1f)
         
         // Apply changes
@@ -187,8 +187,8 @@ class RuntimeSettingsViewModelTest {
     fun `saveSettings - save failure should handle gracefully`() = runTest(testDispatcher) {
         val testSettings = createTestSettings()
         val exception = RuntimeException("Save failed")
-        `when`(mockLoadUseCase()).thenReturn(Result.success(testSettings))
-        `when`(mockSaveUseCase(testSettings)).thenReturn(Result.failure(exception))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(testSettings))
+        whenever(mockSaveUseCase(testSettings)).thenReturn(Result.failure(exception))
 
         viewModel.loadSettings()
         viewModel.saveSettings()
@@ -206,8 +206,8 @@ class RuntimeSettingsViewModelTest {
             llmParams = LLMParameters(temperature = 1.2f)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(updatedSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(updatedSettings))
         
         viewModel.loadSettings()
         viewModel.updateLLMTemperature(1.2f)
@@ -220,8 +220,8 @@ class RuntimeSettingsViewModelTest {
         val originalSettings = RuntimeSettings()
         val exception = IllegalArgumentException("Invalid temperature")
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.failure(exception))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.failure(exception))
         
         viewModel.loadSettings()
         viewModel.updateLLMTemperature(-0.5f) // Invalid value
@@ -237,8 +237,8 @@ class RuntimeSettingsViewModelTest {
             llmParams = LLMParameters(topK = 25)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(updatedSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(updatedSettings))
         
         viewModel.loadSettings()
         viewModel.updateLLMTopK(25)
@@ -253,8 +253,8 @@ class RuntimeSettingsViewModelTest {
             llmParams = LLMParameters(maxTokens = 1024)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(updatedSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(updatedSettings))
         
         viewModel.loadSettings()
         viewModel.updateLLMMaxTokens(1024)
@@ -269,8 +269,8 @@ class RuntimeSettingsViewModelTest {
             vlmParams = VLMParameters(visionTemperature = 0.8f)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(updatedSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(updatedSettings))
         
         viewModel.loadSettings()
         viewModel.updateVLMVisionTemperature(0.8f)
@@ -285,8 +285,8 @@ class RuntimeSettingsViewModelTest {
             vlmParams = VLMParameters(imageResolution = ImageResolution.HIGH)
         )
         
-        `when`(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
-        `when`(mockUpdateUseCase(any(), any())).thenReturn(Result.success(updatedSettings))
+        whenever(mockLoadUseCase()).thenReturn(Result.success(originalSettings))
+        whenever(mockUpdateUseCase(any<RuntimeSettings>(), any<ParameterUpdate>())).thenReturn(Result.success(updatedSettings))
         
         viewModel.loadSettings()
         viewModel.updateVLMImageResolution(2) // HIGH resolution index
