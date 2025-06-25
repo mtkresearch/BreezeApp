@@ -4,11 +4,16 @@ import com.mtkresearch.breezeapp_kotlin.presentation.chat.adapter.MessageAdapter
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessageTest
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.viewmodel.ChatViewModelTest
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.RuntimeSettingsViewModelTest
+import com.mtkresearch.breezeapp_kotlin.presentation.settings.viewmodel.AppSettingsViewModelTest
 import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.ValidateRuntimeSettingsUseCaseTest
 import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.UpdateRuntimeParameterUseCaseTest
 import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.LoadRuntimeSettingsUseCaseTest
 import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.SaveRuntimeSettingsUseCaseTest
+import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.LoadAppSettingsUseCaseTest
+import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.UpdateThemeModeUseCaseTest
+import com.mtkresearch.breezeapp_kotlin.domain.usecase.settings.UpdateFontSizeUseCaseTest
 import com.mtkresearch.breezeapp_kotlin.data.repository.RuntimeSettingsRepositoryTest
+import com.mtkresearch.breezeapp_kotlin.data.repository.AppSettingsRepositoryImplTest
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.DisplayName
 
@@ -26,6 +31,12 @@ import org.junit.jupiter.api.DisplayName
  * - 參數驗證和更新邏輯測試
  * - 數據持久化和載入測試
  * - 錯誤處理和邊界條件測試
+ * 
+ * App Settings 模組測試：
+ * - 應用層設定 ViewModel 測試
+ * - 主題模式和字體大小 UseCase 測試
+ * - Repository 數據存取和流控制測試
+ * - 防重複更新和異常處理測試
  * 
  * JUnit 5 特性：
  * - 使用 @Nested 組織相關測試類別
@@ -45,28 +56,28 @@ class BreezeAppTestSuite {
     }
     
     @Nested
-    @DisplayName("Runtime Settings 模組測試")
-    inner class RuntimeSettingsModuleTests {
+    @DisplayName("Settings 模組測試")
+    inner class SettingsModuleTests {
         
         @Nested
-        @DisplayName("Presentation Layer 測試")
-        inner class PresentationLayerTests {
+        @DisplayName("Runtime Settings 測試")
+        inner class RuntimeSettingsTests {
             // RuntimeSettingsViewModelTest
-        }
-        
-        @Nested
-        @DisplayName("Domain Layer Use Cases 測試")
-        inner class DomainLayerTests {
             // ValidateRuntimeSettingsUseCaseTest
             // UpdateRuntimeParameterUseCaseTest
             // LoadRuntimeSettingsUseCaseTest
             // SaveRuntimeSettingsUseCaseTest
+            // RuntimeSettingsRepositoryTest
         }
         
         @Nested
-        @DisplayName("Data Layer 測試")
-        inner class DataLayerTests {
-            // RuntimeSettingsRepositoryTest
+        @DisplayName("App Settings 測試")
+        inner class AppSettingsTests {
+            // AppSettingsViewModelTest
+            // LoadAppSettingsUseCaseTest
+            // UpdateThemeModeUseCaseTest
+            // UpdateFontSizeUseCaseTest
+            // AppSettingsRepositoryImplTest
         }
     }
 }
@@ -74,12 +85,22 @@ class BreezeAppTestSuite {
 // 注意：JUnit 5 不需要 @RunWith 和 @Suite.SuiteClasses 註解
 // 測試類別會自動被測試引擎發現和執行
 // 個別測試類別：
-// - ChatViewModelTest
-// - MessageAdapterTest  
-// - ChatMessageTest
-// - RuntimeSettingsViewModelTest
-// - ValidateRuntimeSettingsUseCaseTest
-// - UpdateRuntimeParameterUseCaseTest
-// - LoadRuntimeSettingsUseCaseTest
-// - SaveRuntimeSettingsUseCaseTest
-// - RuntimeSettingsRepositoryTest 
+// Chat 模組：
+// - ChatViewModelTest (357行, 20個測試案例)
+// - MessageAdapterTest (380行, 30個測試案例)
+// - ChatMessageTest (346行, 15個測試案例)
+//
+// Runtime Settings 模組：
+// - RuntimeSettingsViewModelTest (384行, 20個測試案例)
+// - ValidateRuntimeSettingsUseCaseTest (537行, 22個測試案例)
+// - UpdateRuntimeParameterUseCaseTest (587行, 25個測試案例)
+// - LoadRuntimeSettingsUseCaseTest (113行, 5個測試案例)
+// - SaveRuntimeSettingsUseCaseTest (158行, 8個測試案例)
+// - RuntimeSettingsRepositoryTest (416行, 18個測試案例)
+//
+// App Settings 模組 (新增)：
+// - AppSettingsViewModelTest (預估350行, 18個測試案例)
+// - LoadAppSettingsUseCaseTest (預估200行, 12個測試案例)
+// - UpdateThemeModeUseCaseTest (預估180行, 11個測試案例)
+// - UpdateFontSizeUseCaseTest (預估200行, 14個測試案例)
+// - AppSettingsRepositoryImplTest (預估300行, 15個測試案例) 

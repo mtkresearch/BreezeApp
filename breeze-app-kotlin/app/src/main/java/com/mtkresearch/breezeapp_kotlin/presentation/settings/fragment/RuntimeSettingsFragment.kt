@@ -49,9 +49,11 @@ class RuntimeSettingsFragment : BaseFragment() {
     // 當前顯示的參數UI
     private var currentParameterViews: List<View> = emptyList()
     
-    // 追踪參數變更 - 智能檢測
-    private val originalValues = mutableMapOf<String, Any>()
+    // Fragment狀態
     private val currentValues = mutableMapOf<String, Any>()
+    private val originalValues = mutableMapOf<String, Any>()
+    
+    // 追蹤變更的參數名稱，用於顯示變更詳情
     private val changedParameters = mutableSetOf<String>()
 
     override fun onCreateView(
@@ -161,20 +163,22 @@ class RuntimeSettingsFragment : BaseFragment() {
             // ViewModel會負責保存到Repository（遵循MVVM原則）
             viewModel.saveSettings()
             
-            // 更新原始值為當前值
-            originalValues.putAll(currentValues)
+            // 清空變更記錄，因為已經保存
             changedParameters.clear()
             updateChangeDisplay()
+            
             dismissDialog()
         }
         
         cancelButton.setOnClickListener {
-            if (changedParameters.isEmpty()) {
+            val hasChanges = changedParameters.isNotEmpty()
+            if (!hasChanges) {
                 // 沒有變更，直接關閉
                 dismissDialog()
             } else {
                 // 有變更，重置到原始值
                 resetToOriginalValues()
+                dismissDialog()
             }
         }
     }
@@ -192,8 +196,6 @@ class RuntimeSettingsFragment : BaseFragment() {
         viewModel.hasChanges.observe(viewLifecycleOwner) { hasChanges ->
             updateButtonStates(hasChanges)
         }
-        
-
         
         // 觀察預覽設定
         viewModel.previewSettings.observe(viewLifecycleOwner) { settings ->
@@ -267,7 +269,7 @@ class RuntimeSettingsFragment : BaseFragment() {
     }
 
     /**
-     * 智能記錄參數變更
+     * 記錄參數變更
      */
     private fun recordParameterChange(parameterName: String, newValue: Any) {
         // 更新當前值
@@ -275,35 +277,15 @@ class RuntimeSettingsFragment : BaseFragment() {
         
         // 檢查是否與原始值不同
         val originalValue = originalValues[parameterName]
-        val isChanged = when {
-            originalValue == null -> true
-            originalValue is Float && newValue is Float -> {
-                // 處理浮點數精度問題，使用小數點後3位比較
-                kotlin.math.abs(originalValue - newValue) > 0.001f
-            }
-            originalValue is Double && newValue is Double -> {
-                // 處理雙精度浮點數
-                kotlin.math.abs(originalValue - newValue) > 0.001
-            }
-            originalValue is Int && newValue is Float -> {
-                // Int與Float比較
-                kotlin.math.abs(originalValue.toFloat() - newValue) > 0.001f
-            }
-            originalValue is Float && newValue is Int -> {
-                // Float與Int比較
-                kotlin.math.abs(originalValue - newValue.toFloat()) > 0.001f
-            }
-            else -> originalValue != newValue
-        }
+        val hasChanged = originalValue != newValue
         
-        if (isChanged) {
-            // 值確實改變了
+        if (hasChanged) {
             changedParameters.add(parameterName)
         } else {
-            // 值回到原始狀態或者是原始值
             changedParameters.remove(parameterName)
         }
         
+        // 更新顯示
         updateChangeDisplay()
     }
 
@@ -330,59 +312,45 @@ class RuntimeSettingsFragment : BaseFragment() {
      * 當ViewModel的previewSettings變化時，同步Fragment的變更記錄
      */
     private fun syncFragmentStateWithPreviewSettings(previewSettings: RuntimeSettings) {
-        
-        // 清除之前的變更記錄
-        changedParameters.clear()
-        
-        // 更新當前值為preview設定中的值
-        currentValues["Temperature"] = previewSettings.llmParams.temperature
-        currentValues["Top-K"] = previewSettings.llmParams.topK
-        currentValues["Top-P"] = previewSettings.llmParams.topP
-        currentValues["Max Tokens"] = previewSettings.llmParams.maxTokens
-        currentValues["Streaming"] = previewSettings.llmParams.enableStreaming
-        
-        currentValues["視覺溫度"] = previewSettings.vlmParams.visionTemperature
-        currentValues["圖像解析度"] = previewSettings.vlmParams.imageResolution.ordinal
-        currentValues["圖像分析"] = previewSettings.vlmParams.enableImageAnalysis
-        
-        currentValues["識別語言"] = getLanguageIndex(previewSettings.asrParams.languageModel)
-        currentValues["Beam大小"] = previewSettings.asrParams.beamSize
-        currentValues["噪音抑制"] = previewSettings.asrParams.enableNoiseSuppression
-        
-        currentValues["說話者聲音"] = previewSettings.ttsParams.speakerId
-        currentValues["語音速度"] = previewSettings.ttsParams.speedRate
-        currentValues["音量"] = previewSettings.ttsParams.volume
-        
-        currentValues["GPU加速"] = previewSettings.generalParams.enableGPUAcceleration
-        currentValues["NPU加速"] = previewSettings.generalParams.enableNPUAcceleration
-        currentValues["並發任務數"] = previewSettings.generalParams.maxConcurrentTasks
-        currentValues["除錯日誌"] = previewSettings.generalParams.enableDebugLogging
-        
-        // 重新檢查所有參數，將真正改變的加入變更記錄
-        currentValues.forEach { (parameterName, currentValue) ->
-            val originalValue = originalValues[parameterName]
-            val isChanged = when {
-                originalValue == null -> true
-                originalValue is Float && currentValue is Float -> {
-                    kotlin.math.abs(originalValue - currentValue) > 0.001f
-                }
-                originalValue is Double && currentValue is Double -> {
-                    kotlin.math.abs(originalValue - currentValue) > 0.001
-                }
-                originalValue is Int && currentValue is Float -> {
-                    kotlin.math.abs(originalValue.toFloat() - currentValue) > 0.001f
-                }
-                originalValue is Float && currentValue is Int -> {
-                    kotlin.math.abs(originalValue - currentValue.toFloat()) > 0.001f
-                }
-                else -> originalValue != currentValue
-            }
+        // 更新當前值並檢查變更狀態
+        val newValues = mapOf(
+            "Temperature" to previewSettings.llmParams.temperature,
+            "Top-K" to previewSettings.llmParams.topK,
+            "Top-P" to previewSettings.llmParams.topP,
+            "Max Tokens" to previewSettings.llmParams.maxTokens,
+            "Streaming" to previewSettings.llmParams.enableStreaming,
             
-            if (isChanged) {
-                changedParameters.add(parameterName)
+            "視覺溫度" to previewSettings.vlmParams.visionTemperature,
+            "圖像解析度" to previewSettings.vlmParams.imageResolution.ordinal,
+            "圖像分析" to previewSettings.vlmParams.enableImageAnalysis,
+            
+            "識別語言" to getLanguageIndex(previewSettings.asrParams.languageModel),
+            "Beam大小" to previewSettings.asrParams.beamSize,
+            "噪音抑制" to previewSettings.asrParams.enableNoiseSuppression,
+            
+            "說話者聲音" to previewSettings.ttsParams.speakerId,
+            "語音速度" to previewSettings.ttsParams.speedRate,
+            "音量" to previewSettings.ttsParams.volume,
+            
+            "GPU加速" to previewSettings.generalParams.enableGPUAcceleration,
+            "NPU加速" to previewSettings.generalParams.enableNPUAcceleration,
+            "並發任務數" to previewSettings.generalParams.maxConcurrentTasks,
+            "除錯日誌" to previewSettings.generalParams.enableDebugLogging
+        )
+        
+        // 更新當前值
+        currentValues.putAll(newValues)
+        
+        // 重新計算變更的參數
+        changedParameters.clear()
+        newValues.forEach { (paramName, newValue) ->
+            val originalValue = originalValues[paramName]
+            if (originalValue != newValue) {
+                changedParameters.add(paramName)
             }
         }
         
+        // 更新顯示
         updateChangeDisplay()
     }
 
@@ -1359,8 +1327,6 @@ class RuntimeSettingsFragment : BaseFragment() {
         }
     }
 
-
-
     /**
      * 觀察基礎狀態 (Loading, Error, Success)
      */
@@ -1396,17 +1362,26 @@ class RuntimeSettingsFragment : BaseFragment() {
      * 更新變更狀態顯示
      */
     private fun updateChangeDisplay() {
-        if (changedParameters.isEmpty()) {
+        val hasChanges = changedParameters.isNotEmpty()
+        
+        if (!hasChanges) {
             validationText.text = "尚未進行任何變更"
             validationText.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
         } else {
-            val changedList = changedParameters.joinToString(", ")
-            validationText.text = "已變更: $changedList"
+            // 顯示具體變更的參數名稱
+            val changedList = changedParameters.sorted().joinToString("、")
+            val changeText = if (changedParameters.size <= 3) {
+                "已變更：$changedList"
+            } else {
+                val firstThree = changedParameters.sorted().take(3).joinToString("、")
+                "已變更：$firstThree 等 ${changedParameters.size} 項設定"
+            }
+            
+            validationText.text = changeText
             validationText.setTextColor(ContextCompat.getColor(requireContext(), R.color.primary))
         }
         
         // 更新按鈕狀態和可見性
-        val hasChanges = changedParameters.isNotEmpty()
         val buttonContainer = view?.findViewById<LinearLayout>(R.id.container_buttons)
         
         if (hasChanges) {
@@ -1432,8 +1407,8 @@ class RuntimeSettingsFragment : BaseFragment() {
             cancelButton.layoutParams = cancelParams
             applyButton.layoutParams = applyParams
         } else {
-            // 無變更：只顯示取消按鈕，靠右對齊
-            cancelButton.text = "取消"
+            // 無變更：只顯示關閉按鈕，靠右對齊
+            cancelButton.text = "關閉"
             applyButton.visibility = View.GONE
             buttonContainer?.gravity = android.view.Gravity.END
             

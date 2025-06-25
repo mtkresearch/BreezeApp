@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import com.mtkresearch.breezeapp_kotlin.R
 import com.mtkresearch.breezeapp_kotlin.databinding.FragmentHomeBinding
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.ChatActivity
+import com.mtkresearch.breezeapp_kotlin.presentation.settings.SettingsActivity
 
 /**
  * 主頁面Fragment
@@ -66,7 +67,7 @@ class HomeFragment : Fragment() {
 
         // 設定按鈕
         binding.buttonSettings.setOnClickListener {
-            showComingSoon("設定功能")
+            startSettingsActivity()
         }
 
         // 下載按鈕
@@ -80,6 +81,11 @@ class HomeFragment : Fragment() {
      */
     private fun startChatActivity() {
         val intent = Intent(requireContext(), ChatActivity::class.java)
+        startActivity(intent)
+    }
+
+    private fun startSettingsActivity() {
+        val intent = Intent(requireContext(), SettingsActivity::class.java)
         startActivity(intent)
     }
 

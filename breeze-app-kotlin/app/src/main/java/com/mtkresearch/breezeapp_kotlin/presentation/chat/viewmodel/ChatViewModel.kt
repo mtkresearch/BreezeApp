@@ -34,10 +34,8 @@ class ChatViewModel : BaseViewModel() {
     private val _inputText = MutableStateFlow("")
     val inputText: StateFlow<String> = _inputText.asStateFlow()
 
-
-
     // 是否可以發送訊息
-    private val _canSendMessage = MutableStateFlow(true)
+    private val _canSendMessage = MutableStateFlow(false)
     val canSendMessage: StateFlow<Boolean> = _canSendMessage.asStateFlow()
 
     // AI是否正在回應
@@ -55,6 +53,8 @@ class ChatViewModel : BaseViewModel() {
     init {
         // 初始化時加載歡迎訊息
         loadWelcomeMessage()
+        // 確保初始狀態正確
+        updateCanSendMessageState()
     }
 
     /**
@@ -199,6 +199,7 @@ class ChatViewModel : BaseViewModel() {
 
         launchSafely(showLoading = false) {
             _isListening.value = true
+            updateCanSendMessageState() // 語音識別開始時更新按鈕狀態
             setSuccess("開始語音識別...")
             
             // 模擬語音識別
@@ -207,10 +208,10 @@ class ChatViewModel : BaseViewModel() {
             // 模擬識別結果
             val recognizedText = mockVoiceRecognition()
             _inputText.value = recognizedText
-            _canSendMessage.value = recognizedText.isNotEmpty()
             
             setSuccess("語音識別完成")
             _isListening.value = false
+            updateCanSendMessageState() // 語音識別結束時更新按鈕狀態
         }
     }
 
@@ -219,6 +220,7 @@ class ChatViewModel : BaseViewModel() {
      */
     fun stopVoiceRecognition() {
         _isListening.value = false
+        updateCanSendMessageState() // 停止語音識別時更新按鈕狀態
     }
 
     /**
@@ -228,9 +230,10 @@ class ChatViewModel : BaseViewModel() {
         _messages.value = emptyList()
         _currentSession.value = ChatSession()
         _inputText.value = ""
-        _canSendMessage.value = true
+        _canSendMessage.value = false
         _isAIResponding.value = false
         _isListening.value = false
+        updateCanSendMessageState() // 確保狀態一致
         setSuccess("聊天記錄已清空")
         // 不自動重新載入歡迎訊息，讓測試可以驗證空狀態
     }
@@ -252,8 +255,9 @@ class ChatViewModel : BaseViewModel() {
         _currentSession.value = ChatSession()
         _messages.value = emptyList()
         _inputText.value = ""
-        _canSendMessage.value = true
+        _canSendMessage.value = false
         _isAIResponding.value = false
+        updateCanSendMessageState() // 確保狀態一致
         
         // 加載歡迎訊息
         loadWelcomeMessage()
@@ -268,8 +272,9 @@ class ChatViewModel : BaseViewModel() {
         _currentSession.value = session
         _messages.value = session.messages
         _inputText.value = ""
-        _canSendMessage.value = true
+        _canSendMessage.value = false
         _isAIResponding.value = false
+        updateCanSendMessageState() // 確保狀態一致
         setSuccess("已載入對話: ${session.title}")
     }
 

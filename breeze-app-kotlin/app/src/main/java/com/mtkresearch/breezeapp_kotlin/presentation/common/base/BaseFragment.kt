@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 
 /**
  * BaseFragment - 所有Fragment的基礎類別
- * 
+ *
  * 提供統一的功能：
  * - 生命週期管理
  * - 權限處理
@@ -171,13 +171,13 @@ abstract class BaseFragment : Fragment() {
         const val RECORD_AUDIO_PERMISSION = Manifest.permission.RECORD_AUDIO
         const val READ_EXTERNAL_STORAGE_PERMISSION = Manifest.permission.READ_EXTERNAL_STORAGE
         const val WRITE_EXTERNAL_STORAGE_PERMISSION = Manifest.permission.WRITE_EXTERNAL_STORAGE
-        
+
         // 常用權限組合
         val MEDIA_PERMISSIONS = arrayOf(
             READ_EXTERNAL_STORAGE_PERMISSION,
             CAMERA_PERMISSION
         )
-        
+
         val AUDIO_PERMISSIONS = arrayOf(
             RECORD_AUDIO_PERMISSION
         )

@@ -1,107 +1,45 @@
 package com.mtkresearch.breezeapp_kotlin.presentation
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.fragment.app.Fragment
+import androidx.fragment.app.commit
 import com.mtkresearch.breezeapp_kotlin.R
 import com.mtkresearch.breezeapp_kotlin.databinding.ActivityMainBinding
+import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseActivity
 import com.mtkresearch.breezeapp_kotlin.presentation.home.fragment.HomeFragment
+import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * 主Activity
- * 
- * 功能特色:
- * - 主頁面導航管理
- * - Fragment容器管理
- * - 統一的狀態管理
- * - 現代化Material Design
- * 
- * 當前支援的功能:
- * - ✅ Home (主頁面)
- * - ⏳ Settings (設定功能 - Phase 1.4)
- * - ⏳ Download (下載管理 - Phase 1.5)
- * - ✅ Chat (聊天功能 - 獨立Activity)
- */
-class MainActivity : AppCompatActivity() {
+@AndroidEntryPoint
+class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
-    
-    // Fragment實例
-    private val homeFragment = HomeFragment()
-    private var currentFragment: Fragment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // 設置ViewBinding
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        
-        // 設置Edge-to-Edge
-        setupEdgeToEdge()
-        
-        // 預設顯示主頁面
-        if (savedInstanceState == null) {
-            showHomeFragment()
-        }
+
+        setupSystemBars()
+        setupHomeFragment(savedInstanceState)
     }
 
-    /**
-     * 設置Edge-to-Edge顯示
-     */
-    private fun setupEdgeToEdge() {
+    private fun setupSystemBars() {
+        // 處理系統窗口 insets，確保內容不被狀態欄遮擋
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
+            view.setPadding(0, systemBars.top, 0, 0)
             insets
         }
     }
 
-
-
-    /**
-     * 顯示主頁面Fragment
-     */
-    private fun showHomeFragment() {
-        switchFragment(homeFragment, "HomeFragment")
-    }
-
-
-
-    /**
-     * 切換Fragment
-     */
-    private fun switchFragment(fragment: Fragment, tag: String) {
-        if (currentFragment === fragment) return
-        
-        val transaction = supportFragmentManager.beginTransaction()
-        
-        // 隱藏當前Fragment
-        currentFragment?.let { current ->
-            transaction.hide(current)
+    private fun setupHomeFragment(savedInstanceState: Bundle?) {
+        // 只在首次創建時添加 HomeFragment
+        if (savedInstanceState == null) {
+            supportFragmentManager.commit {
+                replace(R.id.fragmentContainer, HomeFragment.newInstance())
+            }
         }
-        
-        // 顯示目標Fragment
-        val existingFragment = supportFragmentManager.findFragmentByTag(tag)
-        if (existingFragment != null) {
-            transaction.show(existingFragment)
-            currentFragment = existingFragment
-        } else {
-            transaction.add(R.id.fragmentContainer, fragment, tag)
-            currentFragment = fragment
-        }
-        
-        transaction.commit()
-    }
-
-    /**
-     * 處理返回按鈕
-     */
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        // 在主頁面按返回鍵，退出應用
-        super.onBackPressed()
     }
 }

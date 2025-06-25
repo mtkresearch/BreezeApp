@@ -12,6 +12,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.mtkresearch.breezeapp_kotlin.databinding.FragmentChatBinding
 import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseFragment
@@ -19,6 +20,8 @@ import com.mtkresearch.breezeapp_kotlin.presentation.chat.adapter.MessageAdapter
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.viewmodel.ChatViewModel
 import com.mtkresearch.breezeapp_kotlin.core.utils.ErrorType
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * 聊天Fragment
@@ -169,9 +172,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         binding.editTextMessage.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus) {
                 // 當輸入框獲得焦點時，延遲滾動到最新訊息，等待鍵盤動畫完成
-                binding.root.postDelayed({
+                viewLifecycleOwner.lifecycleScope.launch {
+                    delay(300) // 給鍵盤動畫一些時間
                     scrollToLatestMessage()
-                }, 300) // 給鍵盤動畫一些時間
+                }
             }
         }
 
@@ -241,13 +245,18 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
     private fun sendMessage() {
         val messageText = binding.editTextMessage.text.toString().trim()
         if (messageText.isNotEmpty()) {
+            // 先隱藏鍵盤，提供即時反饋
+            hideKeyboard()
+            
+            // 發送訊息到ViewModel
             viewModel.sendMessage(messageText)
             // 清空輸入框在ViewModel中處理
             
             // 發送訊息後滾動到最新位置
-            binding.root.postDelayed({
+            viewLifecycleOwner.lifecycleScope.launch {
+                delay(100)
                 scrollToLatestMessage()
-            }, 100)
+            }
         }
     }
 
@@ -271,45 +280,37 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      * 更新語音按鈕狀態
      */
     private fun updateVoiceButton(isListening: Boolean) {
-        binding.buttonVoice.isSelected = isListening
+        _binding?.buttonVoice?.isSelected = isListening
         // 改變按鈕圖示來表示狀態
-        binding.buttonVoice.setImageResource(
+        _binding?.buttonVoice?.setImageResource(
             if (isListening) com.mtkresearch.breezeapp_kotlin.R.drawable.ic_mic_off 
             else com.mtkresearch.breezeapp_kotlin.R.drawable.ic_mic
         )
-        binding.buttonVoice.contentDescription = if (isListening) "停止語音輸入" else "開始語音輸入"
+        _binding?.buttonVoice?.contentDescription = if (isListening) "停止語音輸入" else "開始語音輸入"
         
-        // 如果正在聽取語音，禁用發送按鈕
-        if (isListening) {
-            binding.buttonSend.isEnabled = false
-            binding.buttonSend.alpha = 0.5f
-        } else {
-            binding.buttonSend.isEnabled = true
-            binding.buttonSend.alpha = 1.0f
-        }
+        // 移除手動控制發送按鈕狀態的邏輯，完全依賴ViewModel的canSendMessage
+        // ViewModel會根據isListening、isAIResponding和inputText自動更新canSendMessage狀態
     }
 
     /**
      * 滾動到最新訊息
      */
     private fun scrollToLatestMessage() {
-        if (messageAdapter.itemCount > 0) {
-            val lastPosition = messageAdapter.itemCount - 1
-            val layoutManager = binding.recyclerViewMessages.layoutManager as? LinearLayoutManager
-            
-            // 如果最後一個item已經完全可見，使用smoothScrollToPosition
-            // 否則直接跳到最後位置以避免長時間滾動
-            if (layoutManager != null) {
-                val lastVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
-                if (lastPosition - lastVisiblePosition <= 3) {
-                    // 相差不多，使用平滑滾動
-                    binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
+        _binding?.let { binding ->
+            if (messageAdapter.itemCount > 0) {
+                val lastPosition = messageAdapter.itemCount - 1
+                val layoutManager = binding.recyclerViewMessages.layoutManager as? LinearLayoutManager
+                
+                if (layoutManager != null) {
+                    val lastVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
+                    if (lastPosition - lastVisiblePosition <= 5) { // 增加緩衝區
+                        binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
+                    } else {
+                        binding.recyclerViewMessages.scrollToPosition(lastPosition)
+                    }
                 } else {
-                    // 相差很多，直接跳到最後
-                    binding.recyclerViewMessages.scrollToPosition(lastPosition)
+                    binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
                 }
-            } else {
-                binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
             }
         }
     }
@@ -452,17 +453,19 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      * 顯示反饋訊息在頂部狀態欄
      */
     private fun showFeedbackMessage(message: String) {
-        binding.textViewAIStatus.apply {
-            text = message
-            visibility = View.VISIBLE
-        }
-        
-        // 3秒後自動隱藏
-        binding.textViewAIStatus.postDelayed({
-            if (binding.textViewAIStatus.text == message) {
-                binding.textViewAIStatus.visibility = View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            _binding?.textViewAIStatus?.apply {
+                text = message
+                visibility = View.VISIBLE
             }
-        }, 3000)
+            delay(3000)
+            _binding?.textViewAIStatus?.let {
+                // 再次檢查文字是為了防止快速連續的訊息覆蓋舊的隱藏任務
+                if (it.text == message) {
+                    it.visibility = View.GONE
+                }
+            }
+        }
     }
 
     /**
@@ -476,35 +479,22 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      * 設置鍵盤監聽器
      */
     private fun setupKeyboardListener() {
-        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val imeInsets = insets.getInsets(WindowInsetsCompat.Type.ime())
-            val systemBarsInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            
-            // 鍵盤高度
-            val keyboardHeight = imeInsets.bottom
-            val isKeyboardVisible = keyboardHeight > 0
-            
-            // 調整輸入區域的位置，讓它始終保持在鍵盤上方
-            val inputLayoutParams = binding.inputSection.layoutParams as androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
-            inputLayoutParams.bottomMargin = keyboardHeight
-            binding.inputSection.layoutParams = inputLayoutParams
-            
-            // 不需要額外調整chatContentLayout的bottomMargin
-            // 因為它已經通過constraint約束到inputSection的頂部
-            // 只需要保持原有的spacing即可
-            
-            if (isKeyboardVisible) {
-                // 延遲滾動確保佈局調整完成
-                binding.root.postDelayed({
-                    scrollToLatestMessage()
-                }, 200)
+        _binding?.let { binding ->
+            ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+                val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+                val imeHeight = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+
+                binding.root.setPadding(0, 0, 0, if (imeVisible) imeHeight else 0)
+
+                if (imeVisible) {
+                    // 延遲滾動確保佈局調整完成
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        delay(100)
+                        scrollToLatestMessage()
+                    }
+                }
+                insets
             }
-            
-            // 保持RecyclerView的原始padding，不需要動態調整
-            // 因為chatContentLayout到inputSection的約束已經提供了足夠的間距
-            
-            // 返回CONSUMED表示我們已經處理了這些insets
-            WindowInsetsCompat.CONSUMED
         }
     }
 
@@ -547,17 +537,14 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             return
         }
         
-        // 獲取輸入區域的位置
-        val inputRect = Rect()
-        binding.inputSection.getGlobalVisibleRect(inputRect)
-        
-        // 檢查觸摸點是否在輸入區域外
-        val touchX = event.x.toInt()
-        val touchY = event.y.toInt()
-        
-        if (!inputRect.contains(touchX, touchY)) {
-            // 點擊在輸入區域外，收起鍵盤
-            hideKeyboard()
+        // 獲取目前焦點的view
+        val view = activity?.currentFocus
+        if (view != null) {
+            val rect = Rect()
+            view.getGlobalVisibleRect(rect)
+            if (!rect.contains(event.rawX.toInt(), event.rawY.toInt())) {
+                hideKeyboard()
+            }
         }
     }
 
@@ -565,16 +552,11 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      * 隱藏軟鍵盤
      */
     private fun hideKeyboard() {
-        val inputMethodManager = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-        
-        // 清除輸入框焦點
-        binding.editTextMessage.clearFocus()
-        
-        // 隱藏鍵盤
-        inputMethodManager.hideSoftInputFromWindow(
-            binding.editTextMessage.windowToken,
-            0
-        )
+        _binding?.let {
+            val imm = requireContext().getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.hideSoftInputFromWindow(it.root.windowToken, 0)
+            it.editTextMessage.clearFocus()
+        }
     }
 
     companion object {

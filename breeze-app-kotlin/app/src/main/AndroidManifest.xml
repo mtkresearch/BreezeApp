@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name=".BreezeApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -10,7 +11,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MyApplication"
+        android:theme="@style/Theme.BreezeApp_kotlin"
         tools:targetApi="31">
         <activity
             android:name=".presentation.MainActivity"
@@ -27,6 +28,15 @@
             android:theme="@style/Theme.ChatActivity"
             android:parentActivityName=".presentation.MainActivity"
             android:windowSoftInputMode="adjustNothing">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".presentation.MainActivity" />
+        </activity>
+
+        <activity
+            android:name=".presentation.settings.SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".presentation.MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".presentation.MainActivity" />

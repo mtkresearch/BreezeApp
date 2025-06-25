@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BreezeApp</string>
+    <string name="app_name">BreezeApp-Kotlin</string>
     
     <!-- Common UI Strings -->
     <string name="loading">載入中…</string>
@@ -126,6 +126,7 @@
     <string name="download">下載</string>
     
     <!-- Settings -->
+    <string name="title_settings">設定</string>
     <string name="settings_description">AI參數設定</string>
     
     <!-- Home page -->

@@ -263,25 +263,22 @@ class MessageBubbleView @JvmOverloads constructor(
      * 應用訊息狀態
      */
     private fun applyMessageState() {
-        when (currentState) {
-            MessageState.NORMAL -> {
-                messageText.alpha = 1.0f
-                messageContainer.alpha = 1.0f
-            }
-            MessageState.LOADING -> {
-                // 載入狀態：顯示較暗的文字以表示正在處理
-                messageText.alpha = 0.7f
-            }
-            MessageState.ERROR -> {
-                messageText.alpha = 0.8f
-                // 應用錯誤樣式：設置錯誤背景顏色
-                val errorBackground = ContextCompat.getDrawable(context, R.drawable.bg_message_bubble)
-                messageContainer.background = errorBackground
-            }
-            MessageState.TYPING -> {
-                // TYPING 狀態已移除，保留以便向後兼容
-                messageText.alpha = 0.8f
-            }
+        // 統一管理alpha值，避免衝突
+        val (messageAlpha, containerAlpha) = when (currentState) {
+            MessageState.NORMAL -> Pair(1.0f, 1.0f)
+            MessageState.LOADING -> Pair(0.7f, 1.0f)  // 載入狀態：訊息文字較暗
+            MessageState.ERROR -> Pair(0.8f, 1.0f)    // 錯誤狀態：訊息文字稍暗
+            MessageState.TYPING -> Pair(0.8f, 1.0f)   // TYPING狀態（向後兼容）
+        }
+        
+        // 同時設置所有相關的alpha值，確保一致性
+        messageText.alpha = messageAlpha
+        messageContainer.alpha = containerAlpha
+        
+        // 錯誤狀態的特殊處理
+        if (currentState == MessageState.ERROR) {
+            val errorBackground = ContextCompat.getDrawable(context, R.drawable.bg_message_bubble)
+            messageContainer.background = errorBackground
         }
     }
 

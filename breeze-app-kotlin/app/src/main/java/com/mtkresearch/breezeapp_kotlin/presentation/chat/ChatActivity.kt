@@ -4,15 +4,17 @@ import android.content.Context
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.MotionEvent
+import android.view.View
 import android.view.inputmethod.InputMethodManager
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.commit
 import com.mtkresearch.breezeapp_kotlin.R
 import com.mtkresearch.breezeapp_kotlin.databinding.ActivityChatBinding
+import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseActivity
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.fragment.ChatFragment
 import com.mtkresearch.breezeapp_kotlin.presentation.settings.fragment.RuntimeSettingsFragment
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * 聊天Activity
@@ -23,7 +25,8 @@ import com.mtkresearch.breezeapp_kotlin.presentation.settings.fragment.RuntimeSe
  * - 沉浸式界面設計
  * - 完整的生命週期管理
  */
-class ChatActivity : AppCompatActivity() {
+@AndroidEntryPoint
+class ChatActivity : BaseActivity() {
 
     private lateinit var binding: ActivityChatBinding
 
@@ -209,8 +212,34 @@ class ChatActivity : AppCompatActivity() {
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
         // 只在ACTION_DOWN事件時處理，避免影響其他觸摸交互
         if (ev?.action == MotionEvent.ACTION_DOWN) {
+            // 檢查是否點擊在發送按鈕、語音按鈕或其他重要的UI控件上
+            // 如果是，則不處理鍵盤隱藏，讓按鈕正常響應點擊事件
             val chatFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer) as? ChatFragment
-            chatFragment?.handleTouchOutsideKeyboard(ev)
+            
+            // 獲取所有不應該觸發鍵盤隱藏的View
+            val excludeViews = mutableListOf<View>()
+            
+            // 查找ChatFragment中的發送按鈕和語音按鈕
+            chatFragment?.view?.let { fragmentView ->
+                excludeViews.addAll(listOfNotNull(
+                    fragmentView.findViewById(com.mtkresearch.breezeapp_kotlin.R.id.buttonSend),
+                    fragmentView.findViewById(com.mtkresearch.breezeapp_kotlin.R.id.buttonVoice),
+                    fragmentView.findViewById(com.mtkresearch.breezeapp_kotlin.R.id.buttonClearChat),
+                    fragmentView.findViewById(com.mtkresearch.breezeapp_kotlin.R.id.buttonNewChat)
+                ))
+            }
+            
+            // 檢查觸摸點是否在排除的View上
+            val touchInExcludedArea = excludeViews.any { view ->
+                val rect = android.graphics.Rect()
+                view.getGlobalVisibleRect(rect)
+                rect.contains(ev.rawX.toInt(), ev.rawY.toInt())
+            }
+            
+            // 只有在不是點擊排除區域時才處理鍵盤隱藏
+            if (!touchInExcludedArea) {
+                chatFragment?.handleTouchOutsideKeyboard(ev)
+            }
         }
         return super.dispatchTouchEvent(ev)
     }

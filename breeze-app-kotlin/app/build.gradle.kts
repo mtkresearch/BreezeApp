@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    id("org.jetbrains.kotlin.kapt")
+    alias(libs.plugins.hilt.android.plugin)
 }
 
 android {
@@ -36,6 +38,9 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    kapt {
+        correctErrorTypes = true
+    }
 }
 
 dependencies {
@@ -56,6 +61,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Hilt for Dependency Injection
+    implementation(libs.hilt.android)
+    kapt(libs.hilt.compiler)
+    kapt(libs.androidx.lifecycle.compiler)
 
     // Espresso / Rules / Runtime
     implementation(libs.androidx.junit.ktx)
@@ -89,6 +99,10 @@ dependencies {
     androidTestImplementation(libs.androidx.junit.ktx)
     androidTestImplementation(libs.androidx.truth)
     androidTestUtil(libs.androidx.orchestrator)
+    
+    // Hilt Testing
+    androidTestImplementation(libs.hilt.android.testing)
+    kaptAndroidTest(libs.hilt.compiler)
 }
 
 // ✅ 使用 JUnit5 測試平台

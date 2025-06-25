@@ -29,11 +29,10 @@
                 android:id="@+id/closeButton"
                 android:layout_width="@dimen/touch_target_size"
                 android:layout_height="@dimen/touch_target_size"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@android:color/transparent"
                 android:src="@drawable/ic_close"
                 android:contentDescription="@string/close"
-                android:padding="@dimen/spacing_small"
-                app:tint="@color/text_secondary" />
+                android:padding="@dimen/spacing_small" />
 
         </LinearLayout>
 

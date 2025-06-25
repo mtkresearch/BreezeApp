@@ -156,6 +156,19 @@
         <item name="android:textAppearance">@style/TextAppearance.App.Body1</item>
     </style>
 
+    <!-- Custom Switch style -->
+    <style name="Widget.App.Switch" parent="Widget.MaterialComponents.CompoundButton.Switch">
+        <item name="thumbTint">@color/switch_thumb_color</item>
+        <item name="trackTint">@color/switch_track_color</item>
+    </style>
+
+    <!-- Custom Slider style -->
+    <style name="Widget.App.Slider" parent="Widget.MaterialComponents.Slider">
+        <item name="thumbColor">@color/primary</item>
+        <item name="trackColorActive">@color/primary</item>
+        <item name="trackColorInactive">@color/primary_light</item>
+    </style>
+
     <!-- Chinese text styles -->
     <style name="TextAppearance.App.Chinese" parent="TextAppearance.MaterialComponents.Body1">
         <item name="android:textColor">@color/text_primary</item>
