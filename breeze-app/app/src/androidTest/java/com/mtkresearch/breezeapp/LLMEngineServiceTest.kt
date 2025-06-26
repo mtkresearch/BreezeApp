@@ -127,6 +127,8 @@ class LLMEngineServiceTest {
      *  - LLMInferenceParams.fromSharedPreferences()
      *  - LLMEngineService.initialize()
      *  - LLMEngineService.generateStreamingResponse()
+     *  - PromptFormat.getSystemPromptTemplate()
+     *  - PromptFormat.getUserPromptTemplate()
      */
     @Test
     fun testLLMEngineServiceGenerateStreamingResponse() {
