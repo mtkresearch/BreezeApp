@@ -17,7 +17,6 @@ import com.mtkresearch.breezeapp.utils.ModelFilter
 import com.mtkresearch.breezeapp.utils.ModelUtils
 import com.mtkresearch.breezeapp.utils.PromptManager
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Rule
@@ -129,6 +128,7 @@ class LLMEngineServiceTest {
      *  - LLMEngineService.generateStreamingResponse()
      *  - PromptFormat.getSystemPromptTemplate()
      *  - PromptFormat.getUserPromptTemplate()
+     *  - LLMEngineService.stopGeneration()
      */
     @Test
     fun testLLMEngineServiceGenerateStreamingResponse() {
@@ -196,6 +196,7 @@ class LLMEngineServiceTest {
                 Log.d(TAG, "token end: $finalResponse")
                 llmResponse.append(finalResponse)
                 assertTrue("LLM response is empty.", llmResponse.isNotEmpty())
+                service.stopGeneration()
                 latch.countDown()
             }
         }
