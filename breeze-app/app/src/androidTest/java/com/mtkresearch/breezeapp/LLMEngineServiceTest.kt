@@ -6,13 +6,16 @@ import android.util.Log
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.ServiceTestRule
+import com.executorch.ModelType
 import com.google.gson.Gson
 import com.mtkresearch.breezeapp.service.LLMEngineService
 import com.mtkresearch.breezeapp.utils.AppConstants
+import com.mtkresearch.breezeapp.utils.ChatMessage
 import com.mtkresearch.breezeapp.utils.LLMInferenceParams
 import com.mtkresearch.breezeapp.utils.ModelDownloadDialog
 import com.mtkresearch.breezeapp.utils.ModelFilter
 import com.mtkresearch.breezeapp.utils.ModelUtils
+import com.mtkresearch.breezeapp.utils.PromptManager
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -27,71 +30,113 @@ import java.util.concurrent.CountDownLatch
 @RunWith(AndroidJUnit4::class)
 class LLMEngineServiceTest {
 
+    @get:Rule
+    val serviceRule = ServiceTestRule()
+
     companion object {
 
+        const val TAG = "LLMEngineServiceTest"
+
         /**
-         * Download LLM models according to fullModelList.json description before launching
-         * all the class tests.
+         * Download all the LLM models checked by [AppConstants.needsModelDownload]
+         * before running any test case.
+         *
+         * Test functions:
+         *  - AppConstants.needsModelDownload()
+         *  - ModelFilter.writeFilteredModelListToFile()
+         *  - ModelFilter.readFilteredModelList()
+         *  - ModelDownloadDialog.saveDownloadedModelList()
          */
         @BeforeClass
         @JvmStatic
         fun setupOnce() {
-            runBlocking {
-                try {
-                    val context = ApplicationProvider.getApplicationContext<Context>()
-                    val jsonString = context.assets.open("fullModelList.json").bufferedReader()
-                        .use { it.readText() }
-                    val config = Gson().fromJson(jsonString, LLMModelConfig::class.java)
-                    assertTrue(config.models.isNotEmpty())
+            val context = ApplicationProvider.getApplicationContext<Context>()
+            when (AppConstants.needsModelDownload(context)) {
+                true -> {
+                    runBlocking {
+                        try {
+                            val jsonString =
+                                context.assets.open("fullModelList.json").bufferedReader()
+                                    .use { it.readText() }
+                            val config = Gson().fromJson(jsonString, LLMModelConfig::class.java)
+                            assertTrue(
+                                "models in fullModelList.json is empty.",
+                                config.models.isNotEmpty()
+                            )
 
-                    val modelsDir = File(context.filesDir, "models")
-                    modelsDir.mkdirs()
+                            val modelsDir = File(context.filesDir, "models")
+                            modelsDir.mkdirs()
 
-                    // download model files and write to app files folder
-                    for (model in config.models) {
-                        for (modelURL in model.urls) {
-                            Log.d("setupOnce", "Downloading: $modelURL")
-                            val modelDir = File(modelsDir, model.id)
-                            modelDir.mkdirs()
-                            val url = URL(modelURL)
-                            // extract filename
-                            val fileName = url.path.substringAfterLast("/")
-                            // strip query parameters (like ?download=true)
-                            val cleanFileName = fileName.substringBefore("?")
+                            // download model files and write to app files folder
+                            for (model in config.models) {
+                                for (modelURL in model.urls) {
+                                    Log.d(TAG, "Downloading: $modelURL")
+                                    val modelDir = File(modelsDir, model.id)
+                                    modelDir.mkdirs()
+                                    val url = URL(modelURL)
+                                    // extract filename
+                                    val fileName = url.path.substringAfterLast("/")
+                                    // strip query parameters (like ?download=true)
+                                    val cleanFileName = fileName.substringBefore("?")
 
-                            val outputFile = File(modelDir, cleanFileName)
-                            Log.d("setupOnce", "Downloading to: ${outputFile.absolutePath}")
+                                    val outputFile = File(modelDir, cleanFileName)
+                                    Log.d(TAG, "Downloading to: ${outputFile.absolutePath}")
 
-                            url.openStream().use { input ->
-                                outputFile.outputStream().use { output ->
-                                    input.copyTo(output)
+                                    url.openStream().use { input ->
+                                        outputFile.outputStream().use { output ->
+                                            input.copyTo(output)
+                                        }
+                                    }
                                 }
                             }
+
+                            // (Coupling Issue)
+                            // LLMEngineService will check downloadModelList.json for init Service.
+                            // Copy assets/fullModelList.json to filteredModelList.json
+                            // Copy filteredModelList.json to downloadedModelList.json
+                            ModelFilter.writeFilteredModelListToFile(context)
+                            val filteredModelList = ModelFilter.readFilteredModelList(context)
+                            if (filteredModelList != null) {
+                                ModelDownloadDialog.saveDownloadedModelList(
+                                    context,
+                                    filteredModelList
+                                )
+                            }
+
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            assertTrue("setupOnce launches failed: ${e.message}", true)
                         }
                     }
+                }
 
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                else -> {
+                    Log.d(TAG, "Model files are ready.")
                 }
             }
         }
     }
 
-    @get:Rule
-    val serviceRule = ServiceTestRule()
-
     /**
-     * Test [LLMEngineService.generateStreamingResponse] functionality.
+     * Test [LLMEngineService.generateStreamingResponse]
      *
-     * Note. Please make sure [AppConstants.BACKEND_DEFAULT] is [AppConstants.BACKEND_CPU]
-     * before running the test.
+     * Test functions:
+     *  - AppConstants.needsModelDownload()
+     *  - ModelUtils.getPrefModelInfo()
+     *  - PromptManager.formatCompletePrompt()
+     *  - LLMInferenceParams.fromSharedPreferences()
+     *  - LLMEngineService.initialize()
+     *  - LLMEngineService.generateStreamingResponse()
      */
     @Test
     fun testLLMEngineServiceGenerateStreamingResponse() {
 
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val userMessage = "who are you?"
+        val conversationHistory = listOf<ChatMessage>()
+        val llmResponse = StringBuffer()
 
-        // check /data/app/files/model folder exist
+        // check /data/applicationId/files/model folder exist
         val modelsDir = File(context.filesDir, "models")
         assertTrue("Expected 'models' directory does not exist!", modelsDir.exists())
 
@@ -115,20 +160,9 @@ class LLMEngineServiceTest {
         }
 
         // (Coupling Issue)
-        // Copy assets/fullModelList.json to app folder filteredModelList.json.
-        // Copy app/filteredModelList.json to downloadedModelList.json
-        ModelFilter.writeFilteredModelListToFile(context)
-        val filteredModelList = ModelFilter.readFilteredModelList(context)
-        if (filteredModelList != null) {
-            ModelDownloadDialog.saveDownloadedModelList(context, filteredModelList)
-        }
-
-        // (Coupling Issue)
         // AppConstants.needsModelDownload must return false to avoid launch failed in LLMEngineService.
         assertTrue(!AppConstants.needsModelDownload(context))
 
-
-        // Test LLMEngineService.generateStreamingResponse()
         val latch = CountDownLatch(1)
         val intent = Intent(context, LLMEngineService::class.java)
         val modelInfo = ModelUtils.getPrefModelInfo(context)
@@ -137,25 +171,34 @@ class LLMEngineServiceTest {
             putExtra("model_entry_path", modelInfo["modelEntryPath"])
             putExtra("preferred_backend", modelInfo["backend"])
         }
+
+        // start LLMEngineService
         val componentName = context.startService(intent)
-        assertNotNull("LLMEngineService should be started", componentName)
+        assertTrue("start LLMEngineService failed.", componentName.toString().isNotEmpty())
+
+        // bind LLMEngineService
         val binder = serviceRule.bindService(intent)
         val service = (binder as LLMEngineService.LocalBinder).service
+        assertTrue("bind LLMEngineService failed.", service != null)
+
+        // test LLMEngineService.generateStreamingResponse
+        val prompt =
+            PromptManager.formatCompletePrompt(userMessage, conversationHistory, ModelType.BREEZE_2)
+        val llmParams = LLMInferenceParams.fromSharedPreferences(context)
         service.initialize().thenAccept { initResult ->
             assertTrue("Init LLM failed: $initResult", initResult)
-            val llmParams = LLMInferenceParams.fromSharedPreferences(context)
-            // TODO. 調整prompt格式
-            service.generateStreamingResponse("who are you?", llmParams) { tokens ->
-                Log.d("tokens:", tokens)
+            service.generateStreamingResponse(prompt, llmParams) { tokens ->
+                Log.d(TAG, "token: $tokens")
+                llmResponse.append(tokens)
             }.thenAccept { finalResponse ->
-                Log.d("tokens end:", finalResponse)
+                Log.d(TAG, "token end: $finalResponse")
+                llmResponse.append(finalResponse)
+                assertTrue("LLM response is empty.", llmResponse.isNotEmpty())
                 latch.countDown()
             }
         }
 
         latch.await()
-
-
     }
 
 
