@@ -23,6 +23,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.CountDownLatch
 
@@ -81,11 +82,32 @@ class LLMEngineServiceTest {
                                     val outputFile = File(modelDir, cleanFileName)
                                     Log.d(TAG, "Downloading to: ${outputFile.absolutePath}")
 
-                                    url.openStream().use { input ->
+                                    val connection = url.openConnection() as HttpURLConnection
+                                    val contentLength = connection.contentLengthLong
+                                    connection.inputStream.use { input ->
                                         outputFile.outputStream().use { output ->
-                                            input.copyTo(output)
+                                            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                            var bytesRead: Int
+                                            var totalBytesRead = 0L
+                                            var lastReportedProgress = -1
+
+                                            while (input.read(buffer).also { bytesRead = it } != -1) {
+                                                output.write(buffer, 0, bytesRead)
+                                                totalBytesRead += bytesRead
+
+                                                if (contentLength > 0) {
+                                                    val progress = (100 * totalBytesRead / contentLength).toInt()
+                                                    if (progress != lastReportedProgress) {
+                                                        lastReportedProgress = progress
+                                                        Log.d(TAG, "Download progress: $progress%")
+                                                    }
+                                                }
+                                            }
+
+                                            Log.d(TAG, "Download complete: ${totalBytesRead / 1024} KB")
                                         }
                                     }
+
                                 }
                             }
 
