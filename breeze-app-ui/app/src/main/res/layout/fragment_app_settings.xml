@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res/auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    tools:context=".presentation.settings.fragment.AppSettingsFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Appearance Section -->
+        <TextView
+            style="?attr/textAppearanceTitleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Appearance"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold" />
+
+        <!-- Theme Mode -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_dark_mode"
+            style="@style/Widget.App.Switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="Dark Mode" />
+
+        <!-- Theme Color -->
+        <RelativeLayout
+            android:id="@+id/layout_theme_color"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:paddingVertical="8dp">
+
+            <TextView
+                style="?attr/textAppearanceBodyLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="Theme Color" />
+
+            <View
+                android:id="@+id/view_theme_color_preview"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@drawable/bg_theme_color_preview" />
+        </RelativeLayout>
+
+        <!-- Font Size -->
+        <TextView
+            style="?attr/textAppearanceBodyLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Font Size" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/slider_font_size"
+            style="@style/Widget.App.Slider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stepSize="1"
+            android:value="1"
+            android:valueFrom="0"
+            android:valueTo="2" />
+
+        <!-- General Section -->
+        <TextView
+            style="?attr/textAppearanceTitleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:text="General"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold" />
+
+        <!-- Language -->
+        <RelativeLayout
+            android:id="@+id/layout_language"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:paddingVertical="8dp">
+
+            <TextView
+                style="?attr/textAppearanceBodyLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="Language" />
+
+            <TextView
+                android:id="@+id/text_current_language"
+                style="?attr/textAppearanceBodyMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                tools:text="English" />
+        </RelativeLayout>
+
+        <!-- Notifications -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_notifications"
+            style="@style/Widget.App.Switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:text="Enable Notifications" />
+
+        <!-- Animations -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_animations"
+            style="@style/Widget.App.Switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:text="Enable Animations" />
+
+
+        <!-- Data & Backup Section -->
+        <TextView
+            style="?attr/textAppearanceTitleLarge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp"
+            android:text="Data &amp; Backup"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold" />
+
+        <!-- Storage Location -->
+        <RelativeLayout
+            android:id="@+id/layout_storage_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:paddingVertical="8dp">
+
+            <TextView
+                style="?attr/textAppearanceBodyLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="Storage Location" />
+
+            <TextView
+                android:id="@+id/text_current_storage_location"
+                style="?attr/textAppearanceBodyMedium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                tools:text="Internal" />
+        </RelativeLayout>
+
+        <!-- Auto Backup -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switch_auto_backup"
+            style="@style/Widget.App.Switch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:minHeight="48dp"
+            android:enabled="false"
+            android:alpha="0.5"
+            android:text="Auto Backup" />
+
+    </LinearLayout>
+</ScrollView> 

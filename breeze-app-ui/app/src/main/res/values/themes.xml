@@ -1,0 +1,213 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Theme.MyApplication" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/purple_500</item>
+        <item name="colorPrimaryVariant">@color/purple_700</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorSecondaryVariant">@color/teal_700</item>
+        <item name="colorOnSecondary">@color/black</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- Customize your theme here. -->
+    </style>
+  <!-- Base application theme. -->
+    <style name="Base.Theme.MyApplication" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+    </style>
+
+    <!-- BreezeApp Kotlin theme -->
+    <style name="Theme.BreezeApp_kotlin" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand colors -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        
+        <!-- Secondary colors -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_dark</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        
+        <!-- Background colors -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="android:windowBackground">@color/background</item>
+        
+        <!-- Text colors -->
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
+    
+        <!-- Use system default font -->
+        <item name="android:typeface">normal</item>
+        
+        <!-- Material text appearances -->
+        <item name="textAppearanceHeadline1">@style/TextAppearance.App.Headline1</item>
+        <item name="textAppearanceHeadline2">@style/TextAppearance.App.Headline2</item>
+        <item name="textAppearanceHeadline3">@style/TextAppearance.App.Headline3</item>
+        <item name="textAppearanceHeadline4">@style/TextAppearance.App.Headline4</item>
+        <item name="textAppearanceHeadline5">@style/TextAppearance.App.Headline5</item>
+        <item name="textAppearanceHeadline6">@style/TextAppearance.App.Headline6</item>
+        <item name="textAppearanceSubtitle1">@style/TextAppearance.App.Subtitle1</item>
+        <item name="textAppearanceSubtitle2">@style/TextAppearance.App.Subtitle2</item>
+        <item name="textAppearanceBody1">@style/TextAppearance.App.Body1</item>
+        <item name="textAppearanceBody2">@style/TextAppearance.App.Body2</item>
+        <item name="textAppearanceButton">@style/TextAppearance.App.Button</item>
+        <item name="textAppearanceCaption">@style/TextAppearance.App.Caption</item>
+        <item name="textAppearanceOverline">@style/TextAppearance.App.Overline</item>
+        
+        <!-- Material Components customization -->
+        <item name="materialButtonStyle">@style/Widget.App.Button</item>
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout</item>
+        <item name="materialCardViewStyle">@style/Widget.App.CardView</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        
+        <!-- Additional customizations -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        
+        <!-- Force light theme -->
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+
+    <!-- Text Appearances -->
+    <style name="TextAppearance.App.Headline1" parent="TextAppearance.MaterialComponents.Headline1">
+        <item name="android:textSize">96sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Headline2" parent="TextAppearance.MaterialComponents.Headline2">
+        <item name="android:textSize">60sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Headline3" parent="TextAppearance.MaterialComponents.Headline3">
+        <item name="android:textSize">48sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Headline4" parent="TextAppearance.MaterialComponents.Headline4">
+        <item name="android:textSize">34sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Headline5" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textSize">24sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Headline6" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Subtitle1" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Subtitle2" parent="TextAppearance.MaterialComponents.Subtitle2">
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Body1" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Body2" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Button" parent="TextAppearance.MaterialComponents.Button">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="TextAppearance.App.Caption" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Overline" parent="TextAppearance.MaterialComponents.Overline">
+        <item name="android:textSize">10sp</item>
+    </style>
+
+    <!-- Material Button style -->
+    <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAppearance">@style/TextAppearance.App.Button</item>
+        <item name="backgroundTint">@color/primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+    </style>
+
+    <!-- Text Input Layout style -->
+    <style name="Widget.App.TextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxBackgroundColor">@color/surface</item>
+        <item name="boxStrokeColor">@color/primary</item>
+        <item name="hintTextColor">@color/text_secondary</item>
+        <item name="hintTextAppearance">@style/TextAppearance.App.Caption</item>
+        <item name="android:textAppearance">@style/TextAppearance.App.Body1</item>
+    </style>
+
+    <!-- Card View style -->
+    <style name="Widget.App.CardView" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="cardElevation">2dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.App.Body1</item>
+    </style>
+
+    <!-- Custom Switch style -->
+    <style name="Widget.App.Switch" parent="Widget.MaterialComponents.CompoundButton.Switch">
+        <item name="thumbTint">@color/switch_thumb_color</item>
+        <item name="trackTint">@color/switch_track_color</item>
+    </style>
+
+    <!-- Custom Slider style -->
+    <style name="Widget.App.Slider" parent="Widget.MaterialComponents.Slider">
+        <item name="thumbColor">@color/primary</item>
+        <item name="trackColorActive">@color/primary</item>
+        <item name="trackColorInactive">@color/primary_light</item>
+    </style>
+
+    <!-- Chinese text styles -->
+    <style name="TextAppearance.App.Chinese" parent="TextAppearance.MaterialComponents.Body1">
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.App.Chinese.Headline" parent="TextAppearance.App.Chinese">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <style name="TextAppearance.App.Chinese.Body" parent="TextAppearance.App.Chinese">
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="TextAppearance.App.Chinese.Caption" parent="TextAppearance.App.Chinese">
+        <item name="android:textSize">14sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <!-- Popup Menu Styles -->
+    <style name="PopupMenuStyle" parent="Widget.MaterialComponents.PopupMenu">
+        <item name="android:popupBackground">@color/surface</item>
+        <item name="android:textAppearance">@style/TextAppearance.App.Body1</item>
+        <item name="android:itemBackground">@android:color/transparent</item>
+        <item name="android:divider">@android:color/transparent</item>
+        <item name="android:dividerHeight">0dp</item>
+    </style>
+
+    <!-- Full screen dialog theme -->
+    <style name="FullScreenDialog" parent="Theme.MaterialComponents.Dialog">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:textAppearance">@style/TextAppearance.App.Body1</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="colorSurface">@color/surface</item>
+    </style>
+</resources>

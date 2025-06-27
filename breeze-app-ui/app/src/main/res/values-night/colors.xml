@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ================================ -->
+    <!-- Dark Theme Color Overrides -->
+    <!-- ================================ -->
+    
+    <!-- Surface & Background -->
+    <color name="surface">@color/surface_dark</color>
+    <color name="background">@color/background_dark</color>
+    <color name="surface_variant">@color/surface_variant_dark</color>
+    <color name="outline">@color/outline_dark</color>
+    <color name="outline_variant">@color/outline_variant_dark</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">@color/text_primary_dark</color>
+    <color name="text_secondary">@color/text_secondary_dark</color>
+    <color name="text_tertiary">@color/text_tertiary_dark</color>
+    <color name="text_disabled">@color/text_disabled_dark</color>
+    
+    <!-- On Colors -->
+    <color name="on_primary">@color/on_primary_dark</color>
+    <color name="on_secondary">@color/on_secondary_dark</color>
+    <color name="on_surface">@color/on_surface_dark</color>
+    <color name="on_background">@color/on_background_dark</color>
+    
+    <!-- Message Colors -->
+    <color name="user_message_bg">@color/user_message_bg_dark</color>
+    <color name="user_message_text">@color/user_message_text_dark</color>
+    <color name="ai_message_bg">@color/ai_message_bg_dark</color>
+    <color name="ai_message_text">@color/ai_message_text_dark</color>
+    <color name="system_message_bg">@color/system_message_bg_dark</color>
+    <color name="system_message_text">@color/system_message_text_dark</color>
+    
+    <!-- Status Colors -->
+    <color name="success">@color/success_dark</color>
+    <color name="error">@color/error_dark</color>
+    <color name="warning">@color/warning_dark</color>
+    <color name="info">@color/info_dark</color>
+    
+    <color name="on_success">@color/on_success_dark</color>
+    <color name="on_error">@color/on_error_dark</color>
+    <color name="on_warning">@color/on_warning_dark</color>
+    <color name="on_info">@color/on_info_dark</color>
+    
+    <!-- Input Fields -->
+    <color name="input_container_bg">@color/input_container_bg_dark</color>
+    <color name="input_border">@color/input_border_dark</color>
+    
+    <!-- Loading -->
+    <color name="loading_bg">@color/loading_bg_dark</color>
+    
+    <!-- Selection -->
+    <color name="selection_bg">@color/selection_bg_dark</color>
+    
+    <!-- Dividers -->
+    <color name="divider">@color/divider_dark</color>
+    
+</resources> 

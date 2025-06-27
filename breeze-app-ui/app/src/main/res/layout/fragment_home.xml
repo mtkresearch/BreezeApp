@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/scrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:fillViewport="true">
+
+<androidx.constraintlayout.widget.ConstraintLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="@dimen/spacing_large">
+
+    <!-- 歡迎區域 -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/welcomeContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_welcome_container"
+        android:padding="@dimen/spacing_large"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- 應用圖標 -->
+        <ImageView
+            android:id="@+id/imageViewAppIcon"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:contentDescription="@string/app_name"
+            android:src="@mipmap/ic_launcher"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <!-- 歡迎標題 -->
+        <TextView
+            android:id="@+id/textViewWelcomeTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:gravity="center"
+            android:text="@string/welcome_title"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_headline"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/imageViewAppIcon" />
+
+        <!-- 歡迎副標題 -->
+        <TextView
+            android:id="@+id/textViewWelcomeSubtitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_small"
+            android:gravity="center"
+            android:text="@string/welcome_subtitle"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_size_subtitle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textViewWelcomeTitle" />
+
+        <!-- 歡迎訊息 -->
+        <TextView
+            android:id="@+id/textViewWelcomeMessage"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/spacing_medium"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:text="@string/welcome_message"
+            android:textColor="@color/text_secondary"
+            android:textSize="@dimen/text_size_body"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/textViewWelcomeSubtitle" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- 功能導航區域 -->
+    <LinearLayout
+        android:id="@+id/navigationContainer"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/spacing_xlarge"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/welcomeContainer">
+
+        <!-- 功能按鈕標題 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:gravity="start"
+            android:text="選擇功能"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/text_size_large"
+            android:textStyle="bold" />
+
+        <!-- 聊天按鈕 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/buttonChat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/primary"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:cardElevation="@dimen/card_elevation"
+            app:rippleColor="@color/ripple_color">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/spacing_large">
+
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="@dimen/spacing_medium"
+                    android:contentDescription="聊天"
+                    android:src="@drawable/ic_smart_toy_off"
+                    app:tint="@color/on_primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="AI 聊天"
+                        android:textColor="@color/on_primary"
+                        android:textSize="@dimen/text_size_subtitle"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="與AI進行智能對話"
+                        android:textColor="@color/on_primary"
+                        android:textSize="@dimen/text_size_small" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="進入"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="@color/on_primary" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 設定按鈕 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/buttonSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:cardElevation="@dimen/card_elevation"
+            app:rippleColor="@color/ripple_color"
+            app:strokeColor="@color/outline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/spacing_large">
+
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="@dimen/spacing_medium"
+                    android:contentDescription="設定"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/text_primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="設定"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_subtitle"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="個人化設定和偏好"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_size_small" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="進入"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="@color/text_secondary" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 下載按鈕 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/buttonDownload"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="@color/surface"
+            app:cardCornerRadius="@dimen/card_corner_radius"
+            app:cardElevation="@dimen/card_elevation"
+            app:rippleColor="@color/ripple_color"
+            app:strokeColor="@color/outline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/spacing_large">
+
+                <ImageView
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:layout_marginEnd="@dimen/spacing_medium"
+                    android:contentDescription="下載"
+                    android:src="@drawable/ic_download_off"
+                    app:tint="@color/text_primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="下載管理"
+                        android:textColor="@color/text_primary"
+                        android:textSize="@dimen/text_size_subtitle"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="管理AI模型和資源下載"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="@dimen/text_size_small" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="進入"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="@color/text_secondary" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+
+</ScrollView> 

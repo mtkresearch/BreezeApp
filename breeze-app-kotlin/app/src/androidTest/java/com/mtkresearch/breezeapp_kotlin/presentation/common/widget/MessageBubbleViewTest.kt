@@ -11,6 +11,9 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.*
+import com.mtkresearch.breezeapp_UI.R
+import com.mtkresearch.breezeapp_UI.domain.model.MessageAuthor
+import com.mtkresearch.breezeapp_UI.presentation.common.widget.MessageBubbleView
 
 /**
  * MessageBubbleView UI組件測試
@@ -63,7 +66,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "這是用戶訊息",
-                    type = MessageType.USER,
+                    author = MessageAuthor.USER,
                     state = MessageState.NORMAL,
                     showButtons = false
                 )
@@ -83,7 +86,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "這是AI回應",
-                    type = MessageType.AI,
+                    author = MessageAuthor.AI,
                     state = MessageState.NORMAL,
                     showButtons = true
                 )
@@ -103,7 +106,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "這是系統訊息",
-                    type = MessageType.SYSTEM,
+                    author = MessageAuthor.SYSTEM_INFO,
                     state = MessageState.NORMAL,
                     showButtons = false
                 )
@@ -123,7 +126,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "正在載入...",
-                    type = MessageType.AI,
+                    author = MessageAuthor.AI,
                     state = MessageState.LOADING,
                     showButtons = false
                 )
@@ -143,7 +146,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "發生錯誤",
-                    type = MessageType.USER,
+                    author = MessageAuthor.USER,
                     state = MessageState.ERROR,
                     showButtons = true
                 )
@@ -163,7 +166,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "AI正在輸入...",
-                    type = MessageType.AI,
+                    author = MessageAuthor.AI,
                     state = MessageState.TYPING,
                     showButtons = false
                 )
@@ -183,7 +186,7 @@ class MessageBubbleViewTest {
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             messageBubbleView.setMessage(
                 text = "測試訊息",
-                type = MessageType.AI,
+                author = MessageAuthor.AI,
                 state = MessageState.LOADING
             )
         }
@@ -220,7 +223,7 @@ class MessageBubbleViewTest {
                 // 設置一個帶按鈕的訊息
                 messageBubbleView.setMessage(
                     text = "測試回調函數",
-                    type = MessageType.AI,
+                    author = MessageAuthor.AI,
                     state = MessageState.NORMAL,
                     showButtons = true
                 )
@@ -240,7 +243,7 @@ class MessageBubbleViewTest {
             try {
                 messageBubbleView.setMessage(
                     text = "",
-                    type = MessageType.AI,
+                    author = MessageAuthor.AI,
                     state = MessageState.NORMAL,
                     showButtons = false
                 )
@@ -257,18 +260,18 @@ class MessageBubbleViewTest {
     @Test
     fun View組件穩定性測試() {
         // 測試連續的狀態變更
-        val messageTypes = arrayOf(MessageType.USER, MessageType.AI, MessageType.SYSTEM)
+        val messageAuthors = arrayOf(MessageAuthor.USER, MessageAuthor.AI, MessageAuthor.SYSTEM_INFO)
         val messageStates = arrayOf(MessageState.NORMAL, MessageState.LOADING, MessageState.ERROR, MessageState.TYPING)
         
         InstrumentationRegistry.getInstrumentation().runOnMainSync {
             try {
-                for (type in messageTypes) {
+                for (author in messageAuthors) {
                     for (state in messageStates) {
                         messageBubbleView.setMessage(
-                            text = "測試訊息 - ${type.name} - ${state.name}",
-                            type = type,
+                            text = "測試訊息 - ${author.name} - ${state.name}",
+                            author = author,
                             state = state,
-                            showButtons = (type == MessageType.AI)
+                            showButtons = (author == MessageAuthor.AI)
                         )
                         
                         // 短暫等待，讓UI更新
@@ -282,6 +285,9 @@ class MessageBubbleViewTest {
         }
         
         Thread.sleep(100)
+        assertNotNull("穩定性測試後，View應該仍然存在", messageBubbleView)
+    }
+} 
         assertNotNull("穩定性測試後，View應該仍然存在", messageBubbleView)
     }
 } 

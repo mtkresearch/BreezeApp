@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions for AI Router app -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+
+    <application
+        android:name=".AIRouterApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.BreezeRouter"
+        tools:targetApi="31">
+
+        <!-- Management Activity (for settings and monitoring) -->
+        <activity
+            android:name=".presentation.management.ManagementActivity"
+            android:exported="true"
+            android:theme="@style/Theme.BreezeRouter">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Runtime Settings Activity -->
+        <activity
+            android:name=".presentation.settings.RuntimeSettingsActivity"
+            android:exported="false" />
+
+        <!-- AI Router Service -->
+        <service
+            android:name=".service.AIRouterService"
+            android:enabled="true"
+            android:exported="true"
+            android:foregroundServiceType="specialUse"
+            android:process=":ai_router">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="AI processing service" />
+            <intent-filter>
+                <action android:name="com.mtkresearch.breezeapp_router.ACTION_ROUTER_SERVICE" />
+            </intent-filter>
+        </service>
+
+        <!-- Model Management Service -->
+        <service
+            android:name=".service.ModelManagementService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":ai_router" />
+
+        <!-- Floating Window Service -->
+        <service
+            android:name=".service.FloatingWindowService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="System overlay management" />
+        </service>
+
+    </application>
+
+</manifest> 

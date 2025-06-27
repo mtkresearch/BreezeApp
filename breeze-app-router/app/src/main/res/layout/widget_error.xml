@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@color/surface"
+    android:clickable="true"
+    android:focusable="true">
+
+    <!-- Error Container -->
+    <LinearLayout
+        android:id="@+id/errorContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/container_padding_large"
+        android:gravity="center">
+
+        <!-- Close Button (Top Right) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <ImageButton
+                android:id="@+id/closeButton"
+                android:layout_width="@dimen/touch_target_size"
+                android:layout_height="@dimen/touch_target_size"
+                android:background="@android:color/transparent"
+                android:src="@drawable/ic_close"
+                android:contentDescription="@string/close"
+                android:padding="@dimen/spacing_small" />
+
+        </LinearLayout>
+
+        <!-- Error Icon -->
+        <ImageView
+            android:id="@+id/errorIcon"
+            android:layout_width="@dimen/error_icon_size"
+            android:layout_height="@dimen/error_icon_size"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:contentDescription="@string/error_icon_description" />
+
+        <!-- Error Title -->
+        <TextView
+            android:id="@+id/errorTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_small"
+            android:textSize="@dimen/text_size_large"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Error Message -->
+        <TextView
+            android:id="@+id/errorMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_small"
+            android:textSize="@dimen/text_size_medium"
+            android:gravity="center" />
+
+        <!-- Error Suggestion -->
+        <TextView
+            android:id="@+id/errorSuggestion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:textSize="@dimen/text_size_small"
+            android:gravity="center"
+            android:visibility="gone" />
+
+        <!-- Action Buttons Container -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Retry Button -->
+            <Button
+                android:id="@+id/retryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/spacing_small"
+                android:text="@string/retry"
+                android:visibility="gone" />
+
+            <!-- Details Button -->
+            <Button
+                android:id="@+id/detailsButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/spacing_small"
+                android:text="@string/details"
+                android:visibility="gone" />
+
+            <!-- Support Button -->
+            <Button
+                android:id="@+id/supportButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/contact_support"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout> 

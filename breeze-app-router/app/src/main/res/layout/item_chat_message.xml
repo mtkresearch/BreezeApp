@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="1dp"
+    android:paddingEnd="1dp"
+    android:paddingTop="1dp"
+    android:paddingBottom="1dp">
+
+    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.MessageBubbleView
+        android:id="@+id/messageBubble"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="start"
+        android:maxWidth="@dimen/message_bubble_max_width" />
+
+</FrameLayout> 

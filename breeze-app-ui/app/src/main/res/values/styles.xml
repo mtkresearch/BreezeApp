@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    
+    <!-- ChatActivity專用主題，禁用默認ActionBar -->
+    <style name="Theme.ChatActivity" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <!-- Primary brand color. -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_dark</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <!-- Secondary brand color. -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_dark</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <!-- Surface colors -->
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <!-- Background colors -->
+        <item name="android:colorBackground">@color/background</item>
+        <item name="colorOnBackground">@color/on_background</item>
+        <!-- Status bar color. -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Navigation bar -->
+        <item name="android:navigationBarColor">@color/surface</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <!-- Window settings for edge-to-edge -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:enforceNavigationBarContrast">false</item>
+        <item name="android:enforceStatusBarContrast">false</item>
+        <!-- 明確禁用ActionBar -->
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+
+    <!-- Bottom Navigation Active Indicator Style -->
+    <style name="BottomNavigationActiveIndicator">
+        <item name="android:background">@color/primary</item>
+        <item name="android:layout_width">24dp</item>
+        <item name="android:layout_height">4dp</item>
+    </style>
+    
+    <!-- 自定義按鈕樣式 -->
+    <style name="CustomButtonStyle" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+        <item name="cornerRadius">@dimen/button_radius</item>
+        <item name="android:minHeight">@dimen/button_height_medium</item>
+        <item name="android:paddingStart">@dimen/button_padding_horizontal</item>
+        <item name="android:paddingEnd">@dimen/button_padding_horizontal</item>
+        <item name="android:paddingTop">@dimen/button_padding_vertical</item>
+        <item name="android:paddingBottom">@dimen/button_padding_vertical</item>
+        <item name="elevation">@dimen/button_elevation</item>
+    </style>
+    
+    <!-- Base application theme -->
+    <style name="Theme.BreezeApp" parent="Theme.Material3.DayNight">
+        <!-- Primary brand color -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryVariant">@color/primary_variant</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        
+        <!-- Secondary brand color -->
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorSecondaryVariant">@color/secondary_dark</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        
+        <!-- Status bar color -->
+        <item name="android:statusBarColor">@color/primary</item>
+        <!-- Customize your theme here -->
+    </style>
+
+    <!-- Splash Screen Theme -->
+    <style name="Theme.BreezeApp.Splash" parent="Theme.BreezeApp">
+        <!-- 使用簡單的splash實現，避免依賴額外庫 -->
+        <item name="android:windowBackground">@color/background</item>
+    </style>
+
+    <!-- Custom SeekBar Style with Primary Orange Color -->
+    <style name="CustomSeekBarStyle" parent="Widget.AppCompat.SeekBar">
+        <item name="android:progressTint">@color/primary</item>
+        <item name="android:progressBackgroundTint">@color/outline_variant</item>
+        <item name="android:thumbTint">@color/primary</item>
+        <item name="android:colorControlActivated">@color/primary</item>
+        <item name="android:colorControlHighlight">@color/primary_light</item>
+    </style>
+
+    <!-- Custom Button Styles -->
+    <style name="PrimaryButton" parent="Widget.Material3.Button">
+        <item name="backgroundTint">@color/primary</item>
+        <item name="android:textColor">@color/on_primary</item>
+    </style>
+
+    <style name="SecondaryButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+    
+</resources> 

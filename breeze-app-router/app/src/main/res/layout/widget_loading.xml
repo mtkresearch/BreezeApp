@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Background Overlay -->
+    <View
+        android:id="@+id/backgroundOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/overlay_light"
+        android:visibility="gone" />
+
+    <!-- Loading Container -->
+    <LinearLayout
+        android:id="@+id/loadingContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="@dimen/loading_container_padding"
+        android:background="@drawable/bg_loading_container_light">
+
+        <!-- Circular Progress -->
+        <ProgressBar
+            android:id="@+id/circularProgress"
+            android:layout_width="@dimen/loading_progress_size"
+            android:layout_height="@dimen/loading_progress_size"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:indeterminateDrawable="@drawable/progress_circular" />
+
+        <!-- Linear Progress -->
+        <ProgressBar
+            android:id="@+id/linearProgress"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="@dimen/loading_progress_width"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:visibility="gone" />
+
+        <!-- Dots Container -->
+        <LinearLayout
+            android:id="@+id/dotsContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <View
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
+
+            <View
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
+
+            <View
+                android:layout_width="@dimen/loading_dot_size"
+                android:layout_height="@dimen/loading_dot_size"
+                android:layout_margin="@dimen/spacing_tiny"
+                android:background="@drawable/bg_loading_dot" />
+
+        </LinearLayout>
+
+        <!-- Custom Container -->
+        <FrameLayout
+            android:id="@+id/customContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:visibility="gone" />
+
+        <!-- Loading Text -->
+        <TextView
+            android:id="@+id/loadingText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/loading"
+            android:textSize="@dimen/text_size_medium"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+</FrameLayout> 
