@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.mtkresearch.breezeapp.router">
+
+    <!-- Signature-level permission for AIRouterService -->
+    <permission
+        android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE"
+        android:protectionLevel="signature" />
+
+    <application
+        android:allowBackup="true"
+        android:label="BreezeApp Router"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
+        <!-- AIRouterService declaration -->
+        <service
+            android:name=".AIRouterService"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE">
+            <intent-filter>
+                <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />
+            </intent-filter>
+        </service>
+
+    </application>
+
+</manifest> 

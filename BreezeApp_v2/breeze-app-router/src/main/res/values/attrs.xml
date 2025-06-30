@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ================================ -->
+    <!-- MessageBubbleView Custom Attributes -->
+    <!-- ================================ -->
+    <declare-styleable name="MessageBubbleView">
+        <!-- 訊息類型 -->
+        <attr name="messageType" format="enum">
+            <enum name="user" value="0" />
+            <enum name="ai" value="1" />
+            <enum name="system" value="2" />
+        </attr>
+        
+        <!-- 訊息狀態 -->
+        <attr name="messageState" format="enum">
+            <enum name="normal" value="0" />
+            <enum name="loading" value="1" />
+            <enum name="error" value="2" />
+            <enum name="typing" value="3" />
+        </attr>
+        
+        <!-- 是否顯示操作按鈕 -->
+        <attr name="showButtons" format="boolean" />
+        
+        <!-- 訊息文字 -->
+        <attr name="messageText" format="string" />
+        
+        <!-- 最大寬度 -->
+        <attr name="maxWidth" format="dimension" />
+        
+        <!-- 是否啟用點擊動畫 -->
+        <attr name="enableClickAnimation" format="boolean" />
+    </declare-styleable>
+
+    <!-- ================================ -->
+    <!-- LoadingView Custom Attributes -->
+    <!-- ================================ -->
+    <declare-styleable name="LoadingView">
+        <!-- 載入樣式 -->
+        <attr name="loadingStyle" format="enum">
+            <enum name="circular" value="0" />
+            <enum name="linear" value="1" />
+            <enum name="dots" value="2" />
+            <enum name="custom" value="3" />
+        </attr>
+        
+        <!-- 載入尺寸 -->
+        <attr name="loadingSize" format="enum">
+            <enum name="small" value="0" />
+            <enum name="medium" value="1" />
+            <enum name="large" value="2" />
+        </attr>
+        
+        <!-- 載入文字 -->
+        <attr name="loadingText" format="string" />
+        
+        <!-- 是否顯示背景遮罩 -->
+        <attr name="showBackground" format="boolean" />
+        
+        <!-- 是否可取消 -->
+        <attr name="dismissible" />
+        
+        <!-- 是否顯示取消按鈕 -->
+        <attr name="showCancel" format="boolean" />
+    </declare-styleable>
+
+    <!-- ================================ -->
+    <!-- ErrorView Custom Attributes -->
+    <!-- ================================ -->
+    <declare-styleable name="ErrorView">
+        <!-- 錯誤類型 -->
+        <attr name="errorType" format="enum">
+            <enum name="network" value="0" />
+            <enum name="server" value="1" />
+            <enum name="validation" value="2" />
+            <enum name="permission" value="3" />
+            <enum name="model_loading" value="4" />
+            <enum name="ai_processing" value="5" />
+            <enum name="file_access" value="6" />
+            <enum name="unknown" value="7" />
+        </attr>
+        
+        <!-- 錯誤嚴重程度 -->
+        <attr name="errorSeverity" format="enum">
+            <enum name="info" value="0" />
+            <enum name="warning" value="1" />
+            <enum name="error" value="2" />
+            <enum name="critical" value="3" />
+        </attr>
+        
+        <!-- 錯誤訊息 -->
+        <attr name="errorMessage" format="string" />
+        
+        <!-- 建議文字 -->
+        <attr name="errorSuggestion" format="string" />
+        
+        <!-- 是否顯示重試按鈕 -->
+        <attr name="showRetry" format="boolean" />
+        
+        <!-- 是否顯示詳細資訊按鈕 -->
+        <attr name="showDetails" format="boolean" />
+        
+        <!-- 是否顯示聯絡支援按鈕 -->
+        <attr name="showSupport" format="boolean" />
+        
+        <!-- 是否可關閉 -->
+        <attr name="dismissible" />
+    </declare-styleable>
+
+    <!-- ================================ -->
+    <!-- Common UI Attributes -->
+    <!-- ================================ -->
+    
+    <!-- 通用屬性 -->
+    <attr name="dismissible" format="boolean" />
+    
+    <!-- 主題顏色屬性 -->
+    <declare-styleable name="ThemeColors">
+        <attr name="customColorPrimary" format="color" />
+        <attr name="customColorPrimaryVariant" format="color" />
+        <attr name="customColorSecondary" format="color" />
+        <attr name="customColorSecondaryVariant" format="color" />
+        <attr name="customColorSurface" format="color" />
+        <attr name="customColorBackground" format="color" />
+        <attr name="customColorError" format="color" />
+        <attr name="customColorOnPrimary" format="color" />
+        <attr name="customColorOnSecondary" format="color" />
+        <attr name="customColorOnSurface" format="color" />
+        <attr name="customColorOnBackground" format="color" />
+        <attr name="customColorOnError" format="color" />
+    </declare-styleable>
+    
+    <!-- 文字樣式屬性 -->
+    <declare-styleable name="TextStyle">
+        <attr name="textColor" format="color" />
+        <attr name="textSize" format="dimension" />
+        <attr name="textStyle" format="enum">
+            <enum name="normal" value="0" />
+            <enum name="bold" value="1" />
+            <enum name="italic" value="2" />
+        </attr>
+        <attr name="textAlignment" format="enum">
+            <enum name="left" value="0" />
+            <enum name="center" value="1" />
+            <enum name="right" value="2" />
+        </attr>
+    </declare-styleable>
+    
+    <!-- 按鈕樣式屬性 -->
+    <declare-styleable name="ButtonStyle">
+        <attr name="customButtonStyle" format="enum">
+            <enum name="filled" value="0" />
+            <enum name="outlined" value="1" />
+            <enum name="text" value="2" />
+        </attr>
+        <attr name="buttonSize" format="enum">
+            <enum name="small" value="0" />
+            <enum name="medium" value="1" />
+            <enum name="large" value="2" />
+        </attr>
+        <attr name="cornerRadius" format="dimension" />
+        <attr name="rippleColor" format="color" />
+        <attr name="elevation" format="dimension" />
+    </declare-styleable>
+    
+    <!-- 圓角屬性 -->
+    <declare-styleable name="CornerRadius">
+        <attr name="topLeftRadius" format="dimension" />
+        <attr name="topRightRadius" format="dimension" />
+        <attr name="bottomLeftRadius" format="dimension" />
+        <attr name="bottomRightRadius" format="dimension" />
+        <attr name="radius" format="dimension" />
+    </declare-styleable>
+    
+    <!-- 邊框屬性 -->
+    <declare-styleable name="Border">
+        <attr name="borderColor" format="color" />
+        <attr name="borderWidth" format="dimension" />
+        <attr name="borderStyle" format="enum">
+            <enum name="solid" value="0" />
+            <enum name="dashed" value="1" />
+            <enum name="dotted" value="2" />
+        </attr>
+    </declare-styleable>
+    
+    <!-- 陰影屬性 -->
+    <declare-styleable name="Shadow">
+        <attr name="shadowColor" format="color" />
+        <attr name="shadowRadius" format="dimension" />
+        <attr name="shadowOffsetX" format="dimension" />
+        <attr name="shadowOffsetY" format="dimension" />
+        <attr name="shadowElevation" format="dimension" />
+    </declare-styleable>
+    
+    <!-- 動畫屬性 -->
+    <declare-styleable name="Animation">
+        <attr name="animationDuration" format="integer" />
+        <attr name="animationDelay" format="integer" />
+        <attr name="animationType" format="enum">
+            <enum name="fade" value="0" />
+            <enum name="slide" value="1" />
+            <enum name="scale" value="2" />
+            <enum name="rotate" value="3" />
+        </attr>
+        <attr name="animationDirection" format="enum">
+            <enum name="left" value="0" />
+            <enum name="right" value="1" />
+            <enum name="up" value="2" />
+            <enum name="down" value="3" />
+        </attr>
+    </declare-styleable>
+    
+    <!-- 間距屬性 -->
+    <declare-styleable name="Spacing">
+        <attr name="paddingStart" format="dimension" />
+        <attr name="paddingEnd" format="dimension" />
+        <attr name="paddingTop" format="dimension" />
+        <attr name="paddingBottom" format="dimension" />
+        <attr name="marginStart" format="dimension" />
+        <attr name="marginEnd" format="dimension" />
+        <attr name="marginTop" format="dimension" />
+        <attr name="marginBottom" format="dimension" />
+    </declare-styleable>
+    
+    <!-- 輸入框屬性 -->
+    <declare-styleable name="InputStyle">
+        <attr name="inputType" format="enum">
+            <enum name="text" value="0" />
+            <enum name="multiline" value="1" />
+            <enum name="number" value="2" />
+            <enum name="email" value="3" />
+            <enum name="password" value="4" />
+        </attr>
+        <attr name="hintText" format="string" />
+        <attr name="maxLength" format="integer" />
+        <attr name="minLines" format="integer" />
+        <attr name="maxLines" format="integer" />
+        <attr name="inputBackground" format="color" />
+        <attr name="focusedColor" format="color" />
+        <attr name="unfocusedColor" format="color" />
+    </declare-styleable>
+    
+    <!-- 圖示屬性 -->
+    <declare-styleable name="IconStyle">
+        <attr name="iconSize" format="dimension" />
+        <attr name="iconColor" format="color" />
+        <attr name="iconTint" format="color" />
+        <attr name="iconRotation" format="float" />
+        <attr name="iconAlpha" format="float" />
+    </declare-styleable>
+    
+    <!-- 狀態屬性 -->
+    <declare-styleable name="StateStyle">
+        <attr name="enabledState" format="boolean" />
+        <attr name="selectedState" format="boolean" />
+        <attr name="focusedState" format="boolean" />
+        <attr name="pressedState" format="boolean" />
+        <attr name="loadingState" format="boolean" />
+        <attr name="errorState" format="boolean" />
+    </declare-styleable>
+
+</resources> 

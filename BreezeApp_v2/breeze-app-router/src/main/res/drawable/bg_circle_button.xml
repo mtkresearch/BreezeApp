@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- 按下狀態 -->
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/button_pressed" />
+        </shape>
+    </item>
+    
+    <!-- 禁用狀態 -->
+    <item android:state_enabled="false">
+        <shape android:shape="oval">
+            <solid android:color="@color/button_disabled" />
+        </shape>
+    </item>
+    
+    <!-- 正常狀態 -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/primary" />
+        </shape>
+    </item>
+    
+</selector> 
