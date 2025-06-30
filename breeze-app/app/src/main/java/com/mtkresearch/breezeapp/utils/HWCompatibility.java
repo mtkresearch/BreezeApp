@@ -48,14 +48,12 @@ public class HWCompatibility {
         Log.d(TAG, "Chipset detection - Hardware: " + hardware + 
                     ", Processor: " + processor + 
                     ", CPU Info: " + cpuInfo);
-        return null;
-/*
+
         // Check if the device has MT6991 chipset
         if (HWCompatibility.isMTKChipset(hardware, processor, cpuInfo)&& !android.os.Build.MANUFACTURER.equals("OPPO")) {
             Log.i(TAG, "MT6991/MT6989 chipset detected, using MTK backend");
             return "mtk";
         }
         return null;
-        */
     }
 }
