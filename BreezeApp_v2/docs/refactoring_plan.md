@@ -121,13 +121,14 @@ We will follow a "contract-first" and "service-first" approach. Each milestone r
   
   | Task                                                                     | Status    | Validation Method                            | Unit Test            |
   |:------------------------------------------------------------------------ |:--------- |:-------------------------------------------- |:-------------------- |
-  | **1.1** Initialize `shared-contracts` module as an Android Library       | `Pending` | `build.gradle.kts` review                    | N/A                  |
-  | **1.2** Enable `aidl` and `kotlin-parcelize` build features              | `Pending` | `build.gradle.kts` review                    | N/A                  |
-  | **1.3** Define `Configuration.kt` Parcelable for service setup           | `Pending` | Code review                                  | `ParcelableTest`     |
-  | **1.4** Define `AIResponse.kt` Parcelable with error-state fields        | `Pending` | Code review                                  | `ParcelableTest`     |
-  | **1.5** Define `IAIRouterService.aidl` with `initialize` & `sendMessage` | `Pending` | Code review                                  | `ContractSyntaxTest` |
-  | **1.6** Define `IAIRouterListener.aidl` for callbacks                    | `Pending` | Code review                                  | `ContractSyntaxTest` |
-  | **1.7** **Build & Verify Module**                                        | `Pending` | `./gradlew :shared-contracts:build` succeeds | All tests pass       |
+  | **1.1** Initialize `shared-contracts` module as an Android Library       | `Done` | `build.gradle.kts` review                    | N/A                  |
+  | **1.2** Enable `aidl` and `kotlin-parcelize` build features              | `Done` | `build.gradle.kts` review                    | N/A                  |
+  | **1.3** Define `Configuration.kt` Parcelable for service setup           | `Done` | Code review                                  | `ParcelableTest`     |
+  | **1.4** Define `AIResponse.kt` Parcelable with error-state fields        | `Done` | Code review                                  | `ParcelableTest`     |
+  | **1.5** Define `IAIRouterService.aidl` with `initialize` & `sendMessage` | `Done` | Code review                                  | `ContractSyntaxTest` |
+  | **1.6** Define `IAIRouterListener.aidl` for callbacks                    | `Done` | Code review                                  | `ContractSyntaxTest` |
+  | **1.7** **Build & Verify Module**                                        | `Done` | `./gradlew :shared-contracts:build` succeeds | All tests pass       |
+  | **1.8** Create API documentation                                         | `Done` | Documentation review                         | N/A                  |
 
 ---
 
