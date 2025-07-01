@@ -4,6 +4,7 @@ import android.util.Log
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
 import com.mtkresearch.breezeapp.router.domain.model.*
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.concurrent.ConcurrentHashMap
@@ -22,47 +23,24 @@ import kotlin.concurrent.write
  * 
  * 遵循 Clean Architecture 和 MVVM + Use Case 模式
  */
-class AIEngineManager {
+
+// Private exception to wrap our custom RunnerError for use with Kotlin's Result type.
+private class RunnerSelectionException(val runnerError: RunnerError) : Exception()
+
+class AIEngineManager(
+    private val runnerRegistry: RunnerRegistry = RunnerRegistry.getInstance()
+) {
     
     companion object {
         private const val TAG = "AIEngineManager"
     }
     
     // 執行緒安全的 Runner 儲存
-    private val runnerRegistry = ConcurrentHashMap<String, () -> BaseRunner>()
     private val activeRunners = ConcurrentHashMap<String, BaseRunner>()
     private val defaultRunners = ConcurrentHashMap<CapabilityType, String>()
     
     // 讀寫鎖保護配置變更
     private val configLock = ReentrantReadWriteLock()
-    
-    /**
-     * 註冊 Runner 工廠
-     * @param name Runner 名稱
-     * @param factory Runner 工廠函數
-     */
-    fun registerRunner(name: String, factory: () -> BaseRunner) {
-        configLock.write {
-            runnerRegistry[name] = factory
-            Log.d(TAG, "Registered runner: $name")
-        }
-    }
-    
-    /**
-     * 註銷 Runner
-     * @param name Runner 名稱
-     */
-    fun unregisterRunner(name: String) {
-        configLock.write {
-            runnerRegistry.remove(name)
-            // 如果有活躍的實例，也要清理
-            activeRunners[name]?.let { runner ->
-                runner.unload()
-                activeRunners.remove(name)
-            }
-            Log.d(TAG, "Unregistered runner: $name")
-        }
-    }
     
     /**
      * 設定預設 Runner 映射
@@ -83,31 +61,25 @@ class AIEngineManager {
      * @param preferredRunner 偏好的 Runner (可選)
      * @return 推論結果
      */
-    fun process(
+    suspend fun process(
         request: InferenceRequest, 
         capability: CapabilityType,
         preferredRunner: String? = null
     ): InferenceResult {
         return try {
-            val runner = selectRunner(capability, preferredRunner)
-                ?: return InferenceResult.error(
-                    RunnerError.runtimeError("No suitable runner found for capability: $capability")
-                )
-            
-            Log.d(TAG, "Processing request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
-            
-            if (!runner.isLoaded()) {
-                Log.w(TAG, "Runner not loaded, attempting to load default config")
-                val loaded = runner.load(createDefaultConfig(runner.getRunnerInfo().name))
-                if (!loaded) {
-                    return InferenceResult.error(RunnerError.modelNotLoaded())
+            selectAndLoadRunner(capability, preferredRunner).fold(
+                onSuccess = { runner ->
+                    Log.d(TAG, "Processing request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
+                    runner.run(request)
+                },
+                onFailure = { error ->
+                    val runnerError = if (error is RunnerSelectionException) error.runnerError else RunnerError("E101", error.message ?: "Unknown runtime error")
+                    InferenceResult.error(runnerError)
                 }
-            }
-            
-            runner.run(request, stream = false)
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error processing request", e)
-            InferenceResult.error(RunnerError.runtimeError(e.message ?: "Unknown error", e))
+            InferenceResult.error(RunnerError("E101", e.message ?: "Unknown error", true, e))
         }
     }
     
@@ -124,58 +96,25 @@ class AIEngineManager {
         preferredRunner: String? = null
     ): Flow<InferenceResult> = flow {
         try {
-            val runner = selectRunner(capability, preferredRunner)
-            if (runner == null) {
-                emit(InferenceResult.error(
-                    RunnerError.runtimeError("No suitable runner found for capability: $capability")
-                ))
-                return@flow
-            }
-            
-            Log.d(TAG, "Processing stream request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
-            
-            if (!runner.isLoaded()) {
-                val loaded = runner.load(createDefaultConfig(runner.getRunnerInfo().name))
-                if (!loaded) {
-                    emit(InferenceResult.error(RunnerError.modelNotLoaded()))
-                    return@flow
+            selectAndLoadRunner(capability, preferredRunner).fold(
+                onSuccess = { runner ->
+                    Log.d(TAG, "Processing stream request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
+                    if (runner is FlowStreamingRunner) {
+                        runner.runAsFlow(request).collect { emit(it) }
+                    } else {
+                        emit(InferenceResult.error(RunnerError("E406", "Runner does not support streaming.")))
+                    }
+                },
+                onFailure = { error ->
+                    val runnerError = if (error is RunnerSelectionException) error.runnerError else RunnerError("E101", error.message ?: "Unknown runtime error")
+                    emit(InferenceResult.error(runnerError))
                 }
-            }
-            
-            // 檢查是否支援串流
-            if (runner is FlowStreamingRunner) {
-                runner.runAsFlow(request).collect { result ->
-                    emit(result)
-                }
-            } else {
-                // Fallback 到一般推論
-                val result = runner.run(request, stream = false)
-                emit(result)
-            }
+            )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.e(TAG, "Error processing stream request", e)
-            emit(InferenceResult.error(RunnerError.runtimeError(e.message ?: "Unknown error", e)))
-        }
-    }
-    
-    /**
-     * 取得可用的 Runner 清單
-     * @return Runner 名稱清單
-     */
-    fun getAvailableRunners(): List<String> {
-        return configLock.read {
-            runnerRegistry.keys.toList()
-        }
-    }
-    
-    /**
-     * 取得指定能力的預設 Runner
-     * @param capability 能力類型
-     * @return Runner 名稱，如果未設定則為 null
-     */
-    fun getDefaultRunner(capability: CapabilityType): String? {
-        return configLock.read {
-            defaultRunners[capability]
+            emit(InferenceResult.error(RunnerError("E101", e.message ?: "Unknown error", true, e)))
         }
     }
     
@@ -200,43 +139,66 @@ class AIEngineManager {
      * 選擇合適的 Runner
      * 實現 Fallback 策略
      */
-    private fun selectRunner(capability: CapabilityType, preferredRunner: String?): BaseRunner? {
-        return configLock.read {
-            // 1. 嘗試使用偏好的 Runner
-            preferredRunner?.let { name ->
-                getOrCreateRunner(name)?.takeIf { 
-                    it.getCapabilities().contains(capability) 
-                }
-            } ?: run {
-                // 2. 使用預設 Runner
-                defaultRunners[capability]?.let { defaultName ->
-                    getOrCreateRunner(defaultName)
-                } ?: run {
-                    // 3. Fallback: 尋找任何支援該能力的 Runner
-                    runnerRegistry.keys.firstNotNullOfOrNull { runnerName ->
-                        getOrCreateRunner(runnerName)?.takeIf { runner ->
-                            runner.getCapabilities().contains(capability)
-                        }
-                    }
-                }
+    private suspend fun selectAndLoadRunner(
+        capability: CapabilityType,
+        preferredRunner: String?
+    ): Result<BaseRunner> {
+        val runnerName: String?
+        
+        // 1. Select runner name
+        if (preferredRunner != null) {
+            if (!runnerRegistry.isRegistered(preferredRunner)) {
+                return Result.failure(RunnerSelectionException(RunnerError("E404", "Runner not found: $preferredRunner")))
+            }
+            runnerName = preferredRunner
+        } else {
+            runnerName = configLock.read {
+                defaultRunners[capability] ?: runnerRegistry.getRunnersForCapability(capability).firstOrNull()
             }
         }
+
+        if (runnerName == null) {
+            return Result.failure(RunnerSelectionException(RunnerError("E404", "No runner found for capability: ${capability.name}")))
+        }
+
+        // 2. Get or create runner instance
+        val runner = getOrCreateRunner(runnerName) 
+            ?: return Result.failure(RunnerSelectionException(RunnerError("E404", "Failed to create runner: $runnerName")))
+
+        // 3. Check capability
+        if (!runner.getCapabilities().contains(capability)) {
+            return Result.failure(RunnerSelectionException(RunnerError("E405", "Runner $runnerName does not support capability: ${capability.name}")))
+        }
+        
+        // 4. Load runner if needed
+        if (!runner.isLoaded()) {
+            Log.d(TAG, "Runner $runnerName not loaded, attempting to load...")
+            val loaded = runner.load(createDefaultConfig(runnerName))
+            if (!loaded) {
+                return Result.failure(RunnerSelectionException(RunnerError("E501", "Failed to load model for runner: $runnerName")))
+            }
+        }
+        
+        return Result.success(runner)
     }
     
     /**
      * 取得或建立 Runner 實例
      */
     private fun getOrCreateRunner(name: String): BaseRunner? {
-        // 先檢查是否有活躍實例
-        activeRunners[name]?.let { return it }
+        configLock.read {
+            activeRunners[name]?.let { return it }
+        }
         
-        // 建立新實例
-        return runnerRegistry[name]?.let { factory ->
+        return configLock.write {
+            // Double-check lock
+            activeRunners[name]?.let { return@write it }
+
             try {
-                val runner = factory()
-                activeRunners[name] = runner
-                Log.d(TAG, "Created new runner instance: $name")
-                runner
+                runnerRegistry.createRunner(name)?.also { runner ->
+                    activeRunners[name] = runner
+                    Log.d(TAG, "Created new runner instance: $name")
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to create runner: $name", e)
                 null
@@ -248,13 +210,9 @@ class AIEngineManager {
      * 建立預設配置
      */
     private fun createDefaultConfig(runnerName: String): ModelConfig {
-        return if (runnerName.startsWith("Mock")) {
-            ModelConfig.createMockConfig(runnerName)
-        } else {
-            ModelConfig(
-                modelName = "default-$runnerName",
-                parameters = mapOf("default" to true)
-            )
-        }
+        return ModelConfig(
+            modelName = runnerName,
+            modelPath = "/data/local/tmp/models/$runnerName"
+        )
     }
 } 
