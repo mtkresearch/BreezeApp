@@ -14,7 +14,7 @@ import com.mtkresearch.breezeapp.shared.contracts.model.Configuration
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
 import com.mtkresearch.breezeapp.router.domain.model.*
-import com.mtkresearch.breezeapp.router.data.runner.*
+import com.mtkresearch.breezeapp.router.injection.DependencyProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,7 +84,7 @@ class AIRouterService : Service() {
             
             // Initialize Mock Runners based on configuration
             serviceScope.launch {
-                initializeMockRunners(config)
+                initializeRunners(config)
                 isInitialized = true
                 Log.i(TAG, "AIRouterService initialized successfully with Mock Runners")
             }
@@ -177,16 +177,13 @@ class AIRouterService : Service() {
     /**
      * Initialize Mock Runners based on configuration
      */
-    private suspend fun initializeMockRunners(config: Configuration) {
+    private suspend fun initializeRunners(config: Configuration) {
         try {
-            Log.d(TAG, "Initializing Mock Runners...")
+            Log.d(TAG, "Initializing Runners for build variant...")
             
-            // Register Mock Runners
-            runnerRegistry.register("MockLLMRunner") { MockLLMRunner() }
-            runnerRegistry.register("MockASRRunner") { MockASRRunner() }
-            runnerRegistry.register("MockTTSRunner") { MockTTSRunner() }
-            runnerRegistry.register("MockVLMRunner") { MockVLMRunner() }
-            runnerRegistry.register("MockGuardrailRunner") { MockGuardrailRunner() }
+            // Use the DependencyProvider to get the correct RunnerProvider for the flavor
+            val runnerProvider = DependencyProvider.getRunnerProvider()
+            runnerProvider.registerRunners(runnerRegistry)
             
             // Set up default runner mappings based on config
             val defaultMappings = mutableMapOf<CapabilityType, String>()
@@ -201,9 +198,9 @@ class AIRouterService : Service() {
             
             aiEngineManager.setDefaultRunners(defaultMappings)
             
-            Log.d(TAG, "Mock Runners initialized successfully: ${runnerRegistry.getRegisteredRunners()}")
+            Log.d(TAG, "Runners initialized successfully: ${runnerRegistry.getRegisteredRunners()}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Mock Runners", e)
+            Log.e(TAG, "Failed to initialize Runners", e)
         }
     }
     

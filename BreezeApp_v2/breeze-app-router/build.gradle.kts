@@ -8,6 +8,16 @@ android {
     namespace = "com.mtkresearch.breezeapp.router"
     compileSdk = 35
 
+    flavorDimensions += "environment"
+    productFlavors {
+        create("mock") {
+            dimension = "environment"
+        }
+        create("prod") {
+            dimension = "environment"
+        }
+    }
+
     defaultConfig {
         minSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
