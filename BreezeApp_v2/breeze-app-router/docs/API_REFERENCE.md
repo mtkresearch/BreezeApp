@@ -63,21 +63,23 @@ The primary Use Case class. It orchestrates the entire inference process.
 **Core API:**
 
 ```kotlin
-class AIEngineManager {
-    // Registers a runner factory.
-    fun registerRunner(name: String, factory: () -> BaseRunner)
-
-    // Unregisters a runner.
-    fun unregisterRunner(name: String)
-
+class AIEngineManager(private val runnerRegistry: RunnerRegistry) {
     // Sets the default runner for a given AI capability.
     fun setDefaultRunners(mappings: Map<CapabilityType, String>)
 
     // Processes a standard, non-streaming inference request.
-    fun process(request: InferenceRequest, capability: CapabilityType, preferredRunner: String? = null): InferenceResult
+    fun process(
+        request: InferenceRequest, 
+        capability: CapabilityType, 
+        preferredRunner: String? = null
+    ): InferenceResult
 
     // Processes a streaming inference request using Kotlin Flows.
-    fun processStream(request: InferenceRequest, capability: CapabilityType, preferredRunner: String? = null): Flow<InferenceResult>
+    fun processStream(
+        request: InferenceRequest, 
+        capability: CapabilityType, 
+        preferredRunner: String? = null
+    ): Flow<InferenceResult>
 
     // Releases resources used by all active runners.
     fun cleanup()
@@ -100,10 +102,17 @@ class RunnerRegistry {
         fun getInstance(): RunnerRegistry
     }
 
-    // Registers a runner with its factory function.
-    fun register(name: String, factory: RunnerFactory)
+    // A data class to hold all registration info.
+    data class RunnerRegistration(
+        val name: String,
+        val factory: () -> BaseRunner,
+        val capabilities: List<CapabilityType>
+    )
 
-    // Unregisters a runner.
+    // Registers a runner using the registration object.
+    fun register(registration: RunnerRegistration)
+
+    // Unregisters a runner by its unique name.
     fun unregister(name: String)
 
     // Creates a new instance of a named runner.
@@ -148,8 +157,8 @@ interface BaseRunner {
 }
 ```
 
-### `StreamingRunner` & `FlowStreamingRunner`
-Optional interfaces for runners that support streaming responses. It is highly recommended to implement `FlowStreamingRunner` for modern, coroutine-based streaming.
+### `FlowStreamingRunner`
+An optional interface for runners that support modern, coroutine-based streaming responses. This is the preferred way to handle streaming.
 
 **Core API:**
 ```kotlin
@@ -157,16 +166,6 @@ Optional interfaces for runners that support streaming responses. It is highly r
 interface FlowStreamingRunner : BaseRunner {
     // Executes a streaming inference and returns results as a Flow.
     fun runAsFlow(input: InferenceRequest): Flow<InferenceResult>
-}
-
-// For callback-based streaming.
-interface StreamingRunner : BaseRunner {
-    fun runStream(
-        input: InferenceRequest,
-        onResult: (InferenceResult) -> Unit,
-        onComplete: () -> Unit,
-        onError: (Throwable) -> Unit
-    )
 }
 ```
 

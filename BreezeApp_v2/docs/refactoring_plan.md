@@ -42,8 +42,6 @@ The application is divided into distinct layers, each with a clear responsibilit
 
 #### **Communication Flow (AIDL)**
 
-The following diagram illustrates the end-to-end communication for a user request.
-
 ```mermaid
 sequenceDiagram
     participant UI as UI
@@ -90,6 +88,16 @@ To ensure the `breeze-app-router` is a flexible and future-proof platform, its i
   * For initial development and integration testing (**Milestones 2-4**), we will exclusively use **`MockRunner`** implementations (e.g., `MockLLMRunner`, `MockASRRunner`).
   * These mocks will simulate the behavior of a real runner (e.g., return a pre-defined text stream, simulate a delay) but have no native dependencies.
   * **Benefit:** This decouples the UI team's development from the complex, time-consuming work of implementing the native runners, allowing for parallel workstreams and a much faster path to end-to-end integration testing.
+  * **Performance Requirements for Mock Runners:**
+    * **Response Time**: Mock responses should complete within 100-500ms to simulate realistic AI processing
+    * **Streaming Latency**: Streaming responses should emit chunks every 50-200ms
+    * **Memory Usage**: Each Mock Runner should consume < 50MB RAM when active
+    * **Concurrent Sessions**: Support minimum 4 concurrent requests without performance degradation
+  * **Thread Safety Requirements:**
+    * **State Isolation**: Each request must be processed in isolation
+    * **Resource Sharing**: Shared resources (e.g., predefined responses) must be thread-safe
+    * **Lifecycle Management**: Load/unload operations must be atomic and thread-safe
+    * **Error Propagation**: Errors must be correctly propagated across thread boundaries
 
 #### **Core Principles for Robustness**
 
@@ -150,9 +158,13 @@ We will follow a "contract-first" and "service-first" approach. Each milestone r
   | **2.5** Implement threading: offload inference to CoroutineScope            | ✅ `Done`    | Code review (Dispatchers.IO usage)                                       | `ThreadingTest`        |
   | **2.6** Implement robust listener management with death monitoring          | ✅ `Done`    | Code review (RemoteCallbackList usage)                                   | `ListenerTest`         |
   | **2.7** Implement comprehensive configuration validation                     | ✅ `Done`    | Code review (validateConfiguration method)                               | `ConfigValidationTest` |
-  | **2.8** Implement mock response system for initial testing                  | ✅ `Done`    | Code review (mock responses in sendMessage)                              | `MockResponseTest`     |
-  | **2.9** Declare service in Manifest with permission & intent filter         | ✅ `Done`    | Manifest review (service declared with permissions)                      | N/A                    |
-  | **2.10** **Build & Verify App**                                             | 🔄 `Testing` | `./gradlew :breeze-app-router:assembleDebug` succeeds                    | All tests pass         |
+  | **2.8** Declare service in Manifest with permission & intent filter         | ✅ `Done`    | Manifest review (service declared with permissions)                      | N/A                    |
+  | **2.9** Implement `BaseRunner` Interface & `RunnerRegistry`                 | ✅ `Done`    | Code review of runner contract and factory pattern                       | `BaseRunnerTest`       |
+  | **2.10** Implement full suite of Mock Runners (`LLM`, `ASR`, `VLM`...)      | ✅ `Done`    | Code review of all mock implementations                                  | `MockRunnerSuiteTest`  |
+  | **2.11** Implement `AIEngineManager` for business logic orchestration       | ✅ `Done`    | Code review of central coordinator                                       | `AIEngineManagerTest`  |
+  | **2.12** Implement build-variant DI using Gradle source sets                | ✅ `Done`    | `build.gradle.kts` review, `DependencyProvider` in `mock`/`prod` folders | `InjectionTest`        |
+  | **2.13** Integrate `AIEngineManager` into `AIRouterService` via DI          | ✅ `Done`    | Code review, service delegates all requests                              | `ServiceIntegrationTest` |
+  | **2.14** **Build & Verify App**                                             | ✅ `Done`    | `./gradlew :breeze-app-router:assembleDebug` succeeds                    | All tests pass         |
 
 ---
 
@@ -163,18 +175,15 @@ We will follow a "contract-first" and "service-first" approach. Each milestone r
 * **Documentation Preparation Complete:** ✅
   - Quick Start Guide created for new developers
   - Developer Guide with comprehensive API examples
-  - Testing Guide with complete test strategies
-  - Updated documentation index and navigation
-
-* **Implementation & Validation Tracking:**
-
-  | Task                                                                     | Status    | Validation Method                                                        | Unit Test                 |
-  |:------------------------------------------------------------------------ |:--------- |:------------------------------------------------------------------------ |:------------------------- |
   | **3.1** Add test-only logic to `onStartCommand` in `AIRouterService`     | `Ready`   | Code review: Service handles a test Intent to trigger a mock request    | N/A (Integration)         |
   | **3.2** Create script/docs for `adb` commands to start the service       | `Ready`   | Execute `adb shell am start-service ...` successfully                   | N/A                       |
   | **3.3** Trigger test message via `adb` and verify Logcat output          | `Ready`   | `adb logcat` shows expected logs from service mock responses             | N/A (Integration)         |
   | **3.4** (Optional) Create minimal UI-less test client APK for binder testing | `Ready`   | `adb shell am instrument` triggers binder call successfully            | `BinderIntegrationTest`   |
   | **3.5** **Validation Complete**                                          | `Ready`   | The service is confirmed to be working standalone                        | All tests pass            |
+  | **3.6** **Test Runner extensibility via ADB commands**                   | `Ready`   | Add new MockRunner via ADB intent, verify it's registered and usable    | `ExtensibilityTest`       |
+  | **3.7** **Validate Runner fallback mechanism headlessly**                | `Ready`   | Force MockLLMRunner failure via ADB, verify fallback to MockAPIRunner   | `FallbackTest`            |
+  | **3.8** **Test concurrent requests with different Runners**              | `Ready`   | Send LLM, ASR, TTS requests simultaneously via ADB, verify all handled  | `ConcurrencyTest`         |
+  | **3.9** **Validate Runtime Runner configuration changes**                | `Ready`   | Change Runner priority via ADB, verify selection logic updates          | `RuntimeConfigTest`       |
 
 ---
 
@@ -210,7 +219,20 @@ We will follow a "contract-first" and "service-first" approach. Each milestone r
   | **5.1** Implement `SendMessageUseCase` in UI app's domain layer            | `Pending` | Code review                                              | `SendMessageUseCaseTest` |
   | **5.2** Inject UseCase into `ChatViewModel`                                | `Pending` | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
   | **5.3** Call use case from ViewModel on user action                        | `Pending` | Code review                                              | `ChatViewModelTest`      |
-  | **5.4** Implement server-side `sendMessage` delegating to the `MockRunner` | `Pending` | Logcat on router app shows request                       | N/A (Integration)        |
+  | **5.4** Validate E2E message flow through existing Mock Runner system     | `Pending` | Logcat shows request delegation to AIEngineManager      | N/A (Integration)        |
   | **5.5** Implement client-side listener to receive response                 | `Pending` | Logcat on UI app shows response                          | N/A (Integration)        |
   | **5.6** Update ViewModel with response via `Flow`                          | `Pending` | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
   | **5.7** **Deploy & Test E2E**                                              | `Pending` | Install both apps, send message, see mock response in UI | E2E Test                 |
+  | **5.8** **Validate Runner switching during E2E flow**                      | `Pending` | Test fallback from MockLLMRunner to MockAPIRunner       | E2E Fallback Test        |
+  | **5.9** **Performance test with multiple concurrent requests**             | `Pending` | Send multiple messages concurrently, verify proper handling | Performance Test      |
+  | **5.10** **Validate streaming response handling**                          | `Pending` | Test streaming mock responses from MockLLMRunner        | Streaming Test           |
+
+---
+
+### **3. Summary**
+
+This refactoring approach prioritizes **stability and validation at each step**, with a "contract-first" and "service-first" methodology. The use of Mock Runners ensures that the UI and service teams can work in parallel without blocking each other, while the headless validation via ADB proves the service's robustness before any UI integration begins.
+
+The detailed tracking tables in each milestone will provide clear visibility into progress and ensure no critical steps are missed. Each task includes a specific validation method and associated unit test, allowing for continuous integration and confidence at every step.
+
+**Next Immediate Action:** Execute the tasks in **Milestone 3** since Milestones 1 and 2 are complete. Begin with implementing headless validation via ADB commands to verify the standalone service functionality and Mock Runner extensibility.

@@ -52,8 +52,10 @@ class AIRouterService : Service() {
     private var configuration: Configuration? = null
     
     // Use Case layer dependencies
-    private val aiEngineManager = AIEngineManager()
-    private val runnerRegistry = RunnerRegistry.getInstance()
+    private val dependencyProvider = DependencyProvider.getInstance()
+    private val aiEngineManager: AIEngineManager by lazy {
+        dependencyProvider.getAIEngineManager()
+    }
     
     // Service initialization flag
     @Volatile
@@ -82,11 +84,11 @@ class AIRouterService : Service() {
             
             configuration = config
             
-            // Initialize Mock Runners based on configuration
+            // Delegate runner initialization to the flavor-specific dependency provider
             serviceScope.launch {
-                initializeRunners(config)
+                dependencyProvider.initializeRunners(config)
                 isInitialized = true
-                Log.i(TAG, "AIRouterService initialized successfully with Mock Runners")
+                Log.i(TAG, "AIRouterService initialized successfully via DependencyProvider")
             }
         }
 
@@ -153,16 +155,8 @@ class AIRouterService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Support for headless testing via ADB
         intent?.let { testIntent ->
-            when (testIntent.action) {
-                "com.mtkresearch.breezeapp.TEST_MOCK_RUNNERS" -> {
-                    Log.d(TAG, "Test command received via ADB")
-                    serviceScope.launch {
-                        performHeadlessTest()
-                    }
-                }
-
-                else -> {}
-            }
+            // Delegate test intent handling to the flavor-specific dependency provider
+            dependencyProvider.handleTestIntent(testIntent, serviceScope)
         }
         return START_STICKY
     }
@@ -172,36 +166,6 @@ class AIRouterService : Service() {
         aiEngineManager.cleanup()
         serviceJob.cancel()
         Log.i(TAG, "AIRouterService destroyed")
-    }
-    
-    /**
-     * Initialize Mock Runners based on configuration
-     */
-    private suspend fun initializeRunners(config: Configuration) {
-        try {
-            Log.d(TAG, "Initializing Runners for build variant...")
-            
-            // Use the DependencyProvider to get the correct RunnerProvider for the flavor
-            val runnerProvider = DependencyProvider.getRunnerProvider()
-            runnerProvider.registerRunners(runnerRegistry)
-            
-            // Set up default runner mappings based on config
-            val defaultMappings = mutableMapOf<CapabilityType, String>()
-            config.runnerConfigurations.forEach { (taskType, runnerType) ->
-                val capability = mapTaskTypeToCapability(taskType)
-                val runnerName = when (runnerType) {
-                    Configuration.RunnerType.MOCK -> getMockRunnerForCapability(capability)
-                    else -> getMockRunnerForCapability(capability) // Default to mock for now
-                }
-                defaultMappings[capability] = runnerName
-            }
-            
-            aiEngineManager.setDefaultRunners(defaultMappings)
-            
-            Log.d(TAG, "Runners initialized successfully: ${runnerRegistry.getRegisteredRunners()}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize Runners", e)
-        }
     }
     
     /**
@@ -243,68 +207,6 @@ class AIRouterService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Error processing AI request", e)
             notifyError(request.id, e.message ?: "Unknown processing error")
-        }
-    }
-    
-    /**
-     * Perform headless test for ADB validation
-     */
-    private suspend fun performHeadlessTest() {
-        Log.d(TAG, "=== Starting Headless Mock Runner Test ===")
-        
-        try {
-            // Test LLM Runner
-            val llmRequest = InferenceRequest(
-                sessionId = "test_session_llm",
-                inputs = mapOf(InferenceRequest.INPUT_TEXT to "Test LLM message"),
-                timestamp = System.currentTimeMillis()
-            )
-            
-            val llmResult = aiEngineManager.process(llmRequest, CapabilityType.LLM)
-            Log.d(TAG, "LLM Test Result: ${llmResult.outputs}")
-            
-            // Test ASR Runner
-            val asrRequest = InferenceRequest(
-                sessionId = "test_session_asr",
-                inputs = mapOf(
-                    InferenceRequest.INPUT_AUDIO to ByteArray(1000) { it.toByte() },
-                    InferenceRequest.INPUT_AUDIO_ID to "test_audio_1"
-                ),
-                timestamp = System.currentTimeMillis()
-            )
-            
-            val asrResult = aiEngineManager.process(asrRequest, CapabilityType.ASR)
-            Log.d(TAG, "ASR Test Result: ${asrResult.outputs}")
-            
-            Log.d(TAG, "=== Headless Test Completed Successfully ===")
-        } catch (e: Exception) {
-            Log.e(TAG, "=== Headless Test Failed ===", e)
-        }
-    }
-
-    // Utility methods...
-    
-    private fun mapTaskTypeToCapability(taskType: Configuration.AITaskType): CapabilityType {
-        return when (taskType) {
-            Configuration.AITaskType.TEXT_GENERATION -> CapabilityType.LLM
-            Configuration.AITaskType.IMAGE_ANALYSIS -> CapabilityType.VLM
-            Configuration.AITaskType.SPEECH_RECOGNITION -> CapabilityType.ASR
-            Configuration.AITaskType.SPEECH_SYNTHESIS -> CapabilityType.TTS
-            Configuration.AITaskType.CONTENT_MODERATION -> CapabilityType.GUARDIAN
-            else -> {
-                Log.w(TAG, "Unsupported AITaskType '$taskType', falling back to LLM.")
-                CapabilityType.LLM
-            }
-        }
-    }
-    
-    private fun getMockRunnerForCapability(capability: CapabilityType): String {
-        return when (capability) {
-            CapabilityType.LLM -> "MockLLMRunner"
-            CapabilityType.VLM -> "MockVLMRunner"
-            CapabilityType.ASR -> "MockASRRunner"
-            CapabilityType.TTS -> "MockTTSRunner"
-            CapabilityType.GUARDIAN -> "MockGuardrailRunner"
         }
     }
     

@@ -215,4 +215,270 @@ class SherpaASRRunner : BaseRunner {
 
 ---
 
-📍 **返回**: [Interfaces 首頁](./README.md) | **下一篇**: [能力對應表](./capability-mapping.md) 
+📍 **返回**: [Interfaces 首頁](./README.md) | **下一篇**: [能力對應表](./capability-mapping.md)
+
+## 🧪 Mock Runner 實作指南
+
+### Mock Runner 設計原則
+
+在開發和測試階段，Mock Runner 必須能夠：
+1. **模擬真實 Runner 的行為模式**
+2. **提供可預測且可配置的回應**
+3. **支援性能測試和壓力測試**
+4. **驗證 Runner 架構的擴展性**
+
+### MockLLMRunner 實作範例
+
+```kotlin
+class MockLLMRunner : BaseRunner, StreamingRunner {
+    
+    private val predefinedResponses = listOf(
+        "這是一個模擬的 LLM 回應。",
+        "我正在使用 Mock Runner 進行測試。",
+        "AI Router 架構工作正常。"
+    )
+    
+    private var isLoaded = false
+    private val responseDelay = 100L // 模擬推論延遲
+    
+    override fun load(config: ModelConfig): Boolean {
+        // 模擬載入時間
+        Thread.sleep(500)
+        isLoaded = true
+        return true
+    }
+    
+    override fun run(input: InferenceRequest, stream: Boolean): InferenceResult {
+        if (!isLoaded) {
+            return InferenceResult(
+                outputs = emptyMap(),
+                error = RunnerError("E001", "Model not loaded", true)
+            )
+        }
+        
+        val prompt = input.inputs["text"] as? String ?: ""
+        val response = selectResponseFor(prompt)
+        
+        return if (stream) {
+            streamResponse(response, input.sessionId)
+        } else {
+            InferenceResult(
+                outputs = mapOf("text" to response),
+                metadata = mapOf(
+                    "model" to "mock-llm-v1",
+                    "processing_time_ms" to responseDelay,
+                    "tokens" to response.split(" ").size
+                )
+            )
+        }
+    }
+    
+    override fun runStream(
+        input: InferenceRequest,
+        onResult: (InferenceResult) -> Unit,
+        onComplete: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        val prompt = input.inputs["text"] as? String ?: ""
+        val response = selectResponseFor(prompt)
+        val words = response.split(" ")
+        
+        // 模擬串流回應
+        words.forEachIndexed { index, word ->
+            Thread.sleep(responseDelay)
+            
+            val partialText = words.take(index + 1).joinToString(" ")
+            val isPartial = index < words.size - 1
+            
+            onResult(InferenceResult(
+                outputs = mapOf("text" to partialText),
+                metadata = mapOf("partial_tokens" to index + 1),
+                partial = isPartial
+            ))
+        }
+        
+        onComplete()
+    }
+    
+    override fun unload() {
+        isLoaded = false
+    }
+    
+    override fun getCapabilities(): List<CapabilityType> = listOf(CapabilityType.LLM)
+    
+    private fun selectResponseFor(prompt: String): String {
+        return when {
+            prompt.contains("測試", ignoreCase = true) -> 
+                "這是一個測試回應，用於驗證 Mock Runner 的功能。"
+            prompt.contains("錯誤", ignoreCase = true) -> 
+                throw RuntimeException("模擬錯誤：這是測試用的錯誤情況。")
+            else -> predefinedResponses.random()
+        }
+    }
+    
+    private fun streamResponse(text: String, sessionId: String): InferenceResult {
+        // 非串流模式下的完整回應
+        return InferenceResult(
+            outputs = mapOf("text" to text),
+            metadata = mapOf(
+                "session_id" to sessionId,
+                "stream_mode" to false
+            )
+        )
+    }
+}
+```
+
+### MockASRRunner 實作範例
+
+```kotlin
+class MockASRRunner : BaseRunner, StreamingRunner {
+    
+    private val mockTranscriptions = mapOf(
+        "test_audio_1" to "你好，這是一個測試音檔。",
+        "test_audio_2" to "AI Router 語音識別功能測試。",
+        "default" to "這是預設的語音識別結果。"
+    )
+    
+    override fun run(input: InferenceRequest, stream: Boolean): InferenceResult {
+        val audioData = input.inputs["audio"] as? ByteArray
+        val audioId = input.inputs["audio_id"] as? String ?: "default"
+        
+        if (audioData == null) {
+            return InferenceResult(
+                outputs = emptyMap(),
+                error = RunnerError("E401", "Audio data required", false)
+            )
+        }
+        
+        // 模擬音檔處理時間
+        Thread.sleep(300)
+        
+        val transcription = mockTranscriptions[audioId] ?: mockTranscriptions["default"]!!
+        
+        return InferenceResult(
+            outputs = mapOf("text" to transcription),
+            metadata = mapOf(
+                "confidence" to 0.95,
+                "processing_time_ms" to 300,
+                "audio_length_ms" to audioData.size * 8 // 模擬音檔長度
+            )
+        )
+    }
+    
+    override fun runStream(
+        input: InferenceRequest,
+        onResult: (InferenceResult) -> Unit,
+        onComplete: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        val audioId = input.inputs["audio_id"] as? String ?: "default"
+        val fullTranscription = mockTranscriptions[audioId] ?: mockTranscriptions["default"]!!
+        val words = fullTranscription.split("。", "，", " ").filter { it.isNotBlank() }
+        
+        // 模擬即時語音識別
+        words.forEachIndexed { index, segment ->
+            Thread.sleep(200) // 模擬處理每個語音片段的時間
+            
+            val partialResult = words.take(index + 1).joinToString("")
+            val isPartial = index < words.size - 1
+            
+            onResult(InferenceResult(
+                outputs = mapOf("text" to partialResult),
+                metadata = mapOf(
+                    "confidence" to (0.7 + index * 0.05).coerceAtMost(0.95),
+                    "segment_index" to index
+                ),
+                partial = isPartial
+            ))
+        }
+        
+        onComplete()
+    }
+    
+    override fun getCapabilities(): List<CapabilityType> = listOf(CapabilityType.ASR)
+}
+```
+
+### Mock Runner 測試要求
+
+#### 功能測試
+- ✅ **基本推論**：正確處理輸入並返回預期輸出
+- ✅ **串流處理**：支援部分結果的逐步返回
+- ✅ **錯誤處理**：模擬各種錯誤情況並正確回報
+- ✅ **資源管理**：正確執行載入和卸載操作
+
+#### 效能測試
+- ✅ **延遲模擬**：模擬真實 Runner 的處理時間
+- ✅ **併發處理**：支援多個同時請求
+- ✅ **記憶體管理**：避免記憶體洩漏
+
+#### 擴展性測試
+- ✅ **動態註冊**：可在運行時註冊和註銷
+- ✅ **配置變更**：支援運行時配置更新
+- ✅ **Fallback 驗證**：正確觸發 fallback 機制
+
+### Mock Runner 配置範例
+
+```kotlin
+// 在 AI Router Service 中註冊 Mock Runners
+class AIRouterService {
+    
+    private fun registerMockRunners() {
+        val runnerRegistry = RunnerRegistry.getInstance()
+        
+        // 註冊各種 Mock Runners
+        runnerRegistry.register("MockLLMRunner") { MockLLMRunner() }
+        runnerRegistry.register("MockASRRunner") { MockASRRunner() }
+        runnerRegistry.register("MockTTSRunner") { MockTTSRunner() }
+        runnerRegistry.register("MockVLMRunner") { MockVLMRunner() }
+        runnerRegistry.register("MockGuardrailRunner") { MockGuardrailRunner() }
+        
+        // 設定預設的 Runner 選擇
+        val aiEngineManager = AIEngineManager()
+        aiEngineManager.setDefaultRunners(mapOf(
+            CapabilityType.LLM to "MockLLMRunner",
+            CapabilityType.ASR to "MockASRRunner",
+            CapabilityType.TTS to "MockTTSRunner",
+            CapabilityType.VLM to "MockVLMRunner",
+            CapabilityType.GUARDIAN to "MockGuardrailRunner"
+        ))
+    }
+}
+```
+
+### 驗證 Runner 擴展性的測試案例
+
+```kotlin
+@Test
+fun testRunnerExtensibility() {
+    val registry = RunnerRegistry()
+    val engineManager = AIEngineManager(registry)
+    
+    // 1. 測試新 Runner 的動態註冊
+    val customRunner = object : BaseRunner {
+        override fun load(config: ModelConfig) = true
+        override fun run(input: InferenceRequest, stream: Boolean) = 
+            InferenceResult(outputs = mapOf("text" to "Custom response"))
+        override fun unload() {}
+        override fun getCapabilities() = listOf(CapabilityType.LLM)
+    }
+    
+    registry.register("CustomLLMRunner") { customRunner }
+    
+    // 2. 驗證新 Runner 能被正確選擇和使用
+    val request = InferenceRequest(
+        sessionId = "test",
+        inputs = mapOf("text" to "test prompt")
+    )
+    
+    val result = engineManager.process(request, CapabilityType.LLM, "CustomLLMRunner")
+    assertEquals("Custom response", result.outputs["text"])
+    
+    // 3. 測試 Runner 的移除
+    registry.unregister("CustomLLMRunner")
+    assertThrows<RunnerNotFoundException> {
+        engineManager.process(request, CapabilityType.LLM, "CustomLLMRunner")
+    }
+}
+``` 
