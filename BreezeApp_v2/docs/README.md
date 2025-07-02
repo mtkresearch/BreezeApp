@@ -1,47 +1,63 @@
-# BreezeApp v2.0 Documentation
+# BreezeApp v2: AI Router Architecture
 
-This directory contains comprehensive documentation for BreezeApp v2.0's AI Router architecture.
+## Overview
 
-## 📚 Documentation Index
+BreezeApp v2 is a modular Android application that implements a decoupled AI service architecture. The system is divided into separate modules with clear responsibilities, allowing for better maintainability, testability, and scalability.
 
-### Getting Started
-- **[Quick Start Guide](quick-start.md)** - Get up and running in 5 minutes ⚡
-- **[Developer Guide](developer-guide.md)** - Comprehensive development guide 🛠️
+## Project Structure
 
-### Architecture & Design
-- **[Refactoring Plan](refactoring_plan.md)** - Complete roadmap and implementation milestones
-- **[Client API Specification](client_api_spec.md)** - UI layer architecture and API design
+The project consists of the following key modules:
 
-### API References
-- **[Shared Contracts API](../shared-contracts/docs/api.md)** - AIDL interfaces and data models
+### 1. [breeze-app-router](../breeze-app-router/docs/README.md)
 
-### Testing & Quality
-- **[Testing Guide](testing-guide.md)** - Comprehensive testing strategies 🧪
+The core AI service provider that hosts various AI capabilities (LLM, ASR, VLM, etc.) and exposes them through a secure AIDL interface. This service runs as a standalone Android application and can be accessed by authorized client applications.
 
-### Specifications
-- **[AI Router Specification](ai_router_spec/)** - Detailed technical specifications
-  - [Project Overview](ai_router_spec/00-Overview/)
-  - [Architecture](ai_router_spec/01-Architecture/)
-  - [Interfaces](ai_router_spec/02-Interfaces/)
-  - [Models](ai_router_spec/03-Models/)
-  - [Runtime](ai_router_spec/04-Runtime/)
-  - [Error Handling](ai_router_spec/05-Error-Handling/)
-  - [Testing](ai_router_spec/06-Testing/)
-  - [Implementation](ai_router_spec/07-Implementation/)
-  - [Diagrams](ai_router_spec/08-Diagrams/)
+### 2. [shared-contracts](../shared-contracts/docs/api.md)
 
----
+The contract module that defines the AIDL interfaces and data models for communication between clients and the router service. This module serves as the single source of truth for the API contract.
+
+### 3. [breeze-app-router-client](../breeze-app-router-client/README.md)
+
+A reference implementation and demonstration app that showcases how to properly integrate with the AI Router Service. This module serves as both a functional testing tool and comprehensive documentation for third-party developers.
+
+## Getting Started
+
+For new developers, we recommend starting with the following resources:
+
+1. [Quick Start Guide](quick-start.md) - Basic setup and first steps
+2. [Architecture Overview](ARCHITECTURE.md) - Comprehensive system architecture
+3. [Contributing Guide](CONTRIBUTING.md) - How to contribute to the project
+
+## Integration Options for Third-Party Developers
+
+If you're developing a third-party application that needs to integrate with the BreezeApp AI Router, see our [Client Integration Guide](../breeze-app-router-client/docs/integration-guide.md).
+
+## Project Status
+
+The project has completed all planned milestones as outlined in our [Refactoring Plan](reference/refactoring_plan.md).
+
+## Future Plans
+
+- Publish the `shared-contracts` module as a standalone dependency via Maven/JitPack
+- Implement production runners with actual AI models
+- Expand test coverage with more edge cases and performance scenarios
+- Develop additional client examples for specific use cases
+
+## Documentation Index
+
+For a complete list of all available documentation, please visit our [Documentation Index](index.md).
 
 ## 🎯 Quick Navigation
 
 | For... | Read This |
 |--------|-----------|
 | **New Developers** | Start with [Quick Start Guide](quick-start.md) ⚡ |
-| **Understanding Architecture** | See [Refactoring Plan](refactoring_plan.md) 🏗️ |
-| **UI Development** | Check [Client API Spec](client_api_spec.md) 🎨 |
-| **API Integration** | Explore [Shared Contracts API](../shared-contracts/docs/api.md) 🔗 |
+| **Understanding Architecture** | See [Architecture Overview](ARCHITECTURE.md) 🏗️ |
+| **UI Development** | Check [Client API Spec](client-api-spec.md) 🎨 |
+| **API Integration** | Explore [API Reference](api-reference.md) 🔗 |
 | **Testing Implementation** | Read [Testing Guide](testing-guide.md) 🧪 |
 | **In-Depth Development** | Study [Developer Guide](developer-guide.md) 📖 |
+| **Contributing** | Follow the [Contributing Guide](CONTRIBUTING.md) 👥 |
 
 ---
 
@@ -49,23 +65,28 @@ This directory contains comprehensive documentation for BreezeApp v2.0's AI Rout
 
 ### Basic Chat Integration
 ```kotlin
-val aiClient = SimpleAIClient(context)
-aiClient.connect()
-aiClient.sendMessage("Hello AI") { response ->
-    println("AI Response: $response")
+val aiClient = AIRouterClient.Builder(context).build()
+lifecycleScope.launch {
+    aiClient.connect()
+    val response = aiClient.generateText("Hello AI")
+    textView.text = response.text
 }
 ```
 
 ### Configuration Setup
 ```kotlin
-val config = Configuration(
-    apiVersion = 2,
-    maxTokens = 1024,
-    temperature = 0.7f
-)
+val client = AIRouterClient.Builder(context)
+    .setConnectionListener { state ->
+        when (state) {
+            ConnectionState.CONNECTED -> Log.d(TAG, "Connected")
+            ConnectionState.DISCONNECTED -> Log.d(TAG, "Disconnected")
+        }
+    }
+    .setLogLevel(LogLevel.DEBUG)
+    .build()
 ```
 
 ---
 
-*Last Updated: 2024-12-19*  
-*Version: 2.0* 
+*Last Updated: 2024-12-20*  
+*Version: 2.1* 

@@ -38,7 +38,14 @@ class MockASRRunner : BaseRunner, FlowStreamingRunner {
         "test_audio_2" to "AI Router 語音識別功能測試。",
         "test_audio_3" to "BreezeApp 語音轉文字功能運作正常。",
         "test_audio_4" to "這是模擬的語音識別結果，用於驗證系統功能。",
-        "default" to "這是預設的語音識別結果。"
+        "format_3gp" to "這是從3GP格式錄製的音頻內容，語音識別功能正常運作。",
+        "format_m4a" to "M4A格式音頻測試成功，系統能夠正確識別語音內容。",
+        "format_wav" to "WAV格式高品質音頻，語音轉文字準確度很高。",
+        "short_recording" to "短音頻測試。",
+        "medium_recording" to "這是一個中等長度的音頻錄製，用來測試語音識別的準確性和穩定性。",
+        "long_recording" to "這是一個較長的音頻錄製內容，包含了更多的語音信息和內容細節，可以用來測試系統在處理長音頻時的表現和識別準確度。",
+        "real_audio" to "感謝您使用BreezeApp的語音識別功能，這個系統能夠將您說的話轉換成文字。",
+        "default" to "這是預設的語音識別結果，系統已成功處理您的音頻輸入。"
     )
     
     override fun load(config: ModelConfig): Boolean {
@@ -81,7 +88,8 @@ class MockASRRunner : BaseRunner, FlowStreamingRunner {
             // 模擬音訊處理時間
             Thread.sleep(processingDelay)
             
-            val transcription = mockTranscriptions[audioId] ?: mockTranscriptions["default"]!!
+            // 根據音頻數據特徵選擇合適的轉錄結果
+            val transcription = selectTranscription(audioData, audioId)
             val confidence = calculateMockConfidence(audioData.size, audioId)
             
             InferenceResult.success(
@@ -90,8 +98,9 @@ class MockASRRunner : BaseRunner, FlowStreamingRunner {
                     InferenceResult.META_CONFIDENCE to confidence,
                     InferenceResult.META_PROCESSING_TIME_MS to processingDelay,
                     InferenceResult.META_MODEL_NAME to "mock-asr-v1",
-                    "audio_length_ms" to (audioData.size * 8), // 模擬音檔長度
-                    "audio_format" to "pcm_16khz",
+                    "audio_length_ms" to estimateAudioDurationMs(audioData.size),
+                    "audio_format" to detectAudioFormat(audioId),
+                    "audio_size_bytes" to audioData.size,
                     InferenceResult.META_SESSION_ID to input.sessionId
                 )
             )
@@ -202,5 +211,44 @@ class MockASRRunner : BaseRunner, FlowStreamingRunner {
         }
         
         return (baseConfidence + lengthFactor).coerceIn(0.5, 0.99)
+    }
+    
+    /**
+     * 根據音頻數據選擇合適的轉錄結果
+     */
+    private fun selectTranscription(audioData: ByteArray, audioId: String): String {
+        // 優先使用指定的audioId
+        if (mockTranscriptions.containsKey(audioId)) {
+            return mockTranscriptions[audioId]!!
+        }
+        
+        // 根據音頻大小選擇合適的回應
+        return when {
+            audioData.size < 2000 -> mockTranscriptions["short_recording"]!!
+            audioData.size < 15000 -> mockTranscriptions["medium_recording"]!!
+            audioData.size > 30000 -> mockTranscriptions["long_recording"]!!
+            else -> mockTranscriptions["real_audio"]!!
+        }
+    }
+    
+    /**
+     * 估算音頻時長（毫秒）
+     */
+    private fun estimateAudioDurationMs(audioSizeBytes: Int): Long {
+        // 估算公式：假設16kHz, 16-bit, 單聲道
+        // 每秒需要：16000 * 2 = 32000 bytes
+        return ((audioSizeBytes.toDouble() / 32000.0) * 1000).toLong()
+    }
+    
+    /**
+     * 檢測音頻格式
+     */
+    private fun detectAudioFormat(audioId: String): String {
+        return when {
+            audioId.contains("format_3gp") -> "3gp"
+            audioId.contains("format_m4a") -> "m4a"
+            audioId.contains("format_wav") -> "wav"
+            else -> "unknown"
+        }
     }
 } 

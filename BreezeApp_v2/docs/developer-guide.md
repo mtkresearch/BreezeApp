@@ -148,6 +148,20 @@ breeze-app-ui/
     └── java/                         # Unit tests
 ```
 
+### breeze-app-router-client
+
+**Purpose**: Reference client implementation for third-party developers
+
+```
+breeze-app-router-client/
+├── src/main/
+│   └── java/com/mtkresearch/breezeapp/router/client/
+│       ├── MainViewModel.kt          # ViewModel for client integration
+│       └── AIRouterTester.kt         # Utility class for testing connection
+└── docs/
+    └── client_api_spec.md            # Client API specification
+```
+
 ---
 
 ## 🛠️ API Usage Examples {#api-usage-examples}

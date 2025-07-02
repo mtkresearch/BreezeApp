@@ -1,12 +1,6 @@
 pluginManagement {
     repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
+        google()
         mavenCentral()
         gradlePluginPortal()
     }
@@ -20,6 +14,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BreezeApp_v2"
-include(":shared-contracts")
-include(":breeze-app-ui")
-include(":breeze-app-router") 
+include(
+    ":shared-contracts",
+    ":breeze-app-router",
+    ":breeze-app-router-client"
+) 

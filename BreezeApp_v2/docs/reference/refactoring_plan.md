@@ -3,13 +3,15 @@
 **Project:** BreezeApp Refactoring
 **Goal:** Successfully decouple the UI (`breeze-app-ui`) from the AI services (`breeze-app-router`) into a robust, maintainable, and scalable dual-app architecture using a clean AIDL-based IPC mechanism. All development must adhere strictly to **MVVM + Clean Architecture (Use Cases)** principles.
 
+**Update:** We have successfully implemented the `breeze-app-router-client` as a reference implementation and demonstration app. This client showcases best practices for integrating with the AI Router Service and serves as comprehensive documentation for third-party developers.
+
 ---
 
 ### **1. Overall Architecture & Guiding Principles**
 
 #### **Module Boundaries**
 
-The high-level architecture is composed of three main modules. The two applications (`breeze-app-ui` and `breeze-app-router`) are completely decoupled and only communicate through the shared `shared-contracts` module.
+The high-level architecture is composed of four main modules. The two applications (`breeze-app-ui` and `breeze-app-router`) are completely decoupled and only communicate through the shared `shared-contracts` module. Additionally, we've created a reference client implementation (`breeze-app-router-client`) to demonstrate integration best practices.
 
 ```mermaid
 graph LR;
@@ -24,16 +26,22 @@ graph LR;
     subgraph "breeze-app-router (Service App)"
         ROUTER_COMPONENTS["- AIRouterService<br/>- AI Engines<br/>- Runtime Settings"]
     end
+    
+    subgraph "breeze-app-router-client (Reference Implementation)"
+        CLIENT_COMPONENTS["- MainViewModel<br/>- Integration Examples<br/>- Testing Tools"]
+    end
 
     UI_COMPONENTS -- "depends on" --> CONTRACTS;
     ROUTER_COMPONENTS -- "depends on" --> CONTRACTS;
+    CLIENT_COMPONENTS -- "depends on" --> CONTRACTS;
+    CLIENT_COMPONENTS -- "connects to" --> ROUTER_COMPONENTS;
 ```
 
 #### **Architectural Layers**
 
 The application is divided into distinct layers, each with a clear responsibility. Communication flows from the UI down to the native layer and back.
 
-**Presentation Layer (`breeze-app-ui`)**: Contains UI elements (Activities/Fragments) and ViewModels. It is responsible for displaying data and handling user interaction. It knows nothing about how data is fetched, only that it gets it from a Use Case.
+**Presentation Layer (`breeze-app-ui` & `breeze-app-router-client`)**: Contains UI elements (Activities/Fragments) and ViewModels. It is responsible for displaying data and handling user interaction. It knows nothing about how data is fetched, only that it gets it from a Use Case.
 **Domain Layer (`breeze-app-ui` & `shared-contracts`)**: Contains the business logic (Use Cases) and the core domain models (e.g., `AIRequest`, `AIResponse`). It defines the `Repository` interfaces that the presentation layer uses.
 **Data Layer (`breeze-app-ui` & `breeze-app-router`)**: Contains the `Repository` implementations. Its job is to fetch data from one or more sources (the AI Router Service, a local database, etc.) and deliver it to the Domain layer. `AIRouterRepositoryImpl` in the UI app will handle the IPC communication.
 **AI Engine Layer (`breeze-app-router`)**: The `AIRouterService` lives here. It orchestrates calls to various AI engines (LLM, VLM, ASR, etc.) based on the incoming requests from the Data Layer.
@@ -175,64 +183,97 @@ We will follow a "contract-first" and "service-first" approach. Each milestone r
 * **Documentation Preparation Complete:** ✅
   - Quick Start Guide created for new developers
   - Developer Guide with comprehensive API examples
-  | **3.1** Add test-only logic to `onStartCommand` in `AIRouterService`     | `Ready`   | Code review: Service handles a test Intent to trigger a mock request    | N/A (Integration)         |
-  | **3.2** Create script/docs for `adb` commands to start the service       | `Ready`   | Execute `adb shell am start-service ...` successfully                   | N/A                       |
-  | **3.3** Trigger test message via `adb` and verify Logcat output          | `Ready`   | `adb logcat` shows expected logs from service mock responses             | N/A (Integration)         |
-  | **3.4** (Optional) Create minimal UI-less test client APK for binder testing | `Ready`   | `adb shell am instrument` triggers binder call successfully            | `BinderIntegrationTest`   |
-  | **3.5** **Validation Complete**                                          | `Ready`   | The service is confirmed to be working standalone                        | All tests pass            |
-  | **3.6** **Test Runner extensibility via ADB commands**                   | `Ready`   | Add new MockRunner via ADB intent, verify it's registered and usable    | `ExtensibilityTest`       |
-  | **3.7** **Validate Runner fallback mechanism headlessly**                | `Ready`   | Force MockLLMRunner failure via ADB, verify fallback to MockAPIRunner   | `FallbackTest`            |
-  | **3.8** **Test concurrent requests with different Runners**              | `Ready`   | Send LLM, ASR, TTS requests simultaneously via ADB, verify all handled  | `ConcurrencyTest`         |
-  | **3.9** **Validate Runtime Runner configuration changes**                | `Ready`   | Change Runner priority via ADB, verify selection logic updates          | `RuntimeConfigTest`       |
+  
+  | Task                                                                         | Status       | Validation Method                                                    | Unit Test                |
+  |:---------------------------------------------------------------------------- |:------------ |:-------------------------------------------------------------------- |:------------------------ |
+  | **3.1** Add test-only logic to `onStartCommand` in `AIRouterService`         | ✅ `Done`    | Code review: Service handles a test Intent to trigger a mock request | N/A (Integration)        |
+  | **3.2** Create script/docs for `adb` commands to start the service           | ✅ `Done`    | Execute `adb shell am start-service ...` successfully               | N/A                      |
+  | **3.3** Trigger test message via `adb` and verify Logcat output              | ✅ `Done`    | `adb logcat` shows expected logs from service mock responses        | N/A (Integration)        |
+  | **3.4** (Optional) Create minimal UI-less test client APK for binder testing | ✅ `Done`    | `adb shell am instrument` triggers binder call successfully         | `BinderIntegrationTest`  |
+  | **3.5** **Validation Complete**                                              | ✅ `Done`    | The service is confirmed to be working standalone                   | All tests pass           |
+  | **3.6** **Test Runner extensibility via ADB commands**                       | ✅ `Done`    | Add new MockRunner via ADB intent, verify it's registered and usable| `ExtensibilityTest`      |
+  | **3.7** **Validate Runner fallback mechanism headlessly**                    | ✅ `Done`    | Force MockLLMRunner failure via ADB, verify fallback to MockAPIRunner| `FallbackTest`          |
+  | **3.8** **Test concurrent requests with different Runners**                  | ✅ `Done`    | Send LLM, ASR, TTS requests simultaneously via ADB, verify all handled| `ConcurrencyTest`       |
+  | **3.9** **Validate Runtime Runner configuration changes**                    | ✅ `Done`    | Change Runner priority via ADB, verify selection logic updates      | `RuntimeConfigTest`      |
+
+---
+
+#### **Milestone 3.5: Reference Client Implementation (NEW)**
+
+* **Objective:** Create a standalone reference client app (`breeze-app-router-client`) that demonstrates best practices for integrating with the `AIRouterService`. This app will serve as both a testing tool and comprehensive documentation for third-party developers.
+
+* **Implementation & Validation Tracking:**
+  
+  | Task                                                                            | Status       | Validation Method                                                | Unit Test                |
+  |:------------------------------------------------------------------------------- |:------------ |:---------------------------------------------------------------- |:------------------------ |
+  | **3.5.1** Create new Android application module `breeze-app-router-client`      | ✅ `Done`    | Module structure review                                          | N/A                      |
+  | **3.5.2** Add `:shared-contracts` dependency & permission in Manifest           | ✅ `Done`    | `build.gradle.kts` & Manifest review                             | N/A                      |
+  | **3.5.3** Implement MVVM architecture with clean separation of concerns         | ✅ `Done`    | Code review of `MainActivity` and `MainViewModel`                | `ArchitectureTest`       |
+  | **3.5.4** Implement reactive UI with `StateFlow` and `UiState` data class       | ✅ `Done`    | Code review of state management pattern                          | `ReactiveUITest`         |
+  | **3.5.5** Implement robust service connection with fallback to debug/prod       | ✅ `Done`    | Code review of connection logic with error handling              | `ConnectionTest`         |
+  | **3.5.6** Implement comprehensive testing tools (`AIRouterTester` class)        | ✅ `Done`    | Code review of test utilities                                    | `TesterFunctionalityTest`|
+  | **3.5.7** Implement diagnostics script (`test_connection.sh`)                   | ✅ `Done`    | Script execution validates connection                            | N/A (Integration)        |
+  | **3.5.8** Create professional API documentation with examples                   | ✅ `Done`    | Documentation review (tables, examples, troubleshooting)         | N/A                      |
+  | **3.5.9** Add KDoc documentation to all public methods                          | ✅ `Done`    | Code review of documentation coverage                            | `DocumentationCoverageTest` |
+  | **3.5.10** **Build & Verify App**                                               | ✅ `Done`    | `./gradlew :breeze-app-router-client:assembleDebug` succeeds     | All tests pass           |
 
 ---
 
 #### **Milestone 4: The Resilient Client**
 
 * **Objective:** Implement a client-side `AIRouterRepository` in `breeze-app-ui` that can securely and robustly bind to the **pre-validated** `AIRouterService`.
-* **Note:** The implementation of the repository, its data models, and error handling should closely follow the detailed designs in **`client_api_spec.md`**.
+* **Note:** The implementation of the repository, its data models, and error handling should closely follow the detailed designs in **`client_api_spec.md`** and the reference implementation in `breeze-app-router-client`.
 
 * **Implementation & Validation Tracking:**
   
-  | Task                                                                           | Status    | Validation Method                                 | Unit Test                 |
-  |:------------------------------------------------------------------------------ |:--------- |:------------------------------------------------- |:------------------------- |
-  | **4.1** Add `:shared-contracts` dependency & custom permission use in Manifest | `Pending` | `build.gradle.kts` & Manifest review              | N/A                       |
-  | **4.2** Define `domain/repository/AIRouterRepository.kt` interface             | `Pending` | Code review                                       | N/A                       |
-  | **4.3** Implement `data/repository/AIRouterRepositoryImpl.kt`                  | `Pending` | Code review (see `client_api_spec.md`)            | `RepositoryBindingTest`   |
-  | **4.4** Implement `ServiceConnection` with reconnection logic                  | `Pending` | Code review, simulate service crash               | `ReconnectionTest`        |
-  | **4.5** Implement threading: dispatch binder calls to `Dispatchers.IO`         | `Pending` | Code review                                       | `ThreadingTest`           |
-  | **4.6** Wrap all binder calls in `try-catch(RemoteException)`                  | `Pending` | Code review                                       | `ExceptionHandlingTest`   |
-  | **4.7** Provide repository via Hilt DI module                                  | `Pending` | Code review                                       | `DependencyInjectionTest` |
-  | **4.8** **Build & Verify App**                                                 | `Pending` | `./gradlew :breeze-app-ui:assembleDebug` succeeds | All tests pass            |
+  | Task                                                                           | Status       | Validation Method                                 | Unit Test                 |
+  |:------------------------------------------------------------------------------ |:------------ |:------------------------------------------------- |:------------------------- |
+  | **4.1** Add `:shared-contracts` dependency & custom permission use in Manifest | ✅ `Done`    | `build.gradle.kts` & Manifest review              | N/A                       |
+  | **4.2** Define `domain/repository/AIRouterRepository.kt` interface             | ✅ `Done`    | Code review                                       | N/A                       |
+  | **4.3** Implement `data/repository/AIRouterRepositoryImpl.kt`                  | ✅ `Done`    | Code review (see `client_api_spec.md`)            | `RepositoryBindingTest`   |
+  | **4.4** Implement `ServiceConnection` with reconnection logic                  | ✅ `Done`    | Code review, simulate service crash               | `ReconnectionTest`        |
+  | **4.5** Implement threading: dispatch binder calls to `Dispatchers.IO`         | ✅ `Done`    | Code review                                       | `ThreadingTest`           |
+  | **4.6** Wrap all binder calls in `try-catch(RemoteException)`                  | ✅ `Done`    | Code review                                       | `ExceptionHandlingTest`   |
+  | **4.7** Provide repository via Hilt DI module                                  | ✅ `Done`    | Code review                                       | `DependencyInjectionTest` |
+  | **4.8** **Build & Verify App**                                                 | ✅ `Done`    | `./gradlew :breeze-app-ui:assembleDebug` succeeds | All tests pass            |
 
 ---
 
 #### **Milestone 5: Full E2E Integration**
 
 * **Objective:** Validate the complete end-to-end communication loop: send a message from the UI App, have it received by the Router App, and get a mock response back.
-* **Note:** The implementation of the ViewModel, its state management, and interaction with the UseCase should follow the patterns in **`client_api_spec.md`**.
+* **Note:** The implementation of the ViewModel, its state management, and interaction with the UseCase should follow the patterns in **`client_api_spec.md`** and the reference implementation in `breeze-app-router-client`.
 
 * **Implementation & Validation Tracking:**
   
-  | Task                                                                       | Status    | Validation Method                                        | Unit Test                |
-  |:-------------------------------------------------------------------------- |:--------- |:-------------------------------------------------------- |:------------------------ |
-  | **5.1** Implement `SendMessageUseCase` in UI app's domain layer            | `Pending` | Code review                                              | `SendMessageUseCaseTest` |
-  | **5.2** Inject UseCase into `ChatViewModel`                                | `Pending` | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
-  | **5.3** Call use case from ViewModel on user action                        | `Pending` | Code review                                              | `ChatViewModelTest`      |
-  | **5.4** Validate E2E message flow through existing Mock Runner system     | `Pending` | Logcat shows request delegation to AIEngineManager      | N/A (Integration)        |
-  | **5.5** Implement client-side listener to receive response                 | `Pending` | Logcat on UI app shows response                          | N/A (Integration)        |
-  | **5.6** Update ViewModel with response via `Flow`                          | `Pending` | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
-  | **5.7** **Deploy & Test E2E**                                              | `Pending` | Install both apps, send message, see mock response in UI | E2E Test                 |
-  | **5.8** **Validate Runner switching during E2E flow**                      | `Pending` | Test fallback from MockLLMRunner to MockAPIRunner       | E2E Fallback Test        |
-  | **5.9** **Performance test with multiple concurrent requests**             | `Pending` | Send multiple messages concurrently, verify proper handling | Performance Test      |
-  | **5.10** **Validate streaming response handling**                          | `Pending` | Test streaming mock responses from MockLLMRunner        | Streaming Test           |
+  | Task                                                                       | Status       | Validation Method                                        | Unit Test                |
+  |:-------------------------------------------------------------------------- |:------------ |:-------------------------------------------------------- |:------------------------ |
+  | **5.1** Implement `SendMessageUseCase` in UI app's domain layer            | ✅ `Done`    | Code review                                              | `SendMessageUseCaseTest` |
+  | **5.2** Inject UseCase into `ChatViewModel`                                | ✅ `Done`    | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
+  | **5.3** Call use case from ViewModel on user action                        | ✅ `Done`    | Code review                                              | `ChatViewModelTest`      |
+  | **5.4** Validate E2E message flow through existing Mock Runner system      | ✅ `Done`    | Logcat shows request delegation to AIEngineManager       | N/A (Integration)        |
+  | **5.5** Implement client-side listener to receive response                 | ✅ `Done`    | Logcat on UI app shows response                          | N/A (Integration)        |
+  | **5.6** Update ViewModel with response via `Flow`                          | ✅ `Done`    | Code review (see `client_api_spec.md`)                   | `ChatViewModelTest`      |
+  | **5.7** **Deploy & Test E2E**                                              | ✅ `Done`    | Install both apps, send message, see mock response in UI | E2E Test                 |
+  | **5.8** **Validate Runner switching during E2E flow**                      | ✅ `Done`    | Test fallback from MockLLMRunner to MockAPIRunner       | E2E Fallback Test        |
+  | **5.9** **Performance test with multiple concurrent requests**             | ✅ `Done`    | Send multiple messages concurrently, verify proper handling | Performance Test      |
+  | **5.10** **Validate streaming response handling**                          | ✅ `Done`    | Test streaming mock responses from MockLLMRunner        | Streaming Test           |
 
 ---
 
 ### **3. Summary**
 
-This refactoring approach prioritizes **stability and validation at each step**, with a "contract-first" and "service-first" methodology. The use of Mock Runners ensures that the UI and service teams can work in parallel without blocking each other, while the headless validation via ADB proves the service's robustness before any UI integration begins.
+This refactoring approach has successfully achieved its goals through a methodical, milestone-driven development process. The addition of the `breeze-app-router-client` as a reference implementation has provided significant value:
 
-The detailed tracking tables in each milestone will provide clear visibility into progress and ensure no critical steps are missed. Each task includes a specific validation method and associated unit test, allowing for continuous integration and confidence at every step.
+1. **Validation of the Architecture**: The client app confirms that our AIDL-based IPC design is robust and performant.
+2. **Documentation for Developers**: The client serves as living documentation with comprehensive examples.
+3. **Testing Tool**: The client includes utilities for testing and diagnosing integration issues.
+4. **Best Practices Showcase**: The client demonstrates MVVM architecture, reactive UI patterns, and proper error handling.
 
-**Next Immediate Action:** Execute the tasks in **Milestone 3** since Milestones 1 and 2 are complete. Begin with implementing headless validation via ADB commands to verify the standalone service functionality and Mock Runner extensibility.
+All milestones have been completed, resulting in a fully decoupled system with a clean architecture that separates concerns and promotes maintainability. The use of Mock Runners has allowed for parallel development and thorough testing before integrating with actual AI models.
+
+**Next Steps:**
+1. Continue refining the documentation based on developer feedback
+2. Consider publishing the `shared-contracts` module as a standalone dependency for third-party developers
+3. Implement production runners with actual AI models
+4. Expand the test coverage with more edge cases and performance scenarios

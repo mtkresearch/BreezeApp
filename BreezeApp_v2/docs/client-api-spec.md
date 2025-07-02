@@ -1418,3 +1418,190 @@ override fun onStop() {
 *實作狀態: UI Layer API 92%完成, AI Router API 0%待設計*  
 *重構重點: ChatViewModel移除AI引擎管理 → 實作AIRouterClient通信*  
 *下一步: 完成AI Router通信協議設計 → 實作Service端AIRouterFacade*
+
+## Introduction
+
+This document outlines the API specification for client applications integrating with the BreezeApp AI Router Service. It provides comprehensive guidance on how to properly implement the client-side components for secure and robust communication with the AI Router.
+
+> **NEW**: We have implemented a reference client application (`breeze-app-router-client`) that demonstrates all the concepts described in this document. Developers are encouraged to review this implementation for practical examples of best practices.
+
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Integration Options](#integration-options)
+- [Reference Implementation](#reference-implementation)
+- [API Components](#api-components)
+  - [Repository Interface](#repository-interface)
+  - [Repository Implementation](#repository-implementation)
+  - [Use Cases](#use-cases)
+  - [ViewModel Integration](#viewmodel-integration)
+- [Error Handling](#error-handling)
+- [Threading](#threading)
+- [Security](#security)
+- [Examples](#examples)
+- [Troubleshooting](#troubleshooting)
+
+## Architecture Overview
+
+The client-side architecture follows MVVM with Clean Architecture principles:
+
+```
+UI (Activity/Fragment) → ViewModel → UseCase → Repository → AIRouterService (AIDL)
+```
+
+All communication with the AI Router Service happens through the Repository layer, which encapsulates the AIDL binding and communication details.
+
+## Integration Options
+
+There are two primary ways to integrate with the BreezeApp AI Router Service:
+
+1. **Module Dependency** (recommended for developers within the BreezeApp ecosystem):
+   - Include the `shared-contracts` module as a dependency
+   - Implement the repository pattern as described in this document
+
+2. **Contract Copying** (for standalone development):
+   - Copy the necessary AIDL files and Parcelable data models
+   - Ensure the package structure matches exactly
+
+> **Note**: In the future, we plan to publish the `shared-contracts` module as a standalone dependency via Maven/JitPack to simplify integration.
+
+## Reference Implementation
+
+The `breeze-app-router-client` module serves as a comprehensive reference implementation that demonstrates best practices for integrating with the AI Router Service. Key features include:
+
+- Complete MVVM architecture with separation of concerns
+- Robust service connection with error handling
+- Reactive UI updates using StateFlow
+- Comprehensive testing utilities
+- Diagnostic tools for troubleshooting
+
+Developers should review this implementation as a starting point for their own integration. The code is thoroughly documented with KDoc comments explaining the rationale behind design decisions.
+
+### Key Components in the Reference Implementation
+
+- **MainViewModel**: Demonstrates proper service binding, state management, and error handling
+- **UiState**: Shows how to structure UI state for reactive updates
+- **AIRouterTester**: Provides utilities for testing and validating the connection
+- **test_connection.sh**: A diagnostic script for troubleshooting connection issues
+
+## API Components
+
+### Repository Interface
+
+```kotlin
+interface AIRouterRepository {
+    val connectionState: Flow<ConnectionState>
+    val responses: Flow<AIResponse>
+    
+    suspend fun connect()
+    suspend fun disconnect()
+    suspend fun initialize(config: Configuration): Boolean
+    suspend fun sendMessage(request: AIRequest): Boolean
+    suspend fun cancelRequest(requestId: String): Boolean
+}
+```
+
+### Repository Implementation
+
+```kotlin
+class AIRouterRepositoryImpl(
+    private val context: Context,
+    private val coroutineScope: CoroutineScope
+) : AIRouterRepository {
+    // Implementation details as shown in breeze-app-router-client/MainViewModel.kt
+}
+```
+
+### Use Cases
+
+```kotlin
+class ConnectToRouterUseCase(private val repository: AIRouterRepository) {
+    suspend operator fun invoke() = repository.connect()
+}
+
+class SendMessageUseCase(private val repository: AIRouterRepository) {
+    suspend operator fun invoke(request: AIRequest) = repository.sendMessage(request)
+}
+```
+
+### ViewModel Integration
+
+```kotlin
+class ChatViewModel(
+    private val connectUseCase: ConnectToRouterUseCase,
+    private val sendMessageUseCase: SendMessageUseCase
+) : ViewModel() {
+    // Implementation details as shown in breeze-app-router-client/MainViewModel.kt
+}
+```
+
+## Error Handling
+
+Robust error handling is critical for a good user experience. The reference implementation in `breeze-app-router-client` demonstrates comprehensive error handling strategies:
+
+- Service connection failures (service not installed, wrong permissions)
+- Remote exceptions during IPC calls
+- Timeout handling
+- Graceful degradation when features are unavailable
+
+## Threading
+
+All IPC calls should be performed off the main thread to prevent ANRs (Application Not Responding errors). The reference implementation shows how to properly use Kotlin Coroutines with `Dispatchers.IO` for this purpose.
+
+## Security
+
+The AI Router Service is protected by a signature-level permission. Your application must:
+
+1. Declare the permission in the manifest
+2. Be signed with the same key as the service (for production use)
+
+## Examples
+
+### Basic Connection Example
+
+```kotlin
+// See breeze-app-router-client/MainViewModel.kt for a complete implementation
+private fun bindToService() {
+    val intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService")
+    intent.`package` = "com.mtkresearch.breezeapp.router"
+    
+    // Try to bind to the service
+    val bound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+    
+    if (!bound) {
+        // Try fallback to debug version
+        intent.`package` = "com.mtkresearch.breezeapp.router.debug"
+        val debugBound = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        
+        if (!debugBound) {
+            // Handle connection failure
+        }
+    }
+}
+```
+
+### Sending a Request
+
+```kotlin
+// See breeze-app-router-client/MainViewModel.kt for a complete implementation
+suspend fun sendTextMessage(text: String) = withContext(Dispatchers.IO) {
+    try {
+        val request = AIRequest(
+            id = UUID.randomUUID().toString(),
+            type = AIRequest.TYPE_TEXT,
+            text = text
+        )
+        
+        service?.sendMessage(request)
+        // Handle response through listener
+    } catch (e: RemoteException) {
+        // Handle error
+    }
+}
+```
+
+## Troubleshooting
+
+For common integration issues, please refer to the troubleshooting guide in the `breeze-app-router-client` README. The module also includes a diagnostic script (`test_connection.sh`) that can help identify connection problems.
+
+For more detailed examples and implementation guidance, please review the reference implementation in the `breeze-app-router-client` module.

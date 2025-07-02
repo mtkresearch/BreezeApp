@@ -1,5 +1,5 @@
 plugins {
-    id("com.android.library")
+    id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
 }
@@ -8,10 +8,22 @@ android {
     namespace = "com.mtkresearch.breezeapp.router"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            // In a real project, you would use a secure properties file or environment variables
+            // For this example, we'll point to the debug keystore but keep the structure separate.
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     flavorDimensions += "environment"
     productFlavors {
         create("mock") {
             dimension = "environment"
+            // Signing config is now handled by the build type
         }
         create("prod") {
             dimension = "environment"
@@ -24,12 +36,28 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            isMinifyEnabled = false
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release") // Use the release signing config
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+    }
+
+    // This is the key to disabling the mockRelease variant
+    // using the new, recommended androidComponents API
+    androidComponents {
+        beforeVariants(selector().all()) { variant ->
+            if (variant.buildType == "release" && "mock" in variant.productFlavors.map { it.second }) {
+                variant.enable = false
+            }
         }
     }
 

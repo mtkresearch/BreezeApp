@@ -143,12 +143,12 @@ class AIRouterService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
-        // Enforce signature-level permission
-        if (checkCallingOrSelfPermission(PERMISSION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        // Enforce signature-level permission (skip in debug builds for testing)
+        if (!BuildConfig.DEBUG && checkCallingOrSelfPermission(PERMISSION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Denied binding: missing signature permission")
             return null
         }
-        Log.i(TAG, "Client bound to AIRouterService")
+        Log.i(TAG, "Client bound to AIRouterService (debug=${BuildConfig.DEBUG})")
         return binder
     }
     
@@ -173,13 +173,8 @@ class AIRouterService : Service() {
      */
     private suspend fun processAIRequest(request: AIRequest) {
         try {
-            // Convert AIRequest to InferenceRequest
-            val inferenceRequest = InferenceRequest(
-                sessionId = request.sessionId,
-                inputs = mapOf(InferenceRequest.INPUT_TEXT to request.text),
-                params = request.options,
-                timestamp = request.timestamp
-            )
+            // Convert AIRequest to InferenceRequest with proper data mapping
+            val inferenceRequest = createInferenceRequest(request)
             
             // Determine capability based on request type
             val capability = determineCapability(request)
@@ -208,6 +203,85 @@ class AIRouterService : Service() {
             Log.e(TAG, "Error processing AI request", e)
             notifyError(request.id, e.message ?: "Unknown processing error")
         }
+    }
+    
+    /**
+     * Create InferenceRequest from AIRequest with proper data type mapping
+     */
+    private fun createInferenceRequest(request: AIRequest): InferenceRequest {
+        // Helper to read from options, with fallback for Bundle from AIDL
+        fun getOption(key: String): String? {
+            return request.options[key] ?: (request.options as? android.os.Bundle)?.getString(key)
+        }
+        
+        val inputs = mutableMapOf<String, Any>()
+        
+        // Always include text input
+        inputs[InferenceRequest.INPUT_TEXT] = request.text
+        
+        // Handle capability-specific data from options
+        val requestType = getOption("request_type") ?: getOption(AIRequest.OptionKeys.REQUEST_TYPE)
+        
+        when (requestType) {
+            "image_analysis" -> {
+                // Extract base64 image data and decode it
+                val imageDataBase64 = getOption("image_data")
+                if (imageDataBase64 != null) {
+                    try {
+                        val imageBytes = android.util.Base64.decode(imageDataBase64, android.util.Base64.DEFAULT)
+                        inputs[InferenceRequest.INPUT_IMAGE] = imageBytes
+                        Log.d(TAG, "Image data converted: ${imageBytes.size} bytes")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to decode image data", e)
+                    }
+                } else {
+                    Log.w(TAG, "No image_data found in request options")
+                }
+            }
+            "speech_recognition" -> {
+                // Extract base64 audio data and decode it
+                val audioDataBase64 = getOption("audio_data")
+                if (audioDataBase64 != null) {
+                    try {
+                        val audioBytes = android.util.Base64.decode(audioDataBase64, android.util.Base64.DEFAULT)
+                        inputs[InferenceRequest.INPUT_AUDIO] = audioBytes
+                        Log.d(TAG, "Audio data converted: ${audioBytes.size} bytes")
+                        
+                        // Add audio format info if available
+                        val audioFormat = getOption("audio_format")
+                        if (audioFormat != null) {
+                            inputs[InferenceRequest.INPUT_AUDIO_ID] = "format_$audioFormat"
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to decode audio data", e)
+                    }
+                } else {
+                    Log.w(TAG, "No audio_data found in request options")
+                }
+            }
+            "speech_synthesis" -> {
+                // TTS only needs text input, which is already added
+                inputs["voice"] = getOption("voice") ?: "default"
+                inputs["speed"] = getOption("speed") ?: "1.0"
+            }
+            "content_moderation" -> {
+                // Guardrail only needs text input, which is already added
+                inputs["check_type"] = getOption("check_type") ?: "safety"
+            }
+        }
+        
+        // Convert options map for params, handling Bundle type
+        val params = mutableMapOf<String, Any>()
+        request.options.forEach { (key, value) ->
+            params[key] = value?.toString() ?: ""
+        }
+        
+        return InferenceRequest(
+            sessionId = request.sessionId,
+            inputs = inputs,
+            params = params,
+            timestamp = request.timestamp
+        )
     }
     
     private fun determineCapability(request: AIRequest): CapabilityType {
