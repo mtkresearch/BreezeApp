@@ -12,15 +12,15 @@ import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
 import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
 import com.mtkresearch.breezeapp.shared.contracts.model.Configuration
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
-import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
+import com.mtkresearch.breezeapp.router.injection.RouterConfigurator
 import com.mtkresearch.breezeapp.router.domain.model.*
-import com.mtkresearch.breezeapp.router.injection.DependencyProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
 import android.os.RemoteCallbackList
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * AIRouterService
@@ -46,21 +46,10 @@ class AIRouterService : Service() {
 
     // Robust listener management with death monitoring
     private val listeners = object : RemoteCallbackList<IAIRouterListener>() {}
-
-    // Service configuration (set via initialize)
-    @Volatile
-    private var configuration: Configuration? = null
     
-    // Use Case layer dependencies
-    private val dependencyProvider = DependencyProvider.getInstance()
-    private val aiEngineManager: AIEngineManager by lazy {
-        dependencyProvider.getAIEngineManager()
-    }
+    // Core components are now tied to the service's lifecycle.
+    private lateinit var engineManager: AIEngineManager
     
-    // Service initialization flag
-    @Volatile
-    private var isInitialized = false
-
     // --- Binder Stub Implementation ---
     private val binder = object : IAIRouterService.Stub() {
         override fun getApiVersion(): Int {
@@ -68,50 +57,36 @@ class AIRouterService : Service() {
             return API_VERSION
         }
 
-        override fun initialize(config: Configuration?) {
-            Log.i(TAG, "initialize() called: $config")
-            if (config == null) {
-                Log.e(TAG, "Configuration is null. Initialization failed.")
-                return
-            }
-            
-            // Validate configuration fields
-            val valid = validateConfiguration(config)
-            if (!valid) {
-                Log.e(TAG, "Configuration validation failed. Initialization aborted.")
-                return
-            }
-            
-            configuration = config
-            
-            // Delegate runner initialization to the flavor-specific dependency provider
-            serviceScope.launch {
-                dependencyProvider.initializeRunners(config)
-                isInitialized = true
-                Log.i(TAG, "AIRouterService initialized successfully via DependencyProvider")
-            }
-        }
-
         override fun sendMessage(request: AIRequest?) {
             Log.i(TAG, "sendMessage() called: $request")
-            if (request == null) return
-            
-            if (!isInitialized) {
-                Log.w(TAG, "Service not initialized, sending error response")
-                notifyError(request.id, "Service not initialized. Please call initialize() first.")
+            if (request == null) {
+                Log.w(TAG, "sendMessage received a null request.")
                 return
             }
             
             // Offload to coroutine for non-blocking processing
-            serviceScope.launch {
+            val requestJob = serviceScope.launch {
                 processAIRequest(request)
+            }
+            
+            // Track the request for potential cancellation
+            engineManager.let { manager ->
+                // Store the job for potential cancellation
+                manager.javaClass.getDeclaredField("activeRequests").apply {
+                    isAccessible = true
+                    (get(manager) as ConcurrentHashMap<String, Job>)[request.id] = requestJob
+                }
             }
         }
 
         override fun cancelRequest(requestId: String?): Boolean {
             Log.i(TAG, "cancelRequest() called: $requestId")
-            // TODO: Implement cancellation logic in AIEngineManager
-            return false // Mock: always fail for now
+            return if (requestId != null) {
+                engineManager.cancelRequest(requestId)
+            } else {
+                Log.w(TAG, "cancelRequest received null requestId")
+                false
+            }
         }
 
         override fun registerListener(listener: IAIRouterListener?) {
@@ -139,7 +114,14 @@ class AIRouterService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "AIRouterService created")
+        Log.d(TAG, "AIRouterService creating...")
+
+        // Instantiate the dependency graph. The RouterConfigurator will handle
+        // all the setup, including reading the config and registering runners.
+        val configurator = RouterConfigurator(applicationContext)
+        this.engineManager = configurator.engineManager
+
+        Log.d(TAG, "AIRouterService created and configured.")
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -153,17 +135,15 @@ class AIRouterService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Support for headless testing via ADB
-        intent?.let { testIntent ->
-            // Delegate test intent handling to the flavor-specific dependency provider
-            dependencyProvider.handleTestIntent(testIntent, serviceScope)
-        }
+        // Headless testing can be handled by directly interacting with the manager or runners
+        // if needed, but the explicit handleTestIntent is removed for simplification.
+        Log.d(TAG, "onStartCommand received, for now it does nothing.")
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        aiEngineManager.cleanup()
+        engineManager.cleanup()
         serviceJob.cancel()
         Log.i(TAG, "AIRouterService destroyed")
     }
@@ -184,7 +164,7 @@ class AIRouterService : Service() {
             
             if (isStreamingRequest) {
                 // Process as streaming request
-                aiEngineManager.processStream(inferenceRequest, capability)
+                engineManager.processStream(inferenceRequest, capability)
                     .catch { error ->
                         Log.e(TAG, "Stream processing error", error)
                         notifyError(request.id, error.message ?: "Stream processing failed")
@@ -195,7 +175,7 @@ class AIRouterService : Service() {
                     }
             } else {
                 // Process as regular request
-                val result = aiEngineManager.process(inferenceRequest, capability)
+                val result = engineManager.process(inferenceRequest, capability)
                 val response = convertToAIResponse(request.id, result)
                 notifyListeners(response)
             }
@@ -346,29 +326,5 @@ class AIRouterService : Service() {
             error = errorMessage
         )
         notifyListeners(errorResponse)
-    }
-
-    // Configuration validation logic
-    private fun validateConfiguration(config: Configuration): Boolean {
-        // Basic checks for required fields and value ranges
-        if (config.apiVersion <= 0) return false
-        if (config.logLevel !in 0..5) return false
-        if (config.timeoutMs < 0) return false
-        if (config.maxTokens <= 0) return false
-        if (config.temperature !in 0.0f..1.0f) return false
-        if (config.languagePreference.isBlank()) return false
-        // Validate enums (should always be valid due to type safety, but double-check)
-        try {
-            Configuration.RuntimeBackend.valueOf(config.preferredRuntime.name)
-            config.runnerConfigurations.forEach { (task, runner) ->
-                Configuration.AITaskType.valueOf(task.name)
-                Configuration.RunnerType.valueOf(runner.name)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Invalid enum in configuration: ${e.message}")
-            return false
-        }
-        // Additional checks can be added here
-        return true
     }
 } 

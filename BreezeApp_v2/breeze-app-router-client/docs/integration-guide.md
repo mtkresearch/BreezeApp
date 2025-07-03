@@ -49,7 +49,7 @@ dependencies {
 Add the following permissions to your `AndroidManifest.xml`:
 
 ```xml
-<uses-permission android:name="com.mtkresearch.breezeapp.router.BIND_SERVICE" />
+<uses-permission android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE" />
 ```
 
 ## Basic Usage

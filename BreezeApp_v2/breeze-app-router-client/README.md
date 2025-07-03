@@ -95,7 +95,6 @@ Your app needs proper permissions and queries to interact with the service:
 
 <!-- Queries to discover the service -->
 <queries>
-    <package android:name="com.mtkresearch.breezeapp.router.debug" />
     <package android:name="com.mtkresearch.breezeapp.router" />
     <intent>
         <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />
@@ -111,24 +110,15 @@ To communicate with the service, you must bind to it. This is an asynchronous op
 ```kotlin
 fun connectToService() {
     logMessage("🔄 Connecting to AI Router Service...")
-    
-    // First try connecting to the debug version (if installed)
-    var intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-        setPackage("com.mtkresearch.breezeapp.router.debug")
+
+    val intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
+        setPackage("com.mtkresearch.breezeapp.router")
     }
-    
-    var success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
-    
+
+    val success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+
     if (!success) {
-        // If debug version not found, try production version
-        intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-            setPackage("com.mtkresearch.breezeapp.router")
-        }
-        success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
-    }
-    
-    if (!success) {
-        logMessage("❌ Failed to bind to AI Router Service")
+        logMessage("❌ Failed to bind to AI Router Service. Is it installed?")
     }
 }
 
@@ -358,13 +348,13 @@ The `test_connection.sh` script helps verify proper service connection:
 echo "🔧 Testing BreezeApp Router Client Connection"
 echo "============================================="
 
-# Verify installations
-echo "📋 Verifying installations..."
-adb shell pm list packages | grep -E "breezeapp.router"
+# Verify installation
+echo "📋 Verifying installation..."
+adb shell pm list packages | grep "com.mtkresearch.breezeapp.router"
 
 # Check permissions
 echo "🔒 Checking permissions..."
-adb shell dumpsys package com.mtkresearch.breezeapp.router.debug | grep -A 10 "declared permissions"
+adb shell dumpsys package com.mtkresearch.breezeapp.router | grep -A 10 "declared permissions"
 echo ""
 echo "Client permissions:"
 adb shell dumpsys package YOUR_PACKAGE_NAME | grep -A 10 "requested permissions"

@@ -1,10 +1,11 @@
 package com.mtkresearch.breezeapp.router.domain.usecase
 
-import android.util.Log
+import com.mtkresearch.breezeapp.router.domain.common.Logger
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
 import com.mtkresearch.breezeapp.router.domain.model.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import java.util.concurrent.ConcurrentHashMap
@@ -28,7 +29,8 @@ import kotlin.concurrent.write
 private class RunnerSelectionException(val runnerError: RunnerError) : Exception()
 
 class AIEngineManager(
-    private val runnerRegistry: RunnerRegistry = RunnerRegistry.getInstance()
+    private val runnerRegistry: RunnerRegistry,
+    private val logger: Logger
 ) {
     
     companion object {
@@ -42,6 +44,9 @@ class AIEngineManager(
     // 讀寫鎖保護配置變更
     private val configLock = ReentrantReadWriteLock()
     
+    // 請求取消支援
+    private val activeRequests = ConcurrentHashMap<String, Job>()
+    
     /**
      * 設定預設 Runner 映射
      * @param mappings 能力類型到 Runner 名稱的映射
@@ -50,7 +55,7 @@ class AIEngineManager(
         configLock.write {
             defaultRunners.clear()
             defaultRunners.putAll(mappings)
-            Log.d(TAG, "Updated default runners: $mappings")
+            logger.d(TAG, "Updated default runners: $mappings")
         }
     }
     
@@ -66,10 +71,11 @@ class AIEngineManager(
         capability: CapabilityType,
         preferredRunner: String? = null
     ): InferenceResult {
+        val requestId = request.sessionId ?: "request-${System.currentTimeMillis()}"
         return try {
             selectAndLoadRunner(capability, preferredRunner).fold(
                 onSuccess = { runner ->
-                    Log.d(TAG, "Processing request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
+                    logger.d(TAG, "Processing request $requestId with runner: ${runner.getRunnerInfo().name}")
                     runner.run(request)
                 },
                 onFailure = { error ->
@@ -78,8 +84,11 @@ class AIEngineManager(
                 }
             )
         } catch (e: Exception) {
-            Log.e(TAG, "Error processing request", e)
+            logger.e(TAG, "Error processing request", e)
             InferenceResult.error(RunnerError("E101", e.message ?: "Unknown error", true, e))
+        } finally {
+            // Clean up completed request from tracking
+            activeRequests.remove(requestId)
         }
     }
     
@@ -95,10 +104,11 @@ class AIEngineManager(
         capability: CapabilityType,
         preferredRunner: String? = null
     ): Flow<InferenceResult> = flow {
+        val requestId = request.sessionId ?: "stream-${System.currentTimeMillis()}"
         try {
             selectAndLoadRunner(capability, preferredRunner).fold(
                 onSuccess = { runner ->
-                    Log.d(TAG, "Processing stream request ${request.sessionId} with runner: ${runner.getRunnerInfo().name}")
+                    logger.d(TAG, "Processing stream request $requestId with runner: ${runner.getRunnerInfo().name}")
                     if (runner is FlowStreamingRunner) {
                         runner.runAsFlow(request).collect { emit(it) }
                     } else {
@@ -111,10 +121,36 @@ class AIEngineManager(
                 }
             )
         } catch (e: CancellationException) {
+            logger.d(TAG, "Stream request $requestId was cancelled")
             throw e
         } catch (e: Exception) {
-            Log.e(TAG, "Error processing stream request", e)
+            logger.e(TAG, "Error processing stream request", e)
             emit(InferenceResult.error(RunnerError("E101", e.message ?: "Unknown error", true, e)))
+        } finally {
+            // Clean up completed stream request from tracking
+            activeRequests.remove(requestId)
+        }
+    }
+    
+    /**
+     * 取消正在進行的請求
+     * @param requestId 請求ID
+     * @return 是否成功取消
+     */
+    fun cancelRequest(requestId: String): Boolean {
+        return try {
+            val job = activeRequests.remove(requestId)
+            if (job != null) {
+                job.cancel()
+                logger.d(TAG, "Cancelled request: $requestId")
+                true
+            } else {
+                logger.w(TAG, "Request not found for cancellation: $requestId")
+                false
+            }
+        } catch (e: Exception) {
+            logger.e(TAG, "Error cancelling request: $requestId", e)
+            false
         }
     }
     
@@ -127,11 +163,11 @@ class AIEngineManager(
                 try {
                     runner.unload()
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error unloading runner: ${runner.getRunnerInfo().name}", e)
+                    logger.e(TAG, "Error unloading runner: ${runner.getRunnerInfo().name}", e)
                 }
             }
             activeRunners.clear()
-            Log.d(TAG, "Cleaned up all active runners")
+            logger.d(TAG, "Cleaned up all active runners")
         }
     }
     
@@ -153,7 +189,7 @@ class AIEngineManager(
             runnerName = preferredRunner
         } else {
             runnerName = configLock.read {
-                defaultRunners[capability] ?: runnerRegistry.getRunnersForCapability(capability).firstOrNull()
+                defaultRunners[capability] ?: runnerRegistry.getRunnersForCapability(capability).firstOrNull()?.name
             }
         }
 
@@ -172,7 +208,7 @@ class AIEngineManager(
         
         // 4. Load runner if needed
         if (!runner.isLoaded()) {
-            Log.d(TAG, "Runner $runnerName not loaded, attempting to load...")
+            logger.d(TAG, "Runner $runnerName not loaded, attempting to load...")
             val loaded = runner.load(createDefaultConfig(runnerName))
             if (!loaded) {
                 return Result.failure(RunnerSelectionException(RunnerError("E501", "Failed to load model for runner: $runnerName")))
@@ -197,10 +233,10 @@ class AIEngineManager(
             try {
                 runnerRegistry.createRunner(name)?.also { runner ->
                     activeRunners[name] = runner
-                    Log.d(TAG, "Created new runner instance: $name")
+                    logger.d(TAG, "Created new runner instance: $name")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create runner: $name", e)
+                logger.e(TAG, "Failed to create runner: $name", e)
                 null
             }
         }

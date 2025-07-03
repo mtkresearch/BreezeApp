@@ -7,24 +7,25 @@ import com.mtkresearch.breezeapp.shared.contracts.model.BinaryData;
 import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener;
 
 /**
- * Main interface for communication with the AIRouterService.
+ * AIDL interface for the AI Router Service.
+ * This interface defines the contract for communication between client applications
+ * and the AI Router Service. It supports sending AI requests and managing listeners
+ * for asynchronous responses.
  */
 interface IAIRouterService {
     /**
-     * Returns the API version supported by this service implementation.
-     * Clients should check this before proceeding with other calls to ensure compatibility.
+     * Retrieves the current API version of the service.
+     * This allows clients to check for compatibility.
+     * @return The integer API version.
      */
     int getApiVersion();
-    
-    /**
-     * Initializes the service with a given configuration.
-     * This should be the first call made by a client after checking the API version.
-     */
-    void initialize(in Configuration config);
 
     /**
-     * Sends a request to the service for processing.
-     * Responses will be sent back via the IAIRouterListener.
+     * Sends an AI request to the service for processing.
+     * The service will process the request asynchronously and send the response
+     * via a registered IAIRouterListener.
+     *
+     * @param request The AIRequest object containing all necessary data.
      */
     void sendMessage(in AIRequest request);
     

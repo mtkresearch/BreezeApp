@@ -1,12 +1,14 @@
- package com.mtkresearch.breezeapp.router.domain.usecase
+package com.mtkresearch.breezeapp.router.domain.usecase
 
-import android.util.Log
+import com.mtkresearch.breezeapp.router.domain.common.Logger
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.model.CapabilityType
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
+
+private const val TAG = "RunnerRegistry"
 
 /**
  * RunnerRegistry
@@ -17,32 +19,15 @@ import kotlin.concurrent.write
  * 特性：
  * - 線程安全的註冊和查詢
  * - 支援 Factory Pattern 動態創建
- * - 能力類型索引
+ * - 基於能力的優先級選擇
  * - Runner 生命週期管理
  * - 異常處理和日誌記錄
  */
-class RunnerRegistry {
+class RunnerRegistry(private val logger: Logger) {
     
-    companion object {
-        private const val TAG = "RunnerRegistry"
-        
-        @Volatile
-        private var INSTANCE: RunnerRegistry? = null
-        
-        fun getInstance(): RunnerRegistry {
-            return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: RunnerRegistry().also { INSTANCE = it }
-            }
-        }
-    }
-    
-    // Runner 工廠儲存
-    private val runnerFactories = ConcurrentHashMap<String, RunnerFactory>()
-    
-    // 能力類型索引 (快速查詢支援特定能力的 Runner)
-    private val capabilityIndex = ConcurrentHashMap<CapabilityType, MutableSet<String>>()
-    
-    // 讀寫鎖保護索引更新
+    // 以能力為鍵，儲存一個按優先級排序的 RunnerRegistration 列表
+    private val capabilitiesMap = ConcurrentHashMap<CapabilityType, MutableList<RunnerRegistration>>()
+    private val runnersByName = ConcurrentHashMap<String, RunnerRegistration>()
     private val indexLock = ReentrantReadWriteLock()
     
     /**
@@ -59,9 +44,9 @@ class RunnerRegistry {
         val name: String,
         val factory: RunnerFactory,
         val capabilities: List<CapabilityType>,
+        val priority: Int, // 0=最高, 數字越大優先級越低
         val description: String = "",
-        val version: String = "1.0.0",
-        val isMock: Boolean = false
+        val version: String = "1.0.0"
     )
     
     /**
@@ -71,17 +56,24 @@ class RunnerRegistry {
     fun register(registration: RunnerRegistration) {
         indexLock.write {
             try {
-                runnerFactories[registration.name] = registration.factory
+                // 註冊到名稱映射中，方便按名稱查找
+                runnersByName[registration.name] = registration
                 
                 // 更新能力索引
                 registration.capabilities.forEach { capability ->
-                    capabilityIndex.getOrPut(capability) { ConcurrentHashMap.newKeySet() }
-                        .add(registration.name)
+                    capabilitiesMap.getOrPut(capability) { mutableListOf() }
+                        .apply {
+                            // 移除舊的同名註冊，避免重複
+                            removeAll { it.name == registration.name }
+                            add(registration)
+                            // 根據優先級排序，數字越小越靠前
+                            sortBy { it.priority }
+                        }
                 }
                 
-                Log.d(TAG, "Registered runner: ${registration.name} with capabilities: ${registration.capabilities}")
+                logger.d(TAG, "Registered runner: ${registration.name} with priority: ${registration.priority}")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to register runner: ${registration.name}", e)
+                logger.e(TAG, "Failed to register runner: ${registration.name}", e)
                 throw e
             }
         }
@@ -91,8 +83,9 @@ class RunnerRegistry {
      * 註冊 Runner (簡化版本)
      * @param name Runner 名稱
      * @param factory Runner 工廠函數
+     * @param priority 優先級，數字越小越高
      */
-    fun register(name: String, factory: RunnerFactory) {
+    fun register(name: String, factory: RunnerFactory, priority: Int = 10) {
         try {
             // 嘗試創建實例以獲取能力資訊
             val tempInstance = factory.create()
@@ -106,12 +99,12 @@ class RunnerRegistry {
                 name = name,
                 factory = factory,
                 capabilities = capabilities,
+                priority = priority, // Use provided priority
                 description = info.description,
-                version = info.version,
-                isMock = info.isMock
+                version = info.version
             ))
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to register runner: $name", e)
+            logger.e(TAG, "Failed to register runner: $name", e)
             throw RunnerRegistrationException("Failed to register runner: $name", e)
         }
     }
@@ -123,35 +116,52 @@ class RunnerRegistry {
     fun unregister(name: String) {
         indexLock.write {
             try {
-                runnerFactories.remove(name)
+                runnersByName.remove(name)
                 
                 // 從能力索引中移除
-                capabilityIndex.values.forEach { runnerSet ->
-                    runnerSet.remove(name)
+                capabilitiesMap.values.forEach { runnerList ->
+                    runnerList.removeAll { it.name == name }
                 }
                 
-                Log.d(TAG, "Unregistered runner: $name")
+                logger.d(TAG, "Unregistered runner: $name")
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to unregister runner: $name", e)
+                logger.e(TAG, "Failed to unregister runner: $name", e)
             }
         }
     }
     
     /**
-     * 創建 Runner 實例
+     * 創建 Runner 實例 (按名稱)
      * @param name Runner 名稱
      * @return Runner 實例，如果未找到則返回 null
      */
     fun createRunner(name: String): BaseRunner? {
         return indexLock.read {
             try {
-                runnerFactories[name]?.let { factory ->
-                    val runner = factory.create()
-                    Log.d(TAG, "Created runner instance: $name")
-                    runner
+                runnersByName[name]?.factory?.create()?.also {
+                    logger.d(TAG, "Created runner instance by name: $name")
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to create runner: $name", e)
+                logger.e(TAG, "Failed to create runner by name: $name", e)
+                null
+            }
+        }
+    }
+    
+    /**
+     * 根據能力獲取最佳的 Runner 實例
+     * @param capability 能力類型
+     * @return 優先級最高的 Runner 實例，如果未找到則返回 null
+     */
+    fun getRunnerForCapability(capability: CapabilityType): BaseRunner? {
+        return indexLock.read {
+            try {
+                // 因為列表已經排序，直接取第一個
+                capabilitiesMap[capability]?.firstOrNull()?.factory?.create()?.also {
+                    logger.d(TAG, "Created best runner for capability $capability: ${it.getRunnerInfo().name}")
+                }
+            } catch (e: Exception) {
+                logger.e(TAG, "Failed to create runner for capability: $capability", e)
                 null
             }
         }
@@ -163,7 +173,7 @@ class RunnerRegistry {
      * @return 是否已註冊
      */
     fun isRegistered(name: String): Boolean {
-        return runnerFactories.containsKey(name)
+        return runnersByName.containsKey(name)
     }
     
     /**
@@ -171,17 +181,17 @@ class RunnerRegistry {
      * @return Runner 名稱列表
      */
     fun getRegisteredRunners(): List<String> {
-        return runnerFactories.keys.toList()
+        return runnersByName.keys.toList()
     }
     
     /**
-     * 根據能力類型查詢支援的 Runner
+     * 根據能力類型查詢支援的 Runner (按優先級排序)
      * @param capability 能力類型
-     * @return 支援該能力的 Runner 名稱列表
+     * @return 支援該能力的 RunnerRegistration 列表
      */
-    fun getRunnersForCapability(capability: CapabilityType): List<String> {
+    fun getRunnersForCapability(capability: CapabilityType): List<RunnerRegistration> {
         return indexLock.read {
-            capabilityIndex[capability]?.toList() ?: emptyList()
+            capabilitiesMap[capability]?.toList() ?: emptyList()
         }
     }
     
@@ -190,7 +200,7 @@ class RunnerRegistry {
      * @return 能力類型列表
      */
     fun getSupportedCapabilities(): List<CapabilityType> {
-        return capabilityIndex.keys.toList()
+        return capabilitiesMap.keys.toList()
     }
     
     /**
@@ -198,9 +208,9 @@ class RunnerRegistry {
      */
     fun clear() {
         indexLock.write {
-            runnerFactories.clear()
-            capabilityIndex.clear()
-            Log.d(TAG, "Cleared all registered runners")
+            runnersByName.clear()
+            capabilitiesMap.clear()
+            logger.d(TAG, "Cleared all registered runners")
         }
     }
     
@@ -210,9 +220,9 @@ class RunnerRegistry {
     fun getRegistryStats(): RegistryStats {
         return indexLock.read {
             RegistryStats(
-                totalRunners = runnerFactories.size,
-                capabilityCount = capabilityIndex.size,
-                runnersPerCapability = capabilityIndex.mapValues { it.value.size }
+                totalRunners = runnersByName.size,
+                capabilityCount = capabilitiesMap.size,
+                runnersPerCapability = capabilitiesMap.mapValues { it.value.size }
             )
         }
     }

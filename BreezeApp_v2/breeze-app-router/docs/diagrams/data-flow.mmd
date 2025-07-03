@@ -1,0 +1,13 @@
+flowchart LR
+    Client[Client App]
+    Service[AIRouterService]
+    Manager[AIEngineManager]
+    Registry[RunnerRegistry]
+    Runner[BaseRunner]
+    Client-->|AIDL Request|Service
+    Service-->|Validate/Route|Manager
+    Manager-->|Select/Load|Registry
+    Registry-->|Create|Runner
+    Runner-->|Inference|Manager
+    Manager-->|Result|Service
+    Service-->|AIDL Response|Client

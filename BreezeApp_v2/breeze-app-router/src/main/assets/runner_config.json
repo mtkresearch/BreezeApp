@@ -1,0 +1,39 @@
+{
+  "runners": [
+    {
+      "name": "breeze_llm_mock_v1",
+      "class": "com.mtkresearch.breezeapp.router.data.runner.MockLLMRunner",
+      "capabilities": ["LLM"],
+      "priority": 100,
+      "is_real": false
+    },
+    {
+      "name": "breeze_asr_mock_v1",
+      "class": "com.mtkresearch.breezeapp.router.data.runner.MockASRRunner",
+      "capabilities": ["ASR"],
+      "priority": 100,
+      "is_real": false
+    },
+    {
+      "name": "breeze_vlm_mock_v1",
+      "class": "com.mtkresearch.breezeapp.router.data.runner.MockVLMRunner",
+      "capabilities": ["VLM"],
+      "priority": 100,
+      "is_real": false
+    },
+    {
+      "name": "breeze_tts_mock_v1",
+      "class": "com.mtkresearch.breezeapp.router.data.runner.MockTTSRunner",
+      "capabilities": ["TTS"],
+      "priority": 100,
+      "is_real": false
+    },
+    {
+      "name": "breeze_guardian_mock_v1",
+      "class": "com.mtkresearch.breezeapp.router.data.runner.MockGuardrailRunner",
+      "capabilities": ["GUARDIAN"],
+      "priority": 100,
+      "is_real": false
+    }
+  ]
+} 

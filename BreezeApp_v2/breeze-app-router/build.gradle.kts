@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.23"
 }
 
 android {
@@ -19,17 +20,6 @@ android {
         }
     }
 
-    flavorDimensions += "environment"
-    productFlavors {
-        create("mock") {
-            dimension = "environment"
-            // Signing config is now handled by the build type
-        }
-        create("prod") {
-            dimension = "environment"
-        }
-    }
-
     defaultConfig {
         minSdk = 34
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -38,26 +28,14 @@ android {
     buildTypes {
         getByName("debug") {
             isMinifyEnabled = false
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
         }
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = false // Let's keep it false for now to simplify debugging.
             signingConfig = signingConfigs.getByName("release") // Use the release signing config
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-        }
-    }
-
-    // This is the key to disabling the mockRelease variant
-    // using the new, recommended androidComponents API
-    androidComponents {
-        beforeVariants(selector().all()) { variant ->
-            if (variant.buildType == "release" && "mock" in variant.productFlavors.map { it.second }) {
-                variant.enable = false
-            }
         }
     }
 
@@ -80,6 +58,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     testImplementation("junit:junit:4.13.2")
     testImplementation("io.mockk:mockk:1.13.10")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")

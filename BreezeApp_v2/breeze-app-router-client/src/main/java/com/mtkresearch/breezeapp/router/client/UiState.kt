@@ -12,7 +12,6 @@ import android.net.Uri
  * @property logMessages List of log messages to display in the UI, with the most recent messages at the end.
  * @property connectionStatus Human-readable status of the connection to the AI Router Service.
  * @property isConnected Whether the client is currently connected to the AI Router Service.
- * @property isInitialized Whether the AI Router Service has been successfully initialized with configuration.
  * @property isRecording Whether audio recording is currently active.
  * @property selectedImageUri The URI of an image selected by the user for image-based requests, if any.
  * @property hasRecordedAudio Whether audio has been recorded and is ready to be sent.
@@ -23,7 +22,6 @@ data class UiState(
     val logMessages: List<String> = emptyList(),
     val connectionStatus: String = "Disconnected",
     val isConnected: Boolean = false,
-    val isInitialized: Boolean = false,
     val isRecording: Boolean = false,
     val selectedImageUri: Uri? = null,
     val hasRecordedAudio: Boolean = false
@@ -55,16 +53,6 @@ data class UiState(
             connectionStatus = status,
             isConnected = isConnected
         )
-    }
-
-    /**
-     * Sets the initialization state.
-     *
-     * @param initialized Whether the service is initialized.
-     * @return A new UiState with the updated initialization state.
-     */
-    fun setInitialized(initialized: Boolean): UiState {
-        return copy(isInitialized = initialized)
     }
 
     /**

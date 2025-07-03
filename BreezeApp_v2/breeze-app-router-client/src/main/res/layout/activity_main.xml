@@ -34,17 +34,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Connect"
-                android:layout_marginEnd="8dp"/>
-            
-            <Button
-                android:id="@+id/initializeButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Initialize"
-                android:enabled="false"
-                android:layout_marginStart="8dp"/>
+                android:text="Connect" />
         </LinearLayout>
 
         <!-- API Testing Buttons -->
@@ -68,6 +58,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Check Capabilities"
+            android:enabled="false"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/cancelRequestButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cancel Request"
             android:enabled="false"
             android:layout_marginBottom="16dp"/>
 
@@ -261,51 +259,37 @@
                 android:layout_marginStart="4dp"/>
         </LinearLayout>
 
-        <!-- Cancel and Reset -->
+        <!-- Log Output -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-            
-            <Button
-                android:id="@+id/cancelRequestButton"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="🚫 Cancel Request"
-                android:enabled="false"
-                android:layout_marginEnd="4dp"/>
-            
+                android:text="Log Output"
+                android:textAppearance="@style/TextAppearance.AppCompat.Large"/>
+
             <Button
                 android:id="@+id/clearLogButton"
-                android:layout_width="0dp"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🗑️ Clear Log"
-                android:layout_marginStart="4dp"/>
+                android:text="Clear"/>
         </LinearLayout>
 
-        <!-- Log Output -->
-        <TextView
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/logRecyclerView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Output Log"
-            android:textAppearance="@style/TextAppearance.AppCompat.Large"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:id="@+id/logTextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="200dp"
-            android:text="Ready to connect..."
-            android:textAppearance="@style/TextAppearance.AppCompat.Small"
-            android:background="@android:color/darker_gray"
+            android:layout_height="300dp"
+            android:background="#303030"
             android:padding="8dp"
-            android:textColor="@android:color/white"
-            android:fontFamily="monospace"
-            android:scrollbars="vertical"/>
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            tools:listitem="@android:layout/simple_list_item_1"/>
 
     </LinearLayout>
 </ScrollView> 

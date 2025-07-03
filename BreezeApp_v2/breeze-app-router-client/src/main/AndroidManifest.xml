@@ -49,7 +49,6 @@
     </application>
 
     <queries>
-        <package android:name="com.mtkresearch.breezeapp.router.debug" />
         <package android:name="com.mtkresearch.breezeapp.router" />
         <intent>
             <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />

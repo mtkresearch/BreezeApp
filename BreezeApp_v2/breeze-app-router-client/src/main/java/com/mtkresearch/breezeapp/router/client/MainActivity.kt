@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
+    private lateinit var logAdapter: LogAdapter
 
     private var mediaRecorder: MediaRecorder? = null
     private var currentAudioFile: File? = null
@@ -66,11 +67,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupUI() {
-        binding.connectButton.setOnClickListener {
+        binding.connectButton.setOnClickListener { 
             if (viewModel.uiState.value.isConnected) viewModel.disconnectFromService()
             else viewModel.connectToService()
         }
-        binding.initializeButton.setOnClickListener { viewModel.initializeService() }
         binding.getApiVersionButton.setOnClickListener { viewModel.getApiVersion() }
         binding.hasCapabilityButton.setOnClickListener { viewModel.checkCapabilities() }
         binding.cancelRequestButton.setOnClickListener { viewModel.cancelRequest() }
@@ -104,6 +104,11 @@ class MainActivity : AppCompatActivity() {
             viewModel.sendGuardrailRequest(text)
         }
         binding.clearLogButton.setOnClickListener { viewModel.clearLogs() }
+
+        logAdapter = LogAdapter()
+        binding.logRecyclerView.apply {
+            adapter = logAdapter
+        }
     }
 
     private fun observeViewModel() {
@@ -112,9 +117,8 @@ class MainActivity : AppCompatActivity() {
                 viewModel.uiState.collect { state ->
                     binding.connectionStatus.text = state.connectionStatus
                     binding.connectButton.text = if (state.isConnected) "Disconnect" else "Connect"
-                    binding.initializeButton.isEnabled = state.isConnected && !state.isInitialized
-
-                    val isReady = state.isInitialized
+                    
+                    val isReady = state.isConnected
                     binding.getApiVersionButton.isEnabled = isReady
                     binding.hasCapabilityButton.isEnabled = isReady
                     binding.cancelRequestButton.isEnabled = isReady
@@ -132,7 +136,10 @@ class MainActivity : AppCompatActivity() {
                     
                     binding.recordAudioButton.text = if (state.isRecording) "⏹️ Stop Recording" else "🎤 Record Audio"
                     
-                    binding.logTextView.text = state.logMessages.asReversed().joinToString("\n")
+                    logAdapter.submitList(state.logMessages.asReversed())
+                    binding.logRecyclerView.post {
+                        binding.logRecyclerView.smoothScrollToPosition(0)
+                    }
                 }
             }
         }

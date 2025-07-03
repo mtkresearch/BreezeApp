@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.IBinder
+import android.os.RemoteException
 import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -28,6 +29,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+
 /**
  * ViewModel for the Breeze App Router Client.
  * 
@@ -54,36 +56,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            logMessage("✅ Service connected successfully")
-            logMessage("   Component: ${name?.packageName}.${name?.className}")
             routerService = IAIRouterService.Stub.asInterface(service)
+            _uiState.update { it.copy(connectionStatus = "Connected", isConnected = true) }
+            logMessage("✅ Service connected")
             try {
                 routerService?.registerListener(callback)
-                logMessage("   ✅ Listener registered successfully")
-            } catch (e: Exception) {
-                logMessage("   ❌ Failed to register listener: ${e.message}")
+            } catch (e: RemoteException) {
+                logMessage("❌ Error registering listener: ${e.message}")
             }
-            _uiState.update { it.copy(connectionStatus = "Connected", isConnected = true) }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            logMessage("❌ Service disconnected")
-            logMessage("   Component: ${name?.packageName}.${name?.className}")
+            logMessage("ℹ️ Service disconnected")
+            _uiState.update { it.copy(connectionStatus = "Disconnected", isConnected = false) }
             routerService = null
-            _uiState.update { it.copy(connectionStatus = "Disconnected", isConnected = false, isInitialized = false) }
         }
-        
+
         override fun onBindingDied(name: ComponentName?) {
-            logMessage("💀 Service binding died")
-            logMessage("   Component: ${name?.packageName}.${name?.className}")
+            logMessage("❌ Binding Died! Service may have crashed.")
+            _uiState.update { it.copy(connectionStatus = "Binding Died", isConnected = false) }
             routerService = null
-            _uiState.update { it.copy(connectionStatus = "Binding Died", isConnected = false, isInitialized = false) }
-        }
-        
-        override fun onNullBinding(name: ComponentName?) {
-            logMessage("❌ Service returned null binding")
-            logMessage("   Component: ${name?.packageName}.${name?.className}")
-            _uiState.update { it.copy(connectionStatus = "Null Binding", isConnected = false) }
         }
     }
 
@@ -112,29 +104,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun connectToService() {
         logMessage("🔄 Connecting to AI Router Service...")
-        
-        // 首先嘗試連接 debug 版本 (if installed)
-        var intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-            setPackage("com.mtkresearch.breezeapp.router.debug")
-        }
-        
-        var success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        
-        if (!success) {
-            logMessage("⚠️ Debug service not found, trying production version...")
-            // 如果 debug 版本不存在，嘗試 production 版本
-            intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-                setPackage("com.mtkresearch.breezeapp.router")
+
+        val intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService")
+        intent.setPackage("com.mtkresearch.breezeapp.router")
+        try {
+            val bound = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+            if (bound) {
+                logMessage("Binding to service...")
+            } else {
+                logMessage("❌ Failed to bind to service. Is the router app installed?")
+                _uiState.update { it.copy(isConnected = false, connectionStatus = "Bind Failed") }
             }
-            success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
-        }
-        
-        if (!success) {
-            logMessage("❌ Failed to bind to AI Router Service")
-            _uiState.update { it.copy(connectionStatus = "Connection Failed") }
-        } else {
-            logMessage("🔄 Service binding initiated...")
-            _uiState.update { it.copy(connectionStatus = "Connecting...") }
+        } catch (e: SecurityException) {
+            logMessage("❌ SecurityException: Check if client app has the necessary permissions or is signed correctly.")
+            _uiState.update { it.copy(isConnected = false, connectionStatus = "Permission Denied") }
         }
     }
 
@@ -147,48 +130,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_uiState.value.isConnected) {
             routerService?.unregisterListener(callback)
             getApplication<Application>().unbindService(connection)
-            _uiState.update { it.copy(isConnected = false, isInitialized = false, connectionStatus = "Disconnected") }
+            _uiState.update { it.copy(isConnected = false, connectionStatus = "Disconnected") }
+            routerService = null
             logMessage("🔌 Disconnected from service")
         }
-    }
-
-    /**
-     * Initializes the AI Router Service with default configuration.
-     * 
-     * Must be called after a successful connection before sending requests.
-     * 
-     * Example usage:
-     * ```
-     * if (viewModel.uiState.value.isConnected && !viewModel.uiState.value.isInitialized) {
-     *     viewModel.initializeService()
-     * }
-     * ```
-     */
-    fun initializeService() {
-        if (!_uiState.value.isConnected) {
-            logMessage("❌ Service not connected")
-            return
-        }
-        logMessage("🔧 Initializing service...")
-        val config = Configuration(
-            apiVersion = 1,
-            logLevel = 3,
-            timeoutMs = 30000L,
-            maxTokens = 1024,
-            temperature = 0.7f,
-            languagePreference = "en-US",
-            preferredRuntime = Configuration.RuntimeBackend.AUTO,
-            runnerConfigurations = mapOf(
-                Configuration.AITaskType.TEXT_GENERATION to Configuration.RunnerType.MOCK,
-                Configuration.AITaskType.IMAGE_ANALYSIS to Configuration.RunnerType.MOCK,
-                Configuration.AITaskType.SPEECH_RECOGNITION to Configuration.RunnerType.MOCK,
-                Configuration.AITaskType.SPEECH_SYNTHESIS to Configuration.RunnerType.MOCK,
-                Configuration.AITaskType.CONTENT_MODERATION to Configuration.RunnerType.MOCK
-            )
-        )
-        routerService?.initialize(config)
-        _uiState.update { it.copy(isInitialized = true) }
-        logMessage("✅ Service initialized")
     }
 
     /**
@@ -270,8 +215,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @param options Map of options specific to the request type
      */
     private fun sendRequest(text: String, options: Map<String, String>) {
-        if (!_uiState.value.isInitialized) {
-            logMessage("❌ Service not initialized")
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Service not connected")
             return
         }
         val request = AIRequest(
@@ -291,7 +236,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @return The API version number (via log message)
      */
     fun getApiVersion() {
-        if (!_uiState.value.isInitialized) return
+        if (!_uiState.value.isConnected) return
         val version = routerService?.apiVersion ?: -1
         logMessage("📋 API Version: $version")
     }
@@ -302,7 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @return List of supported capabilities (via log messages)
      */
     fun checkCapabilities() {
-        if (!_uiState.value.isInitialized) return
+        if (!_uiState.value.isConnected) return
         logMessage("🔍 Checking capabilities...")
         val capabilities = listOf("streaming", "image_processing", "audio_processing")
         capabilities.forEach { capability ->
@@ -317,7 +262,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @return Whether cancellation was successful (via log message)
      */
     fun cancelRequest() {
-        if (!_uiState.value.isInitialized) return
+        if (!_uiState.value.isConnected) return
         val result = routerService?.cancelRequest("some-request-id") ?: false
         logMessage("🚫 Cancel request result: $result")
     }
