@@ -66,7 +66,7 @@ public class ModelDownloadActivity extends Activity {
         // Set the filtered model list if available
         if (filteredModelList != null) {
             Log.d(TAG, "Setting filtered model list to dialog");
-            downloadDialog.setFilteredModelList(filteredModelList);
+            downloadDialog.setFilteredModelList();
         } else {
             Log.w(TAG, "No filtered model list available");
         }
