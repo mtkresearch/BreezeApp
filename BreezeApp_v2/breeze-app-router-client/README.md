@@ -1,209 +1,123 @@
 # Breeze App Router Client - A Developer's Guide & Example
 
-This application serves as a reference implementation and a testing tool for the `breeze-app-router` service. It's designed to guide developers in the open-source community on how to connect their own Android applications with our AI routing service, initialize it, and invoke various AI capabilities.
+This application serves as a reference implementation and a testing tool for the `breeze-app-router` service. It's designed to guide developers on how to connect their own Android applications with our AI routing service and invoke its various AI capabilities.
 
-This client is built with modern Android practices, featuring a **Clean Architecture** approach using **MVVM (Model-View-ViewModel)** to separate concerns, making the code clean, scalable, and easy to understand.
+This client is built with modern Android practices, featuring a clean architecture that separates the UI (View), UI logic (ViewModel), and service connection logic (`AIRouterClient`).
 
 ## Architecture Overview
 
-The client's architecture is simple yet robust:
+The client's architecture is simple and robust, promoting separation of concerns:
 
-- **`MainActivity.kt` (View)**: The UI layer. It's responsible only for displaying data and forwarding user actions to the `MainViewModel`. It knows nothing about the underlying business logic.
-- **`MainViewModel.kt` (ViewModel)**: The logic hub. It prepares and manages all data for the UI, handles user actions, and communicates with the `breeze-app-router` service. It contains all the core logic of the client application.
-- **`breeze-app-router` (Service)**: An external AIDL service that this client binds to. It performs the actual AI inference.
+- **`MainActivity.kt` (View)**: The UI layer. It observes the `MainViewModel` for state changes and forwards user actions.
+- **`MainViewModel.kt` (ViewModel)**: The logic hub. It prepares `RequestPayload` objects, sends them via the router service, and manages the UI state. It delegates connection management to the `AIRouterClient`.
+- **`AIRouterClient.kt` (Service Connector)**: A dedicated class that handles all the complexities of binding to the AIDL service, managing the connection lifecycle, and exposing the service state reactively.
+- **`breeze-app-router` (Service)**: The external AIDL service this client binds to.
 
-This separation makes it easy for you to see exactly what's needed to integrate the router, by focusing on the `MainViewModel`.
+This separation makes it easy to understand the integration by looking at `AIRouterClient` for connection logic and `MainViewModel` for request/response logic.
 
 ## Key Integration Steps for Your App
 
-Here's a breakdown of the essential code you'll need to integrate the `breeze-app-router` into your own application. All relevant logic can be found in `MainViewModel.kt`.
+Here's a breakdown of the essential code you'll need to integrate the `breeze-app-router` into your own application.
 
-### 1. Add the AIDL Contracts (shared-contracts)
+### 1. Add the `shared-contracts` Module
 
-The `shared-contracts` module contains the AIDL interface files (`.aidl`) and Parcelable data models required for communication with the router service. There are two ways to integrate these contracts into your project:
+Your project must include the `shared-contracts` module, which contains the AIDL interfaces and `Parcelable` data models for communication.
 
-#### Option A: Include as a Module (Recommended)
+Add the module to your `settings.gradle.kts`:
+```kotlin
+include(":shared-contracts")
+```
 
-If you're developing within the BreezeApp ecosystem or have access to the source code:
+Add the dependency to your app's `build.gradle.kts`:
+```kotlin
+dependencies {
+    implementation(project(":shared-contracts"))
+}
+```
 
-1. Add the module to your `settings.gradle.kts`:
-   ```kotlin
-   include(":shared-contracts")
-   ```
+### 2. Configure Your `AndroidManifest.xml`
 
-2. Add the dependency to your app's `build.gradle.kts`:
-   ```kotlin
-   dependencies {
-       implementation(project(":shared-contracts"))
-   }
-   ```
-
-> **Note for Future Development**: In the future, we plan to publish the `shared-contracts` module to Maven Central or JitPack, which will simplify integration for third-party developers. This would allow developers to include the module via standard dependency management without needing direct access to the source code.
-
-#### Option B: Copy the Contracts (Standalone Development)
-
-If you're developing a standalone application:
-
-1. Create a similar structure in your project:
-   ```
-   your-app/
-   ├── app/
-   └── shared-contracts/
-       └── src/main/
-           ├── aidl/com/mtkresearch/breezeapp/shared/contracts/
-           │   ├── IAIRouterService.aidl
-           │   ├── IAIRouterListener.aidl
-           │   └── model/
-           │       ├── AIRequest.aidl
-           │       ├── AIResponse.aidl
-           │       ├── BinaryData.aidl
-           │       └── Configuration.aidl
-           └── java/com/mtkresearch/breezeapp/shared/contracts/model/
-               ├── AIRequest.kt
-               ├── AIResponse.kt
-               ├── BinaryData.kt
-               └── Configuration.kt
-   ```
-
-2. Copy the AIDL files and their corresponding Kotlin implementations.
-
-3. Configure your `shared-contracts/build.gradle.kts` with:
-   ```kotlin
-   plugins {
-       id("com.android.library")
-       id("org.jetbrains.kotlin.android")
-       id("kotlin-parcelize")
-   }
-
-   android {
-       buildFeatures {
-           aidl = true
-       }
-   }
-   ```
-
-**IMPORTANT**: The package structure must be maintained exactly as `com.mtkresearch.breezeapp.shared.contracts` for compatibility with the service.
-
-### 2. Configure Your AndroidManifest.xml
-
-Your app needs proper permissions and queries to interact with the service:
+Your app needs permissions and queries to discover and bind to the service:
 
 ```xml
 <!-- Add to your AndroidManifest.xml -->
-<!-- Permission to bind to the AI Router Service -->
 <uses-permission android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE" />
 
-<!-- Queries to discover the service -->
 <queries>
     <package android:name="com.mtkresearch.breezeapp.router" />
-    <intent>
-        <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />
-    </intent>
 </queries>
 ```
 
-### 3. Connect to the AI Router Service
+### 3. Connect to the Service using `AIRouterClient`
 
-To communicate with the service, you must bind to it. This is an asynchronous operation.
-
-**Key Code (`MainViewModel.kt`)**:
-```kotlin
-fun connectToService() {
-    logMessage("🔄 Connecting to AI Router Service...")
-
-    val intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-        setPackage("com.mtkresearch.breezeapp.router")
-    }
-
-    val success = getApplication<Application>().bindService(intent, connection, Context.BIND_AUTO_CREATE)
-
-    if (!success) {
-        logMessage("❌ Failed to bind to AI Router Service. Is it installed?")
-    }
-}
-
-private val connection = object : ServiceConnection {
-    override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-        // Once connected, you receive an IBinder object.
-        // Cast it to your AIDL interface.
-        routerService = IAIRouterService.Stub.asInterface(service)
-        // Register a listener to receive responses.
-        routerService?.registerListener(callback)
-    }
-    // ...
-}
-```
-
-### 4. Initialize the Service
-
-After connecting, you must initialize the router with a `Configuration` object. This tells the service which models to load and how to behave.
+Use `AIRouterClient` to manage the service connection. In your ViewModel or another lifecycle-aware component, create an instance and collect its state.
 
 **Key Code (`MainViewModel.kt`)**:
 ```kotlin
-fun initializeService() {
-    if (!isConnected) return
-    
-    // Create a configuration object
-    val config = Configuration(
-        apiVersion = 1,
-        logLevel = 3,  // 0=OFF, 1=ERROR, 2=WARN, 3=INFO, 4=DEBUG, 5=VERBOSE
-        timeoutMs = 30000L,
-        maxTokens = 1024,
-        temperature = 0.7f,
-        languagePreference = "en-US",
-        preferredRuntime = Configuration.RuntimeBackend.AUTO,
-        runnerConfigurations = mapOf(
-            Configuration.AITaskType.TEXT_GENERATION to Configuration.RunnerType.MOCK,
-            Configuration.AITaskType.IMAGE_ANALYSIS to Configuration.RunnerType.MOCK,
-            Configuration.AITaskType.SPEECH_RECOGNITION to Configuration.RunnerType.MOCK,
-            Configuration.AITaskType.SPEECH_SYNTHESIS to Configuration.RunnerType.MOCK,
-            Configuration.AITaskType.CONTENT_MODERATION to Configuration.RunnerType.MOCK
-        )
-    )
-    
-    // Send the configuration to the service
-    routerService?.initialize(config)
-}
-```
+// In your ViewModel
+private val airouterClient = AIRouterClient(application)
+private var routerService: IAIRouterService? = null
 
-### 5. Send an AI Request (Example: Image Analysis)
-
-All AI tasks are initiated by sending an `AIRequest` object. The `options` map is crucial for specifying the task type and providing data.
-
-**Key Code (`MainViewModel.kt`)**:
-```kotlin
-fun analyzeImage(prompt: String, imageUri: Uri) {
+init {
+    // Collect the connection state to update UI
     viewModelScope.launch {
-        // 1. Process your data if necessary (e.g., encode image to Base64)
-        val base64Image = encodeImageToBase64(imageUri)
-        
-        // 2. Define task-specific options
-        val options = mapOf(
-            "request_type" to "image_analysis", // Specifies the AI task
-            "model_name" to "mock-vlm",         // (Optional) Specify a model
-            "image_data" to base64Image         // Provide the data payload
-        )
-        
-        // 3. Create and send the request
-        sendRequest(prompt, options)
+        airouterClient.connectionState.collect { state ->
+            // Update your UI state based on connection status (CONNECTED, DISCONNECTED, etc.)
+        }
+    }
+    
+    // Collect the service binder to get access to the service interface
+    viewModelScope.launch {
+        airouterClient.routerService.collect { service ->
+            this.routerService = service
+            // Register your listener once the service is available
+            service?.registerListener(your_listener_callback)
+        }
     }
 }
 
-private fun sendRequest(text: String, options: Map<String, String>) {
+// Call connect() when you're ready to bind
+fun connect() {
+    airouterClient.connect()
+}
+
+// Call disconnect() when you're done
+fun disconnect() {
+    airouterClient.disconnect()
+}
+```
+
+### 4. Send a Type-Safe AI Request
+
+Create a specific `RequestPayload` object and send it using the `sendMessage` method.
+
+**Key Code (`MainViewModel.kt`)**:
+```kotlin
+fun sendLLMRequest(prompt: String) {
+    if (routerService == null) return
+
+    // 1. Create a strongly-typed payload object
+    val payload = RequestPayload.TextChat(
+        prompt = prompt,
+        modelName = "mock-llm"
+    )
+
+    // 2. Create the AIRequest wrapper
     val request = AIRequest(
         id = UUID.randomUUID().toString(),
-        text = text,
-        sessionId = "session-${options["request_type"]}",
+        sessionId = "your-session-id",
         timestamp = System.currentTimeMillis(),
-        options = options
+        payload = payload
     )
+    
+    // 3. Send the request
     routerService?.sendMessage(request)
 }
 ```
 
-### 6. Handle Responses
+### 5. Handle Responses
 
-You'll receive responses through the `IAIRouterListener` you registered upon connection. These calls arrive on a background thread, so be sure to switch to the main thread for UI updates.
+Implement the `IAIRouterListener` to receive responses. The callback methods are executed on a background thread.
 
 **Key Code (`MainViewModel.kt`)**:
 ```kotlin
@@ -211,80 +125,20 @@ private val callback = object : IAIRouterListener.Stub() {
     override fun onResponse(response: AIResponse) {
         // This is called by the service from a background thread
         val state = if(response.isComplete) "Completed" else "Streaming"
-        logMessage("✅ Response [${state}]: ${response.text}")
         
-        // In a real app, you would post this to your UI thread:
-        // viewModelScope.launch(Dispatchers.Main) {
-        //     // Update UI with response
-        // }
+        // Example: Log the response text and metadata
+        Log.d(TAG, "Response [${state}]: ${response.text}")
+        response.metadata?.let { Log.d(TAG, "Metadata: $it") }
+        
+        // In a real app, post to the Main thread to update UI
+        // viewModelScope.launch(Dispatchers.Main) { /* Update UI */ }
     }
 }
 ```
 
-## Understanding the AIDL Contracts
-
-The `shared-contracts` module defines the interface between your app and the AI Router Service using Android Interface Definition Language (AIDL). These contracts are critical for proper IPC communication.
-
-### Key AIDL Files
-
-1. **`IAIRouterService.aidl`**: The main service interface with methods like:
-   - `initialize(Configuration config)`
-   - `sendMessage(AIRequest request)`
-   - `registerListener(IAIRouterListener listener)`
-
-2. **`IAIRouterListener.aidl`**: The callback interface for receiving responses.
-
-3. **Model classes**:
-   - `AIRequest.aidl` & `AIRequest.kt`: Request data structure
-   - `AIResponse.aidl` & `AIResponse.kt`: Response data structure
-   - `Configuration.aidl` & `Configuration.kt`: Service configuration
-   - `BinaryData.aidl` & `BinaryData.kt`: Binary data transfer
-
-### Important Considerations
-
-- **Package Structure**: The package name `com.mtkresearch.breezeapp.shared.contracts` must be preserved exactly.
-- **Versioning**: The `apiVersion` field helps manage compatibility between client and service.
-- **Thread Safety**: AIDL callbacks occur on background threads; use proper thread handling for UI updates.
-
 ## API Documentation
 
-### IAIRouterService Methods
-
-| Method | Description | Parameters | Return Value |
-|--------|-------------|------------|-------------|
-| `getApiVersion()` | Returns the API version supported by the service. | None | `int`: API version number |
-| `initialize(Configuration config)` | Initializes the service with the provided configuration. | `config`: Configuration object with runtime settings | `void` |
-| `sendMessage(AIRequest request)` | Sends an AI request to the service for processing. | `request`: AIRequest object containing the query and options | `void` |
-| `cancelRequest(String requestId)` | Attempts to cancel an in-progress request. | `requestId`: ID of the request to cancel | `boolean`: true if cancellation succeeded |
-| `registerListener(IAIRouterListener listener)` | Registers a callback to receive responses. | `listener`: IAIRouterListener implementation | `void` |
-| `unregisterListener(IAIRouterListener listener)` | Unregisters a previously registered listener. | `listener`: IAIRouterListener to remove | `void` |
-| `hasCapability(String capabilityName)` | Checks if a specific capability is supported. | `capabilityName`: Name of the capability to check | `boolean`: true if supported |
-
-### Configuration Options
-
-The `Configuration` class provides several important options:
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `apiVersion` | `Int` | API version to use (default: 1) |
-| `logLevel` | `Int` | Controls logging verbosity (0=OFF to 5=VERBOSE) |
-| `preferredRuntime` | `RuntimeBackend` | Preferred hardware for inference (AUTO, CPU, GPU, NPU) |
-| `runnerConfigurations` | `Map<AITaskType, RunnerType>` | Maps AI tasks to their implementations |
-| `timeoutMs` | `Long` | Request timeout in milliseconds (0 means no timeout) |
-| `maxTokens` | `Int` | Maximum tokens to generate in responses |
-| `temperature` | `Float` | Controls randomness in generation (0.0-1.0) |
-| `languagePreference` | `String` | Preferred language for responses |
-
-### Request Types
-
-The `AIRequest.RequestType` class defines common request types:
-
-| Constant | Description |
-|----------|-------------|
-| `TEXT_CHAT` | Text-based conversation |
-| `IMAGE_ANALYSIS` | Image analysis/vision tasks |
-| `AUDIO_TRANSCRIPTION` | Speech-to-text transcription |
-| `MULTIMODAL` | Combined text and image processing |
+For complete details on all data models (`Configuration`, `AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the documentation in the `shared-contracts` module.
 
 ## Sample Integration Project
 

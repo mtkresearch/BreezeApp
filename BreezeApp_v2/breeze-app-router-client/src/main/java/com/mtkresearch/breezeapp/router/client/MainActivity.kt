@@ -77,11 +77,11 @@ class MainActivity : AppCompatActivity() {
         
         binding.sendLLMRequestButton.setOnClickListener {
             val prompt = binding.llmInputText.text.toString().ifEmpty { "Hello, world!" }
-            viewModel.sendLLMRequest(prompt, false)
+            viewModel.sendLLMRequest(prompt)
         }
         binding.sendStreamingRequestButton.setOnClickListener {
             val prompt = binding.llmInputText.text.toString().ifEmpty { "Tell me a long story." }
-            viewModel.sendLLMRequest(prompt, true)
+            viewModel.sendLLMRequest(prompt)
         }
         binding.selectImageButton.setOnClickListener { showImageSourceDialog() }
         binding.analyzeImageButton.setOnClickListener {
