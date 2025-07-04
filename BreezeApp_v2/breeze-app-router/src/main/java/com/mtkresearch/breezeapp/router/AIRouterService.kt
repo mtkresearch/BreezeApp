@@ -14,6 +14,8 @@ import com.mtkresearch.breezeapp.shared.contracts.model.Configuration
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.injection.RouterConfigurator
 import com.mtkresearch.breezeapp.router.domain.model.*
+import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
+import com.mtkresearch.breezeapp.shared.contracts.model.ResponseMetadata
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -159,8 +161,8 @@ class AIRouterService : Service() {
             // Determine capability based on request type
             val capability = determineCapability(request)
             
-            // Check if streaming is requested
-            val isStreamingRequest = request.options["streaming"] == "true"
+            // Decide if streaming is appropriate based on capability (e.g., for LLMs)
+            val isStreamingRequest = (capability == CapabilityType.LLM)
             
             if (isStreamingRequest) {
                 // Process as streaming request
@@ -170,13 +172,13 @@ class AIRouterService : Service() {
                         notifyError(request.id, error.message ?: "Stream processing failed")
                     }
                     .collect { result ->
-                        val response = convertToAIResponse(request.id, result)
+                        val response = convertToAIResponse(request.id, result, capability)
                         notifyListeners(response)
                     }
             } else {
                 // Process as regular request
                 val result = engineManager.process(inferenceRequest, capability)
-                val response = convertToAIResponse(request.id, result)
+                val response = convertToAIResponse(request.id, result, capability)
                 notifyListeners(response)
             }
         } catch (e: Exception) {
@@ -186,74 +188,38 @@ class AIRouterService : Service() {
     }
     
     /**
-     * Create InferenceRequest from AIRequest with proper data type mapping
+     * Create InferenceRequest from the type-safe AIRequest.payload
      */
     private fun createInferenceRequest(request: AIRequest): InferenceRequest {
-        // Helper to read from options, with fallback for Bundle from AIDL
-        fun getOption(key: String): String? {
-            return request.options[key] ?: (request.options as? android.os.Bundle)?.getString(key)
-        }
-        
         val inputs = mutableMapOf<String, Any>()
-        
-        // Always include text input
-        inputs[InferenceRequest.INPUT_TEXT] = request.text
-        
-        // Handle capability-specific data from options
-        val requestType = getOption("request_type") ?: getOption(AIRequest.OptionKeys.REQUEST_TYPE)
-        
-        when (requestType) {
-            "image_analysis" -> {
-                // Extract base64 image data and decode it
-                val imageDataBase64 = getOption("image_data")
-                if (imageDataBase64 != null) {
-                    try {
-                        val imageBytes = android.util.Base64.decode(imageDataBase64, android.util.Base64.DEFAULT)
-                        inputs[InferenceRequest.INPUT_IMAGE] = imageBytes
-                        Log.d(TAG, "Image data converted: ${imageBytes.size} bytes")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to decode image data", e)
-                    }
-                } else {
-                    Log.w(TAG, "No image_data found in request options")
-                }
-            }
-            "speech_recognition" -> {
-                // Extract base64 audio data and decode it
-                val audioDataBase64 = getOption("audio_data")
-                if (audioDataBase64 != null) {
-                    try {
-                        val audioBytes = android.util.Base64.decode(audioDataBase64, android.util.Base64.DEFAULT)
-                        inputs[InferenceRequest.INPUT_AUDIO] = audioBytes
-                        Log.d(TAG, "Audio data converted: ${audioBytes.size} bytes")
-                        
-                        // Add audio format info if available
-                        val audioFormat = getOption("audio_format")
-                        if (audioFormat != null) {
-                            inputs[InferenceRequest.INPUT_AUDIO_ID] = "format_$audioFormat"
-                        }
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to decode audio data", e)
-                    }
-                } else {
-                    Log.w(TAG, "No audio_data found in request options")
-                }
-            }
-            "speech_synthesis" -> {
-                // TTS only needs text input, which is already added
-                inputs["voice"] = getOption("voice") ?: "default"
-                inputs["speed"] = getOption("speed") ?: "1.0"
-            }
-            "content_moderation" -> {
-                // Guardrail only needs text input, which is already added
-                inputs["check_type"] = getOption("check_type") ?: "safety"
-            }
-        }
-        
-        // Convert options map for params, handling Bundle type
         val params = mutableMapOf<String, Any>()
-        request.options.forEach { (key, value) ->
-            params[key] = value?.toString() ?: ""
+
+        when (val payload = request.payload) {
+            is RequestPayload.TextChat -> {
+                inputs[InferenceRequest.INPUT_TEXT] = payload.prompt
+                payload.modelName?.let { params["model_name"] = it }
+                payload.temperature?.let { params["temperature"] = it }
+                payload.maxTokens?.let { params["max_tokens"] = it }
+            }
+            is RequestPayload.ImageAnalysis -> {
+                inputs[InferenceRequest.INPUT_IMAGE] = payload.image
+                payload.prompt?.let { inputs[InferenceRequest.INPUT_TEXT] = it }
+                payload.modelName?.let { params["model_name"] = it }
+            }
+            is RequestPayload.AudioTranscription -> {
+                inputs[InferenceRequest.INPUT_AUDIO] = payload.audio
+                payload.language?.let { params["language"] = it }
+                payload.modelName?.let { params["model_name"] = it }
+            }
+            is RequestPayload.SpeechSynthesis -> {
+                inputs[InferenceRequest.INPUT_TEXT] = payload.text
+                payload.voiceId?.let { params["voice"] = it }
+                payload.speed?.let { params["speed"] = it }
+            }
+            is RequestPayload.ContentModeration -> {
+                inputs[InferenceRequest.INPUT_TEXT] = payload.text
+                payload.checkType?.let { params["check_type"] = it }
+            }
         }
         
         return InferenceRequest(
@@ -265,38 +231,80 @@ class AIRouterService : Service() {
     }
     
     private fun determineCapability(request: AIRequest): CapabilityType {
-        return when (request.options["request_type"]) {
-            "image_analysis" -> CapabilityType.VLM
-            "speech_recognition" -> CapabilityType.ASR
-            "speech_synthesis" -> CapabilityType.TTS
-            "content_moderation" -> CapabilityType.GUARDIAN
-            else -> CapabilityType.LLM // Default to LLM for text chat
+        return when (request.payload) {
+            is RequestPayload.TextChat -> CapabilityType.LLM
+            is RequestPayload.ImageAnalysis -> CapabilityType.VLM
+            is RequestPayload.AudioTranscription -> CapabilityType.ASR
+            is RequestPayload.SpeechSynthesis -> CapabilityType.TTS
+            is RequestPayload.ContentModeration -> CapabilityType.GUARDIAN
         }
     }
     
-    private fun convertToAIResponse(requestId: String, result: InferenceResult): AIResponse {
-        val stringMetadata = result.metadata.mapValues { it.value.toString() }
-        return if (result.error != null) {
-            AIResponse(
+    private fun convertToAIResponse(requestId: String, result: InferenceResult, capability: CapabilityType): AIResponse {
+        if (result.error != null) {
+            return AIResponse(
                 requestId = requestId,
                 text = "",
                 isComplete = true,
                 state = AIResponse.ResponseState.ERROR,
                 apiVersion = API_VERSION,
-                binaryAttachments = emptyList(),
-                metadata = stringMetadata,
+                metadata = null,
                 error = result.error.message
             )
-        } else {
-            AIResponse(
-                requestId = requestId,
-                text = result.outputs[InferenceResult.OUTPUT_TEXT] as? String ?: "",
-                isComplete = !result.partial,
-                state = if (result.partial) AIResponse.ResponseState.STREAMING else AIResponse.ResponseState.COMPLETED,
-                apiVersion = API_VERSION,
-                binaryAttachments = emptyList(),
-                metadata = stringMetadata
-            )
+        }
+
+        // Build the metadata object based on the capability
+        val responseMetadata = createResponseMetadata(result.metadata, capability)
+
+        return AIResponse(
+            requestId = requestId,
+            text = result.outputs[InferenceResult.OUTPUT_TEXT] as? String ?: "",
+            isComplete = !result.partial,
+            state = if (result.partial) AIResponse.ResponseState.STREAMING else AIResponse.ResponseState.COMPLETED,
+            apiVersion = API_VERSION,
+            metadata = responseMetadata
+        )
+    }
+
+    private fun createResponseMetadata(metadata: Map<String, Any>, capability: CapabilityType): ResponseMetadata? {
+        val modelName = metadata["model_name"] as? String ?: return null
+        val processingTimeMs = (metadata["processing_time_ms"] as? Number)?.toLong() ?: return null
+        val backend = metadata["runtime_backend"] as? String
+
+        val standardMetadata = ResponseMetadata.Standard(
+            modelName = modelName,
+            processingTimeMs = processingTimeMs,
+            backend = backend
+        )
+
+        return when (capability) {
+            CapabilityType.LLM -> {
+                val tokenCount = (metadata["token_count"] as? Number)?.toInt()
+                if (tokenCount != null) {
+                    ResponseMetadata.TextGeneration(standardMetadata, tokenCount)
+                } else {
+                    standardMetadata
+                }
+            }
+            CapabilityType.ASR -> {
+                val confidence = (metadata["confidence"] as? Number)?.toFloat()
+                val audioDurationMs = (metadata["audio_duration_ms"] as? Number)?.toLong()
+                if (confidence != null && audioDurationMs != null) {
+                    ResponseMetadata.AudioTranscription(standardMetadata, confidence, audioDurationMs)
+                } else {
+                    standardMetadata
+                }
+            }
+            CapabilityType.TTS -> {
+                val audioDurationMs = (metadata["audio_duration_ms"] as? Number)?.toLong()
+                val voiceId = metadata["voice_id"] as? String
+                if (audioDurationMs != null) {
+                    ResponseMetadata.SpeechSynthesis(standardMetadata, audioDurationMs, voiceId)
+                } else {
+                    standardMetadata
+                }
+            }
+            else -> standardMetadata
         }
     }
 
@@ -321,8 +329,7 @@ class AIRouterService : Service() {
             isComplete = true,
             state = AIResponse.ResponseState.ERROR,
             apiVersion = API_VERSION,
-            binaryAttachments = emptyList(),
-            metadata = emptyMap(),
+            metadata = null,
             error = errorMessage
         )
         notifyListeners(errorResponse)

@@ -19,6 +19,7 @@ import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
 import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
 import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
 import com.mtkresearch.breezeapp.shared.contracts.model.Configuration
+import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -87,6 +88,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         override fun onResponse(response: AIResponse) {
             val state = if(response.isComplete) "Completed" else "Streaming"
             logMessage("✅ Response [${state}]: ${response.text}")
+            response.metadata?.let { logMessage("   └── Metadata: $it") }
         }
     }
 
@@ -143,12 +145,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @param isStreaming Whether to stream the response token by token
      */
     fun sendLLMRequest(prompt: String, isStreaming: Boolean) {
-        val options = mutableMapOf(
-            "request_type" to "text_generation",
-            "model_name" to "mock-llm",
-            "streaming" to isStreaming.toString()
+        val payload = RequestPayload.TextChat(
+            prompt = prompt,
+            modelName = "mock-llm"
         )
-        sendRequest(prompt, options)
+        sendRequest(payload)
     }
 
     /**
@@ -159,14 +160,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun analyzeImage(prompt: String, imageUri: Uri) {
         viewModelScope.launch {
-            val base64Image = encodeImageToBase64(imageUri)
-            if (base64Image.isNotEmpty()) {
-                val options = mapOf(
-                    "request_type" to "image_analysis",
-                    "model_name" to "mock-vlm",
-                    "image_data" to base64Image
+            val imageBytes = getImageBytes(imageUri)
+            if (imageBytes != null) {
+                val payload = RequestPayload.ImageAnalysis(
+                    prompt = prompt,
+                    image = imageBytes,
+                    modelName = "mock-vlm"
                 )
-                sendRequest(prompt, options)
+                sendRequest(payload)
             }
         }
     }
@@ -178,14 +179,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun transcribeAudio(audioFile: java.io.File) {
         val audioBytes = audioFile.readBytes()
-        val base64Audio = Base64.encodeToString(audioBytes, Base64.DEFAULT)
-        val options = mapOf(
-            "request_type" to "speech_recognition",
-            "model_name" to "mock-asr",
-            "audio_data" to base64Audio,
-            "audio_format" to "3gp"
+        val payload = RequestPayload.AudioTranscription(
+            audio = audioBytes,
+            modelName = "mock-asr",
+            language = "en-US"
         )
-        sendRequest("Transcribe the audio", options)
+        sendRequest(payload)
     }
     
     /**
@@ -194,8 +193,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @param text The text to convert to speech
      */
     fun sendTTSRequest(text: String) {
-        val options = mapOf("request_type" to "speech_synthesis", "model_name" to "mock-tts")
-        sendRequest(text, options)
+        val payload = RequestPayload.SpeechSynthesis(
+            text = text,
+            modelName = "mock-tts"
+        )
+        sendRequest(payload)
     }
 
     /**
@@ -204,30 +206,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      * @param text The text to check for policy violations
      */
     fun sendGuardrailRequest(text: String) {
-        val options = mapOf("request_type" to "content_moderation", "model_name" to "mock-guardrail")
-        sendRequest(text, options)
+        val payload = RequestPayload.ContentModeration(
+            text = text,
+            checkType = "safety"
+        )
+        sendRequest(payload)
     }
 
     /**
      * Generic method to send a request to the AI Router Service.
      * 
-     * @param text The text content of the request
-     * @param options Map of options specific to the request type
+     * @param payload The type-safe payload for the request
      */
-    private fun sendRequest(text: String, options: Map<String, String>) {
+    private fun sendRequest(payload: RequestPayload) {
         if (!_uiState.value.isConnected) {
             logMessage("❌ Service not connected")
             return
         }
+        val sessionType = payload::class.java.simpleName
         val request = AIRequest(
             id = UUID.randomUUID().toString(),
-            text = text,
-            sessionId = "session-${options["request_type"]}",
+            sessionId = "session-$sessionType",
             timestamp = System.currentTimeMillis(),
-            options = options
+            payload = payload
         )
         routerService?.sendMessage(request)
-        logMessage("🚀 Request sent: ${options["request_type"]}")
+        logMessage("🚀 Request sent: $sessionType")
     }
 
     /**
@@ -268,22 +272,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     /**
-     * Encodes an image from a URI to Base64 format for transmission.
-     * 
+     * Gets the byte array of an image from a URI, with resizing.
+     *
      * @param uri URI of the image to encode
-     * @return Base64-encoded string representation of the image
+     * @return Byte array of the processed image, or null on failure.
      */
-    private fun encodeImageToBase64(uri: Uri): String {
+    private fun getImageBytes(uri: Uri): ByteArray? {
         return try {
             val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
             val bitmap = BitmapFactory.decodeStream(inputStream)
             val resizedBitmap = resizeBitmap(bitmap, 800)
             val outputStream = ByteArrayOutputStream()
             resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
-            Base64.encodeToString(outputStream.toByteArray(), Base64.DEFAULT)
+            outputStream.toByteArray()
         } catch (e: Exception) {
-            logMessage("❌ Image encoding failed: ${e.message}")
-            ""
+            logMessage("❌ Image processing failed: ${e.message}")
+            null
         }
     }
     
