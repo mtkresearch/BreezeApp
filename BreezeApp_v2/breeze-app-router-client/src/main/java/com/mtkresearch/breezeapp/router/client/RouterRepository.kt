@@ -1,10 +1,10 @@
  package com.mtkresearch.breezeapp.router.client
 
 import android.util.Log
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener
-import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
-import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
-import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
+import com.mtkresearch.breezeapp.edgeai.IAIRouterListener
+import com.mtkresearch.breezeapp.edgeai.model.AIRequest
+import com.mtkresearch.breezeapp.edgeai.model.AIResponse
+import com.mtkresearch.breezeapp.edgeai.model.RequestPayload
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow

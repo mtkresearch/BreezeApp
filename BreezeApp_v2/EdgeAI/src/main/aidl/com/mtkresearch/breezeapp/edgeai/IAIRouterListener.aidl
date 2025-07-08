@@ -1,7 +1,7 @@
 // IAIRouterListener.aidl
-package com.mtkresearch.breezeapp.shared.contracts;
+package com.mtkresearch.breezeapp.edgeai;
 
-import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse;
+import com.mtkresearch.breezeapp.edgeai.model.AIResponse;
 
 /**
  * Callback interface for the AIRouterService to send responses back to the client.

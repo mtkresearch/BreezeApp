@@ -26,10 +26,10 @@ This example will teach you everything you need to know to create a real runner 
 
 ### Step 1: Define the `RequestPayload`
 
-First, we define the contract for our new capability in the `shared-contracts` module.
+First, we define the contract for our new capability in the `EdgeAI` module.
 
 ```kotlin
-// In: shared-contracts/src/.../model/RequestPayload.kt
+// In: EdgeAI/src/.../model/RequestPayload.kt
 
 @Parcelize
 sealed interface RequestPayload : Parcelable {

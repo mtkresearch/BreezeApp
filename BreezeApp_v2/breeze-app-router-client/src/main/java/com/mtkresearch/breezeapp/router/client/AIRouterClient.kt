@@ -6,7 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
+import com.mtkresearch.breezeapp.edgeai.IAIRouterService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 

@@ -1,10 +1,10 @@
 // IAIRouterService.aidl
-package com.mtkresearch.breezeapp.shared.contracts;
+package com.mtkresearch.breezeapp.edgeai;
 
-import com.mtkresearch.breezeapp.shared.contracts.model.Configuration;
-import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest;
-import com.mtkresearch.breezeapp.shared.contracts.model.BinaryData;
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener;
+import com.mtkresearch.breezeapp.edgeai.model.Configuration;
+import com.mtkresearch.breezeapp.edgeai.model.AIRequest;
+import com.mtkresearch.breezeapp.edgeai.model.BinaryData;
+import com.mtkresearch.breezeapp.edgeai.IAIRouterListener;
 
 /**
  * AIDL interface for the AI Router Service.

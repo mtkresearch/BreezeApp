@@ -7,11 +7,11 @@ import android.os.SystemClock
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.rule.ServiceTestRule
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
-import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
-import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
-import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
+import com.mtkresearch.breezeapp.edgeai.IAIRouterListener
+import com.mtkresearch.breezeapp.edgeai.IAIRouterService
+import com.mtkresearch.breezeapp.edgeai.model.AIRequest
+import com.mtkresearch.breezeapp.edgeai.model.AIResponse
+import com.mtkresearch.breezeapp.edgeai.model.RequestPayload
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Rule

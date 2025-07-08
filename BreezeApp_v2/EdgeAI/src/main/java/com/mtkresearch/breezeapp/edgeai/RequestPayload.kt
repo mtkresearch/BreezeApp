@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.shared.contracts.model
+package com.mtkresearch.breezeapp.edgeai.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize

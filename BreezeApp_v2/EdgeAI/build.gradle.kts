@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.mtkresearch.breezeapp.shared.contracts"
+    namespace = "com.mtkresearch.breezeapp.edgeai"
     compileSdk = 35
 
     defaultConfig {

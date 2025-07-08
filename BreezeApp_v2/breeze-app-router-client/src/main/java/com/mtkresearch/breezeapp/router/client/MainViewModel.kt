@@ -7,9 +7,9 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
-import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
-import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
+import com.mtkresearch.breezeapp.edgeai.IAIRouterService
+import com.mtkresearch.breezeapp.edgeai.model.AIResponse
+import com.mtkresearch.breezeapp.edgeai.model.RequestPayload
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

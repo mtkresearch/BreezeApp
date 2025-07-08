@@ -15,7 +15,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "BreezeApp_v2"
 include(
-    ":shared-contracts",
+    ":EdgeAI",
     ":breeze-app-router",
     ":breeze-app-router-client"
 ) 

@@ -1,6 +1,6 @@
-# `shared-contracts` API Reference
+# `EdgeAI` API Reference
 
-Welcome to the API reference for the `shared-contracts` module. This document provides a detailed overview of the data models used for communication between a client application and the `breeze-app-router` service.
+Welcome to the API reference for the `EdgeAI` module. This document provides a detailed overview of the data models used for communication between a client application and the `breeze-app-router` service.
 
 The core principle of this API is **type safety**. We have moved away from loosely-typed `Map` objects to strongly-typed `Parcelable` sealed interfaces (`RequestPayload` and `ResponseMetadata`). This change eliminates a whole class of runtime errors, improves code completion, and makes the developer experience significantly better.
 

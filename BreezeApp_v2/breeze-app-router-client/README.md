@@ -51,15 +51,15 @@ This separation is crucial. It allows the `AIRouterClient` to handle all the com
 
 Here's a breakdown of the essential code you'll need to integrate the `breeze-app-router` into your own application.
 
-### 1. Add the `shared-contracts` Module
+### 1. Add the `EdgeAI` Module
 
-Your project must include the `shared-contracts` module, which contains the AIDL interfaces and `Parcelable` data models for communication.
+Your project must include the `EdgeAI` module, which contains the AIDL interfaces and `Parcelable` data models for communication.
 
 Add the module to your `settings.gradle.kts`:
 
 ```kotlin
 // settings.gradle.kts
-include(":shared-contracts")
+include(":EdgeAI")
 ```
 
 Add the dependency to your app's `build.gradle.kts`:
@@ -67,7 +67,7 @@ Add the dependency to your app's `build.gradle.kts`:
 ```kotlin
 // build.gradle.kts (:app)
 dependencies {
-    implementation(project(":shared-contracts"))
+    implementation(project(":EdgeAI"))
 }
 ```
 
@@ -214,7 +214,7 @@ class YourActivity : AppCompatActivity() {
 
 ## API Documentation
 
-For complete details on all data models (`AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the source code documentation in the `shared-contracts` module.
+For complete details on all data models (`AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the source code documentation in the `EdgeAI` module.
 
 ## Building and Running
 
@@ -231,6 +231,6 @@ For complete details on all data models (`AIRequest`, `AIResponse`, `RequestPayl
 ## Troubleshooting
 
 - **Service Connection Fails**: Verify the router service app is installed (`adb shell pm list packages | grep breezeapp.router`) and that your app has the correct permissions and `<queries>` tag in `AndroidManifest.xml`.
-- **AIDL Errors**: Ensure your `shared-contracts` module is perfectly in sync with the service's version.
+- **AIDL Errors**: Ensure your `EdgeAI` module is perfectly in sync with the service's version.
 
 This client provides a clear, working example of all the core concepts. By examining its layered architecture, you can quickly learn how to robustly integrate our powerful AI router into your own projects. Welcome to the community! 
