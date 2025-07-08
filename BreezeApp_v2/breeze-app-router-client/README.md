@@ -2,18 +2,50 @@
 
 This application serves as a reference implementation and a testing tool for the `breeze-app-router` service. It's designed to guide developers on how to connect their own Android applications with our AI routing service and invoke its various AI capabilities.
 
-This client is built with modern Android practices, featuring a clean architecture that separates the UI (View), UI logic (ViewModel), and service connection logic (`AIRouterClient`).
+This client is built with modern Android practices, featuring a clean, multi-layered architecture that promotes a strong separation of concerns.
 
 ## Architecture Overview
 
-The client's architecture is simple and robust, promoting separation of concerns:
+The client's architecture follows the principles of Clean Architecture and MVVM, creating a robust and maintainable structure. The data flows in one direction, ensuring predictability and testability.
 
-- **`MainActivity.kt` (View)**: The UI layer. It observes the `MainViewModel` for state changes and forwards user actions.
-- **`MainViewModel.kt` (ViewModel)**: The logic hub. It prepares `RequestPayload` objects, sends them via the router service, and manages the UI state. It delegates connection management to the `AIRouterClient`.
-- **`AIRouterClient.kt` (Service Connector)**: A dedicated class that handles all the complexities of binding to the AIDL service, managing the connection lifecycle, and exposing the service state reactively.
-- **`breeze-app-router` (Service)**: The external AIDL service this client binds to.
+```mermaid
+graph TD
+    A[MainActivity - View] -->|User Actions| B(MainViewModel)
+    B -->|Commands| C(RouterRepository)
+    C -->|Connection Mgmt| D(AIRouterClient)
+    D -->|AIDL| E[AIRouterService]
 
-This separation makes it easy to understand the integration by looking at `AIRouterClient` for connection logic and `MainViewModel` for request/response logic.
+    subgraph Data_And_State_Flow
+        direction LR
+        E -->|AIDL Callbacks| D
+        D -->|StateFlows - Service and Connection State| C
+        C -->|StateFlows - Responses and ConnectionState| B
+        B -->|UiState StateFlow| A
+    end
+
+    style A fill:#D6EAF8,stroke:#3498DB
+    style B fill:#D1F2EB,stroke:#1ABC9C
+    style C fill:#FDEDEC,stroke:#E74C3C
+    style D fill:#FEF9E7,stroke:#F1C40F
+    style E fill:#E8DAEF,stroke:#8E44AD
+```
+
+- **`MainActivity.kt` (View)**: The UI layer. Its sole responsibility is to observe `UiState` from the ViewModel and forward user actions. It has no business logic.
+- **`MainViewModel.kt` (ViewModel)**: The state holder. It consumes data streams from the `RouterRepository`, transforms them into a single `UiState`, and exposes it to the View.
+- **`RouterRepository.kt` (Repository)**: The single source of truth for all data. It encapsulates the `AIRouterClient`, manages the AIDL listener, and exposes clean `Flow`s for connection state and AI responses. The ViewModel depends only on this.
+- **`AIRouterClient.kt` (DataSource/Client)**: The lowest-level networking class. It deals with the complexities of binding to the AIDL service, managing the connection lifecycle, and exposing the raw service state.
+
+This layered architecture makes the app highly modular. For example, you could easily swap the `AIRouterClient` with a fake implementation for testing without touching the ViewModel or the View.
+
+### A Note on the `AIRouterClient` Arrows
+
+You might notice two arrows originating from the `AIRouterClient` in the diagram. They represent its two distinct responsibilities:
+
+1. **`--> AIDL --> AIRouterService` (External Communication)**: This line signifies the client's primary job: performing the actual, cross-process communication with the external `AIRouterService` using AIDL. Think of this as the client "doing the work."
+
+2. **`--> StateFlows --> RouterRepository` (Internal State Reporting)**: This line represents the client's secondary, but equally important, job: broadcasting its internal status (e.g., "Connecting," "Connected," "Error") to the rest of the application via a `StateFlow`. This is the client "reporting its status."
+
+This separation is crucial. It allows the `AIRouterClient` to handle all the complex, messy details of service connections while providing a clean, simple stream of status updates for the rest of the app to react to.
 
 ## Key Integration Steps for Your App
 
@@ -24,12 +56,16 @@ Here's a breakdown of the essential code you'll need to integrate the `breeze-ap
 Your project must include the `shared-contracts` module, which contains the AIDL interfaces and `Parcelable` data models for communication.
 
 Add the module to your `settings.gradle.kts`:
+
 ```kotlin
+// settings.gradle.kts
 include(":shared-contracts")
 ```
 
 Add the dependency to your app's `build.gradle.kts`:
+
 ```kotlin
+// build.gradle.kts (:app)
 dependencies {
     implementation(project(":shared-contracts"))
 }
@@ -48,302 +84,153 @@ Your app needs permissions and queries to discover and bind to the service:
 </queries>
 ```
 
-### 3. Connect to the Service using `AIRouterClient`
+### 3. Create the `AIRouterClient`
 
-Use `AIRouterClient` to manage the service connection. In your ViewModel or another lifecycle-aware component, create an instance and collect its state.
+This class handles the raw service connection. Copy `AIRouterClient.kt` into your project. It abstracts the `ServiceConnection` callbacks into clean `StateFlow`s.
 
-**Key Code (`MainViewModel.kt`)**:
 ```kotlin
-// In your ViewModel
-private val airouterClient = AIRouterClient(application)
-private var routerService: IAIRouterService? = null
-
-init {
-    // Collect the connection state to update UI
-    viewModelScope.launch {
-        airouterClient.connectionState.collect { state ->
-            // Update your UI state based on connection status (CONNECTED, DISCONNECTED, etc.)
-        }
-    }
-    
-    // Collect the service binder to get access to the service interface
-    viewModelScope.launch {
-        airouterClient.routerService.collect { service ->
-            this.routerService = service
-            // Register your listener once the service is available
-            service?.registerListener(your_listener_callback)
-        }
-    }
-}
-
-// Call connect() when you're ready to bind
-fun connect() {
-    airouterClient.connect()
-}
-
-// Call disconnect() when you're done
-fun disconnect() {
-    airouterClient.disconnect()
+// AIRouterClient.kt - Manages the connection to the remote service.
+class AIRouterClient(private val context: Context) {
+    // ... encapsulates ServiceConnection logic ...
+    val routerService: StateFlow<IAIRouterService?> = // ...
+    val connectionState: StateFlow<ConnectionState> = // ...
+    fun connect() { /* ... */ }
+    fun disconnect() { /* ... */ }
 }
 ```
 
-### 4. Send a Type-Safe AI Request
+### 4. Implement the `RouterRepository`
 
-Create a specific `RequestPayload` object and send it using the `sendMessage` method.
+This repository is the centerpiece of the integration. It consumes the `AIRouterClient` and exposes clean data streams to your ViewModel.
 
-**Key Code (`MainViewModel.kt`)**:
+**Key Code (`RouterRepository.kt`)**:
+
 ```kotlin
-fun sendLLMRequest(prompt: String) {
-    if (routerService == null) return
+// RouterRepository.kt - The single source of truth for AI data.
+class RouterRepository(
+    private val client: AIRouterClient,
+    private val externalScope: CoroutineScope
+) {
+    // Expose responses and connection state as clean flows
+    val responses: SharedFlow<AIResponse> = // ...
+    val connectionState: StateFlow<ConnectionState> = client.connectionState
 
-    // 1. Create a strongly-typed payload object
-    val payload = RequestPayload.TextChat(
-        prompt = prompt,
-        modelName = "mock-llm"
-    )
+    init {
+        // Automatically register/unregister the listener when the service connects/disconnects
+        externalScope.launch {
+            client.routerService.collect { service ->
+                service?.registerListener(serviceListener)
+            }
+        }
+    }
 
-    // 2. Create the AIRequest wrapper
-    val request = AIRequest(
-        id = UUID.randomUUID().toString(),
-        sessionId = "your-session-id",
-        timestamp = System.currentTimeMillis(),
-        payload = payload
-    )
-    
-    // 3. Send the request
-    routerService?.sendMessage(request)
+    fun sendRequest(payload: RequestPayload): String {
+        val request = AIRequest(payload = payload)
+        // ... send message via client.routerService ...
+        return request.id
+    }
+
+    private val serviceListener = object : IAIRouterListener.Stub() { /* ... */ }
+
+    fun connect() = client.connect()
+    fun disconnect() = client.disconnect()
 }
 ```
 
-### 5. Handle Responses
+### 5. Structure Your ViewModel
 
-Implement the `IAIRouterListener` to receive responses. The callback methods are executed on a background thread.
+Your ViewModel should only depend on the `RouterRepository`. It collects flows and updates its `UiState`.
 
-**Key Code (`MainViewModel.kt`)**:
+**Key Code (YourViewModel.kt)**:
+
 ```kotlin
-private val callback = object : IAIRouterListener.Stub() {
-    override fun onResponse(response: AIResponse) {
-        // This is called by the service from a background thread
-        val state = if(response.isComplete) "Completed" else "Streaming"
-        
-        // Example: Log the response text and metadata
-        Log.d(TAG, "Response [${state}]: ${response.text}")
-        response.metadata?.let { Log.d(TAG, "Metadata: $it") }
-        
-        // In a real app, post to the Main thread to update UI
-        // viewModelScope.launch(Dispatchers.Main) { /* Update UI */ }
+class YourViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    private val repository: RouterRepository
+
+    init {
+        val client = AIRouterClient(application)
+        repository = RouterRepository(client, viewModelScope)
+
+        // Collect connection state from the repository
+        viewModelScope.launch {
+            repository.connectionState.collect { state ->
+                // Update UI state (e.g., show "Connected" or "Disconnected")
+            }
+        }
+
+        // Collect responses from the repository
+        viewModelScope.launch {
+            repository.responses.collect { response ->
+                // Handle the AIResponse and update UI state
+            }
+        }
+    }
+
+    fun connect() = repository.connect()
+
+    fun sendTextRequest(prompt: String, isStreaming: Boolean) {
+        val payload = RequestPayload.TextChat(prompt = prompt, streaming = isStreaming)
+        repository.sendRequest(payload)
+    }
+}
+```
+
+### 6. Observe State in Your UI
+
+Finally, your `Activity` or `Fragment` observes the `UiState` from the ViewModel and updates the UI accordingly.
+
+**Key Code (YourActivity.kt)**:
+
+```kotlin
+class YourActivity : AppCompatActivity() {
+    private val viewModel: YourViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // ...
+
+        // Connect button action
+        binding.connectButton.setOnClickListener { 
+            if (viewModel.uiState.value.isConnected) viewModel.disconnect()
+            else viewModel.connect()
+        }
+
+        // Observe UI state changes
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    binding.connectionStatus.text = state.connectionStatus
+                    // ... update other UI elements ...
+                }
+            }
+        }
     }
 }
 ```
 
 ## API Documentation
 
-For complete details on all data models (`Configuration`, `AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the documentation in the `shared-contracts` module.
-
-## Sample Integration Project
-
-> **Note**: A standalone sample integration project is planned for future development. For now, this client app serves as the reference implementation.
-
-To create a minimal integration in your own app:
-
-1. **Create a Service Connection Manager**:
-   ```kotlin
-   class AIRouterManager(private val context: Context) {
-       private var routerService: IAIRouterService? = null
-       private var isConnected = false
-       private var isInitialized = false
-       
-       // Connection management methods
-       fun connect() { /* ... */ }
-       fun disconnect() { /* ... */ }
-       fun initialize() { /* ... */ }
-       
-       // Request methods
-       fun sendTextRequest(prompt: String) { /* ... */ }
-       fun analyzeImage(prompt: String, imageUri: Uri) { /* ... */ }
-   }
-   ```
-
-2. **Implement a Basic UI**:
-   ```kotlin
-   class MinimalAIActivity : AppCompatActivity() {
-       private val viewModel: MinimalAIViewModel by viewModels()
-       
-       override fun onCreate(savedInstanceState: Bundle?) {
-           super.onCreate(savedInstanceState)
-           setContentView(R.layout.activity_minimal_ai)
-           
-           // Connect to service
-           findViewById<Button>(R.id.connectButton).setOnClickListener {
-               viewModel.connectToService()
-           }
-           
-           // Send a request
-           findViewById<Button>(R.id.sendRequestButton).setOnClickListener {
-               val prompt = findViewById<EditText>(R.id.promptInput).text.toString()
-               viewModel.sendTextRequest(prompt)
-           }
-       }
-   }
-   ```
-
-## Integration Testing Tools
-
-To help debug and test your integration with the AI Router Service, we've included several utilities:
-
-### 1. Connection Diagnostic Tool
-
-The `test_connection.sh` script helps verify proper service connection:
-
-```bash
-#!/bin/bash
-# Save as test_connection.sh in your project root
-
-echo "🔧 Testing BreezeApp Router Client Connection"
-echo "============================================="
-
-# Verify installation
-echo "📋 Verifying installation..."
-adb shell pm list packages | grep "com.mtkresearch.breezeapp.router"
-
-# Check permissions
-echo "🔒 Checking permissions..."
-adb shell dumpsys package com.mtkresearch.breezeapp.router | grep -A 10 "declared permissions"
-echo ""
-echo "Client permissions:"
-adb shell dumpsys package YOUR_PACKAGE_NAME | grep -A 10 "requested permissions"
-
-# Monitor connection logs
-echo "📝 Monitoring connection logs..."
-adb logcat | grep -E "(AIRouter|ServiceConnection|binder)"
-```
-
-Replace `YOUR_PACKAGE_NAME` with your application's package name and run the script to diagnose connection issues.
-
-### 2. AIRouterTester Class
-
-Add this utility class to your project for quick testing of all router capabilities:
-
-```kotlin
-/**
- * Utility class for testing AI Router Service integration.
- * Add this to your project for quick diagnostics.
- */
-class AIRouterTester(private val context: Context) {
-    private var routerService: IAIRouterService? = null
-    private val serviceConnection = /* ... */
-    
-    // Test all capabilities
-    fun runFullTest() {
-        connectToService()
-        testApiVersion()
-        testTextGeneration()
-        testImageAnalysis()
-        // ...
-    }
-    
-    // Individual test methods
-    fun testApiVersion() { /* ... */ }
-    fun testTextGeneration() { /* ... */ }
-    fun testImageAnalysis() { /* ... */ }
-    
-    // Log results
-    private fun logResult(test: String, success: Boolean, message: String) {
-        Log.d("AIRouterTest", "[$test] ${if(success) "✅" else "❌"} $message")
-    }
-}
-```
-
-### 3. Router Service Health Check
-
-Before sending important requests, verify the service is healthy:
-
-```kotlin
-fun checkRouterHealth(): Boolean {
-    if (routerService == null) return false
-    
-    try {
-        // Basic API version check should always work if service is healthy
-        val apiVersion = routerService?.apiVersion ?: -1
-        if (apiVersion <= 0) return false
-        
-        // Check essential capabilities
-        val hasTextCapability = routerService?.hasCapability("text_generation") ?: false
-        
-        return hasTextCapability
-    } catch (e: Exception) {
-        Log.e("RouterHealth", "Health check failed", e)
-        return false
-    }
-}
-```
-
-### 4. Performance Monitoring
-
-Monitor the performance of your AI requests:
-
-```kotlin
-fun sendRequestWithTiming(request: AIRequest) {
-    val startTime = System.currentTimeMillis()
-    
-    // Add timing metadata
-    val requestWithTiming = request.copy(
-        options = request.options + ("client_request_time" to startTime.toString())
-    )
-    
-    // Send the request
-    routerService?.sendMessage(requestWithTiming)
-    
-    // In your response callback:
-    // val processingTime = System.currentTimeMillis() - startTime
-    // Log.d("AIPerformance", "Request ${request.id} took ${processingTime}ms")
-}
-```
+For complete details on all data models (`AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the source code documentation in the `shared-contracts` module.
 
 ## Building and Running
 
 1. Ensure you have the `breeze-app-router` (debug or release) installed on your target device/emulator.
+
 2. Build and run this client application:
+   
    ```bash
    ./gradlew :breeze-app-router-client:installDebug
    ```
-3. Use the UI to connect, initialize, and test AI functions.
+
+3. Use the UI to connect and test AI functions. Observe how the clean architecture makes the application's behavior predictable and easy to debug.
 
 ## Troubleshooting
 
-### Common Issues
+- **Service Connection Fails**: Verify the router service app is installed (`adb shell pm list packages | grep breezeapp.router`) and that your app has the correct permissions and `<queries>` tag in `AndroidManifest.xml`.
+- **AIDL Errors**: Ensure your `shared-contracts` module is perfectly in sync with the service's version.
 
-1. **Service Connection Fails**:
-   - Verify the router service app is installed (`adb shell pm list packages | grep breezeapp.router`)
-   - Check that your app has the correct permission in AndroidManifest.xml
-   - Ensure both apps are signed with the same key (for signature-level permissions)
-
-2. **Initialization Fails**:
-   - Verify your Configuration object has valid settings
-   - Check logcat for detailed error messages from the service
-
-3. **AIDL Errors**:
-   - Ensure your AIDL files exactly match those expected by the service
-   - Verify that all Parcelable implementations are correct
-
-4. **Data Transfer Issues**:
-   - Large binary data should be properly chunked or use content URIs
-   - Base64 encoding adds ~33% overhead; consider this for memory constraints
-
-### Debugging Tips
-
-- Use `adb logcat | grep AIRouter` to monitor service logs
-- Add detailed logging in your ServiceConnection callbacks
-- Test with the mock runners first before moving to production models
-
-## Advanced Integration
-
-For production applications, consider these best practices:
-
-1. **Error Handling**: Implement robust error handling and retry mechanisms.
-2. **Service Lifecycle**: Handle service disconnections gracefully.
-3. **Configuration Management**: Store and reuse configurations to avoid reinitializing.
-4. **Memory Management**: Be mindful of large data transfers, especially with images and audio.
-5. **Background Processing**: Consider using a foreground service for long-running AI tasks.
-
-This client provides a clear, working example of all the core concepts. By examining `MainViewModel.kt`, you can quickly learn how to integrate our powerful AI router into your own projects. Welcome to the community! 
+This client provides a clear, working example of all the core concepts. By examining its layered architecture, you can quickly learn how to robustly integrate our powerful AI router into your own projects. Welcome to the community! 

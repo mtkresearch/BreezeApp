@@ -1,8 +1,0 @@
-flowchart TD
-    Start((Start)) --> Register[Register Runner]
-    Register --> Load[Load Model]
-    Load --> Ready[Runner Ready]
-    Ready --> Run[Run Inference]
-    Run --> Unload[Unload Model]
-    Unload --> End((End))
-    Ready --> Unload

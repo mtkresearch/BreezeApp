@@ -4,13 +4,10 @@ import android.app.Application
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.os.RemoteException
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener
 import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
-import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
 import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
 import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,32 +19,38 @@ import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.UUID
 
 /**
  * ViewModel for the Breeze App Router Client.
  *
- * This ViewModel handles all business logic for interacting with the AI Router Service by
- * delegating tasks to the appropriate layers (Repository for data, Client for connection).
- * It is responsible for preparing data for the UI and handling user actions.
+ * This ViewModel follows modern architectural patterns (MVVM + Repository). It has one
+ * single responsibility: to manage and expose UI state. It is completely decoupled from
+* the service connection logic, delegating all data operations to the [RouterRepository].
  *
- * The ViewModel exposes a [StateFlow] of [UiState] for reactive UI updates.
+ * It observes data flows from the repository and transforms them into a [UiState]
+ * object that the View can reactively render.
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    // The ViewModel now depends on the Repository and the Client.
-    private val airouterClient = AIRouterClient(application)
-    private lateinit var repository: RouterRepository // Delay initialization
+    // The ViewModel now has a single dependency: the Repository.
+    private val repository: RouterRepository
+
+    // Keep a direct reference to the service for non-repository functions (e.g., getApiVersion)
+    // This is a pragmatic choice to avoid boilerplate in the repository for simple, direct calls.
     private var routerService: IAIRouterService? = null
-    private val TAG = "BreezeAppRouterClientViewModel"
+    private val TAG = "BreezeAppRouterClient"
 
     init {
-        // Collect connection state from the client to update UI
+        // Instantiate the repository, which in turn instantiates the client.
+        val client = AIRouterClient(application)
+        repository = RouterRepository(client, viewModelScope)
+
+        // Collect connection state from the repository
         viewModelScope.launch {
-            airouterClient.connectionState.collect { state ->
+            repository.connectionState.collect { state ->
                 val (status, isConnected) = when (state) {
                     ConnectionState.DISCONNECTED -> "Disconnected" to false
                     ConnectionState.CONNECTING -> "Connecting..." to false
@@ -58,59 +61,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (state != ConnectionState.CONNECTING) logMessage("ℹ️ Connection state: $state")
             }
         }
-
-        // Collect the raw service object for direct, non-repository calls if needed
+        
+        // Collect the raw service object from the client for direct calls.
         viewModelScope.launch {
-            airouterClient.routerService.collect { service ->
-                if (service != null && routerService == null) {
-                    routerService = service
-                    // Now that we have the service, initialize the repository
-                    repository = RouterRepository(airouterClient, viewModelScope)
-                    // Launch a new coroutine to collect responses from the now-initialized repository
-                    viewModelScope.launch {
-                        repository.responses.collect { response ->
-                            handleResponse(response)
-                        }
-                    }
-                } else if (service == null) {
-                    routerService = null
-                }
+            client.routerService.collect { service ->
+                routerService = service
+            }
+        }
+
+        // Collect responses from the repository's hot flow
+        viewModelScope.launch {
+            repository.responses.collect { response ->
+                handleResponse(response)
             }
         }
     }
 
-    /**
-     * Handles incoming AIResponses from the repository's flow.
-     */
     private fun handleResponse(response: AIResponse) {
         val state = if (response.isComplete) "Completed" else "Streaming"
         logMessage("✅ Response [${state}]: ${response.text}")
         response.metadata?.let { logMessage("   └── Metadata: $it") }
     }
 
-    /**
-     * Initiates connection to the AI Router Service.
-     */
     fun connectToService() {
         logMessage("🔄 Connecting to AI Router Service...")
-        airouterClient.connect()
+        repository.connect()
     }
 
-    /**
-     * Disconnects from the AI Router Service.
-     */
     fun disconnectFromService() {
-        airouterClient.disconnect()
+        repository.disconnect()
     }
 
-    /**
-     * Sends a text generation request via the repository.
-     */
     fun sendLLMRequest(prompt: String, isStreaming: Boolean) {
-        if (!::repository.isInitialized) {
-            logMessage("❌ Error: Repository not ready. Please connect to the service first.")
-            return
-        }
         val payload = RequestPayload.TextChat(
             prompt = prompt,
             modelName = "mock-llm",
@@ -121,14 +103,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         logMessage("🚀 $requestType request sent with ID: $requestId")
     }
 
-    /**
-     * Sends an image analysis request via the repository.
-     */
     fun analyzeImage(prompt: String, imageUri: Uri) {
-        if (!::repository.isInitialized) {
-            logMessage("❌ Error: Repository not ready. Please connect to the service first.")
-            return
-        }
         viewModelScope.launch {
             val imageBytes = getImageBytes(imageUri)
             if (imageBytes != null) {
@@ -143,14 +118,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Sends an audio transcription request via the repository.
-     */
     fun transcribeAudio(audioFile: java.io.File) {
-        if (!::repository.isInitialized) {
-            logMessage("❌ Error: Repository not ready. Please connect to the service first.")
-            return
-        }
         val audioBytes = audioFile.readBytes()
         val payload = RequestPayload.AudioTranscription(
             audio = audioBytes,
@@ -161,44 +129,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         logMessage("🚀 Audio request sent with ID: $requestId")
     }
 
-    /**
-     * Sends a text-to-speech synthesis request via the repository.
-     */
     fun sendTTSRequest(text: String) {
-        if (!::repository.isInitialized) {
-            logMessage("❌ Error: Repository not ready. Please connect to the service first.")
-            return
-        }
         val payload = RequestPayload.SpeechSynthesis(text = text, modelName = "mock-tts")
         val requestId = repository.sendRequest(payload)
         logMessage("🚀 TTS request sent with ID: $requestId")
     }
 
-    /**
-     * Sends a content moderation request via the repository.
-     */
     fun sendGuardrailRequest(text: String) {
-        if (!::repository.isInitialized) {
-            logMessage("❌ Error: Repository not ready. Please connect to the service first.")
-            return
-        }
         val payload = RequestPayload.ContentModeration(text = text, checkType = "safety")
         val requestId = repository.sendRequest(payload)
         logMessage("🚀 Guardrail request sent with ID: $requestId")
     }
 
-    /**
-     * Queries the API version from the AI Router Service.
-     */
     fun getApiVersion() {
         if (!_uiState.value.isConnected) return
         val version = routerService?.apiVersion ?: -1
         logMessage("📋 API Version: $version")
     }
 
-    /**
-     * Checks which capabilities are supported by the AI Router Service.
-     */
     fun checkCapabilities() {
         if (!_uiState.value.isConnected) return
         logMessage("🔍 Checking capabilities...")
@@ -209,9 +157,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Attempts to cancel an in-progress request.
-     */
     fun cancelRequest() {
         if (!_uiState.value.isConnected) return
         val result = routerService?.cancelRequest("some-request-id") ?: false
@@ -249,11 +194,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun clearLogs() = _uiState.update { it.copy(logMessages = emptyList()) }
-
     fun setSelectedImageUri(uri: Uri?) = _uiState.update { it.copy(selectedImageUri = uri) }
-
     fun setRecordingState(isRecording: Boolean) = _uiState.update { it.copy(isRecording = isRecording) }
-
     fun setHasRecordedAudio(hasAudio: Boolean) = _uiState.update { it.copy(hasRecordedAudio = hasAudio) }
 
     override fun onCleared() {

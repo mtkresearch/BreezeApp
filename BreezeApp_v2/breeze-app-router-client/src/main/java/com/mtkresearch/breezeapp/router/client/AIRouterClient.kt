@@ -8,93 +8,90 @@ import android.os.IBinder
 import android.util.Log
 import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 
 /**
- * Manages the connection to the AI Router Service.
+ * Manages the connection to the remote IAIRouterService.
  *
- * This client encapsulates the logic of binding and unbinding to the service,
- * handling connection lifecycle events, and exposing the service interface and
- * its connection state in a reactive way.
+ * This class encapsulates the logic for binding, unbinding, and monitoring the
+ * connection state to the AIDL service. It exposes the service interface and
+ * the connection status through reactive [StateFlow]s, abstracting away the
+ * complexities of [ServiceConnection].
+ *
+ * This is the lowest-level networking class in the client app.
  */
 class AIRouterClient(private val context: Context) {
 
-    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
-    val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
-
     private val _routerService = MutableStateFlow<IAIRouterService?>(null)
-    val routerService: StateFlow<IAIRouterService?> = _routerService.asStateFlow()
+    val routerService = _routerService.asStateFlow()
 
-    private val TAG = "AIRouterClient"
-    private var isBound = false
+    private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
+    val connectionState = _connectionState.asStateFlow()
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            Log.d(TAG, "Service connected.")
             _routerService.value = IAIRouterService.Stub.asInterface(service)
             _connectionState.value = ConnectionState.CONNECTED
-            isBound = true
-            Log.i(TAG, "✅ AI Router Service connected.")
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
+            Log.d(TAG, "Service disconnected.")
             _routerService.value = null
             _connectionState.value = ConnectionState.DISCONNECTED
-            isBound = false
-            Log.w(TAG, "ℹ️ AI Router Service disconnected.")
         }
 
         override fun onBindingDied(name: ComponentName?) {
+            Log.e(TAG, "Service binding died.")
             _routerService.value = null
             _connectionState.value = ConnectionState.ERROR
-            isBound = false
-            Log.e(TAG, "❌ Binding to AI Router Service died.")
         }
     }
 
     /**
-     * Binds to the AI Router Service.
-     * It will try to find the service and establish a connection.
+     * Initiates a connection to the remote service.
      */
     fun connect() {
-        if (isBound) return
-        _connectionState.update { ConnectionState.CONNECTING }
-        Log.d(TAG, "🔄 Attempting to connect to AI Router Service...")
-
-        val intent = Intent("com.mtkresearch.breezeapp.router.AIRouterService").apply {
-            setPackage("com.mtkresearch.breezeapp.router")
+        if (_connectionState.value != ConnectionState.DISCONNECTED) {
+            Log.w(TAG, "Already connected or connecting.")
+            return
         }
-
+        
+        _connectionState.value = ConnectionState.CONNECTING
+        val intent = Intent().apply {
+            component = ComponentName(
+                "com.mtkresearch.breezeapp.router",
+                "com.mtkresearch.breezeapp.router.AIRouterService"
+            )
+        }
         try {
             val success = context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
             if (!success) {
+                Log.e(TAG, "Failed to bind to service. Is the router app installed?")
                 _connectionState.value = ConnectionState.ERROR
-                Log.e(TAG, "❌ bindService returned false. Is the router app installed?")
             }
         } catch (e: SecurityException) {
+            Log.e(TAG, "Failed to bind to service due to SecurityException. Check permissions.", e)
             _connectionState.value = ConnectionState.ERROR
-            Log.e(TAG, "❌ SecurityException on bind. Check client permissions.", e)
         }
     }
 
     /**
-     * Unbinds from the AI Router Service.
+     * Disconnects from the remote service.
      */
     fun disconnect() {
-        if (isBound) {
-            context.unbindService(serviceConnection)
-            isBound = false
-            _routerService.value = null
-            _connectionState.value = ConnectionState.DISCONNECTED
-            Log.i(TAG, "🔌 Disconnected from service.")
-        }
+        if (_connectionState.value == ConnectionState.DISCONNECTED) return
+        context.unbindService(serviceConnection)
+        _routerService.value = null
+        _connectionState.value = ConnectionState.DISCONNECTED
+        Log.d(TAG, "Service unbound and disconnected.")
+    }
+
+    companion object {
+        private const val TAG = "AIRouterClient"
     }
 }
 
-/**
- * Represents the connection state to the AI Router Service.
- */
 enum class ConnectionState {
     DISCONNECTED,
     CONNECTING,

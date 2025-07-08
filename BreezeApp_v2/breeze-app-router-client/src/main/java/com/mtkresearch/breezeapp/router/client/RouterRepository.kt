@@ -1,82 +1,88 @@
-package com.mtkresearch.breezeapp.router.client
+ package com.mtkresearch.breezeapp.router.client
 
+import android.util.Log
 import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener
-import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
 import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
 import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
 import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 /**
- * Repository for interacting with the AI Router Service.
+ * Repository for the AI Router Service.
  *
- * This class abstracts the data source (the AIDL service) and provides a clean API
- * for the ViewModel to use. It handles all direct communication with the IAIRouterService,
- * including request creation and listener management. It transforms callback-based AIDL
- * responses into a reactive Flow.
- *
- * @param airouterClient The client responsible for managing the service connection lifecycle.
- * @param externalScope A CoroutineScope to launch listening and response handling jobs.
+ * This class is the single source of truth for all data related to the AI service.
+ * It abstracts the underlying data source (the [AIRouterClient]) and provides a clean,
+ * reactive API for the ViewModel to consume. It manages the service listener lifecycle
+ * and exposes service responses and connection state as Flows.
  */
 class RouterRepository(
-    private val airouterClient: AIRouterClient,
+    private val client: AIRouterClient,
     private val externalScope: CoroutineScope
 ) {
-    private var routerService: IAIRouterService? = null
-
-    // A hot flow to broadcast all incoming responses from the service.
     private val _responses = MutableSharedFlow<AIResponse>()
-    val responses: SharedFlow<AIResponse> = _responses.asSharedFlow()
+    val responses = _responses.asSharedFlow()
 
-    private val listener = object : IAIRouterListener.Stub() {
-        override fun onResponse(response: AIResponse) {
-            // Emit the response into the shared flow from a coroutine.
-            externalScope.launch {
-                _responses.emit(response)
-            }
-        }
-    }
+    // Expose the client's connection state directly to the ViewModel.
+    val connectionState = client.connectionState
 
     init {
+        // When the service connects, register our listener.
+        // When it disconnects, the listener is automatically invalid.
         externalScope.launch {
-            airouterClient.routerService.collect { service ->
-                // When the service reference changes, update the listener registration.
-                routerService?.unregisterListener(listener)
-                routerService = service
-                routerService?.registerListener(listener)
+            client.routerService.collect { service ->
+                if (service != null) {
+                    try {
+                        service.registerListener(serviceListener)
+                        Log.d(TAG, "Service listener registered.")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to register listener", e)
+                    }
+                }
             }
         }
     }
 
     /**
-     * Sends a request to the AI Router Service with the given payload.
-     *
-     * @param payload The type-safe data payload for the request.
-     * @return The unique ID of the request that was sent. This can be used to
-     *         filter the `responses` flow for a specific response.
+     * Sends a request to the AI service. The response will be emitted
+     * through the [responses] flow.
+     * @return The ID of the sent request.
      */
     fun sendRequest(payload: RequestPayload): String {
-        val requestId = UUID.randomUUID().toString()
-        val service = routerService
-        if (service == null) {
-            // Optionally, we could emit an error state here.
-            // For now, we just return an empty ID and the call will do nothing.
-            return ""
+        val request = AIRequest(payload = payload)
+        externalScope.launch {
+            try {
+                client.routerService.value?.sendMessage(request)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send message", e)
+            }
         }
-
-        val request = AIRequest(
-            id = requestId,
-            sessionId = "session-${payload::class.java.simpleName}",
-            timestamp = System.currentTimeMillis(),
-            payload = payload
-        )
-
-        service.sendMessage(request)
-        return requestId
+        return request.id
     }
-} 
+
+    /**
+     * The AIDL listener that receives callbacks from the service.
+     */
+    private val serviceListener = object : IAIRouterListener.Stub() {
+        override fun onResponse(response: AIResponse) {
+            // Emit the response to our shared flow for the ViewModel to collect.
+            externalScope.launch {
+                _responses.emit(response)
+            }
+        }
+    }
+    
+    fun connect() = client.connect()
+    fun disconnect() = client.disconnect()
+
+    companion object {
+        private const val TAG = "RouterRepository"
+    }
+}
