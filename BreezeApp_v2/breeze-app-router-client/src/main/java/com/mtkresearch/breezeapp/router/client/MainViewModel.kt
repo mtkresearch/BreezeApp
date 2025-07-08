@@ -106,14 +106,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Sends a text generation request via the repository.
      */
-    fun sendLLMRequest(prompt: String) {
+    fun sendLLMRequest(prompt: String, isStreaming: Boolean) {
         if (!::repository.isInitialized) {
             logMessage("❌ Error: Repository not ready. Please connect to the service first.")
             return
         }
-        val payload = RequestPayload.TextChat(prompt = prompt, modelName = "mock-llm")
+        val payload = RequestPayload.TextChat(
+            prompt = prompt,
+            modelName = "mock-llm",
+            streaming = isStreaming
+        )
         val requestId = repository.sendRequest(payload)
-        logMessage("🚀 LLM request sent with ID: $requestId")
+        val requestType = if (isStreaming) "Streaming" else "Chat"
+        logMessage("🚀 $requestType request sent with ID: $requestId")
     }
 
     /**

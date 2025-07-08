@@ -24,7 +24,8 @@ sealed interface RequestPayload : Parcelable {
         val prompt: String,
         val modelName: String? = null,
         val temperature: Float? = null,
-        val maxTokens: Int? = null
+        val maxTokens: Int? = null,
+        val streaming: Boolean = false
     ) : RequestPayload
 
     /**
@@ -38,7 +39,8 @@ sealed interface RequestPayload : Parcelable {
     data class ImageAnalysis(
         val image: ByteArray,
         val prompt: String? = null,
-        val modelName: String? = null
+        val modelName: String? = null,
+        val streaming: Boolean = false
     ) : RequestPayload {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -69,7 +71,8 @@ sealed interface RequestPayload : Parcelable {
     data class AudioTranscription(
         val audio: ByteArray,
         val language: String? = null,
-        val modelName: String? = null
+        val modelName: String? = null,
+        val streaming: Boolean = false
     ) : RequestPayload {
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
@@ -102,6 +105,7 @@ sealed interface RequestPayload : Parcelable {
         val voiceId: String? = null,
         val speed: Float? = null,
         val modelName: String? = null,
+        val streaming: Boolean = false
     ) : RequestPayload
 
     /**

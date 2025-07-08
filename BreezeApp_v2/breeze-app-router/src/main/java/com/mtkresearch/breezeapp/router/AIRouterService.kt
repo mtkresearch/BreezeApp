@@ -161,8 +161,14 @@ class AIRouterService : Service() {
             // Determine capability based on request type
             val capability = determineCapability(request)
             
-            // Decide if streaming is appropriate based on capability (e.g., for LLMs)
-            val isStreamingRequest = (capability == CapabilityType.LLM)
+            // Determine if streaming is appropriate based on the client's preference in the payload.
+            val isStreamingRequest = when (val payload = request.payload) {
+                is RequestPayload.TextChat -> payload.streaming
+                is RequestPayload.ImageAnalysis -> payload.streaming
+                is RequestPayload.AudioTranscription -> payload.streaming
+                is RequestPayload.SpeechSynthesis -> payload.streaming
+                else -> false // Guardian is non-streaming.
+            }
             
             if (isStreamingRequest) {
                 // Process as streaming request
