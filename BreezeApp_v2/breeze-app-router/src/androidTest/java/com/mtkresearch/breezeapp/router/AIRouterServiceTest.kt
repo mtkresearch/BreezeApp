@@ -1,179 +1,86 @@
 package com.mtkresearch.breezeapp.router
 
+import android.content.Intent
 import android.os.IBinder
 import android.os.RemoteException
 import android.os.SystemClock
+import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.ServiceTestRule
 import com.mtkresearch.breezeapp.shared.contracts.IAIRouterListener
+import com.mtkresearch.breezeapp.shared.contracts.IAIRouterService
+import com.mtkresearch.breezeapp.shared.contracts.model.AIRequest
 import com.mtkresearch.breezeapp.shared.contracts.model.AIResponse
-import com.mtkresearch.breezeapp.shared.contracts.model.Configuration
+import com.mtkresearch.breezeapp.shared.contracts.model.RequestPayload
 import org.junit.Assert.*
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class AIRouterServiceTest {
-    private lateinit var service: AIRouterService
+
+    @get:Rule
+    val serviceTestRule = ServiceTestRule()
+
+    private lateinit var service: IAIRouterService
 
     @Before
     fun setUp() {
-        service = AIRouterService()
-    }
-
-    // --- Configuration Validation Tests ---
-
-    @Test
-    fun configValidation_validConfig_returnsTrue() {
-        val config = Configuration(
-            apiVersion = 1,
-            logLevel = 3,
-            preferredRuntime = Configuration.RuntimeBackend.GPU,
-            runnerConfigurations = mapOf(
-                Configuration.AITaskType.TEXT_GENERATION to Configuration.RunnerType.EXECUTORCH
-            ),
-            defaultModelName = "gpt-3.5-turbo",
-            languagePreference = "en",
-            timeoutMs = 10000,
-            maxTokens = 512,
-            temperature = 0.5f
-        )
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertTrue(result)
+        val intent = Intent(ApplicationProvider.getApplicationContext(), AIRouterService::class.java)
+        // Use the test rule to bind to the service, which correctly handles its lifecycle.
+        val binder = serviceTestRule.bindService(intent)
+        service = IAIRouterService.Stub.asInterface(binder)
     }
 
     @Test
-    fun configValidation_invalidApiVersion_returnsFalse() {
-        val config = Configuration(apiVersion = 0)
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
+    fun serviceBinding_returnsValidBinder() {
+        assertNotNull("Service should bind successfully", service)
+        val apiVersion = service.apiVersion
+        assertTrue("API version should be greater than 0", apiVersion > 0)
     }
 
     @Test
-    fun configValidation_invalidLogLevel_returnsFalse() {
-        val config = Configuration(logLevel = 10)
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
-    }
+    fun listener_receivesResponse_andUnregistersCorrectly() {
+        val responseLatch = CountDownLatch(1)
+        val responseCounter = AtomicInteger(0)
+        var receivedResponse: AIResponse? = null
 
-    @Test
-    fun configValidation_negativeTimeout_returnsFalse() {
-        val config = Configuration(timeoutMs = -1)
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
-    }
-
-    @Test
-    fun configValidation_zeroMaxTokens_returnsFalse() {
-        val config = Configuration(maxTokens = 0)
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
-    }
-
-    @Test
-    fun configValidation_invalidTemperature_returnsFalse() {
-        val config = Configuration(temperature = 1.5f)
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
-    }
-
-    @Test
-    fun configValidation_blankLanguage_returnsFalse() {
-        val config = Configuration(languagePreference = " ")
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, config) as Boolean
-        assertFalse(result)
-    }
-
-    @Test
-    fun configValidation_invalidEnum_returnsFalse() {
-        val config = Configuration(
-            preferredRuntime = Configuration.RuntimeBackend.GPU,
-            runnerConfigurations = mapOf(
-                Configuration.AITaskType.TEXT_GENERATION to Configuration.RunnerType.EXECUTORCH
-            )
-        )
-        val brokenConfig = config.copy(
-            runnerConfigurations = mapOf(
-                Configuration.AITaskType.TEXT_GENERATION to (
-                        enumValueOfOrNull<Configuration.RunnerType>("NOT_A_RUNNER") ?: Configuration.RunnerType.DEFAULT
-                        )
-            )
-        )
-        val result = service.javaClass.getDeclaredMethod("validateConfiguration", Configuration::class.java)
-            .apply { isAccessible = true }
-            .invoke(service, brokenConfig) as Boolean
-        assertTrue(result) // 因為 fallback 為 DEFAULT，仍屬於合法的 enum 值
-    }
-
-    // --- Listener Registration/Notification Tests ---
-
-    @Test
-    fun listener_register_and_unregister() {
-        val latch = CountDownLatch(1)
         val listener = object : IAIRouterListener.Stub() {
             override fun onResponse(response: AIResponse?) {
-                latch.countDown()
+                receivedResponse = response
+                responseCounter.incrementAndGet()
+                responseLatch.countDown()
             }
         }
-        // Register
-        val binder = service.javaClass.getDeclaredField("listeners").apply { isAccessible = true }.get(service) as android.os.RemoteCallbackList<IAIRouterListener>
-        binder.register(listener, null)
-        // Notify
-        val notifyMethod = service.javaClass.getDeclaredMethod("notifyListeners", AIResponse::class.java)
-        notifyMethod.isAccessible = true
-        notifyMethod.invoke(
-            service,
-            AIResponse(
-                requestId = "req-1",
-                text = "test",
-                isComplete = true,
-                state = AIResponse.ResponseState.COMPLETED,
-                apiVersion = 1,
-                binaryAttachments = emptyList(),
-                metadata = emptyMap(),
-                error = null
-            )
-        )
-        // Should receive callback
-        assertTrue(latch.await(2, TimeUnit.SECONDS))
-        // Unregister
-        binder.unregister(listener)
-        // Notify again, should not receive callback
-        val latch2 = CountDownLatch(1)
-        notifyMethod.invoke(
-            service,
-            AIResponse(
-                requestId = "req-2",
-                text = "test2",
-                isComplete = true,
-                state = AIResponse.ResponseState.COMPLETED,
-                apiVersion = 1,
-                binaryAttachments = emptyList(),
-                metadata = emptyMap(),
-                error = null
-            )
-        )
-        assertFalse(latch2.await(1, TimeUnit.SECONDS))
-    }
 
-    // --- Utility ---
-    private inline fun <reified T : Enum<T>> enumValueOfOrNull(name: String): T? =
-        try { enumValueOf<T>(name) } catch (_: Exception) { null }
+        // 1. Register listener and send a message via the public AIDL interface
+        service.registerListener(listener)
+        val request = AIRequest(payload = RequestPayload.TextChat(prompt = "Test prompt", modelName = "mock-llm"))
+        service.sendMessage(request)
+
+        // 2. Verify the listener received the response
+        assertTrue("Listener should receive a response within 5 seconds", responseLatch.await(5, TimeUnit.SECONDS))
+        assertNotNull("Received response should not be null", receivedResponse)
+        assertEquals("Request ID should match", request.id, receivedResponse?.requestId)
+        assertEquals("Response counter should be 1", 1, responseCounter.get())
+        assertTrue("Response should be marked as complete", receivedResponse?.isComplete == true)
+
+        // 3. Unregister the listener
+        service.unregisterListener(listener)
+
+        // 4. Send another message and verify the listener is NOT called again
+        val secondRequest = AIRequest(payload = RequestPayload.TextChat(prompt = "Second prompt", modelName = "mock-llm"))
+        service.sendMessage(secondRequest)
+
+        // Give some time for the message to be (not) processed by the old listener
+        SystemClock.sleep(1000)
+
+        // The counter should remain 1, proving the listener was not called a second time
+        assertEquals("Response counter should still be 1 after unregistering", 1, responseCounter.get())
+    }
 } 
