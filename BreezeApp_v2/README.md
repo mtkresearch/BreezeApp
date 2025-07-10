@@ -30,27 +30,6 @@ graph TD
 
 This clean separation allows the router to remain UI-agnostic and service-oriented.
 
-## 💼 The Dependency View: Who Depends on What?
-
-Although the runtime interaction is between the client and the router, both modules rely on a shared contract library to exchange data safely and consistently.
-
-```mermaid
-graph TD
-    edgeai["📘 EdgeAI<br/>(AIRequest, AIResponse definitions)"]
-    client_app["📱 breeze-app-router-client"]
-    router["🧠 breeze-app-router"]
-
-    client_app --> edgeai
-    router --> edgeai
-
-    style client_app fill:#E8F5E9,stroke:#4CAF50
-    style router fill:#E3F2FD,stroke:#2196F3
-    style edgeai fill:#FFFDE7,stroke:#FFC107
-```
-
-* **`EdgeAI`** is a lightweight library module that defines the data contracts (`AIRequest`, `AIResponse`). It does not contain any logic.
-* Both the client and the router depend on it to share a common data schema.
-
 ## 🚀 How to Get Started: Choose Your Role
 
 Now that you understand the big picture, here’s how you can dive in based on your goals.
