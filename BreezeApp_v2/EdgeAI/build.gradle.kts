@@ -43,8 +43,17 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     
-    // Dependencies for testing
+    // Testing dependencies
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.mockito:mockito-core:4.11.0")
+    testImplementation("org.mockito:mockito-inline:4.11.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    
+    // Android testing dependencies
+    androidTestImplementation("androidx.test:runner:1.5.2")
+    androidTestImplementation("androidx.test:rules:1.5.0")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("org.mockito:mockito-android:4.11.0")
 } 

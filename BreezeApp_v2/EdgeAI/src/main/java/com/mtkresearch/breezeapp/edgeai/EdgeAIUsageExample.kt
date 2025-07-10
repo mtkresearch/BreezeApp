@@ -23,15 +23,28 @@ class EdgeAIUsageExample(private val context: Context) {
     }
     
     /**
-     * Initialize the EdgeAI SDK
+     * Initialize the EdgeAI SDK (Basic - may not be connected immediately)
      * Call this once in your Application.onCreate() or Activity.onCreate()
      */
     fun initializeSDK() {
         try {
             EdgeAI.initialize(context)
-            Log.i(TAG, "EdgeAI SDK initialized successfully")
+            Log.i(TAG, "EdgeAI SDK initialization started")
         } catch (e: ServiceConnectionException) {
             Log.e(TAG, "Failed to initialize EdgeAI SDK", e)
+        }
+    }
+    
+    /**
+     * Initialize the EdgeAI SDK and wait for connection (Recommended)
+     * This suspending function ensures the service is fully connected before returning.
+     */
+    suspend fun initializeSDKAndWait() {
+        try {
+            EdgeAI.initializeAndWait(context, timeoutMs = 10000)
+            Log.i(TAG, "EdgeAI SDK initialized and connected successfully")
+        } catch (e: ServiceConnectionException) {
+            Log.e(TAG, "Failed to initialize or connect EdgeAI SDK", e)
         }
     }
     
@@ -147,15 +160,24 @@ class EdgeAIUsageExample(private val context: Context) {
                     format = "mp3"
                 )
                 
-                val audioStream = EdgeAI.tts(request)
+                EdgeAI.tts(request)
+                    .catch { e ->
+                        when (e) {
+                            is InvalidInputException -> Log.e(TAG, "Invalid TTS input: ${e.message}")
+                            is ModelNotFoundException -> Log.e(TAG, "TTS model not found: ${e.message}")
+                            else -> Log.e(TAG, "TTS error: ${e.message}")
+                        }
+                    }
+                    .collect { response ->
+                        // In real app: play the audio stream
+                        Log.d(TAG, "TTS audio generated: ${response.audioData.size} bytes")
+                        Log.d(TAG, "Audio format: ${response.format}")
+                        
+                        // Convert to InputStream for playback if needed
+                        // val audioStream = response.toInputStream()
+                        // audioPlayer.play(audioStream)
+                    }
                 
-                // In real app: play the audio stream
-                Log.d(TAG, "TTS audio generated, stream available: ${audioStream.available()} bytes")
-                
-            } catch (e: InvalidInputException) {
-                Log.e(TAG, "Invalid TTS input: ${e.message}")
-            } catch (e: ModelNotFoundException) {
-                Log.e(TAG, "TTS model not found: ${e.message}")
             } catch (e: EdgeAIException) {
                 Log.e(TAG, "TTS error: ${e.message}")
             }
@@ -226,12 +248,12 @@ class EdgeAIUsageExample(private val context: Context) {
     }
     
     /**
-     * Example: Full OpenAI-compatible chat request
+     * Example: Full standard API-compatible chat request
      */
     fun fullChatAPIExample() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val request = ChatCompletionRequest(
+                val request = ChatRequest(
                     model = "breeze2",
                     messages = listOf(
                         ChatMessage(role = "system", content = "You are a helpful assistant"),
@@ -279,7 +301,7 @@ class EdgeAIUsageExample(private val context: Context) {
      * Cleanup - call this in onDestroy
      */
     fun cleanup() {
-        EdgeAI.shutdown(context)
+        EdgeAI.shutdown()
         Log.i(TAG, "EdgeAI SDK shutdown")
     }
     

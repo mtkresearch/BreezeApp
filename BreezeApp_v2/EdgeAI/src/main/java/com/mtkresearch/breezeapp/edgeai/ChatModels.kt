@@ -5,11 +5,11 @@ import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.RawValue
 
 /**
- * Request for OpenAI-compatible chat completions
- * Based on: https://platform.openai.com/docs/api-reference/chat/create
+ * Request for standard chat completions
+ * Based on industry-standard API specifications
  */
 @Parcelize
-data class ChatCompletionRequest(
+data class ChatRequest(
     /**
      * Array of chat messages. Each message must include a role and content.
      */
@@ -183,10 +183,10 @@ data class ChatMessage(
 ) : Parcelable
 
 /**
- * Response from OpenAI-compatible chat completions
+ * Response from standard chat completions
  */
 @Parcelize
-data class ChatCompletionResponse(
+data class ChatResponse(
     /**
      * Unique identifier for the chat completion
      */

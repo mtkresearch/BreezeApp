@@ -2,10 +2,11 @@ package com.mtkresearch.breezeapp.edgeai
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import java.io.InputStream
 
 /**
- * Request for OpenAI-compatible Text-to-Speech generation
- * Based on: https://platform.openai.com/docs/api-reference/audio/createSpeech
+ * Request for Text-to-Speech generation
+ * Based on industry-standard API specifications
  */
 @Parcelize
 data class TTSRequest(
@@ -53,5 +54,57 @@ data class TTSRequest(
         require(responseFormat == null || responseFormat in supportedFormats) { 
             "Response format must be one of: ${supportedFormats.joinToString()}" 
         }
+    }
+}
+
+/**
+ * Response from text-to-speech generation
+ */
+data class TTSResponse(
+    /**
+     * Generated audio data as byte array
+     */
+    val audioData: ByteArray,
+    
+    /**
+     * Audio format (mp3, wav, etc.)
+     */
+    val format: String = "mp3",
+    
+    /**
+     * Duration in milliseconds (if available)
+     */
+    val durationMs: Long? = null,
+    
+    /**
+     * Sample rate (if available)
+     */
+    val sampleRate: Int? = null
+) {
+    /**
+     * Convert audio data to InputStream for playback
+     */
+    fun toInputStream(): InputStream = audioData.inputStream()
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as TTSResponse
+
+        if (!audioData.contentEquals(other.audioData)) return false
+        if (format != other.format) return false
+        if (durationMs != other.durationMs) return false
+        if (sampleRate != other.sampleRate) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = audioData.contentHashCode()
+        result = 31 * result + format.hashCode()
+        result = 31 * result + (durationMs?.hashCode() ?: 0)
+        result = 31 * result + (sampleRate?.hashCode() ?: 0)
+        return result
     }
 } 

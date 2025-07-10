@@ -1,6 +1,9 @@
 package com.mtkresearch.breezeapp.router.client
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -14,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,76 +36,161 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     private val TAG = "BreezeAppRouterClient"
+    private var initializationRetryCount = 0
+    private val maxRetryCount = 3
+    private var isInitializing = false
 
     init {
-        // Initialize EdgeAI SDK
-        initializeEdgeAI()
+        // Check prerequisites before initializing EdgeAI SDK
+        checkPrerequisitesAndInitialize()
     }
 
-    private fun initializeEdgeAI() {
-        try {
-            EdgeAI.initialize(getApplication())
+    private fun checkPrerequisitesAndInitialize() {
+        viewModelScope.launch {
+            logMessage("🚀 Initializing EdgeAI SDK...")
             
-            // Monitor SDK readiness
-            viewModelScope.launch {
-                var isReady = EdgeAI.isReady()
-                var retryCount = 0
-                
-                while (!isReady && retryCount < 30) { // Wait up to 3 seconds
-                    kotlinx.coroutines.delay(100)
-                    isReady = EdgeAI.isReady()
-                    retryCount++
-                }
-                
-                val (status, isConnected) = if (isReady) {
-                    "Connected (EdgeAI SDK)" to true
-                } else {
-                    "Connection Error" to false
-                }
-                
-                _uiState.update { it.copy(connectionStatus = status, isConnected = isConnected) }
-                
-                if (isConnected) {
-                    logMessage("✅ EdgeAI SDK initialized and ready")
-                } else {
-                    logMessage("❌ EdgeAI SDK failed to initialize")
-                }
+            // Try to wake up the service first (optional optimization)
+            tryWakeUpService()
+            
+            // Initialize EdgeAI SDK with retry logic
+            initializeEdgeAIWithRetry()
+        }
+    }
+
+
+
+    private suspend fun tryWakeUpService() {
+        try {
+            logMessage("🔔 Attempting to wake up Router Service...")
+            val intent = Intent().apply {
+                component = ComponentName(
+                    "com.mtkresearch.breezeapp.router",
+                    "com.mtkresearch.breezeapp.router.AIRouterService"
+                )
+            }
+            
+            // Try to start the service to ensure it's running
+            getApplication<Application>().startService(intent)
+            logMessage("✅ Service wake-up signal sent")
+            
+            // Give the service time to start up
+            delay(1000)
+        } catch (e: Exception) {
+            logMessage("⚠️ Could not wake up service: ${e.message}")
+        }
+    }
+
+    private suspend fun initializeEdgeAIWithRetry() {
+        if (isInitializing) {
+            logMessage("🔄 Initialization already in progress...")
+            return
+        }
+        
+        isInitializing = true
+        initializationRetryCount++
+        
+        try {
+            logMessage("🚀 Initializing EdgeAI SDK (attempt $initializationRetryCount/$maxRetryCount)...")
+            _uiState.update { it.copy(connectionStatus = "Initializing...", isConnected = false) }
+            
+            // Use the new initializeAndWait method for guaranteed connection
+            val connectionTimeoutMs = 8000L
+            EdgeAI.initializeAndWait(getApplication(), connectionTimeoutMs)
+            
+            // Verify connection is truly established
+            if (EdgeAI.isReady()) {
+                logMessage("✅ EdgeAI SDK initialized and connected successfully!")
+                _uiState.update { it.copy(connectionStatus = "Connected (EdgeAI SDK v1.0)", isConnected = true) }
+                initializationRetryCount = 0 // Reset retry count on success
+            } else {
+                throw ServiceConnectionException("SDK reported success but not ready")
             }
             
         } catch (e: ServiceConnectionException) {
             logMessage("❌ EdgeAI SDK initialization failed: ${e.message}")
-            _uiState.update { it.copy(connectionStatus = "Connection Error", isConnected = false) }
+            handleInitializationFailure(e)
+        } catch (e: Exception) {
+            logMessage("❌ Unexpected error during initialization: ${e.message}")
+            handleInitializationFailure(e)
+        } finally {
+            isInitializing = false
+        }
+    }
+
+    private suspend fun handleInitializationFailure(error: Throwable) {
+        if (initializationRetryCount < maxRetryCount) {
+            val retryDelay = initializationRetryCount * 2000L // 2s, 4s, 6s
+            logMessage("🔄 Retrying in ${retryDelay / 1000}s... (${initializationRetryCount}/$maxRetryCount)")
+            _uiState.update { 
+                it.copy(
+                    connectionStatus = "Retrying... (${initializationRetryCount}/$maxRetryCount)", 
+                    isConnected = false
+                ) 
+            }
+            
+            delay(retryDelay)
+            initializeEdgeAIWithRetry()
+        } else {
+            logMessage("💥 Failed to initialize after $maxRetryCount attempts")
+            
+            // Use EdgeAI SDK's diagnostic capabilities for user-friendly error messages
+            val diagnosticMessage = try {
+                EdgeAIDebug.getDiagnosticMessage(getApplication())
+            } catch (e: Exception) {
+                "Unable to connect to AI service. Please try again or restart the app."
+            }
+            
+            logMessage("🔧 $diagnosticMessage")
+            _uiState.update { 
+                it.copy(
+                    connectionStatus = "Connection Failed - Manual Retry Available", 
+                    isConnected = false
+                ) 
+            }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
         // Cleanup EdgeAI SDK
-        EdgeAI.shutdown(getApplication())
-        logMessage("🔄 EdgeAI SDK shutdown")
+        try {
+            EdgeAI.shutdown()
+            logMessage("🔄 EdgeAI SDK shutdown completed")
+        } catch (e: Exception) {
+            logMessage("⚠️ EdgeAI SDK shutdown warning: ${e.message}")
+        }
     }
 
     fun connectToService() {
-        logMessage("🔄 EdgeAI SDK is automatically connected on initialization")
-        // EdgeAI SDK handles connection automatically
-        if (EdgeAI.isReady()) {
-            _uiState.update { it.copy(connectionStatus = "Connected (EdgeAI SDK)", isConnected = true) }
-            logMessage("✅ EdgeAI SDK is ready")
-        } else {
-            // Retry initialization
-            initializeEdgeAI()
+        viewModelScope.launch {
+            if (EdgeAI.isReady()) {
+                logMessage("✅ EdgeAI SDK is already connected")
+                _uiState.update { it.copy(connectionStatus = "Connected (EdgeAI SDK v1.0)", isConnected = true) }
+            } else {
+                logMessage("🔄 Manual connection attempt...")
+                // Reset retry count for manual attempts
+                initializationRetryCount = 0
+                checkPrerequisitesAndInitialize()
+            }
         }
     }
 
     fun disconnectFromService() {
-        EdgeAI.shutdown(getApplication())
-        _uiState.update { it.copy(connectionStatus = "Disconnected", isConnected = false) }
-        logMessage("🔄 EdgeAI SDK disconnected")
+        viewModelScope.launch {
+            try {
+                EdgeAI.shutdown()
+                _uiState.update { it.copy(connectionStatus = "Disconnected", isConnected = false) }
+                logMessage("🔄 EdgeAI SDK disconnected")
+            } catch (e: Exception) {
+                logMessage("⚠️ Disconnect error: ${e.message}")
+            }
+        }
     }
 
     fun sendLLMRequest(prompt: String, isStreaming: Boolean) {
         if (!_uiState.value.isConnected) {
             logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            logMessage("💡 Tip: Try clicking 'Connect' button first")
             return
         }
 
@@ -122,7 +211,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         when (e) {
                             is InvalidInputException -> logMessage("❌ Invalid input: ${e.message}")
                             is ModelNotFoundException -> logMessage("❌ Model not found: ${e.message}")
-                            is ServiceConnectionException -> logMessage("❌ Connection error: ${e.message}")
+                            is ServiceConnectionException -> {
+                                logMessage("❌ Connection error: ${e.message}")
+                                logMessage("💡 Tip: Service may have disconnected, try reconnecting")
+                                _uiState.update { it.copy(isConnected = false, connectionStatus = "Connection Lost") }
+                            }
                             else -> logMessage("❌ Chat error: ${e.message}")
                         }
                     }
@@ -196,6 +289,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         when (e) {
                             is AudioProcessingException -> logMessage("❌ Audio processing failed: ${e.message}")
                             is ModelNotFoundException -> logMessage("❌ ASR model not found: ${e.message}")
+                            is ServiceConnectionException -> {
+                                logMessage("❌ Connection error: ${e.message}")
+                                _uiState.update { it.copy(isConnected = false, connectionStatus = "Connection Lost") }
+                            }
                             else -> logMessage("❌ ASR error: ${e.message}")
                         }
                     }
@@ -235,19 +332,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 logMessage("🚀 TTS request sent via EdgeAI SDK")
                 
-                val audioStream = EdgeAI.tts(request)
-                val audioSize = audioStream.available()
+                EdgeAI.tts(request)
+                    .catch { e ->
+                        when (e) {
+                            is InvalidInputException -> logMessage("❌ Invalid TTS input: ${e.message}")
+                            is ModelNotFoundException -> logMessage("❌ TTS model not found: ${e.message}")
+                            is ServiceConnectionException -> {
+                                logMessage("❌ Connection error: ${e.message}")
+                                _uiState.update { it.copy(isConnected = false, connectionStatus = "Connection Lost") }
+                            }
+                            else -> logMessage("❌ TTS error: ${e.message}")
+                        }
+                    }
+                    .collect { response ->
+                        val audioSize = response.audioData.size
+                        logMessage("✅ TTS audio generated: $audioSize bytes")
+                        logMessage("   └── Format: ${response.format}, Voice: alloy")
+                        
+                        // In a real app, you would play the audio stream here
+                        // val audioStream = response.toInputStream()
+                        // audioPlayer.play(audioStream)
+                    }
                 
-                logMessage("✅ TTS audio generated: $audioSize bytes")
-                logMessage("   └── Format: mp3, Voice: alloy")
-                
-                // In a real app, you would play the audio stream here
-                // audioPlayer.play(audioStream)
-                
-            } catch (e: InvalidInputException) {
-                logMessage("❌ Invalid TTS input: ${e.message}")
-            } catch (e: ModelNotFoundException) {
-                logMessage("❌ TTS model not found: ${e.message}")
             } catch (e: EdgeAIException) {
                 logMessage("❌ TTS request failed: ${e.message}")
             }
@@ -272,7 +378,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         // EdgeAI SDK abstracts away direct API version checks
-        logMessage("📋 Using EdgeAI SDK v1.0 (OpenAI-compatible)")
+        logMessage("📋 Using EdgeAI SDK v2.0 (Simplified API)")
         logMessage("   └── Chat Completion: ✅ Available")
         logMessage("   └── Text-to-Speech: ✅ Available") 
         logMessage("   └── Speech Recognition: ✅ Available")
@@ -290,7 +396,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         logMessage("   └── Text-to-Speech: ✅ Available")
         logMessage("   └── Speech Recognition: ✅ Available")
         logMessage("   └── Multiple ASR formats: ✅ Available")
-        logMessage("   └── OpenAI Compatibility: ✅ Full")
+        logMessage("   └── Unified API: ✅ Simplified")
     }
 
     fun cancelRequest() {

@@ -1,10 +1,10 @@
 // IAIRouterService.aidl
 package com.mtkresearch.breezeapp.edgeai;
 
-import com.mtkresearch.breezeapp.edgeai.model.Configuration;
-import com.mtkresearch.breezeapp.edgeai.model.AIRequest;
-import com.mtkresearch.breezeapp.edgeai.model.BinaryData;
 import com.mtkresearch.breezeapp.edgeai.IAIRouterListener;
+import com.mtkresearch.breezeapp.edgeai.ChatRequest;
+import com.mtkresearch.breezeapp.edgeai.TTSRequest;
+import com.mtkresearch.breezeapp.edgeai.ASRRequest;
 
 /**
  * AIDL interface for the AI Router Service.
@@ -19,15 +19,34 @@ interface IAIRouterService {
      * @return The integer API version.
      */
     int getApiVersion();
-
+    
+    // === NEW SIMPLIFIED API ===
+    
     /**
-     * Sends an AI request to the service for processing.
-     * The service will process the request asynchronously and send the response
-     * via a registered IAIRouterListener.
-     *
-     * @param request The AIRequest object containing all necessary data.
+     * [PREFERRED] Direct chat request (標準化 API).
+     * Eliminates intermediate model conversion for better performance.
+     * @param requestId Client-generated request ID for tracking
+     * @param request The chat request to process
      */
-    void sendMessage(in AIRequest request);
+    void sendChatRequest(String requestId, in ChatRequest request);
+    
+    /**
+     * [PREFERRED] Direct text-to-speech request (標準化 API).
+     * Eliminates intermediate model conversion for better performance.
+     * @param requestId Client-generated request ID for tracking
+     * @param request The TTS request to process
+     */
+    void sendTTSRequest(String requestId, in TTSRequest request);
+    
+    /**
+     * [PREFERRED] Direct speech recognition request (標準化 API).
+     * Eliminates intermediate model conversion for better performance.
+     * @param requestId Client-generated request ID for tracking
+     * @param request The ASR request to process
+     */
+    void sendASRRequest(String requestId, in ASRRequest request);
+    
+    // === COMMON METHODS ===
     
     /**
      * Cancels an in-progress request.

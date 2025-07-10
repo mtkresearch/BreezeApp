@@ -5,8 +5,8 @@ import kotlinx.parcelize.Parcelize
 import java.io.File
 
 /**
- * Request for OpenAI-compatible Automatic Speech Recognition
- * Based on: https://platform.openai.com/docs/api-reference/audio/createTranscription
+ * Request for Automatic Speech Recognition
+ * Based on industry-standard API specifications
  */
 @Parcelize
 data class ASRRequest(
@@ -123,7 +123,7 @@ data class ASRRequest(
 }
 
 /**
- * Response from OpenAI-compatible speech recognition
+ * Response from speech recognition
  * The exact structure depends on the responseFormat parameter
  */
 @Parcelize

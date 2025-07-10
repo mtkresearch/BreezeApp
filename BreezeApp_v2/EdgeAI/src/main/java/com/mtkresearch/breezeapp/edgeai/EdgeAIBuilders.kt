@@ -2,7 +2,7 @@ package com.mtkresearch.breezeapp.edgeai
 
 /**
  * Convenience builders for EdgeAI requests to simplify common use cases
- * while maintaining full OpenAI compatibility
+ * while maintaining full standard API compatibility
  */
 
 /**
@@ -15,7 +15,7 @@ fun chatRequest(
     temperature: Float? = null,
     maxTokens: Int? = null,
     stream: Boolean = false
-): ChatCompletionRequest {
+): ChatRequest {
     val messages = mutableListOf<ChatMessage>()
     
     // Add system prompt if provided
@@ -26,7 +26,7 @@ fun chatRequest(
     // Add user prompt
     messages.add(ChatMessage(role = "user", content = prompt))
     
-    return ChatCompletionRequest(
+    return ChatRequest(
         model = model,
         messages = messages,
         temperature = temperature,
@@ -44,8 +44,8 @@ fun chatRequestWithHistory(
     temperature: Float? = null,
     maxTokens: Int? = null,
     stream: Boolean = false
-): ChatCompletionRequest {
-    return ChatCompletionRequest(
+): ChatRequest {
+    return ChatRequest(
         model = model,
         messages = messages,
         temperature = temperature,

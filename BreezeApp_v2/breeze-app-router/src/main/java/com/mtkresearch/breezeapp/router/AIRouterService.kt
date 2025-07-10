@@ -2,27 +2,30 @@ package com.mtkresearch.breezeapp.router
 
 import android.app.Service
 import android.content.Intent
-import android.os.Binder
 import android.os.IBinder
 import android.os.RemoteException
 import android.util.Log
 import com.mtkresearch.breezeapp.edgeai.IAIRouterService
 import com.mtkresearch.breezeapp.edgeai.IAIRouterListener
-import com.mtkresearch.breezeapp.edgeai.model.AIRequest
-import com.mtkresearch.breezeapp.edgeai.model.AIResponse
-import com.mtkresearch.breezeapp.edgeai.model.Configuration
+import com.mtkresearch.breezeapp.edgeai.ChatRequest
+import com.mtkresearch.breezeapp.edgeai.TTSRequest
+import com.mtkresearch.breezeapp.edgeai.ASRRequest
+import com.mtkresearch.breezeapp.edgeai.AIResponse
+import com.mtkresearch.breezeapp.edgeai.ChatMessage
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.injection.RouterConfigurator
 import com.mtkresearch.breezeapp.router.domain.model.*
-import com.mtkresearch.breezeapp.edgeai.model.RequestPayload
-import com.mtkresearch.breezeapp.edgeai.model.ResponseMetadata
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
 import android.os.RemoteCallbackList
-import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.SupervisorJob
+
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
 
 /**
  * AIRouterService
@@ -43,12 +46,17 @@ class AIRouterService : Service() {
     }
 
     // Coroutine scope for background work
-    private val serviceJob = Job()
+    private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
     // Robust listener management with death monitoring
-    private val listeners = object : RemoteCallbackList<IAIRouterListener>() {}
+    private val listeners = RemoteCallbackList<IAIRouterListener>()
     
+    // Client tracking for resource management
+    @Volatile
+    private var clientCount = 0
+    private val clientCountMutex = Mutex()
+
     // Core components are now tied to the service's lifecycle.
     private lateinit var engineManager: AIEngineManager
     
@@ -59,25 +67,44 @@ class AIRouterService : Service() {
             return API_VERSION
         }
 
-        override fun sendMessage(request: AIRequest?) {
-            Log.i(TAG, "sendMessage() called: $request")
-            if (request == null) {
-                Log.w(TAG, "sendMessage received a null request.")
+        // === SIMPLIFIED API METHODS ===
+        
+        override fun sendChatRequest(requestId: String?, request: ChatRequest?) {
+            Log.i(TAG, "[NEW] sendChatRequest() called: requestId=$requestId, request=$request")
+            if (requestId == null || request == null) {
+                Log.w(TAG, "sendChatRequest received null parameters: requestId=$requestId, request=$request")
                 return
             }
             
             // Offload to coroutine for non-blocking processing
-            val requestJob = serviceScope.launch {
-                processAIRequest(request)
+            serviceScope.launch {
+                processChatRequest(request, requestId)
+            }
+        }
+        
+        override fun sendTTSRequest(requestId: String?, request: TTSRequest?) {
+            Log.i(TAG, "[NEW] sendTTSRequest() called: requestId=$requestId, request=$request")
+            if (requestId == null || request == null) {
+                Log.w(TAG, "sendTTSRequest received null parameters: requestId=$requestId, request=$request")
+                return
             }
             
-            // Track the request for potential cancellation
-            engineManager.let { manager ->
-                // Store the job for potential cancellation
-                manager.javaClass.getDeclaredField("activeRequests").apply {
-                    isAccessible = true
-                    (get(manager) as ConcurrentHashMap<String, Job>)[request.id] = requestJob
-                }
+            // Offload to coroutine for non-blocking processing
+            serviceScope.launch {
+                processTTSRequest(request, requestId)
+            }
+        }
+        
+        override fun sendASRRequest(requestId: String?, request: ASRRequest?) {
+            Log.i(TAG, "[NEW] sendASRRequest() called: requestId=$requestId, request=$request")
+            if (requestId == null || request == null) {
+                Log.w(TAG, "sendASRRequest received null parameters: requestId=$requestId, request=$request")
+                return
+            }
+            
+            // Offload to coroutine for non-blocking processing
+            serviceScope.launch {
+                processASRRequest(request, requestId)
             }
         }
 
@@ -93,12 +120,38 @@ class AIRouterService : Service() {
 
         override fun registerListener(listener: IAIRouterListener?) {
             Log.i(TAG, "registerListener() called: $listener")
-            if (listener != null) listeners.register(listener)
+            listener?.let { 
+                listeners.register(it)
+                // Increment client count
+                CoroutineScope(Dispatchers.Main + serviceJob).launch {
+                    clientCountMutex.withLock {
+                        clientCount++
+                        Log.d(TAG, "Client registered. Total clients: $clientCount")
+                    }
+                }
+            }
         }
 
         override fun unregisterListener(listener: IAIRouterListener?) {
             Log.i(TAG, "unregisterListener() called: $listener")
-            if (listener != null) listeners.unregister(listener)
+            listener?.let { 
+                listeners.unregister(it)
+                // Decrement client count and check if we should stop
+                CoroutineScope(Dispatchers.Main + serviceJob).launch {
+                    clientCountMutex.withLock {
+                        clientCount--
+                        Log.d(TAG, "Client unregistered. Remaining clients: $clientCount")
+                        
+                        // If no clients remain, schedule service stop
+                        if (clientCount <= 0) {
+                            Log.i(TAG, "No clients remaining, scheduling service cleanup...")
+                            // Give a small delay to handle any pending operations
+                            delay(1000)
+                            stopSelfIfNoClients()
+                        }
+                    }
+                }
+            }
         }
 
         override fun hasCapability(capabilityName: String?): Boolean {
@@ -137,10 +190,10 @@ class AIRouterService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Headless testing can be handled by directly interacting with the manager or runners
-        // if needed, but the explicit handleTestIntent is removed for simplification.
-        Log.d(TAG, "onStartCommand received, for now it does nothing.")
-        return START_STICKY
+        // For AI Router Service, we want it to stop when no clients are bound
+        // This ensures proper resource cleanup when not in use
+        Log.d(TAG, "onStartCommand received, service will stop when no clients bound")
+        return START_NOT_STICKY  // Service stops when no clients bound and process killed
     }
 
     override fun onDestroy() {
@@ -150,168 +203,26 @@ class AIRouterService : Service() {
         Log.i(TAG, "AIRouterService destroyed")
     }
     
-    /**
-     * Process AI request through AIEngineManager
-     */
-    private suspend fun processAIRequest(request: AIRequest) {
-        try {
-            // Convert AIRequest to InferenceRequest with proper data mapping
-            val inferenceRequest = createInferenceRequest(request)
-            
-            // Determine capability based on request type
-            val capability = determineCapability(request)
-            
-            // Determine if streaming is appropriate based on the client's preference in the payload.
-            val isStreamingRequest = when (val payload = request.payload) {
-                is RequestPayload.TextChat -> payload.streaming
-                is RequestPayload.ImageAnalysis -> payload.streaming
-                is RequestPayload.AudioTranscription -> payload.streaming
-                is RequestPayload.SpeechSynthesis -> payload.streaming
-                else -> false // Guardian is non-streaming.
-            }
-            
-            if (isStreamingRequest) {
-                // Process as streaming request
-                engineManager.processStream(inferenceRequest, capability)
-                    .catch { error ->
-                        Log.e(TAG, "Stream processing error", error)
-                        notifyError(request.id, error.message ?: "Stream processing failed")
-                    }
-                    .collect { result ->
-                        val response = convertToAIResponse(request.id, result, capability)
-                        notifyListeners(response)
-                    }
-            } else {
-                // Process as regular request
-                val result = engineManager.process(inferenceRequest, capability)
-                val response = convertToAIResponse(request.id, result, capability)
-                notifyListeners(response)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error processing AI request", e)
-            notifyError(request.id, e.message ?: "Unknown processing error")
-        }
-    }
+    // === RESPONSE CONVERSION & NOTIFICATION ===
     
-    /**
-     * Create InferenceRequest from the type-safe AIRequest.payload
-     */
-    private fun createInferenceRequest(request: AIRequest): InferenceRequest {
-        val inputs = mutableMapOf<String, Any>()
-        val params = mutableMapOf<String, Any>()
-
-        when (val payload = request.payload) {
-            is RequestPayload.TextChat -> {
-                inputs[InferenceRequest.INPUT_TEXT] = payload.prompt
-                payload.modelName?.let { params["model_name"] = it }
-                payload.temperature?.let { params["temperature"] = it }
-                payload.maxTokens?.let { params["max_tokens"] = it }
-            }
-            is RequestPayload.ImageAnalysis -> {
-                inputs[InferenceRequest.INPUT_IMAGE] = payload.image
-                payload.prompt?.let { inputs[InferenceRequest.INPUT_TEXT] = it }
-                payload.modelName?.let { params["model_name"] = it }
-            }
-            is RequestPayload.AudioTranscription -> {
-                inputs[InferenceRequest.INPUT_AUDIO] = payload.audio
-                payload.language?.let { params["language"] = it }
-                payload.modelName?.let { params["model_name"] = it }
-            }
-            is RequestPayload.SpeechSynthesis -> {
-                inputs[InferenceRequest.INPUT_TEXT] = payload.text
-                payload.voiceId?.let { params["voice"] = it }
-                payload.speed?.let { params["speed"] = it }
-            }
-            is RequestPayload.ContentModeration -> {
-                inputs[InferenceRequest.INPUT_TEXT] = payload.text
-                payload.checkType?.let { params["check_type"] = it }
-            }
-        }
-        
-        return InferenceRequest(
-            sessionId = request.sessionId,
-            inputs = inputs,
-            params = params,
-            timestamp = request.timestamp
-        )
-    }
-    
-    private fun determineCapability(request: AIRequest): CapabilityType {
-        return when (request.payload) {
-            is RequestPayload.TextChat -> CapabilityType.LLM
-            is RequestPayload.ImageAnalysis -> CapabilityType.VLM
-            is RequestPayload.AudioTranscription -> CapabilityType.ASR
-            is RequestPayload.SpeechSynthesis -> CapabilityType.TTS
-            is RequestPayload.ContentModeration -> CapabilityType.GUARDIAN
-        }
-    }
-    
-    private fun convertToAIResponse(requestId: String, result: InferenceResult, capability: CapabilityType): AIResponse {
+    private fun convertToAIResponse(requestId: String, result: InferenceResult): AIResponse {
         if (result.error != null) {
             return AIResponse(
                 requestId = requestId,
                 text = "",
                 isComplete = true,
                 state = AIResponse.ResponseState.ERROR,
-                apiVersion = API_VERSION,
-                metadata = null,
                 error = result.error.message
             )
         }
-
-        // Build the metadata object based on the capability
-        val responseMetadata = createResponseMetadata(result.metadata, capability)
 
         return AIResponse(
             requestId = requestId,
             text = result.outputs[InferenceResult.OUTPUT_TEXT] as? String ?: "",
             isComplete = !result.partial,
             state = if (result.partial) AIResponse.ResponseState.STREAMING else AIResponse.ResponseState.COMPLETED,
-            apiVersion = API_VERSION,
-            metadata = responseMetadata
+            audioData = result.outputs[InferenceResult.OUTPUT_AUDIO] as? ByteArray  // Extract audio data for TTS
         )
-    }
-
-    private fun createResponseMetadata(metadata: Map<String, Any>, capability: CapabilityType): ResponseMetadata? {
-        val modelName = metadata["model_name"] as? String ?: return null
-        val processingTimeMs = (metadata["processing_time_ms"] as? Number)?.toLong() ?: return null
-        val backend = metadata["runtime_backend"] as? String
-
-        val standardMetadata = ResponseMetadata.Standard(
-            modelName = modelName,
-            processingTimeMs = processingTimeMs,
-            backend = backend
-        )
-
-        return when (capability) {
-            CapabilityType.LLM -> {
-                val tokenCount = (metadata["token_count"] as? Number)?.toInt()
-                if (tokenCount != null) {
-                    ResponseMetadata.TextGeneration(standardMetadata, tokenCount)
-                } else {
-                    standardMetadata
-                }
-            }
-            CapabilityType.ASR -> {
-                val confidence = (metadata["confidence"] as? Number)?.toFloat()
-                val audioDurationMs = (metadata["audio_duration_ms"] as? Number)?.toLong()
-                if (confidence != null && audioDurationMs != null) {
-                    ResponseMetadata.AudioTranscription(standardMetadata, confidence, audioDurationMs)
-                } else {
-                    standardMetadata
-                }
-            }
-            CapabilityType.TTS -> {
-                val audioDurationMs = (metadata["audio_duration_ms"] as? Number)?.toLong()
-                val voiceId = metadata["voice_id"] as? String
-                if (audioDurationMs != null) {
-                    ResponseMetadata.SpeechSynthesis(standardMetadata, audioDurationMs, voiceId)
-                } else {
-                    standardMetadata
-                }
-            }
-            else -> standardMetadata
-        }
     }
 
     // Notify all registered listeners with a response (thread-safe)
@@ -334,10 +245,122 @@ class AIRouterService : Service() {
             text = "",
             isComplete = true,
             state = AIResponse.ResponseState.ERROR,
-            apiVersion = API_VERSION,
-            metadata = null,
             error = errorMessage
         )
         notifyListeners(errorResponse)
+    }
+    
+    // === SIMPLIFIED API PROCESSING METHODS ===
+    
+    /**
+     * Process ChatRequest directly (simplified API)
+     */
+    private suspend fun processChatRequest(request: ChatRequest, requestId: String) {
+        try {
+            val inferenceRequest = InferenceRequest(
+                sessionId = requestId,  // Use generated requestId as sessionId for tracking
+                inputs = mapOf(InferenceRequest.INPUT_TEXT to buildChatPrompt(request.messages)),
+                params = buildMap {
+                    put("model_name", request.model)
+                    request.temperature?.let { put("temperature", it) }
+                    request.maxCompletionTokens?.let { put("max_tokens", it) }
+                },
+                timestamp = System.currentTimeMillis()
+            )
+            
+            if (request.stream == true) {
+                // Process as streaming request
+                engineManager.processStream(inferenceRequest, CapabilityType.LLM)
+                    .catch { error ->
+                        Log.e(TAG, "Chat stream processing error", error)
+                        notifyError(requestId, error.message ?: "Chat stream processing failed")
+                    }
+                    .collect { result ->
+                        val response = convertToAIResponse(requestId, result)
+                        notifyListeners(response)
+                    }
+            } else {
+                // Process as regular request
+                val result = engineManager.process(inferenceRequest, CapabilityType.LLM)
+                val response = convertToAIResponse(requestId, result)
+                notifyListeners(response)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing chat request", e)
+            notifyError(requestId, e.message ?: "Unknown chat processing error")
+        }
+    }
+    
+    /**
+     * Process TTSRequest directly (simplified API)
+     */
+    private suspend fun processTTSRequest(request: TTSRequest, requestId: String) {
+        try {
+            val inferenceRequest = InferenceRequest(
+                sessionId = requestId,  // Use generated requestId as sessionId for tracking
+                inputs = mapOf(InferenceRequest.INPUT_TEXT to request.input),
+                params = buildMap {
+                    put("model_name", request.model)
+                    put("voice", request.voice)
+                    request.speed?.let { put("speed", it) }
+                    request.responseFormat?.let { put("format", it) }
+                },
+                timestamp = System.currentTimeMillis()
+            )
+            
+            val result = engineManager.process(inferenceRequest, CapabilityType.TTS)
+            val response = convertToAIResponse(requestId, result)
+            notifyListeners(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing TTS request", e)
+            notifyError(requestId, e.message ?: "Unknown TTS processing error")
+        }
+    }
+    
+    /**
+     * Process ASRRequest directly (simplified API)
+     */
+    private suspend fun processASRRequest(request: ASRRequest, requestId: String) {
+        try {
+            val inferenceRequest = InferenceRequest(
+                sessionId = requestId,  // Use generated requestId as sessionId for tracking
+                inputs = mapOf(InferenceRequest.INPUT_AUDIO to request.file),
+                params = buildMap {
+                    put("model_name", request.model)
+                    request.language?.let { put("language", it) }
+                    request.responseFormat?.let { put("format", it) }
+                    request.temperature?.let { put("temperature", it) }
+                },
+                timestamp = System.currentTimeMillis()
+            )
+            
+            val result = engineManager.process(inferenceRequest, CapabilityType.ASR)
+            val response = convertToAIResponse(requestId, result)
+            notifyListeners(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error processing ASR request", e)
+            notifyError(requestId, e.message ?: "Unknown ASR processing error")
+        }
+    }
+    
+    // === HELPER METHODS ===
+    
+    /**
+     * Convert chat messages to a simple prompt string
+     */
+    private fun buildChatPrompt(messages: List<ChatMessage>): String {
+        return messages.joinToString("\n") { message ->
+            "${message.role}: ${message.content}"
+        }
+    }
+
+    private fun stopSelfIfNoClients() {
+        Log.i(TAG, "stopSelfIfNoClients() called. Current client count: $clientCount")
+        if (clientCount <= 0) {
+            Log.i(TAG, "No clients remaining, stopping service.")
+            stopSelf()
+        } else {
+            Log.i(TAG, "Clients still remaining, not stopping service.")
+        }
     }
 } 

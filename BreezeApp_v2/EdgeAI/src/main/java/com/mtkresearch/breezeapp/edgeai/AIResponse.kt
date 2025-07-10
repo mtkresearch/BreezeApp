@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.edgeai.model
+package com.mtkresearch.breezeapp.edgeai
 
 import android.os.Parcel
 import android.os.Parcelable
@@ -7,17 +7,10 @@ import kotlinx.parcelize.Parcelize
 import kotlinx.parcelize.TypeParceler
 
 /**
- * Represents a response from the AI Router Service.
- * This modern version uses a strongly-typed [metadata] object to provide
- * detailed, type-safe information about the response.
- *
- * @param requestId The ID of the original request this response corresponds to.
- * @param text The text content of the response.
- * @param isComplete True if this is the final response for the request, false otherwise.
- * @param state The current state of the response processing.
- * @param metadata Optional: Type-safe metadata about the response.
- * @param error An optional error message if the processing failed.
- * @param apiVersion The version of the API used by the service (default: 1).
+ * 簡化版 AIResponse - 內部服務回應格式
+ * 
+ * 這是 Router Service 返回的標準化回應格式，
+ * 在簡化架構中直接轉換為標準化 API 格式。
  */
 @Parcelize
 @TypeParceler<AIResponse.ResponseState, ResponseStateParceler>()
@@ -26,32 +19,52 @@ data class AIResponse(
     val text: String,
     val isComplete: Boolean,
     val state: ResponseState,
-    val metadata: ResponseMetadata? = null,
     val error: String? = null,
-    val apiVersion: Int = 1
+    val audioData: ByteArray? = null  // For TTS responses
 ) : Parcelable {
 
     /**
-     * Defines the state of the response from the service.
+     * 回應狀態
      */
     enum class ResponseState {
-        /** The service is processing the request. */
         PROCESSING,
-
-        /** The service is streaming back a response. */
         STREAMING,
-
-        /** The service has completed the request successfully. */
         COMPLETED,
-
-        /** An error occurred while processing the request. */
         ERROR
+    }
+    
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as AIResponse
+
+        if (requestId != other.requestId) return false
+        if (text != other.text) return false
+        if (isComplete != other.isComplete) return false
+        if (state != other.state) return false
+        if (error != other.error) return false
+        if (audioData != null) {
+            if (other.audioData == null) return false
+            if (!audioData.contentEquals(other.audioData)) return false
+        } else if (other.audioData != null) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = requestId.hashCode()
+        result = 31 * result + text.hashCode()
+        result = 31 * result + isComplete.hashCode()
+        result = 31 * result + state.hashCode()
+        result = 31 * result + (error?.hashCode() ?: 0)
+        result = 31 * result + (audioData?.contentHashCode() ?: 0)
+        return result
     }
 }
 
 /**
- * Custom parceler for ResponseState enum that writes the enum as a string name
- * instead of an ordinal value for better stability across versions.
+ * ResponseState 的 Parceler
  */
 object ResponseStateParceler : Parceler<AIResponse.ResponseState> {
     override fun create(parcel: Parcel): AIResponse.ResponseState {
