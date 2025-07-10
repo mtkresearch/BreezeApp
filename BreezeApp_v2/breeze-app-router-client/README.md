@@ -1,82 +1,294 @@
-# Breeze App Router Client - A Developer's Guide & Example
+# Breeze App Router Client - EdgeAI SDK Integration Example
 
-This application serves as a reference implementation and a testing tool for the `breeze-app-router` service. It's designed to guide developers on how to connect their own Android applications with our AI routing service and invoke its various AI capabilities.
+This application serves as a **reference implementation** and **testing tool** for the new **EdgeAI SDK**. It demonstrates how to integrate EdgeAI SDK into Android applications for seamless AI capabilities including chat completion, text-to-speech, and speech recognition.
 
-This client is built with modern Android practices, featuring a clean, multi-layered architecture that promotes a strong separation of concerns.
+> **🎉 Now Using EdgeAI SDK v1.0**
+>
+> This client has been modernized to use the new EdgeAI SDK instead of direct AIDL calls. The EdgeAI SDK provides:
+> - 🚀 **OpenAI-compatible APIs** for familiar developer experience
+> - 🔧 **Type-safe requests and responses** for better code quality
+> - 🔄 **Automatic connection management** - no more manual service binding
+> - 📡 **Built-in streaming support** with Kotlin Flows
+> - ⚡ **Better error handling** with specific exception types
+
+## Quick Start
+
+### 1. Add EdgeAI SDK Dependency
+
+Add the EdgeAI module to your `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation(project(":EdgeAI"))
+    
+    // Required for coroutines support
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
+}
+```
+
+### 2. Initialize EdgeAI SDK
+
+```kotlin
+// In your Application.onCreate() or Activity
+EdgeAI.initialize(this)
+```
+
+### 3. Start Using AI Features
+
+```kotlin
+// Chat completion
+EdgeAI.chat(chatRequest(prompt = "Tell me a joke"))
+    .collect { response ->
+        println(response.choices.first().message?.content)
+    }
+
+// Text-to-Speech
+val audioStream = EdgeAI.tts(ttsRequest(
+    input = "Hello, world!",
+    voice = "alloy"
+))
+
+// Speech Recognition
+EdgeAI.asr(asrRequest(audioBytes, language = "en"))
+    .collect { response ->
+        println("Transcription: ${response.text}")
+    }
+```
 
 ## Architecture Overview
 
-The client's architecture follows the principles of Clean Architecture and MVVM, creating a robust and maintainable structure. The data flows in one direction, ensuring predictability and testability.
+The modernized architecture is significantly simpler thanks to EdgeAI SDK:
 
 ```mermaid
 graph TD
     A[MainActivity - View] -->|User Actions| B(MainViewModel)
-    B -->|Commands| C(RouterRepository)
-    C -->|Connection Mgmt| D(AIRouterClient)
-    D -->|AIDL| E[AIRouterService]
+    B -->|Direct API Calls| C[EdgeAI SDK]
+    C -->|AIDL| D[AIRouterService]
 
-    subgraph Data_And_State_Flow
+    subgraph EdgeAI_SDK
+        C -->|OpenAI APIs| C1[chat()]
+        C -->|OpenAI APIs| C2[tts()]
+        C -->|OpenAI APIs| C3[asr()]
+    end
+
+    subgraph Data_Flow
         direction LR
-        E -->|AIDL Callbacks| D
-        D -->|StateFlows - Service and Connection State| C
-        C -->|StateFlows - Responses and ConnectionState| B
+        D -->|Responses| C
+        C -->|Kotlin Flows| B
         B -->|UiState StateFlow| A
     end
 
     style A fill:#D6EAF8,stroke:#3498DB
     style B fill:#D1F2EB,stroke:#1ABC9C
     style C fill:#FDEDEC,stroke:#E74C3C
-    style D fill:#FEF9E7,stroke:#F1C40F
-    style E fill:#E8DAEF,stroke:#8E44AD
+    style D fill:#E8DAEF,stroke:#8E44AD
 ```
 
-- **`MainActivity.kt` (View)**: The UI layer. Its sole responsibility is to observe `UiState` from the ViewModel and forward user actions. It has no business logic.
-- **`MainViewModel.kt` (ViewModel)**: The state holder. It consumes data streams from the `RouterRepository`, transforms them into a single `UiState`, and exposes it to the View.
-- **`RouterRepository.kt` (Repository)**: The single source of truth for all data. It encapsulates the `AIRouterClient`, manages the AIDL listener, and exposes clean `Flow`s for connection state and AI responses. The ViewModel depends only on this.
-- **`AIRouterClient.kt` (DataSource/Client)**: The lowest-level networking class. It deals with the complexities of binding to the AIDL service, managing the connection lifecycle, and exposing the raw service state.
+### Key Improvements
 
-This layered architecture makes the app highly modular. For example, you could easily swap the `AIRouterClient` with a fake implementation for testing without touching the ViewModel or the View.
+- **Eliminated Complex Repository Layer**: EdgeAI SDK handles all connection management internally
+- **Removed Manual AIDL Binding**: No more `ServiceConnection`, `AIRouterClient`, or `RouterRepository`
+- **Direct API Calls**: Simple, intention-driven API calls like `EdgeAI.chat()`, `EdgeAI.tts()`, `EdgeAI.asr()`
+- **Better Error Handling**: Specific exception types for different error scenarios
 
-### A Note on the `AIRouterClient` Arrows
+## Example Usage Patterns
 
-You might notice two arrows originating from the `AIRouterClient` in the diagram. They represent its two distinct responsibilities:
-
-1. **`--> AIDL --> AIRouterService` (External Communication)**: This line signifies the client's primary job: performing the actual, cross-process communication with the external `AIRouterService` using AIDL. Think of this as the client "doing the work."
-
-2. **`--> StateFlows --> RouterRepository` (Internal State Reporting)**: This line represents the client's secondary, but equally important, job: broadcasting its internal status (e.g., "Connecting," "Connected," "Error") to the rest of the application via a `StateFlow`. This is the client "reporting its status."
-
-This separation is crucial. It allows the `AIRouterClient` to handle all the complex, messy details of service connections while providing a clean, simple stream of status updates for the rest of the app to react to.
-
-## Key Integration Steps for Your App
-
-Here's a breakdown of the essential code you'll need to integrate the `breeze-app-router` into your own application.
-
-### 1. Add the `EdgeAI` Module
-
-Your project must include the `EdgeAI` module, which contains the AIDL interfaces and `Parcelable` data models for communication.
-
-Add the module to your `settings.gradle.kts`:
+### 1. Simple Chat Completion
 
 ```kotlin
-// settings.gradle.kts
-include(":EdgeAI")
-```
-
-Add the dependency to your app's `build.gradle.kts`:
-
-```kotlin
-// build.gradle.kts (:app)
-dependencies {
-    implementation(project(":EdgeAI"))
+viewModelScope.launch {
+    try {
+        EdgeAI.chat(chatRequest(prompt = "What is Kotlin?"))
+            .collect { response ->
+                response.choices.forEach { choice ->
+                    choice.message?.content?.let { content ->
+                        logMessage("✅ Response: $content")
+                    }
+                }
+            }
+    } catch (e: EdgeAIException) {
+        logMessage("❌ Error: ${e.message}")
+    }
 }
 ```
 
-### 2. Configure Your `AndroidManifest.xml`
+### 2. Streaming Chat
 
-Your app needs permissions and queries to discover and bind to the service:
+```kotlin
+EdgeAI.chat(chatRequest(
+    prompt = "Write a story about AI",
+    stream = true
+))
+    .collect { response ->
+        response.choices.forEach { choice ->
+            choice.delta?.content?.let { content ->
+                // Display streaming content in real-time
+                appendToChat(content)
+            }
+        }
+    }
+```
+
+### 3. Text-to-Speech
+
+```kotlin
+try {
+    val audioStream = EdgeAI.tts(ttsRequest(
+        input = "Hello from EdgeAI SDK!",
+        voice = "alloy",
+        speed = 1.0f
+    ))
+    
+    // Play the audio stream
+    audioPlayer.play(audioStream)
+    
+} catch (e: EdgeAIException) {
+    handleError(e)
+}
+```
+
+### 4. Speech Recognition
+
+```kotlin
+EdgeAI.asr(asrRequest(
+    audioBytes = recordedAudio,
+    language = "en",
+    includeWordTimestamps = true
+))
+    .collect { response ->
+        logMessage("Transcription: ${response.text}")
+        
+        // Show word-level timestamps if available
+        response.segments?.forEach { segment ->
+            segment.words?.forEach { word ->
+                logMessage("Word: ${word.word} (${word.start}s)")
+            }
+        }
+    }
+```
+
+### 5. Advanced Chat with History
+
+```kotlin
+val messages = conversation {
+    system("You are a helpful programming assistant.")
+    user("What's the difference between val and var in Kotlin?")
+    assistant("In Kotlin, `val` declares read-only properties...")
+    user("Can you give me an example?")
+}
+
+EdgeAI.chat(chatRequestWithHistory(
+    messages = messages,
+    temperature = 0.7f,
+    stream = true
+))
+    .collect { response ->
+        // Handle streaming response
+    }
+```
+
+## Error Handling
+
+EdgeAI SDK provides comprehensive error handling:
+
+```kotlin
+try {
+    EdgeAI.chat(request)
+        .catch { e ->
+            when (e) {
+                is InvalidInputException -> logError("Invalid input: ${e.message}")
+                is ModelNotFoundException -> logError("Model not available: ${e.message}")
+                is ServiceConnectionException -> logError("Connection failed: ${e.message}")
+                is AudioProcessingException -> logError("Audio error: ${e.message}")
+                is ResourceLimitException -> logError("Resource limit: ${e.message}")
+                is TimeoutException -> logError("Request timeout: ${e.message}")
+                else -> logError("Unknown error: ${e.message}")
+            }
+        }
+        .collect { response ->
+            // Handle successful response
+        }
+} catch (e: EdgeAIException) {
+    // Handle initialization or other errors
+}
+```
+
+## Migration from Old AIDL Approach
+
+If you're migrating from the old direct AIDL approach:
+
+### Before (Deprecated)
+```kotlin
+// Complex setup required
+val client = AIRouterClient(context)
+val repository = RouterRepository(client, scope)
+repository.connect()
+
+// Manual request creation
+val request = AIRequest(payload = RequestPayload.TextChat(...))
+repository.sendRequest(request)
+
+// Manual response handling
+repository.responses.collect { response ->
+    // Handle AIResponse manually
+}
+```
+
+### After (EdgeAI SDK)
+```kotlin
+// Simple initialization
+EdgeAI.initialize(context)
+
+// Direct API calls
+EdgeAI.chat(chatRequest(prompt = "Hello"))
+    .collect { response ->
+        // Type-safe ChatCompletionResponse
+    }
+```
+
+## Key Features Demonstrated
+
+This client application showcases:
+
+- ✅ **Chat Completion**: Both single and streaming responses
+- ✅ **Text-to-Speech**: Audio generation with different voices
+- ✅ **Speech Recognition**: Audio transcription with timestamps
+- ✅ **Error Handling**: Comprehensive exception handling
+- ✅ **Connection Management**: Automatic service binding
+- ✅ **Type Safety**: Strongly-typed requests and responses
+- ⚠️ **Image Analysis**: Planned for future SDK versions
+- ⚠️ **Content Moderation**: Planned for future SDK versions
+
+## Building and Running
+
+1. Ensure you have the `breeze-app-router` service installed on your device:
+   ```bash
+   adb shell pm list packages | grep breezeapp.router
+   ```
+
+2. Build and install the client:
+   ```bash
+   ./gradlew :breeze-app-router-client:installDebug
+   ```
+
+3. Launch the app and test AI features through the clean UI.
+
+## Configuration
+
+The EdgeAI SDK automatically handles:
+- ✅ Service discovery and binding
+- ✅ Connection state management
+- ✅ Request routing and response handling
+- ✅ Error recovery and timeouts
+
+No manual configuration required!
+
+## Permissions
+
+The EdgeAI SDK handles permissions automatically. Your `AndroidManifest.xml` should include:
 
 ```xml
-<!-- Add to your AndroidManifest.xml -->
 <uses-permission android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE" />
 
 <queries>
@@ -84,153 +296,54 @@ Your app needs permissions and queries to discover and bind to the service:
 </queries>
 ```
 
-### 3. Create the `AIRouterClient`
-
-This class handles the raw service connection. Copy `AIRouterClient.kt` into your project. It abstracts the `ServiceConnection` callbacks into clean `StateFlow`s.
-
-```kotlin
-// AIRouterClient.kt - Manages the connection to the remote service.
-class AIRouterClient(private val context: Context) {
-    // ... encapsulates ServiceConnection logic ...
-    val routerService: StateFlow<IAIRouterService?> = // ...
-    val connectionState: StateFlow<ConnectionState> = // ...
-    fun connect() { /* ... */ }
-    fun disconnect() { /* ... */ }
-}
-```
-
-### 4. Implement the `RouterRepository`
-
-This repository is the centerpiece of the integration. It consumes the `AIRouterClient` and exposes clean data streams to your ViewModel.
-
-**Key Code (`RouterRepository.kt`)**:
-
-```kotlin
-// RouterRepository.kt - The single source of truth for AI data.
-class RouterRepository(
-    private val client: AIRouterClient,
-    private val externalScope: CoroutineScope
-) {
-    // Expose responses and connection state as clean flows
-    val responses: SharedFlow<AIResponse> = // ...
-    val connectionState: StateFlow<ConnectionState> = client.connectionState
-
-    init {
-        // Automatically register/unregister the listener when the service connects/disconnects
-        externalScope.launch {
-            client.routerService.collect { service ->
-                service?.registerListener(serviceListener)
-            }
-        }
-    }
-
-    fun sendRequest(payload: RequestPayload): String {
-        val request = AIRequest(payload = payload)
-        // ... send message via client.routerService ...
-        return request.id
-    }
-
-    private val serviceListener = object : IAIRouterListener.Stub() { /* ... */ }
-
-    fun connect() = client.connect()
-    fun disconnect() = client.disconnect()
-}
-```
-
-### 5. Structure Your ViewModel
-
-Your ViewModel should only depend on the `RouterRepository`. It collects flows and updates its `UiState`.
-
-**Key Code (YourViewModel.kt)**:
-
-```kotlin
-class YourViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val _uiState = MutableStateFlow(UiState())
-    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
-
-    private val repository: RouterRepository
-
-    init {
-        val client = AIRouterClient(application)
-        repository = RouterRepository(client, viewModelScope)
-
-        // Collect connection state from the repository
-        viewModelScope.launch {
-            repository.connectionState.collect { state ->
-                // Update UI state (e.g., show "Connected" or "Disconnected")
-            }
-        }
-
-        // Collect responses from the repository
-        viewModelScope.launch {
-            repository.responses.collect { response ->
-                // Handle the AIResponse and update UI state
-            }
-        }
-    }
-
-    fun connect() = repository.connect()
-
-    fun sendTextRequest(prompt: String, isStreaming: Boolean) {
-        val payload = RequestPayload.TextChat(prompt = prompt, streaming = isStreaming)
-        repository.sendRequest(payload)
-    }
-}
-```
-
-### 6. Observe State in Your UI
-
-Finally, your `Activity` or `Fragment` observes the `UiState` from the ViewModel and updates the UI accordingly.
-
-**Key Code (YourActivity.kt)**:
-
-```kotlin
-class YourActivity : AppCompatActivity() {
-    private val viewModel: YourViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // ...
-
-        // Connect button action
-        binding.connectButton.setOnClickListener { 
-            if (viewModel.uiState.value.isConnected) viewModel.disconnect()
-            else viewModel.connect()
-        }
-
-        // Observe UI state changes
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    binding.connectionStatus.text = state.connectionStatus
-                    // ... update other UI elements ...
-                }
-            }
-        }
-    }
-}
-```
-
-## API Documentation
-
-For complete details on all data models (`AIRequest`, `AIResponse`, `RequestPayload`, `ResponseMetadata`), please refer to the source code documentation in the `EdgeAI` module.
-
-## Building and Running
-
-1. Ensure you have the `breeze-app-router` (debug or release) installed on your target device/emulator.
-
-2. Build and run this client application:
-   
-   ```bash
-   ./gradlew :breeze-app-router-client:installDebug
-   ```
-
-3. Use the UI to connect and test AI functions. Observe how the clean architecture makes the application's behavior predictable and easy to debug.
-
 ## Troubleshooting
 
-- **Service Connection Fails**: Verify the router service app is installed (`adb shell pm list packages | grep breezeapp.router`) and that your app has the correct permissions and `<queries>` tag in `AndroidManifest.xml`.
-- **AIDL Errors**: Ensure your `EdgeAI` module is perfectly in sync with the service's version.
+### Common Issues
 
-This client provides a clear, working example of all the core concepts. By examining its layered architecture, you can quickly learn how to robustly integrate our powerful AI router into your own projects. Welcome to the community! 
+**EdgeAI SDK fails to initialize**
+- Verify the router service is installed: `adb shell pm list packages | grep breezeapp.router`
+- Check that permissions are correctly declared in `AndroidManifest.xml`
+- Ensure your app is signed with the same certificate as the router service (for debug builds)
+
+**Requests timeout or fail**
+- Check device logs: `adb logcat | grep EdgeAI`
+- Verify the router service is running: `adb shell ps | grep breezeapp`
+- Try restarting the router service or reinstalling it
+
+**Model not found errors**
+- The router service may not have the required models loaded
+- Check router service logs for model loading status
+- Verify the router service configuration
+
+### Debug Tips
+
+1. **Enable verbose logging**:
+   ```kotlin
+   EdgeAI.setLogLevel(Log.VERBOSE)
+   ```
+
+2. **Check SDK readiness**:
+   ```kotlin
+   if (!EdgeAI.isReady()) {
+       // SDK not ready, check initialization
+   }
+   ```
+
+3. **Monitor connection state**:
+   ```kotlin
+   // SDK handles connection automatically, but you can check:
+   // Check logs for connection status updates
+   ```
+
+## Next Steps
+
+- 📖 **Read the Full API Documentation**: Check `EdgeAI/README.md` for complete API reference
+- 🔧 **Explore Usage Examples**: See `EdgeAIUsageExample.kt` for comprehensive usage patterns
+- 🚀 **Integrate into Your App**: Use this client as a reference for your own integration
+- 📝 **Provide Feedback**: Help us improve the EdgeAI SDK
+
+## About
+
+This modernized client demonstrates the power and simplicity of the EdgeAI SDK. By abstracting away the complexities of AIDL communication, the SDK allows developers to focus on building great AI-powered experiences rather than dealing with service connection boilerplate.
+
+Welcome to the future of Android AI development! 🚀 

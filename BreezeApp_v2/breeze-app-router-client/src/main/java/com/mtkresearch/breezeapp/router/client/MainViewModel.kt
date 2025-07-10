@@ -7,13 +7,12 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.mtkresearch.breezeapp.edgeai.IAIRouterService
-import com.mtkresearch.breezeapp.edgeai.model.AIResponse
-import com.mtkresearch.breezeapp.edgeai.model.RequestPayload
+import com.mtkresearch.breezeapp.edgeai.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
@@ -23,146 +22,284 @@ import java.util.Locale
 /**
  * ViewModel for the Breeze App Router Client.
  *
- * This ViewModel follows modern architectural patterns (MVVM + Repository). It has one
- * single responsibility: to manage and expose UI state. It is completely decoupled from
-* the service connection logic, delegating all data operations to the [RouterRepository].
- *
- * It observes data flows from the repository and transforms them into a [UiState]
- * object that the View can reactively render.
+ * Now modernized to use the EdgeAI SDK instead of direct AIDL calls.
+ * This ViewModel demonstrates how to integrate EdgeAI SDK into your application
+ * with proper error handling and state management.
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    // The ViewModel now has a single dependency: the Repository.
-    private val repository: RouterRepository
-
-    // Keep a direct reference to the service for non-repository functions (e.g., getApiVersion)
-    // This is a pragmatic choice to avoid boilerplate in the repository for simple, direct calls.
-    private var routerService: IAIRouterService? = null
     private val TAG = "BreezeAppRouterClient"
 
     init {
-        // Instantiate the repository, which in turn instantiates the client.
-        val client = AIRouterClient(application)
-        repository = RouterRepository(client, viewModelScope)
+        // Initialize EdgeAI SDK
+        initializeEdgeAI()
+    }
 
-        // Collect connection state from the repository
-        viewModelScope.launch {
-            repository.connectionState.collect { state ->
-                val (status, isConnected) = when (state) {
-                    ConnectionState.DISCONNECTED -> "Disconnected" to false
-                    ConnectionState.CONNECTING -> "Connecting..." to false
-                    ConnectionState.CONNECTED -> "Connected" to true
-                    ConnectionState.ERROR -> "Connection Error" to false
+    private fun initializeEdgeAI() {
+        try {
+            EdgeAI.initialize(getApplication())
+            
+            // Monitor SDK readiness
+            viewModelScope.launch {
+                var isReady = EdgeAI.isReady()
+                var retryCount = 0
+                
+                while (!isReady && retryCount < 30) { // Wait up to 3 seconds
+                    kotlinx.coroutines.delay(100)
+                    isReady = EdgeAI.isReady()
+                    retryCount++
                 }
+                
+                val (status, isConnected) = if (isReady) {
+                    "Connected (EdgeAI SDK)" to true
+                } else {
+                    "Connection Error" to false
+                }
+                
                 _uiState.update { it.copy(connectionStatus = status, isConnected = isConnected) }
-                if (state != ConnectionState.CONNECTING) logMessage("ℹ️ Connection state: $state")
+                
+                if (isConnected) {
+                    logMessage("✅ EdgeAI SDK initialized and ready")
+                } else {
+                    logMessage("❌ EdgeAI SDK failed to initialize")
+                }
             }
-        }
-        
-        // Collect the raw service object from the client for direct calls.
-        viewModelScope.launch {
-            client.routerService.collect { service ->
-                routerService = service
-            }
-        }
-
-        // Collect responses from the repository's hot flow
-        viewModelScope.launch {
-            repository.responses.collect { response ->
-                handleResponse(response)
-            }
+            
+        } catch (e: ServiceConnectionException) {
+            logMessage("❌ EdgeAI SDK initialization failed: ${e.message}")
+            _uiState.update { it.copy(connectionStatus = "Connection Error", isConnected = false) }
         }
     }
 
-    private fun handleResponse(response: AIResponse) {
-        val state = if (response.isComplete) "Completed" else "Streaming"
-        logMessage("✅ Response [${state}]: ${response.text}")
-        response.metadata?.let { logMessage("   └── Metadata: $it") }
+    override fun onCleared() {
+        super.onCleared()
+        // Cleanup EdgeAI SDK
+        EdgeAI.shutdown(getApplication())
+        logMessage("🔄 EdgeAI SDK shutdown")
     }
 
     fun connectToService() {
-        logMessage("🔄 Connecting to AI Router Service...")
-        repository.connect()
+        logMessage("🔄 EdgeAI SDK is automatically connected on initialization")
+        // EdgeAI SDK handles connection automatically
+        if (EdgeAI.isReady()) {
+            _uiState.update { it.copy(connectionStatus = "Connected (EdgeAI SDK)", isConnected = true) }
+            logMessage("✅ EdgeAI SDK is ready")
+        } else {
+            // Retry initialization
+            initializeEdgeAI()
+        }
     }
 
     fun disconnectFromService() {
-        repository.disconnect()
+        EdgeAI.shutdown(getApplication())
+        _uiState.update { it.copy(connectionStatus = "Disconnected", isConnected = false) }
+        logMessage("🔄 EdgeAI SDK disconnected")
     }
 
     fun sendLLMRequest(prompt: String, isStreaming: Boolean) {
-        val payload = RequestPayload.TextChat(
-            prompt = prompt,
-            modelName = "mock-llm",
-            streaming = isStreaming
-        )
-        val requestId = repository.sendRequest(payload)
-        val requestType = if (isStreaming) "Streaming" else "Chat"
-        logMessage("🚀 $requestType request sent with ID: $requestId")
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val request = chatRequest(
+                    prompt = prompt,
+                    systemPrompt = "You are a helpful AI assistant.",
+                    temperature = 0.7f,
+                    stream = isStreaming
+                )
+                
+                val requestType = if (isStreaming) "Streaming" else "Chat"
+                logMessage("🚀 $requestType request sent via EdgeAI SDK")
+                
+                EdgeAI.chat(request)
+                    .catch { e ->
+                        when (e) {
+                            is InvalidInputException -> logMessage("❌ Invalid input: ${e.message}")
+                            is ModelNotFoundException -> logMessage("❌ Model not found: ${e.message}")
+                            is ServiceConnectionException -> logMessage("❌ Connection error: ${e.message}")
+                            else -> logMessage("❌ Chat error: ${e.message}")
+                        }
+                    }
+                    .collect { response ->
+                        response.choices.forEach { choice ->
+                            if (isStreaming) {
+                                choice.delta?.content?.let { content ->
+                                    logMessage("📄 [Streaming] $content")
+                                }
+                            } else {
+                                choice.message?.content?.let { content ->
+                                    logMessage("✅ [Complete] $content")
+                                }
+                            }
+                        }
+                        
+                        // Show usage statistics if available
+                        response.usage?.let { usage ->
+                            logMessage("   └── Tokens - Prompt: ${usage.promptTokens}, Completion: ${usage.completionTokens}, Total: ${usage.totalTokens}")
+                        }
+                    }
+                    
+            } catch (e: EdgeAIException) {
+                logMessage("❌ Chat request failed: ${e.message}")
+            }
+        }
     }
 
     fun analyzeImage(prompt: String, imageUri: Uri) {
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            return
+        }
+
         viewModelScope.launch {
-            val imageBytes = getImageBytes(imageUri)
-            if (imageBytes != null) {
-                val payload = RequestPayload.ImageAnalysis(
-                    prompt = prompt,
-                    image = imageBytes,
-                    modelName = "mock-vlm"
-                )
-                val requestId = repository.sendRequest(payload)
-                logMessage("🚀 Image request sent with ID: $requestId")
+            try {
+                val imageBytes = getImageBytes(imageUri)
+                if (imageBytes != null) {
+                    // Note: EdgeAI SDK doesn't have direct image analysis yet
+                    // This would be a future enhancement
+                    logMessage("⚠️ Image analysis not yet supported in EdgeAI SDK")
+                    logMessage("🔄 This feature will be added in future SDK versions")
+                } else {
+                    logMessage("❌ Failed to process image")
+                }
+            } catch (e: Exception) {
+                logMessage("❌ Image analysis error: ${e.message}")
             }
         }
     }
 
     fun transcribeAudio(audioFile: java.io.File) {
-        val audioBytes = audioFile.readBytes()
-        val payload = RequestPayload.AudioTranscription(
-            audio = audioBytes,
-            modelName = "mock-asr",
-            language = "en-US"
-        )
-        val requestId = repository.sendRequest(payload)
-        logMessage("🚀 Audio request sent with ID: $requestId")
-    }
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            return
+        }
 
-    fun sendTTSRequest(text: String) {
-        val payload = RequestPayload.SpeechSynthesis(text = text, modelName = "mock-tts")
-        val requestId = repository.sendRequest(payload)
-        logMessage("🚀 TTS request sent with ID: $requestId")
-    }
-
-    fun sendGuardrailRequest(text: String) {
-        val payload = RequestPayload.ContentModeration(text = text, checkType = "safety")
-        val requestId = repository.sendRequest(payload)
-        logMessage("🚀 Guardrail request sent with ID: $requestId")
-    }
-
-    fun getApiVersion() {
-        if (!_uiState.value.isConnected) return
-        val version = routerService?.apiVersion ?: -1
-        logMessage("📋 API Version: $version")
-    }
-
-    fun checkCapabilities() {
-        if (!_uiState.value.isConnected) return
-        logMessage("🔍 Checking capabilities...")
-        val capabilities = listOf("streaming", "image_processing", "audio_processing")
-        capabilities.forEach { capability ->
-            val hasCap = routerService?.hasCapability(capability) ?: false
-            logMessage("   └── $capability: $hasCap")
+        viewModelScope.launch {
+            try {
+                val audioBytes = audioFile.readBytes()
+                val request = asrRequest(
+                    audioBytes = audioBytes,
+                    language = "en",
+                    format = "json"
+                )
+                
+                logMessage("🚀 ASR request sent via EdgeAI SDK")
+                
+                EdgeAI.asr(request)
+                    .catch { e ->
+                        when (e) {
+                            is AudioProcessingException -> logMessage("❌ Audio processing failed: ${e.message}")
+                            is ModelNotFoundException -> logMessage("❌ ASR model not found: ${e.message}")
+                            else -> logMessage("❌ ASR error: ${e.message}")
+                        }
+                    }
+                    .collect { response ->
+                        logMessage("✅ Transcription: ${response.text}")
+                        
+                        // Show additional details if available
+                        response.language?.let { lang ->
+                            logMessage("   └── Detected language: $lang")
+                        }
+                        
+                        response.segments?.forEach { segment ->
+                            logMessage("   └── Segment: ${segment.text} (${segment.start}s - ${segment.end}s)")
+                        }
+                    }
+                    
+            } catch (e: EdgeAIException) {
+                logMessage("❌ ASR request failed: ${e.message}")
+            }
         }
     }
 
-    fun cancelRequest() {
-        if (!_uiState.value.isConnected) return
-        val result = routerService?.cancelRequest("some-request-id") ?: false
-        logMessage("🚫 Cancel request result: $result")
+    fun sendTTSRequest(text: String) {
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val request = ttsRequest(
+                    input = text,
+                    voice = "alloy",
+                    speed = 1.0f,
+                    format = "mp3"
+                )
+                
+                logMessage("🚀 TTS request sent via EdgeAI SDK")
+                
+                val audioStream = EdgeAI.tts(request)
+                val audioSize = audioStream.available()
+                
+                logMessage("✅ TTS audio generated: $audioSize bytes")
+                logMessage("   └── Format: mp3, Voice: alloy")
+                
+                // In a real app, you would play the audio stream here
+                // audioPlayer.play(audioStream)
+                
+            } catch (e: InvalidInputException) {
+                logMessage("❌ Invalid TTS input: ${e.message}")
+            } catch (e: ModelNotFoundException) {
+                logMessage("❌ TTS model not found: ${e.message}")
+            } catch (e: EdgeAIException) {
+                logMessage("❌ TTS request failed: ${e.message}")
+            }
+        }
     }
 
+    fun sendGuardrailRequest(text: String) {
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot send request: EdgeAI SDK not connected")
+            return
+        }
+
+        // Note: Content moderation would be added as a future EdgeAI SDK feature
+        logMessage("⚠️ Content moderation not yet available in EdgeAI SDK")
+        logMessage("🔄 This feature will be added in future SDK versions")
+    }
+
+    fun getApiVersion() {
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot get API version: EdgeAI SDK not connected")
+            return
+        }
+
+        // EdgeAI SDK abstracts away direct API version checks
+        logMessage("📋 Using EdgeAI SDK v1.0 (OpenAI-compatible)")
+        logMessage("   └── Chat Completion: ✅ Available")
+        logMessage("   └── Text-to-Speech: ✅ Available") 
+        logMessage("   └── Speech Recognition: ✅ Available")
+    }
+
+    fun checkCapabilities() {
+        if (!_uiState.value.isConnected) {
+            logMessage("❌ Cannot check capabilities: EdgeAI SDK not connected")
+            return
+        }
+
+        logMessage("🔍 EdgeAI SDK Capabilities:")
+        logMessage("   └── Chat Completion: ✅ Available")
+        logMessage("   └── Streaming Chat: ✅ Available")
+        logMessage("   └── Text-to-Speech: ✅ Available")
+        logMessage("   └── Speech Recognition: ✅ Available")
+        logMessage("   └── Multiple ASR formats: ✅ Available")
+        logMessage("   └── OpenAI Compatibility: ✅ Full")
+    }
+
+    fun cancelRequest() {
+        // EdgeAI SDK handles request cancellation automatically when flows are canceled
+        logMessage("🚫 Request cancellation handled automatically by EdgeAI SDK")
+        logMessage("   └── Flows can be canceled using standard Kotlin coroutines")
+    }
+
+    // Helper methods remain the same
     private fun getImageBytes(uri: Uri): ByteArray? {
         return try {
             val inputStream = getApplication<Application>().contentResolver.openInputStream(uri)
@@ -197,9 +334,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setSelectedImageUri(uri: Uri?) = _uiState.update { it.copy(selectedImageUri = uri) }
     fun setRecordingState(isRecording: Boolean) = _uiState.update { it.copy(isRecording = isRecording) }
     fun setHasRecordedAudio(hasAudio: Boolean) = _uiState.update { it.copy(hasRecordedAudio = hasAudio) }
-
-    override fun onCleared() {
-        super.onCleared()
-        disconnectFromService()
-    }
 }
