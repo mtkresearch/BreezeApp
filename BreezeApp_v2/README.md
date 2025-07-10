@@ -74,7 +74,7 @@ Excellent! Your journey is about consuming the API.
 
 Fantastic! Your path is focused on implementing runners.
 
-1. **Start Here:** The **[`breeze-app-router/README.md`](./breeze-app-router/README.md)** is your main entry point. It explains the internal architecture of the routing engine.
+1. **Start Here:** The **[breeze-app-router/README.md](./breeze-app-router/README.md)** is your main entry point. It explains the internal architecture of the routing engine.
 2. **Build Your First Runner:** Then, follow our detailed **[🧩 Runner Development Guide](./breeze-app-router/docs/RUNNER_DEVELOPMENT.md)**. It will walk you through creating, testing, and registering a new runner from scratch.
 
 ---
