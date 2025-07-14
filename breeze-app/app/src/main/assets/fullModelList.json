@@ -1,16 +1,36 @@
 {
   "models": [
-   {
-     "id": "Llama3_2-3b-4096-250606-cpu",
-     "runner": "executorch",
-     "backend": "cpu",
-     "ramGB": 7,
-     "model_entry_path": "llama3_2-4096.pte",
-     "urls": [
-       "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-4096.pte?download=true",
-       "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/tokenizer.bin?download=true"
-     ]
-   },
+    {
+      "id": "Breeze2-3B-8W16A-250630-npu",
+      "runner": "mediatek",
+      "backend": "mtk",
+      "ramGB": 4,
+      "model_entry_path": "config_breezetiny_3b_instruct.yaml",
+      "urls": [
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym8W_sym16A_Overall_14layer_128t1024c_0_extracted.dla",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym8W_sym16A_Overall_14layer_128t1024c_1_extracted.dla",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym8W_sym16A_Overall_14layer_1t1024c_0_extracted.dla",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/BreezeTinyInstruct_v0.1_sym8W_sym16A_Overall_14layer_1t1024c_1_extracted.dla",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/added_tokens.yaml",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/config_breezetiny_3b_instruct.yaml",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/embedding_int16.bin",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/shared_weights_0.bin",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/shared_weights_1.bin",
+        "https://huggingface.co/MediaTek-Research/Breeze2-3B-8W16A-Instruct-mobile-npu/resolve/main/tokenizer.tiktoken"
+    
+      ]
+    },
+    {
+      "id": "Llama3_2-3b-4096-250606-cpu",
+      "runner": "executorch",
+      "backend": "cpu",
+      "ramGB": 7,
+      "model_entry_path": "llama3_2-4096.pte",
+      "urls": [
+        "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/llama3_2-4096.pte?download=true",
+        "https://huggingface.co/MediaTek-Research/Llama-3.2-3B-Instruct-executorch/resolve/main/tokenizer.bin?download=true"
+      ]
+    },
     {
       "id": "Llama3_2-3b-4096-spin-250605-cpu",
       "runner": "executorch",

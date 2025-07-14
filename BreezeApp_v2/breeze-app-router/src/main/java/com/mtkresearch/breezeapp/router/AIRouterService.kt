@@ -176,6 +176,9 @@ class AIRouterService : Service() {
         val configurator = RouterConfigurator(applicationContext)
         this.engineManager = configurator.engineManager
 
+        // 2. 觸發模型下載（只要 Service 啟動就會下載）
+        // DownloadTestRunner.downloadNpuModel(applicationContext)
+
         Log.d(TAG, "AIRouterService created and configured.")
     }
 

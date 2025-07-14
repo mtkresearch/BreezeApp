@@ -114,7 +114,7 @@ flowchart TD
     R[BaseRunner]
     subgraph HW["硬體層"]
         CPU[CPU e.g.ExecRunner]
-        NPU[NPU e.g.MTKRunner]
+        NPU[NPU e.g.MTKLLMRunner]
         GPU[GPU]
     end
     subgraph ModelCPU["CPU 支援 Model"]

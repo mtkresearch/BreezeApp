@@ -2,6 +2,7 @@ package com.mtkresearch.breezeapp.router.data.runner
 
 import android.util.Log
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
+import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.RunnerInfo
 import com.mtkresearch.breezeapp.router.domain.model.*
 import java.util.concurrent.atomic.AtomicBoolean
@@ -19,7 +20,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - 圖像格式驗證
  * - 可配置的分析延遲
  */
-class MockVLMRunner : BaseRunner {
+class MockVLMRunner : BaseRunner, FlowStreamingRunner {
     
     companion object {
         private const val TAG = "MockVLMRunner"
@@ -107,6 +108,10 @@ class MockVLMRunner : BaseRunner {
             Log.e(TAG, "Error in MockVLMRunner.run", e)
             InferenceResult.error(RunnerError.runtimeError(e.message ?: "Unknown error", e))
         }
+    }
+
+    override fun runAsFlow(input: InferenceRequest): kotlinx.coroutines.flow.Flow<InferenceResult> = kotlinx.coroutines.flow.flow {
+        emit(run(input, stream = false))
     }
     
     override fun unload() {

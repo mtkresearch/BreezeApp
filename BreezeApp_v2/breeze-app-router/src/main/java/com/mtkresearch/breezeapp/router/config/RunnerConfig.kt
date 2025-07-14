@@ -31,5 +31,8 @@ data class RunnerDefinition(
 
     /** A flag to indicate if this is a "real" runner that requires a support check. */
     @SerialName("is_real")
-    val isReal: Boolean = false
+    val isReal: Boolean = false,
+
+    /** The default model ID that this runner supports. */
+    val modelId: String? = null
 ) 

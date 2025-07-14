@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.mtkresearch.breezeapp.router">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!-- Signature-level permission for AIRouterService -->
     <permission
         android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE"
@@ -14,6 +16,30 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+
+        <uses-native-library
+            android:name="libapuwareutils_v2.mtk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libapuwareapusys_v2.mtk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libnir_neon_driver_ndk.mtk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libnir_neon_driver_ndk.mtk.vndk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.vndk.so"
+            android:required="false" />
+
+        <uses-native-library
+            android:name="libcmdl_ndk.mtk.so"
+            android:required="false" />
 
         <!-- Dummy Launcher Activity to allow "Run" to work -->
         <activity

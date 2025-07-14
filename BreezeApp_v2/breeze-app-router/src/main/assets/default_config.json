@@ -6,8 +6,37 @@
   },
   "runnerConfigurations": {
     "TEXT_GENERATION": {
-      "defaultRunner": "breeze_llm_mock_v1",
+      "defaultRunner": "mtk_llm_runner_v1",
       "runners": {
+        "mtk_llm_runner_v1": {
+          "type": "REAL",
+          "priority": 1,
+          "model": {
+            "modelName": "breeze-tiny-3b-instruct",
+            "modelPath": "config_breezetiny_3b_instruct.yaml",
+            "parameters": {
+              "maxInitAttempts": 5,
+              "initDelayMs": 200,
+              "initTimeoutMs": 30000,
+              "cleanupTimeoutMs": 5000,
+              "maxRetryAttempts": 3,
+              "retryDelayMs": 1000,
+              "defaultTemperature": 0.8,
+              "defaultTopK": 40,
+              "defaultTopP": 0.9,
+              "defaultRepetitionPenalty": 1.1,
+              "defaultMaxTokens": 2048,
+              "enableStreaming": true,
+              "streamingBufferSize": 1024,
+              "streamingTimeoutMs": 30000,
+              "enableModelCache": true,
+              "modelTokenSize": 128,
+              "maxMemoryUsageMB": 1024,
+              "enableDebugLog": false,
+              "logLevel": "INFO"
+            }
+          }
+        },
         "breeze_llm_mock_v1": {
           "type": "MOCK",
           "priority": 100,

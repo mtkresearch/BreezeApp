@@ -58,6 +58,12 @@ android {
             excludes += "META-INF/LICENSE-notice.md"
         }
     }
+    sourceSets {
+        getByName("main") {
+            java.srcDirs("src/main/java")
+            jniLibs.srcDirs("libs")
+        }
+    }
 }
 
 dependencies {
@@ -80,4 +86,8 @@ dependencies {
     // Optional: Other testing libraries
     testImplementation(libs.mockk)
     androidTestImplementation(libs.mockk.android)
+    testImplementation("org.mockito:mockito-core:5.2.0")
+    testImplementation("org.mockito:mockito-inline:4.11.0")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:4.1.0")
+    testImplementation("org.robolectric:robolectric:4.11.1")
 }

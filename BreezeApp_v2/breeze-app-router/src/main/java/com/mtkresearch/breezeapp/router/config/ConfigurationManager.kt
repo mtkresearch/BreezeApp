@@ -1,12 +1,15 @@
 package com.mtkresearch.breezeapp.router.config
 
 import android.content.Context
+import com.mtkresearch.breezeapp.router.data.runner.MTKLLMRunner
 import com.mtkresearch.breezeapp.router.domain.common.Logger
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.model.CapabilityType
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
 import kotlinx.serialization.json.Json
 import java.io.IOException
+import java.io.File
+import org.json.JSONObject
 
 private const val TAG = "ConfigManager"
 
@@ -62,10 +65,21 @@ class ConfigurationManager(
             }
         }
 
-        // Create a factory lambda using reflection.
-        val factory = {
-            runnerClass.getConstructor().newInstance() as BaseRunner
+        // --- 這裡是修正重點 ---
+        val factory = when (definition.className) {
+            "com.mtkresearch.breezeapp.router.data.runner.MTKLLMRunner" -> {
+                {
+                    val modelId = definition.modelId ?: "Breeze2-3B-8W16A-250630-npu"
+                    val entryPointPath = getLocalEntryPointPath(context, modelId)
+                        ?: throw IllegalStateException("Model entry point not found for $modelId")
+                    MTKLLMRunner.create(context, MTKConfig.createDefault(entryPointPath))
+                }
+            }
+            else -> {
+                { runnerClass.getConstructor().newInstance() as BaseRunner }
+            }
         }
+        // --- 修正結束 ---
 
         // Convert capability strings to Enum types.
         val capabilities = definition.capabilities.mapNotNull {
@@ -88,7 +102,6 @@ class ConfigurationManager(
                 factory = factory,
                 capabilities = capabilities,
                 priority = definition.priority,
-                // Description and version could be added to JSON if needed
             )
         )
     }
@@ -100,5 +113,20 @@ class ConfigurationManager(
             logger.e(TAG, "Could not read runner_config.json from assets.", e)
             throw e
         }
+    }
+
+    fun getLocalEntryPointPath(context: Context, modelId: String): String? {
+        val file = File(context.filesDir, "downloadedModelList.json")
+        if (!file.exists()) return null
+        val json = file.readText()
+        val modelList = JSONObject(json).getJSONArray("models")
+        for (i in 0 until modelList.length()) {
+            val model = modelList.getJSONObject(i)
+            if (model.getString("id") == modelId) {
+                val entryPoint = model.getString("entryPointValue")
+                return File(context.filesDir, "models/$modelId/$entryPoint").absolutePath
+            }
+        }
+        return null
     }
 } 
