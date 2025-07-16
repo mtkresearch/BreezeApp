@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.catch
 import android.os.RemoteCallbackList
 import kotlinx.coroutines.SupervisorJob
 import java.util.concurrent.atomic.AtomicInteger
+import com.mtkresearch.breezeapp.router.BuildConfig
 
 /**
  * AIRouterService - Foreground Service for AI Processing
@@ -227,7 +228,19 @@ class AIRouterService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // Foreground service should persist and restart if killed by system
         // This ensures reliable AI service availability for client applications
-        Log.d(TAG, "onStartCommand received - maintaining foreground service")
+        val startReason = intent?.getStringExtra("start_reason") ?: "unknown"
+        Log.i(TAG, "onStartCommand received - reason: $startReason, maintaining foreground service")
+        
+        // Ensure we're in foreground mode (defensive programming)
+        if (!::notificationManager.isInitialized || !::statusManager.isInitialized) {
+            Log.w(TAG, "Service components not initialized in onStartCommand, initializing now...")
+            initializeNotificationSystem()
+            startForegroundService()
+            initializeAIComponents()
+        } else {
+            Log.d(TAG, "Service components already initialized")
+        }
+        
         return START_STICKY  // Service restarts if killed by system
     }
 

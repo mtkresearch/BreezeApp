@@ -11,7 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.mtkresearch.breezeapp.router.R
 import com.mtkresearch.breezeapp.router.domain.model.NotificationPriority
 import com.mtkresearch.breezeapp.router.domain.model.ServiceState
-import com.mtkresearch.breezeapp.router.ui.DummyLauncherActivity
+import com.mtkresearch.breezeapp.router.ui.BreezeAppRouterLauncherActivity
 
 /**
  * Manages foreground service notifications following Clean Architecture principles.
@@ -163,7 +163,7 @@ class ServiceNotificationManager(private val context: Context) {
      * Currently opens the dummy launcher activity.
      */
     private fun createContentIntent(): PendingIntent {
-        val intent = Intent(context, DummyLauncherActivity::class.java).apply {
+        val intent = Intent(context, BreezeAppRouterLauncherActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         

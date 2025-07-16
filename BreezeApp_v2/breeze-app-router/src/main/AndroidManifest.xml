@@ -44,10 +44,11 @@
             android:name="libcmdl_ndk.mtk.so"
             android:required="false" />
 
-        <!-- Dummy Launcher Activity to allow "Run" to work -->
+        <!-- Router Entry Activity - Starts AI Router Service -->
         <activity
-            android:name=".ui.DummyLauncherActivity"
+            android:name=".ui.BreezeAppRouterLauncherActivity"
             android:exported="true"
+            android:label="BreezeApp AI Router"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -67,6 +68,7 @@
                 <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />
             </intent-filter>
         </service>
+
 
     </application>
 
