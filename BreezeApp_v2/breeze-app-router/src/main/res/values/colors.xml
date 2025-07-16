@@ -90,6 +90,7 @@
     <!-- Success -->
     <color name="success">#4CAF50</color>               <!-- 成功 - 綠色 -->
     <color name="success_dark">#81C784</color>          <!-- 深色主題成功色 -->
+    <color name="success_container">#E8F5E8</color>     <!-- 成功容器背景 -->
     <color name="on_success">#FFFFFF</color>            <!-- 成功背景上的文字 -->
     <color name="on_success_dark">#1B5E20</color>       <!-- 深色主題成功背景上的文字 -->
 
