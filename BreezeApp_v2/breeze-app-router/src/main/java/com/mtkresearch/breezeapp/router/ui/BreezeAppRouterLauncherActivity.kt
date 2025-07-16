@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.mtkresearch.breezeapp.router.R
 import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
+import com.mtkresearch.breezeapp.router.permission.NotificationPermissionManager
 
 /**
  * Router Entry Activity - Professional entry point for BreezeApp AI Router
@@ -22,15 +23,119 @@ import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
  */
 class BreezeAppRouterLauncherActivity : AppCompatActivity() {
     
+    private lateinit var permissionManager: NotificationPermissionManager
+    private var serviceStartPending = false
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_router_launcher)
 
-        // Start the AI Router Service immediately when app is launched
-        startAIRouterService()
+        // Initialize permission manager
+        permissionManager = NotificationPermissionManager(this)
+        
+        // Check and request notification permission before starting service
+        checkNotificationPermissionAndStartService()
 
         // Initialize the premium UI components
         initializePremiumUI()
+    }
+    
+    /**
+     * Checks notification permission and starts service accordingly.
+     * Forces permission request on Android 13+ for optimal user experience.
+     */
+    private fun checkNotificationPermissionAndStartService() {
+        when {
+            permissionManager.isPermissionGranted() -> {
+                // Permission granted or not required, start service immediately
+                startAIRouterService()
+            }
+            permissionManager.shouldShowRationale(this) -> {
+                // Show rationale dialog explaining why we need the permission
+                showPermissionRationaleDialog()
+            }
+            else -> {
+                // Request permission directly
+                serviceStartPending = true
+                permissionManager.requestPermission(this)
+            }
+        }
+    }
+    
+    /**
+     * Shows a dialog explaining why notification permission is needed.
+     */
+    private fun showPermissionRationaleDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Notification Permission Required")
+            .setMessage("BreezeApp Router needs notification permission to:\n\n" +
+                       "• Show AI processing status\n" +
+                       "• Display service availability\n" +
+                       "• Provide progress updates\n" +
+                       "• Indicate when AI operations complete\n\n" +
+                       "This ensures you stay informed about the AI service status.")
+            .setPositiveButton("Grant Permission") { _, _ ->
+                serviceStartPending = true
+                permissionManager.requestPermission(this)
+            }
+            .setNegativeButton("Continue Without") { _, _ ->
+                // Start service anyway but warn user
+                showNotificationDisabledWarning()
+                startAIRouterService()
+            }
+            .setCancelable(false)
+            .show()
+    }
+    
+    /**
+     * Shows warning when user chooses to continue without notification permission.
+     */
+    private fun showNotificationDisabledWarning() {
+        Toast.makeText(
+            this, 
+            "Service will run without visible status updates. Enable notifications in Settings for better experience.", 
+            Toast.LENGTH_LONG
+        ).show()
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        val permissionGranted = permissionManager.handlePermissionResult(requestCode, permissions, grantResults)
+        
+        if (serviceStartPending) {
+            serviceStartPending = false
+            if (permissionGranted) {
+                Toast.makeText(this, "Notification permission granted! Starting AI Router...", Toast.LENGTH_SHORT).show()
+                startAIRouterService()
+            } else {
+                // Permission denied, show options
+                showPermissionDeniedDialog()
+            }
+        }
+    }
+    
+    /**
+     * Shows dialog when permission is denied, offering alternatives.
+     */
+    private fun showPermissionDeniedDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Notification Permission Denied")
+            .setMessage("The AI Router service will still work, but you won't see status updates. You can enable notifications later in Settings.")
+            .setPositiveButton("Open Settings") { _, _ ->
+                val notificationManager = ServiceNotificationManager(this)
+                notificationManager.openNotificationSettings()
+                startAIRouterService()
+            }
+            .setNegativeButton("Continue Anyway") { _, _ ->
+                startAIRouterService()
+            }
+            .setCancelable(false)
+            .show()
     }
     
     
