@@ -15,28 +15,35 @@ import com.mtkresearch.breezeapp.edgeai.ChatMessage
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.injection.RouterConfigurator
 import com.mtkresearch.breezeapp.router.domain.model.*
+import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
+import com.mtkresearch.breezeapp.router.status.RouterStatusManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.catch
 import android.os.RemoteCallbackList
 import kotlinx.coroutines.SupervisorJob
-
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * AIRouterService
+ * AIRouterService - Foreground Service for AI Processing
  *
- * This service exposes the IAIRouterService AIDL interface for IPC.
- * It enforces signature-level permission, logs all calls, and delegates business logic 
+ * This service exposes the IAIRouterService AIDL interface for IPC and runs as a foreground
+ * service to ensure reliable AI processing capabilities. It enforces signature-level permission,
+ * provides transparent status updates via notifications, and delegates business logic 
  * to AIEngineManager (use case layer) with Mock Runner support.
  * 
  * Follows Clean Architecture principles:
  * - Service layer (Framework) -> Use Case layer -> Domain layer
- * - Mock-First development approach for testing and validation
+ * - Single Responsibility: Service lifecycle + IPC interface
+ * - Dependency Inversion: Depends on abstractions (AIEngineManager, RouterStatusManager)
+ * - Open/Closed: Extensible through dependency injection
+ * 
+ * Foreground Service Benefits:
+ * - Protected from aggressive system kills
+ * - Transparent user communication via notifications
+ * - Reliable availability for client wake-up scenarios
+ * - Consistent performance for long-running AI operations
  */
 class AIRouterService : Service() {
     companion object {
@@ -52,13 +59,13 @@ class AIRouterService : Service() {
     // Robust listener management with death monitoring
     private val listeners = RemoteCallbackList<IAIRouterListener>()
     
-    // Client tracking for resource management
-    @Volatile
-    private var clientCount = 0
-    private val clientCountMutex = Mutex()
+    // Active request tracking for status management
+    private val activeRequestCount = AtomicInteger(0)
 
-    // Core components are now tied to the service's lifecycle.
+    // Core components following dependency injection principles
     private lateinit var engineManager: AIEngineManager
+    private lateinit var notificationManager: ServiceNotificationManager
+    private lateinit var statusManager: RouterStatusManager
     
     // --- Binder Stub Implementation ---
     private val binder = object : IAIRouterService.Stub() {
@@ -122,13 +129,7 @@ class AIRouterService : Service() {
             Log.i(TAG, "registerListener() called: $listener")
             listener?.let { 
                 listeners.register(it)
-                // Increment client count
-                CoroutineScope(Dispatchers.Main + serviceJob).launch {
-                    clientCountMutex.withLock {
-                        clientCount++
-                        Log.d(TAG, "Client registered. Total clients: $clientCount")
-                    }
-                }
+                Log.d(TAG, "Client listener registered successfully")
             }
         }
 
@@ -136,21 +137,7 @@ class AIRouterService : Service() {
             Log.i(TAG, "unregisterListener() called: $listener")
             listener?.let { 
                 listeners.unregister(it)
-                // Decrement client count and check if we should stop
-                CoroutineScope(Dispatchers.Main + serviceJob).launch {
-                    clientCountMutex.withLock {
-                        clientCount--
-                        Log.d(TAG, "Client unregistered. Remaining clients: $clientCount")
-                        
-                        // If no clients remain, schedule service stop
-                        if (clientCount <= 0) {
-                            Log.i(TAG, "No clients remaining, scheduling service cleanup...")
-                            // Give a small delay to handle any pending operations
-                            delay(1000)
-                            stopSelfIfNoClients()
-                        }
-                    }
-                }
+                Log.d(TAG, "Client listener unregistered successfully")
             }
         }
 
@@ -169,17 +156,62 @@ class AIRouterService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "AIRouterService creating...")
+        Log.d(TAG, "AIRouterService creating as foreground service...")
 
-        // Instantiate the dependency graph. The RouterConfigurator will handle
-        // all the setup, including reading the config and registering runners.
+        // Initialize notification system first (required for foreground service)
+        initializeNotificationSystem()
+        
+        // Start as foreground service immediately
+        startForegroundService()
+
+        // Initialize core AI components
+        initializeAIComponents()
+
+        Log.i(TAG, "AIRouterService created and running in foreground")
+    }
+    
+    /**
+     * Initializes the notification system following clean architecture principles.
+     * Separates infrastructure concerns from business logic.
+     */
+    private fun initializeNotificationSystem() {
+        notificationManager = ServiceNotificationManager(applicationContext)
+        notificationManager.createNotificationChannel()
+        
+        // Check if notifications are enabled and log guidance for users
+        if (!notificationManager.areNotificationsEnabled()) {
+            Log.w(TAG, "Notifications are disabled for BreezeApp Router")
+            Log.i(TAG, "To see service status, enable notifications in:")
+            Log.i(TAG, "   Settings > Apps > BreezeApp Router > Notifications")
+        } else {
+            Log.d(TAG, "Notifications are enabled - service status will be visible")
+        }
+        
+        statusManager = RouterStatusManager(this, notificationManager)
+        Log.d(TAG, "Notification system initialized")
+    }
+    
+    /**
+     * Starts the service in foreground mode with initial notification.
+     * This ensures the service is protected from system kills.
+     */
+    private fun startForegroundService() {
+        val initialNotification = notificationManager.createNotification(ServiceState.Ready)
+        startForeground(RouterStatusManager.FOREGROUND_NOTIFICATION_ID, initialNotification)
+        Log.i(TAG, "Service promoted to foreground with notification")
+    }
+    
+    /**
+     * Initializes AI engine components using dependency injection.
+     * Follows single responsibility principle by separating concerns.
+     */
+    private fun initializeAIComponents() {
         val configurator = RouterConfigurator(applicationContext)
-        this.engineManager = configurator.engineManager
-
-        // 2. 觸發模型下載（只要 Service 啟動就會下載）
-        // DownloadTestRunner.downloadNpuModel(applicationContext)
-
-        Log.d(TAG, "AIRouterService created and configured.")
+        engineManager = configurator.engineManager
+        
+        // Set service to ready state
+        statusManager.setReady()
+        Log.d(TAG, "AI components initialized successfully")
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -193,17 +225,45 @@ class AIRouterService : Service() {
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // For AI Router Service, we want it to stop when no clients are bound
-        // This ensures proper resource cleanup when not in use
-        Log.d(TAG, "onStartCommand received, service will stop when no clients bound")
-        return START_NOT_STICKY  // Service stops when no clients bound and process killed
+        // Foreground service should persist and restart if killed by system
+        // This ensures reliable AI service availability for client applications
+        Log.d(TAG, "onStartCommand received - maintaining foreground service")
+        return START_STICKY  // Service restarts if killed by system
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        engineManager.cleanup()
-        serviceJob.cancel()
+        Log.i(TAG, "AIRouterService destroying...")
+        
+        // Clean shutdown following proper order
+        cleanupResources()
+        
         Log.i(TAG, "AIRouterService destroyed")
+    }
+    
+    /**
+     * Performs clean resource cleanup following proper shutdown order.
+     * Ensures graceful service termination.
+     */
+    private fun cleanupResources() {
+        try {
+            // Update status to indicate shutdown
+            if (::statusManager.isInitialized) {
+                statusManager.setError("Service shutting down", false)
+            }
+            
+            // Cleanup AI engine resources
+            if (::engineManager.isInitialized) {
+                engineManager.cleanup()
+            }
+            
+            // Cancel all coroutines
+            serviceJob.cancel()
+            
+            Log.d(TAG, "Resource cleanup completed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during resource cleanup", e)
+        }
     }
     
     // === RESPONSE CONVERSION & NOTIFICATION ===
@@ -256,9 +316,12 @@ class AIRouterService : Service() {
     // === SIMPLIFIED API PROCESSING METHODS ===
     
     /**
-     * Process ChatRequest directly (simplified API)
+     * Process ChatRequest directly (simplified API) with status management.
      */
     private suspend fun processChatRequest(request: ChatRequest, requestId: String) {
+        val currentActiveRequests = activeRequestCount.incrementAndGet()
+        statusManager.setProcessing(currentActiveRequests)
+        
         try {
             val inferenceRequest = InferenceRequest(
                 sessionId = requestId,  // Use generated requestId as sessionId for tracking
@@ -290,14 +353,25 @@ class AIRouterService : Service() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error processing chat request", e)
+            statusManager.setError("Chat processing failed: ${e.message}")
             notifyError(requestId, e.message ?: "Unknown chat processing error")
+        } finally {
+            val remainingRequests = activeRequestCount.decrementAndGet()
+            if (remainingRequests <= 0) {
+                statusManager.setReady()
+            } else {
+                statusManager.setProcessing(remainingRequests)
+            }
         }
     }
     
     /**
-     * Process TTSRequest directly (simplified API)
+     * Process TTSRequest directly (simplified API) with status management.
      */
     private suspend fun processTTSRequest(request: TTSRequest, requestId: String) {
+        val currentActiveRequests = activeRequestCount.incrementAndGet()
+        statusManager.setProcessing(currentActiveRequests)
+        
         try {
             val inferenceRequest = InferenceRequest(
                 sessionId = requestId,  // Use generated requestId as sessionId for tracking
@@ -316,14 +390,25 @@ class AIRouterService : Service() {
             notifyListeners(response)
         } catch (e: Exception) {
             Log.e(TAG, "Error processing TTS request", e)
+            statusManager.setError("TTS processing failed: ${e.message}")
             notifyError(requestId, e.message ?: "Unknown TTS processing error")
+        } finally {
+            val remainingRequests = activeRequestCount.decrementAndGet()
+            if (remainingRequests <= 0) {
+                statusManager.setReady()
+            } else {
+                statusManager.setProcessing(remainingRequests)
+            }
         }
     }
     
     /**
-     * Process ASRRequest directly (simplified API)
+     * Process ASRRequest directly (simplified API) with status management.
      */
     private suspend fun processASRRequest(request: ASRRequest, requestId: String) {
+        val currentActiveRequests = activeRequestCount.incrementAndGet()
+        statusManager.setProcessing(currentActiveRequests)
+        
         try {
             val inferenceRequest = InferenceRequest(
                 sessionId = requestId,  // Use generated requestId as sessionId for tracking
@@ -342,7 +427,15 @@ class AIRouterService : Service() {
             notifyListeners(response)
         } catch (e: Exception) {
             Log.e(TAG, "Error processing ASR request", e)
+            statusManager.setError("ASR processing failed: ${e.message}")
             notifyError(requestId, e.message ?: "Unknown ASR processing error")
+        } finally {
+            val remainingRequests = activeRequestCount.decrementAndGet()
+            if (remainingRequests <= 0) {
+                statusManager.setReady()
+            } else {
+                statusManager.setProcessing(remainingRequests)
+            }
         }
     }
     
@@ -356,14 +449,4 @@ class AIRouterService : Service() {
             "${message.role}: ${message.content}"
         }
     }
-
-    private fun stopSelfIfNoClients() {
-        Log.i(TAG, "stopSelfIfNoClients() called. Current client count: $clientCount")
-        if (clientCount <= 0) {
-            Log.i(TAG, "No clients remaining, stopping service.")
-            stopSelf()
-        } else {
-            Log.i(TAG, "Clients still remaining, not stopping service.")
-        }
-    }
-} 
+}

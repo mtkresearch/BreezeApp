@@ -3,6 +3,9 @@
     package="com.mtkresearch.breezeapp.router">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Signature-level permission for AIRouterService -->
     <permission
@@ -52,12 +55,13 @@
             </intent-filter>
         </activity>
 
-        <!-- AIRouterService declaration -->
+        <!-- AIRouterService declaration - Foreground Service for AI Processing -->
         <service
             android:name=".AIRouterService"
             android:enabled="true"
             android:exported="true"
-            android:stopWithTask="true"
+            android:foregroundServiceType="dataSync"
+            android:stopWithTask="false"
             android:permission="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE">
             <intent-filter>
                 <action android:name="com.mtkresearch.breezeapp.router.AIRouterService" />
