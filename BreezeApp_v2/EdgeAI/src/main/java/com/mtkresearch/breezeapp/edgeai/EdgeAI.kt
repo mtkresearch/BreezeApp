@@ -68,7 +68,16 @@ object EdgeAI {
         
         override fun onServiceDisconnected(name: ComponentName?) {
             Log.d(TAG, "Service disconnected: $name")
-            service?.unregisterListener(aiRouterListener)
+            
+            // Safe cleanup: Don't call methods on potentially dead binder
+            try {
+                service?.unregisterListener(aiRouterListener)
+            } catch (e: android.os.DeadObjectException) {
+                Log.d(TAG, "Service binder already dead, skipping unregister")
+            } catch (e: Exception) {
+                Log.w(TAG, "Error during listener unregistration: ${e.message}")
+            }
+            
             service = null
             isBound = false
             
