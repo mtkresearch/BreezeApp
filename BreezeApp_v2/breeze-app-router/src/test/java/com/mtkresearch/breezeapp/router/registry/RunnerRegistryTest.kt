@@ -8,7 +8,7 @@ import com.mtkresearch.breezeapp.router.domain.model.InferenceRequest
 import com.mtkresearch.breezeapp.router.domain.model.InferenceResult
 import com.mtkresearch.breezeapp.router.domain.model.ModelConfig
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic

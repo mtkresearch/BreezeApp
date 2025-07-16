@@ -2,7 +2,7 @@ package com.mtkresearch.breezeapp.router.injection
 
 import android.content.Context
 import com.mtkresearch.breezeapp.router.config.ConfigurationManager
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
 

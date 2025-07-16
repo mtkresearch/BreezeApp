@@ -9,8 +9,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.mtkresearch.breezeapp.router.R
-import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
-import com.mtkresearch.breezeapp.router.permission.NotificationPermissionManager
+import com.mtkresearch.breezeapp.router.core.ServiceNotificationManager
+import com.mtkresearch.breezeapp.router.system.NotificationPermissionManager
 
 /**
  * Router Entry Activity - Professional entry point for BreezeApp AI Router

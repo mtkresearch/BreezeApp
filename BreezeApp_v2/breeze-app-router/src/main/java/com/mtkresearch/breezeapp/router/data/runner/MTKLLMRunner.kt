@@ -8,9 +8,9 @@ import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.RunnerInfo
 import com.mtkresearch.breezeapp.router.domain.model.*
-import com.mtkresearch.breezeapp.router.hardware.HardwareCompatibility
-import com.mtkresearch.breezeapp.router.infrastructure.ModelPathResolver
-import com.mtkresearch.breezeapp.router.infrastructure.NativeLibraryManager
+import com.mtkresearch.breezeapp.router.system.HardwareCompatibility
+import com.mtkresearch.breezeapp.router.system.ModelPathResolver
+import com.mtkresearch.breezeapp.router.system.NativeLibraryManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine

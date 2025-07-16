@@ -5,7 +5,7 @@ import com.mtkresearch.breezeapp.router.domain.model.InferenceRequest
 import com.mtkresearch.breezeapp.router.domain.model.InferenceResult
 import com.mtkresearch.breezeapp.router.domain.model.CapabilityType
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
-import com.mtkresearch.breezeapp.router.status.RouterStatusManager
+import com.mtkresearch.breezeapp.router.core.RouterStatusManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import java.util.concurrent.ConcurrentHashMap

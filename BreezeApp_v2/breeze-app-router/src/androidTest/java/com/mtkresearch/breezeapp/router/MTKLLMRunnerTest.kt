@@ -20,7 +20,7 @@ class MTKLLMRunnerTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
 
         // 2. 檢查硬體支援
-        assumeTrue(com.mtkresearch.breezeapp.router.hardware.HardwareCompatibility.isMTKNPUSupported())
+        assumeTrue(com.mtkresearch.breezeapp.router.system.HardwareCompatibility.isMTKNPUSupported())
 
         // 3. 取得 entry_point 檔案路徑
         val modelName = "Breeze2-3B-8W16A-250630-npu"

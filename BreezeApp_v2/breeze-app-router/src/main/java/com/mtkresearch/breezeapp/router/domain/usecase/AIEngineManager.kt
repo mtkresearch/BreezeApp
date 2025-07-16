@@ -1,6 +1,6 @@
 package com.mtkresearch.breezeapp.router.domain.usecase
 
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
 import com.mtkresearch.breezeapp.router.domain.model.*

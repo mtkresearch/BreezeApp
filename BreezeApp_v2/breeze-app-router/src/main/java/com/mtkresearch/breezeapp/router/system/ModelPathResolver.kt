@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.router.infrastructure
+package com.mtkresearch.breezeapp.router.system
 
 import android.content.Context
 import android.content.res.AssetManager

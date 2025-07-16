@@ -15,18 +15,16 @@ import com.mtkresearch.breezeapp.edgeai.ChatMessage
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.injection.RouterConfigurator
 import com.mtkresearch.breezeapp.router.domain.model.*
-import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
-import com.mtkresearch.breezeapp.router.status.RouterStatusManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.catch
 import android.os.RemoteCallbackList
+import com.mtkresearch.breezeapp.router.error.RequestProcessingHelper
+import com.mtkresearch.breezeapp.router.core.ServiceNotificationManager
+import com.mtkresearch.breezeapp.router.core.RouterStatusManager
 import kotlinx.coroutines.SupervisorJob
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
-import com.mtkresearch.breezeapp.router.BuildConfig
-import com.mtkresearch.breezeapp.router.error.RequestProcessingHelper
 
 /**
  * AIRouterService - Foreground Service for AI Processing
@@ -36,23 +34,38 @@ import com.mtkresearch.breezeapp.router.error.RequestProcessingHelper
  * provides transparent status updates via notifications, and delegates business logic 
  * to AIEngineManager (use case layer) with Mock Runner support.
  * 
+ * ## Architecture
  * Follows Clean Architecture principles:
  * - Service layer (Framework) -> Use Case layer -> Domain layer
  * - Single Responsibility: Service lifecycle + IPC interface
  * - Dependency Inversion: Depends on abstractions (AIEngineManager, RouterStatusManager)
  * - Open/Closed: Extensible through dependency injection
  * 
- * Foreground Service Benefits:
+ * ## Foreground Service Benefits
  * - Protected from aggressive system kills
  * - Transparent user communication via notifications
  * - Reliable availability for client wake-up scenarios
  * - Consistent performance for long-running AI operations
+ * 
+ * ## Usage
+ * Clients bind to this service using AIDL interface and call methods like:
+ * - [sendChatRequest] for text generation
+ * - [sendTTSRequest] for text-to-speech
+ * - [sendASRRequest] for speech-to-text
+ * 
+ * @see IAIRouterService AIDL interface definition
+ * @see AIEngineManager for business logic implementation
  */
 class AIRouterService : Service() {
     companion object {
         private const val TAG = "AIRouterService"
         private const val PERMISSION = "com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE"
         private const val API_VERSION = 1
+        
+        // Performance and resource management constants
+        private const val MAX_TRACKED_REQUESTS = 100
+        private const val REQUEST_RETENTION_TIME_MS = 5 * 60 * 1000L // 5 minutes
+        private const val MEMORY_CHECK_INTERVAL_MS = 30 * 1000L // 30 seconds
     }
 
     // Coroutine scope for background work
@@ -85,6 +98,14 @@ class AIRouterService : Service() {
     
     // --- Binder Stub Implementation ---
     private val binder = object : IAIRouterService.Stub() {
+        /**
+         * Returns the current API version of the AI Router Service.
+         * 
+         * Clients can use this to verify compatibility and adapt their behavior
+         * based on the available features in this version.
+         * 
+         * @return Current API version number
+         */
         override fun getApiVersion(): Int {
             Log.i(TAG, "getApiVersion() called")
             return API_VERSION
@@ -92,6 +113,22 @@ class AIRouterService : Service() {
 
         // === SIMPLIFIED API METHODS ===
         
+        /**
+         * Processes a chat completion request asynchronously.
+         * 
+         * Supports both streaming and non-streaming responses. For streaming requests,
+         * partial responses will be delivered via the registered listener as they become
+         * available. The final response will have isComplete=true.
+         * 
+         * @param requestId Unique identifier for tracking this request. Used for cancellation
+         *                  and correlating responses with requests.
+         * @param request Chat request containing messages, model preferences, and parameters.
+         *                Supports streaming via request.stream flag.
+         * 
+         * @see ChatRequest for request format details
+         * @see AIResponse for response format details
+         * @see registerListener to receive responses
+         */
         override fun sendChatRequest(requestId: String?, request: ChatRequest?) {
             Log.i(TAG, "[NEW] sendChatRequest() called: requestId=$requestId, request=$request")
             if (requestId == null || request == null) {
@@ -105,6 +142,19 @@ class AIRouterService : Service() {
             }
         }
         
+        /**
+         * Converts text to speech and returns audio data.
+         * 
+         * Processes the input text using the specified voice model and returns
+         * the generated audio data in the response. The audio format depends on
+         * the responseFormat parameter in the request.
+         * 
+         * @param requestId Unique identifier for tracking this request
+         * @param request TTS request containing text, voice model, and audio parameters
+         * 
+         * @see TTSRequest for request format details
+         * @see AIResponse.audioData for audio output format
+         */
         override fun sendTTSRequest(requestId: String?, request: TTSRequest?) {
             Log.i(TAG, "[NEW] sendTTSRequest() called: requestId=$requestId, request=$request")
             if (requestId == null || request == null) {
@@ -118,6 +168,18 @@ class AIRouterService : Service() {
             }
         }
         
+        /**
+         * Converts speech audio to text transcription.
+         * 
+         * Processes the provided audio data and returns a text transcription.
+         * Supports various audio formats and languages depending on the model used.
+         * 
+         * @param requestId Unique identifier for tracking this request
+         * @param request ASR request containing audio data, model, and transcription parameters
+         * 
+         * @see ASRRequest for request format details
+         * @see AIResponse.text for transcription output
+         */
         override fun sendASRRequest(requestId: String?, request: ASRRequest?) {
             Log.i(TAG, "[NEW] sendASRRequest() called: requestId=$requestId, request=$request")
             if (requestId == null || request == null) {
@@ -131,6 +193,16 @@ class AIRouterService : Service() {
             }
         }
 
+        /**
+         * Cancels an active request by its ID.
+         * 
+         * Attempts to cancel the specified request if it's currently being processed.
+         * This will stop any ongoing computation and update the service status accordingly.
+         * 
+         * @param requestId The ID of the request to cancel
+         * @return true if the request was successfully cancelled, false if the request
+         *         was not found or could not be cancelled
+         */
         override fun cancelRequest(requestId: String?): Boolean {
             Log.i(TAG, "cancelRequest() called: $requestId")
             return if (requestId != null) {
@@ -149,6 +221,17 @@ class AIRouterService : Service() {
             }
         }
 
+        /**
+         * Registers a listener to receive AI processing responses.
+         * 
+         * Clients must register a listener to receive responses from AI requests.
+         * Multiple listeners can be registered, and all will receive responses.
+         * The service automatically handles listener lifecycle and cleanup.
+         * 
+         * @param listener The listener implementation to receive AI responses
+         * @see IAIRouterListener for callback interface details
+         * @see unregisterListener to remove the listener
+         */
         override fun registerListener(listener: IAIRouterListener?) {
             Log.i(TAG, "registerListener() called: $listener")
             listener?.let { 
@@ -157,6 +240,16 @@ class AIRouterService : Service() {
             }
         }
 
+        /**
+         * Unregisters a previously registered listener.
+         * 
+         * Removes the listener from receiving further AI responses. This should
+         * be called when the client no longer needs to receive responses, typically
+         * in the client's onDestroy() or similar cleanup method.
+         * 
+         * @param listener The listener to unregister
+         * @see registerListener to add a listener
+         */
         override fun unregisterListener(listener: IAIRouterListener?) {
             Log.i(TAG, "unregisterListener() called: $listener")
             listener?.let { 
@@ -165,6 +258,20 @@ class AIRouterService : Service() {
             }
         }
 
+        /**
+         * Checks if the service supports a specific capability.
+         * 
+         * Clients can query for specific features before making requests to ensure
+         * compatibility and graceful degradation when features are not available.
+         * 
+         * @param capabilityName The capability to check for. Supported capabilities:
+         *                       - "binary_data": Support for binary audio/image data
+         *                       - "streaming": Support for streaming responses
+         *                       - "image_processing": Support for image/vision models
+         *                       - "audio_processing": Support for TTS/ASR
+         *                       - "mock_runners": Support for mock/testing runners
+         * @return true if the capability is supported, false otherwise
+         */
         override fun hasCapability(capabilityName: String?): Boolean {
             Log.i(TAG, "hasCapability() called: $capabilityName")
             return when (capabilityName) {
@@ -358,15 +465,18 @@ class AIRouterService : Service() {
 
     // Notify all registered listeners with a response (thread-safe)
     private fun notifyListeners(response: AIResponse) {
-        val n = listeners.beginBroadcast()
-        for (i in 0 until n) {
-            try {
-                listeners.getBroadcastItem(i).onResponse(response)
-            } catch (e: RemoteException) {
-                Log.e(TAG, "Failed to notify listener: ${listeners.getBroadcastItem(i)}", e)
+        // Synchronize access to RemoteCallbackList to prevent concurrent broadcast issues
+        synchronized(listeners) {
+            val n = listeners.beginBroadcast()
+            for (i in 0 until n) {
+                try {
+                    listeners.getBroadcastItem(i).onResponse(response)
+                } catch (e: RemoteException) {
+                    Log.e(TAG, "Failed to notify listener: ${listeners.getBroadcastItem(i)}", e)
+                }
             }
+            listeners.finishBroadcast()
         }
-        listeners.finishBroadcast()
     }
 
     // Optionally, add a method to notify error responses

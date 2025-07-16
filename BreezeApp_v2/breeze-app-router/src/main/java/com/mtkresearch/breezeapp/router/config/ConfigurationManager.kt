@@ -2,7 +2,7 @@ package com.mtkresearch.breezeapp.router.config
 
 import android.content.Context
 import com.mtkresearch.breezeapp.router.data.runner.MTKLLMRunner
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.model.CapabilityType
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry

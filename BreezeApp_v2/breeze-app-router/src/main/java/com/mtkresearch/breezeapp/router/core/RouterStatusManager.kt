@@ -1,9 +1,8 @@
-package com.mtkresearch.breezeapp.router.status
+package com.mtkresearch.breezeapp.router.core
 
 import android.app.Service
 import android.util.Log
 import com.mtkresearch.breezeapp.router.domain.model.ServiceState
-import com.mtkresearch.breezeapp.router.notification.ServiceNotificationManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +26,10 @@ class RouterStatusManager(
     
     companion object {
         private const val TAG = "RouterStatusManager"
+        
+        // Notification constants
         const val FOREGROUND_NOTIFICATION_ID = 1001
+        private const val STATUS_UPDATE_DEBOUNCE_MS = 100L
     }
     
     // State management following reactive principles

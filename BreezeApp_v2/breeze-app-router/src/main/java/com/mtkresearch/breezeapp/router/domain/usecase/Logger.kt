@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.router.domain.common
+package com.mtkresearch.breezeapp.router.domain.usecase
 
 /**
  * An abstract logging interface to decouple the domain layer from any specific

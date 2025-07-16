@@ -12,11 +12,29 @@ import com.mtkresearch.breezeapp.router.R
  * - Abstracting UI concerns from business logic
  * 
  * Each state provides display information while maintaining separation of concerns.
+ * States automatically determine their notification behavior, progress display,
+ * and visual representation.
+ * 
+ * ## Usage Example
+ * ```kotlin
+ * when (val state = statusManager.getCurrentState()) {
+ *     is ServiceState.Ready -> showReadyUI()
+ *     is ServiceState.Processing -> showProgress(state.activeRequests)
+ *     is ServiceState.Downloading -> showDownload(state.progress)
+ *     is ServiceState.Error -> showError(state.message)
+ * }
+ * ```
+ * 
+ * @see RouterStatusManager for state management
+ * @see ServiceNotificationManager for notification integration
  */
 sealed class ServiceState {
     
     /**
-     * Service is ready and waiting for requests
+     * Service is ready and waiting for requests.
+     * 
+     * This is the default idle state when no AI operations are in progress.
+     * The service is fully initialized and ready to accept new requests.
      */
     object Ready : ServiceState() {
         override fun getDisplayText(): String = "AI Router Ready"
@@ -26,12 +44,16 @@ sealed class ServiceState {
     }
     
     /**
-     * Service is actively processing AI requests
-     * @param activeRequests Number of concurrent requests being processed
+     * Service is actively processing AI requests.
+     * 
+     * Indicates that one or more AI operations (chat, TTS, ASR) are currently
+     * in progress. The notification will show an indeterminate progress indicator.
+     * 
+     * @param activeRequests Number of concurrent requests being processed (must be > 0)
      */
     data class Processing(val activeRequests: Int) : ServiceState() {
         override fun getDisplayText(): String = 
-            "Processing $activeRequests AI request${if (activeRequests > 1) "s" else ""}"
+            "Processing $activeRequests AI request${if (activeRequests != 1) "s" else ""}"
         override fun getIcon(): Int = R.drawable.ic_refresh
         override fun isOngoing(): Boolean = true
         override fun showProgress(): Boolean = true
@@ -40,10 +62,14 @@ sealed class ServiceState {
     }
     
     /**
-     * Service is downloading AI models
-     * @param modelName Name of the model being downloaded
+     * Service is downloading AI models.
+     * 
+     * Indicates that a model download is in progress. The notification will show
+     * a determinate progress bar with the current download percentage.
+     * 
+     * @param modelName Name of the model being downloaded (e.g., "llama-3.2-1b")
      * @param progress Download progress percentage (0-100)
-     * @param totalSize Optional total size for display
+     * @param totalSize Optional total size for display (e.g., "2.1 GB")
      */
     data class Downloading(
         val modelName: String,
@@ -63,9 +89,15 @@ sealed class ServiceState {
     }
     
     /**
-     * Service encountered an error
-     * @param message Error description
-     * @param isRecoverable Whether the error can be recovered from
+     * Service encountered an error.
+     * 
+     * Indicates that an error occurred during AI processing or service operation.
+     * The notification will display the error message with high priority to ensure
+     * user visibility. Recoverable errors allow the service to continue operating.
+     * 
+     * @param message Human-readable error description for display
+     * @param isRecoverable Whether the service can recover from this error.
+     *                      If false, the service may need to be restarted.
      */
     data class Error(
         val message: String,
@@ -78,10 +110,18 @@ sealed class ServiceState {
     }
     
     // Abstract methods that all states must implement
+    
+    /** Returns human-readable text for display in notifications and UI */
     abstract fun getDisplayText(): String
+    
+    /** Returns the drawable resource ID for the state icon */
     @DrawableRes
     abstract fun getIcon(): Int
+    
+    /** Returns true if this state represents an ongoing operation */
     abstract fun isOngoing(): Boolean
+    
+    /** Returns true if this state should show a progress indicator */
     abstract fun showProgress(): Boolean
     
     // Optional methods with default implementations

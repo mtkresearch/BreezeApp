@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.router.permission
+package com.mtkresearch.breezeapp.router.system
 
 import android.Manifest
 import android.app.Activity

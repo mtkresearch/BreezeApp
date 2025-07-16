@@ -1,7 +1,7 @@
 package com.mtkresearch.breezeapp.router.injection
 
 import android.util.Log
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 
 /**
  * An implementation of the [Logger] interface that uses the standard Android Log class.

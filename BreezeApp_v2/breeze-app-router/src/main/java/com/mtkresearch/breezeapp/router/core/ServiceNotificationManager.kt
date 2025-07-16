@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.router.notification
+package com.mtkresearch.breezeapp.router.core
 
 import android.app.Notification
 import android.app.NotificationChannel

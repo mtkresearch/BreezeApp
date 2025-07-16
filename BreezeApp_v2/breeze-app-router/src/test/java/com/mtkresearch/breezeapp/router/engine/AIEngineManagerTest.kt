@@ -4,13 +4,12 @@ import com.mtkresearch.breezeapp.router.domain.model.InferenceRequest
 import com.mtkresearch.breezeapp.router.domain.model.InferenceResult
 import com.mtkresearch.breezeapp.router.domain.interfaces.BaseRunner
 import com.mtkresearch.breezeapp.router.domain.interfaces.FlowStreamingRunner
-import com.mtkresearch.breezeapp.router.domain.model.ModelConfig
 import com.mtkresearch.breezeapp.router.domain.interfaces.RunnerInfo
 import com.mtkresearch.breezeapp.router.domain.model.CapabilityType
 import com.mtkresearch.breezeapp.router.domain.usecase.AIEngineManager
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry
 import com.mtkresearch.breezeapp.router.domain.usecase.RunnerRegistry.RunnerRegistration
-import com.mtkresearch.breezeapp.router.domain.common.Logger
+import com.mtkresearch.breezeapp.router.domain.usecase.Logger
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify

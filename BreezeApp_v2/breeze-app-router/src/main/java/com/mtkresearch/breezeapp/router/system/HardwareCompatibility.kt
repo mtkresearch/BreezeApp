@@ -1,4 +1,4 @@
-package com.mtkresearch.breezeapp.router.hardware
+package com.mtkresearch.breezeapp.router.system
 
 import android.os.Build
 import android.util.Log
