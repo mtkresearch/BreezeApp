@@ -1,9 +1,15 @@
+# ./jitpack.yml
 jdk:
   - openjdk17
 
+before_install:
+  - cd BreezeApp_v2
+
+install:
+  - ./gradlew :EdgeAI:publishToMavenLocal
+
 build:
-  gradle:
-    wrapper: BreezeApp_v2/gradlew
-    file: BreezeApp_v2/settings.gradle.kts
-    tasks:
-      - :EdgeAI:assembleRelease
+  script: ./gradlew :EdgeAI:assembleRelease
+
+env:
+  GRADLE_OPTS: "-Xmx2048m -Dfile.encoding=UTF-8"

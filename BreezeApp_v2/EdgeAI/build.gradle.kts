@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.github.mtkresearch" // 注意這行是 JitPack 專用，保持不變
-version = "edgeai-v0.1.0" // 你想要的版本
+version = "edgeai-v0.1.2" // 你想要的版本
 
 afterEvaluate {
     publishing {
@@ -16,7 +16,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.github.mtkresearch"
                 artifactId = "EdgeAI"
-                version = "edgeai-v0.1.0"
+                version = "edgeai-v0.1.2"
             }
         }
     }
