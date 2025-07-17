@@ -4,6 +4,6 @@ jdk:
 build:
   gradle:
     wrapper: BreezeApp_v2/gradlew
-    file: BreezeApp_v2/build.gradle.kts
+    file: BreezeApp_v2/settings.gradle.kts
     tasks:
-      - :BreezeApp_v2:EdgeAI:assembleRelease
+      - :EdgeAI:assembleRelease
