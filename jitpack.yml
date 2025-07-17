@@ -1,0 +1,9 @@
+jdk:
+  - openjdk17
+
+build:
+  gradle:
+    wrapper: BreezeApp_v2/gradlew
+    file: BreezeApp_v2/build.gradle.kts
+    tasks:
+      - :BreezeApp_v2:EdgeAI:assembleRelease

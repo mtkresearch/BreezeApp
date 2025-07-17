@@ -3,6 +3,23 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
+    id("maven-publish")
+}
+
+group = "com.github.mtkresearch" // 注意這行是 JitPack 專用，保持不變
+version = "edgeai-v0.1.0" // 你想要的版本
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.github.mtkresearch"
+                artifactId = "EdgeAI"
+                version = "edgeai-v0.1.0"
+            }
+        }
+    }
 }
 
 android {
