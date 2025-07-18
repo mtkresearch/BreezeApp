@@ -11,6 +11,8 @@ import com.mtkresearch.breezeapp.router.domain.model.*
 import com.mtkresearch.breezeapp.router.system.HardwareCompatibility
 import com.mtkresearch.breezeapp.router.system.ModelPathResolver
 import com.mtkresearch.breezeapp.router.system.NativeLibraryManager
+import com.mtkresearch.breezeapp.router.system.NativeLibraryGuardian
+import com.mtkresearch.breezeapp.router.system.GlobalLibraryTracker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -19,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.isActive
 
 /**
  * MTKLLMRunner - MTK NPU 加速的 AI Runner 實作
@@ -49,6 +51,7 @@ class MTKLLMRunner private constructor(
     
     private val isLoaded = AtomicBoolean(false)
     private val isGenerating = AtomicBoolean(false)
+    private val isCleaningUp = AtomicBoolean(false)
     private var initializationResult: InitializationResult? = null
     private var resolvedModelPath: String? = null
 
@@ -153,12 +156,7 @@ class MTKLLMRunner private constructor(
             InferenceResult.error(RunnerError.runtimeError("Inference failed: ${e.message}", e))
         } finally {
             isGenerating.set(false)
-            try {
-                nativeResetLlm()
-                nativeSwapModel(config.modelTokenSize)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error cleaning up MTK state", e)
-            }
+            performSafeCleanup("single inference")
         }
     }
     
@@ -214,14 +212,8 @@ class MTKLLMRunner private constructor(
                 repetitionPenalty
             )
 
-            try {
-                nativeResetLlm()
-                nativeSwapModel(config.modelTokenSize)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error cleaning up MTK state", e)
-            }
-
             isGenerating.set(false)
+            performSafeCleanup("streaming inference mid-flow")
             // ---
             val processingTime = System.currentTimeMillis() - startTime
             trySend(
@@ -239,27 +231,33 @@ class MTKLLMRunner private constructor(
                     partial = false
                 )
             )
-            awaitClose { }
+            close() // Close immediately after final result
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // Normal cancellation - don't log as error or send error result
+            Log.d(TAG, "Streaming inference cancelled (normal shutdown)")
+            close()
         } catch (e: Exception) {
             Log.e(TAG, "Error during streaming inference", e)
             trySend(InferenceResult.error(RunnerError.runtimeError("Streaming inference failed: ${e.message}", e)))
             close()
         } finally {
             isGenerating.set(false)
-            try {
-                nativeResetLlm()
-                nativeSwapModel(config.modelTokenSize)
-            } catch (e: Exception) {
-                Log.w(TAG, "Error cleaning up MTK state", e)
-            }
+            performSafeCleanup("streaming inference")
         }
     }
     
     override fun unload() {
         Log.d(TAG, "Unloading MTKLLMRunner")
         if (!isLoaded.get()) return
-        isGenerating.set(false)
+        
+        // Prevent concurrent cleanup
+        if (!isCleaningUp.compareAndSet(false, true)) {
+            Log.d(TAG, "Cleanup already in progress, skipping unload")
+            return
+        }
+        
         try {
+            isGenerating.set(false)
             nativeResetLlm()
             nativeReleaseLlm()
             isLoaded.set(false)
@@ -269,6 +267,27 @@ class MTKLLMRunner private constructor(
             Log.i(TAG, "MTKLLMRunner unloaded successfully")
         } catch (e: Exception) {
             Log.e(TAG, "Error during MTKLLMRunner unload", e)
+            // Force state reset even on error to prevent stuck states
+            isLoaded.set(false)
+        } finally {
+            isCleaningUp.set(false)
+        }
+    }
+    
+    /**
+     * Finalize method for emergency cleanup when object is garbage collected.
+     * This provides a safety net for abnormal termination scenarios.
+     */
+    protected fun finalize() {
+        try {
+            if (isLoaded.get()) {
+                Log.w(TAG, "MTKLLMRunner finalize() called - emergency cleanup")
+                nativeResetLlm()
+                nativeReleaseLlm()
+                isLoaded.set(false)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in finalize cleanup", e)
         }
     }
     
@@ -504,6 +523,25 @@ class MTKLLMRunner private constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Error during model swap", e)
             false
+        }
+    }
+
+    /**
+     * Perform safe cleanup to prevent concurrent access to native resources
+     */
+    private fun performSafeCleanup(context: String) {
+        // Skip cleanup if already cleaning up or if service is shutting down
+        if (isCleaningUp.get()) {
+            Log.d(TAG, "Skipping cleanup for $context - already cleaning up")
+            return
+        }
+        
+        try {
+            Log.d(TAG, "Performing safe cleanup for $context")
+            nativeResetLlm()
+            nativeSwapModel(config.modelTokenSize)
+        } catch (e: Exception) {
+            Log.w(TAG, "Error cleaning up MTK state for $context", e)
         }
     }
 

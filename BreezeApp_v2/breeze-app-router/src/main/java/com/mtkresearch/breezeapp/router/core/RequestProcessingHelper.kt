@@ -86,8 +86,12 @@ class RequestProcessingHelper(
         try {
             engineManager.processStream(inferenceRequest, capability)
                 .catch { error ->
-                    Log.e(TAG, "$requestType stream processing error", error)
-                    notifyError(requestId, error.message ?: "$requestType stream processing failed")
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        Log.d(TAG, "$requestType stream cancelled (normal shutdown)")
+                    } else {
+                        Log.e(TAG, "$requestType stream processing error", error)
+                        notifyError(requestId, error.message ?: "$requestType stream processing failed")
+                    }
                     streamCompleted = true
                     // Clean up on error
                     cleanupStreamingRequest(requestId, startTime, requestType)
@@ -109,6 +113,12 @@ class RequestProcessingHelper(
                 cleanupStreamingRequest(requestId, startTime, requestType)
             }
             
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Log.d(TAG, "Streaming $requestType request $requestId cancelled (normal shutdown)")
+            // Ensure cleanup on cancellation
+            if (!streamCompleted) {
+                cleanupStreamingRequest(requestId, startTime, requestType)
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error processing streaming $requestType request $requestId", e)
             statusManager.setError("$requestType streaming failed: ${e.message}")

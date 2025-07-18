@@ -130,4 +130,16 @@ class RouterStatusManager(
     
     fun setError(message: String, isRecoverable: Boolean = true) = 
         updateState(ServiceState.Error(message, isRecoverable))
+    
+    /**
+     * Updates status with client count information for enhanced notification.
+     */
+    fun updateWithClientCount(state: ServiceState, clientCount: Int) {
+        val enhancedState = when (state) {
+            is ServiceState.Ready -> ServiceState.ReadyWithClients(clientCount)
+            is ServiceState.Processing -> ServiceState.ProcessingWithClients(state.activeRequests, clientCount)
+            else -> state
+        }
+        updateState(enhancedState)
+    }
 }

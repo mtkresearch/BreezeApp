@@ -18,13 +18,24 @@ import com.mtkresearch.breezeapp.router.domain.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.isActive
 import android.os.RemoteCallbackList
 import com.mtkresearch.breezeapp.router.error.RequestProcessingHelper
 import com.mtkresearch.breezeapp.router.core.ServiceNotificationManager
 import com.mtkresearch.breezeapp.router.core.RouterStatusManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.os.Build
+import com.mtkresearch.breezeapp.router.system.GlobalLibraryTracker
+import com.mtkresearch.breezeapp.router.system.ResourceHealthMonitor
+import com.mtkresearch.breezeapp.router.system.NativeLibraryGuardian
 
 /**
  * AIRouterService - Foreground Service for AI Processing
@@ -78,11 +89,37 @@ class AIRouterService : Service() {
     // Active request tracking for status management with thread-safe operations
     private val activeRequestCount = AtomicInteger(0)
     private val requestTracker = ConcurrentHashMap<String, Long>()
+    
+    // Client timeout management for resource cleanup
+    private val lastClientActivity = AtomicLong(System.currentTimeMillis())
+    private var clientTimeoutJob: Job? = null
+    
+    // Resource health monitoring
+    private var healthMonitoringJob: Job? = null
+    
+    // Broadcast receiver for notification actions
+    private val stopServiceReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: Intent?) {
+            if (intent?.action == ServiceNotificationManager.ACTION_STOP_SERVICE) {
+                Log.i(TAG, "Stop service requested by user via notification")
+                
+                // Update notification to show stopping state
+                statusManager.setError("Service shutting down")
+                
+                // Immediately release all resources before stopping
+                releaseAllResourcesImmediately()
+                
+                // Stop the service
+                stopSelf()
+            }
+        }
+    }
 
     // Core components following dependency injection principles
     private lateinit var engineManager: AIEngineManager
     private lateinit var notificationManager: ServiceNotificationManager
     private lateinit var statusManager: RouterStatusManager
+    private lateinit var resourceHealthMonitor: com.mtkresearch.breezeapp.router.system.ResourceHealthMonitor
     
     // Lazy initialization to avoid dependency order issues
     private val requestHelper by lazy {
@@ -236,6 +273,9 @@ class AIRouterService : Service() {
             Log.i(TAG, "registerListener() called: $listener")
             listener?.let { 
                 listeners.register(it)
+                lastClientActivity.set(System.currentTimeMillis())
+                cancelClientTimeout()
+                updateClientCountNotification()
                 Log.d(TAG, "Client listener registered successfully")
             }
         }
@@ -254,6 +294,8 @@ class AIRouterService : Service() {
             Log.i(TAG, "unregisterListener() called: $listener")
             listener?.let { 
                 listeners.unregister(it)
+                scheduleClientTimeoutIfNeeded()
+                updateClientCountNotification()
                 Log.d(TAG, "Client listener unregistered successfully")
             }
         }
@@ -289,7 +331,13 @@ class AIRouterService : Service() {
         super.onCreate()
         Log.d(TAG, "AIRouterService creating as foreground service...")
 
-        // Initialize notification system first (required for foreground service)
+        // Note: JVM shutdown hooks don't work with Android Studio force-stop
+        // Using alternative approach with service lifecycle and native cleanup
+
+        // Initialize resource monitoring FIRST (required for health-aware notifications)
+        initializeResourceMonitoring()
+        
+        // Initialize notification system with health monitor (required for foreground service)
         initializeNotificationSystem()
         
         // Start as foreground service immediately
@@ -297,8 +345,174 @@ class AIRouterService : Service() {
 
         // Initialize core AI components
         initializeAIComponents()
+        
+        // Register broadcast receiver for notification actions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(stopServiceReceiver, IntentFilter(ServiceNotificationManager.ACTION_STOP_SERVICE), Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(stopServiceReceiver, IntentFilter(ServiceNotificationManager.ACTION_STOP_SERVICE))
+        }
 
         Log.i(TAG, "AIRouterService created and running in foreground")
+    }
+    
+    /**
+     * Initialize resource monitoring systems.
+     */
+    private fun initializeResourceMonitoring() {
+        try {
+            // Initialize global library tracker
+            Log.d(TAG, "Initializing global library state tracking...")
+            GlobalLibraryTracker.initialize(this)
+            val diagnosticInfo = GlobalLibraryTracker.getDiagnosticInfo()
+            Log.i(TAG, "Global library state: $diagnosticInfo")
+            
+            // Initialize resource health monitor
+            Log.d(TAG, "Initializing resource health monitor...")
+            resourceHealthMonitor = ResourceHealthMonitor(this)
+            val healthReport = resourceHealthMonitor.performHealthCheck(forceCheck = true)
+            Log.i(TAG, "Initial health status: ${healthReport.getSummary()}")
+            
+            if (healthReport.isCritical()) {
+                Log.w(TAG, "CRITICAL HEALTH ISSUES DETECTED: ${healthReport.criticalIssues.joinToString(", ")}")
+                Log.w(TAG, "Recommendations: ${healthReport.recommendations.joinToString(", ")}")
+                
+                // Perform preventive maintenance if recommended
+                if (resourceHealthMonitor.shouldPerformPreventiveMaintenance()) {
+                    Log.w(TAG, "Performing preventive maintenance due to health issues...")
+                    performPreventiveMaintenance()
+                }
+            }
+            
+            // Start periodic health monitoring
+            startPeriodicHealthMonitoring()
+            
+            Log.d(TAG, "Resource monitoring initialized successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error initializing resource monitoring", e)
+            // Continue with service initialization even if monitoring fails
+        }
+    }
+    
+    /**
+     * Start periodic health monitoring in background.
+     */
+    private fun startPeriodicHealthMonitoring() {
+        healthMonitoringJob = serviceScope.launch {
+            try {
+                while (isActive) { // Check if coroutine is still active
+                    delay(MEMORY_CHECK_INTERVAL_MS) // 30 seconds
+                    
+                    if (!isActive) break // Exit if cancelled
+                    
+                    if (::resourceHealthMonitor.isInitialized) {
+                        val healthReport = resourceHealthMonitor.performHealthCheck()
+                        
+                        // Log health status periodically
+                        Log.v(TAG, "Periodic health check: ${healthReport.getSummary()}")
+                        
+                        // Handle critical issues
+                        if (healthReport.isCritical()) {
+                            Log.w(TAG, "CRITICAL HEALTH ISSUES: ${healthReport.criticalIssues.joinToString(", ")}")
+                            
+                            // Perform automatic maintenance for critical issues
+                            if (resourceHealthMonitor.shouldPerformPreventiveMaintenance()) {
+                                Log.w(TAG, "Performing automatic maintenance due to critical health issues...")
+                                performPreventiveMaintenance()
+                            }
+                        }
+                        
+                        // Update notification with health status if needed
+                        updateNotificationWithHealthStatus(healthReport)
+                    }
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Normal cancellation - don't log as error
+                Log.d(TAG, "Health monitoring cancelled (normal shutdown)")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during periodic health monitoring", e)
+            }
+        }
+        
+        Log.d(TAG, "Periodic health monitoring started")
+    }
+    
+    /**
+     * Update notification with health status information.
+     */
+    private fun updateNotificationWithHealthStatus(healthReport: com.mtkresearch.breezeapp.router.system.ResourceHealthMonitor.HealthReport) {
+        try {
+            // Only update notification if there are warnings or critical issues
+            if (healthReport.hasWarnings()) {
+                val currentState = when {
+                    activeRequestCount.get() > 0 -> ServiceState.Processing(activeRequestCount.get())
+                    else -> ServiceState.Ready
+                }
+                
+                // Update status manager (this will trigger notification update)
+                statusManager.updateState(currentState)
+                
+                Log.d(TAG, "Updated notification with health status: ${healthReport.overallHealth}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating notification with health status", e)
+        }
+    }
+    
+    /**
+     * Perform preventive maintenance based on health monitor recommendations.
+     */
+    private fun performPreventiveMaintenance() {
+        try {
+            Log.i(TAG, "Starting preventive maintenance...")
+            
+            // Reset service state counters
+            activeRequestCount.set(0)
+            requestTracker.clear()
+            lastClientActivity.set(System.currentTimeMillis())
+            
+            // Force garbage collection
+            System.gc()
+            Thread.sleep(100)
+            
+            Log.i(TAG, "Preventive maintenance completed")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during preventive maintenance", e)
+        }
+    }
+    
+    /**
+     * Handle health view request from notification.
+     */
+    private fun handleHealthViewRequest() {
+        try {
+            if (::resourceHealthMonitor.isInitialized) {
+                val healthReport = resourceHealthMonitor.performHealthCheck(forceCheck = true)
+                Log.i(TAG, "=== HEALTH REPORT ===")
+                Log.i(TAG, "Overall Health: ${healthReport.overallHealth}")
+                Log.i(TAG, "Memory Health: ${healthReport.memoryHealth}")
+                Log.i(TAG, "Native Library Health: ${healthReport.nativeLibraryHealth}")
+                Log.i(TAG, "Service Health: ${healthReport.serviceHealth}")
+                
+                if (healthReport.criticalIssues.isNotEmpty()) {
+                    Log.w(TAG, "Critical Issues: ${healthReport.criticalIssues.joinToString(", ")}")
+                }
+                
+                if (healthReport.recommendations.isNotEmpty()) {
+                    Log.i(TAG, "Recommendations: ${healthReport.recommendations.joinToString(", ")}")
+                }
+                
+                Log.i(TAG, "Diagnostic Info: ${healthReport.diagnosticInfo}")
+                Log.i(TAG, "==================")
+                
+                // Update notification to show latest health status
+                statusManager.updateState(statusManager.getCurrentState())
+            } else {
+                Log.w(TAG, "Health monitor not available")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling health view request", e)
+        }
     }
     
     /**
@@ -306,7 +520,9 @@ class AIRouterService : Service() {
      * Separates infrastructure concerns from business logic.
      */
     private fun initializeNotificationSystem() {
-        notificationManager = ServiceNotificationManager(applicationContext)
+        // Always create notification manager with health monitoring
+        notificationManager = ServiceNotificationManager(applicationContext, resourceHealthMonitor)
+        
         notificationManager.createNotificationChannel()
         
         // Check if notifications are enabled and log guidance for users
@@ -319,7 +535,7 @@ class AIRouterService : Service() {
         }
         
         statusManager = RouterStatusManager(this, notificationManager)
-        Log.d(TAG, "Notification system initialized")
+        Log.d(TAG, "Notification system initialized with health monitoring")
     }
     
     /**
@@ -380,6 +596,16 @@ class AIRouterService : Service() {
         super.onDestroy()
         Log.i(TAG, "AIRouterService destroying...")
         
+        // Clear notification immediately to avoid confusion
+        try {
+            if (::notificationManager.isInitialized) {
+                notificationManager.clearNotification()
+                Log.d(TAG, "Notification cleared during service destruction")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error clearing notification", e)
+        }
+        
         // Clean shutdown following proper order
         cleanupResources()
         
@@ -408,6 +634,17 @@ class AIRouterService : Service() {
             
             // Cancel all coroutines
             serviceJob.cancel()
+            
+            // Cancel health monitoring
+            healthMonitoringJob?.cancel()
+            healthMonitoringJob = null
+            
+            // Unregister broadcast receiver
+            try {
+                unregisterReceiver(stopServiceReceiver)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error unregistering stop service receiver", e)
+            }
             
             Log.d(TAG, "Resource cleanup completed")
         } catch (e: Exception) {
@@ -439,6 +676,47 @@ class AIRouterService : Service() {
             statusManager.setProcessing(finalCount)
             Log.d(TAG, "Still processing $finalCount requests")
         }
+    }
+    
+    /**
+     * Cancels any pending client timeout job.
+     */
+    private fun cancelClientTimeout() {
+        clientTimeoutJob?.cancel()
+        clientTimeoutJob = null
+    }
+    
+    /**
+     * Schedules model unloading if no clients are connected.
+     */
+    private fun scheduleClientTimeoutIfNeeded() {
+        if (listeners.registeredCallbackCount == 0) {
+            clientTimeoutJob = serviceScope.launch {
+                delay(REQUEST_RETENTION_TIME_MS) // 使用現有常數
+                Log.i(TAG, "No clients for ${REQUEST_RETENTION_TIME_MS / 1000 / 60} minutes - unloading models to save memory")
+                try {
+                    engineManager.unloadAllModels()
+                    statusManager.setReady()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error during client timeout cleanup", e)
+                }
+            }
+        }
+    }
+    
+    /**
+     * Updates notification with current client count information.
+     */
+    private fun updateClientCountNotification() {
+        val clientCount = listeners.registeredCallbackCount
+        val currentState = when {
+            clientCount == 0 -> ServiceState.Ready
+            activeRequestCount.get() > 0 -> ServiceState.Processing(activeRequestCount.get())
+            else -> ServiceState.Ready
+        }
+        
+        // Update status manager with client count info
+        statusManager.updateWithClientCount(currentState, clientCount)
     }
     
     // === RESPONSE CONVERSION & NOTIFICATION ===
@@ -591,6 +869,52 @@ class AIRouterService : Service() {
     private fun buildChatPrompt(messages: List<ChatMessage>): String {
         return messages.joinToString("\n") { message ->
             "${message.role}: ${message.content}"
+        }
+    }
+
+    /**
+     * Immediately releases all resources and unloads models.
+     * This is called when the user explicitly requests to stop the service.
+     */
+    private fun releaseAllResourcesImmediately() {
+        Log.i(TAG, "Releasing all resources immediately due to user stop request.")
+        try {
+            // Update status to indicate shutdown
+            if (::statusManager.isInitialized) {
+                statusManager.setError("Service shutting down", false)
+            }
+            
+            // Clear request tracking
+            requestTracker.clear()
+            activeRequestCount.set(0)
+            
+            // Cancel all coroutines
+            serviceJob.cancel()
+            
+            // Cancel health monitoring
+            healthMonitoringJob?.cancel()
+            healthMonitoringJob = null
+            
+            // Unload all models
+            if (::engineManager.isInitialized) {
+                engineManager.unloadAllModels()
+            }
+            
+            // Clear notification
+            if (::notificationManager.isInitialized) {
+                notificationManager.clearNotification()
+            }
+            
+            // Unregister broadcast receiver
+            try {
+                unregisterReceiver(stopServiceReceiver)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error unregistering stop service receiver during immediate release", e)
+            }
+            
+            Log.d(TAG, "All resources released immediately.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during immediate resource release", e)
         }
     }
 }

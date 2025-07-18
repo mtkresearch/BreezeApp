@@ -181,11 +181,11 @@ class BreezeAppRouterLauncherActivity : AppCompatActivity() {
             .setMessage("BreezeApp Router runs as a background service. Enable notifications to see service status and progress updates.")
             .setPositiveButton("Open Settings") { _, _ ->
                 notificationManager.openNotificationSettings()
-                finish()
+                // Keep UI open to show service status
             }
             .setNegativeButton("Skip") { _, _ ->
                 Toast.makeText(this, "Service is running without visible status.", Toast.LENGTH_LONG).show()
-                finish()
+                // Keep UI open to show service status
             }
             .setCancelable(false)
             .show()

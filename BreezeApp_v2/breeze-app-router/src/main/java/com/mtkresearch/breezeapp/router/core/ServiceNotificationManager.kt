@@ -9,9 +9,12 @@ import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.mtkresearch.breezeapp.router.R
+import com.mtkresearch.breezeapp.router.system.ResourceHealthMonitor
 import com.mtkresearch.breezeapp.router.domain.model.NotificationPriority
 import com.mtkresearch.breezeapp.router.domain.model.ServiceState
 import com.mtkresearch.breezeapp.router.ui.BreezeAppRouterLauncherActivity
+import android.util.Log
+import com.mtkresearch.breezeapp.router.core.RouterStatusManager
 
 /**
  * Manages foreground service notifications following Clean Architecture principles.
@@ -22,7 +25,10 @@ import com.mtkresearch.breezeapp.router.ui.BreezeAppRouterLauncherActivity
  * - Handle notification updates and styling
  * - Maintain separation between domain models and Android framework
  */
-class ServiceNotificationManager(private val context: Context) {
+class ServiceNotificationManager(
+    private val context: Context,
+    private val healthMonitor: ResourceHealthMonitor? = null
+) {
     
     companion object {
         const val CHANNEL_ID = "ai_router_service_channel"
@@ -30,6 +36,9 @@ class ServiceNotificationManager(private val context: Context) {
         const val CHANNEL_DESCRIPTION = "Shows AI Router service status and progress"
         
         private const val REQUEST_CODE_MAIN = 1001
+        private const val REQUEST_CODE_STOP = 1002
+        const val ACTION_STOP_SERVICE = "com.mtkresearch.breezeapp.router.STOP_SERVICE"
+        const val ACTION_VIEW_HEALTH = "com.mtkresearch.breezeapp.router.VIEW_HEALTH"
     }
     
     private val notificationManager: NotificationManager by lazy {
@@ -106,10 +115,15 @@ class ServiceNotificationManager(private val context: Context) {
      * @return Notification ready for foreground service
      */
     fun createNotification(state: ServiceState): Notification {
+        val healthReport = healthMonitor?.performHealthCheck()
+        val healthAwareTitle = getHealthAwareTitle(state, healthReport)
+        val healthAwareText = getHealthAwareText(state, healthReport)
+        val healthAwareIcon = getHealthAwareIcon(state, healthReport)
+        
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setContentTitle("BreezeApp AI Router")
-            .setContentText(state.getDisplayText())
-            .setSmallIcon(state.getIcon())
+            .setContentTitle(healthAwareTitle)
+            .setContentText(healthAwareText)
+            .setSmallIcon(healthAwareIcon)
             .setOngoing(state.isOngoing())
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setContentIntent(createContentIntent())
@@ -139,12 +153,132 @@ class ServiceNotificationManager(private val context: Context) {
                 builder.setColor(context.getColor(R.color.primary))
                     .setSubText("Active processing")
             }
+            is ServiceState.ProcessingWithClients -> {
+                builder.setColor(context.getColor(R.color.primary))
+                    .setSubText("Active processing")
+            }
             is ServiceState.Ready -> {
+                builder.setColor(context.getColor(R.color.surface_variant))
+            }
+            is ServiceState.ReadyWithClients -> {
                 builder.setColor(context.getColor(R.color.surface_variant))
             }
         }
         
+        // Add health-aware styling and actions
+        applyHealthAwareStyling(builder, state, healthReport)
+        
+        // Only add stop action if service is running (not in error/stopping state)
+        if (state.isOngoing()) {
+            builder.addAction(createStopAction())
+        }
+        
         return builder.build()
+    }
+    
+    /**
+     * Get health-aware notification title.
+     */
+    private fun getHealthAwareTitle(state: ServiceState, healthReport: ResourceHealthMonitor.HealthReport?): String {
+        val baseTitle = "BreezeApp AI Router"
+        val healthIndicator = getHealthIndicator(healthReport)
+        return "$baseTitle $healthIndicator"
+    }
+    
+    /**
+     * Get health-aware notification text.
+     */
+    private fun getHealthAwareText(state: ServiceState, healthReport: ResourceHealthMonitor.HealthReport?): String {
+        val baseText = state.getDisplayText()
+        
+        return if (healthReport != null && healthReport.hasWarnings()) {
+            val healthSummary = getHealthSummary(healthReport)
+            "$baseText - $healthSummary"
+        } else {
+            baseText
+        }
+    }
+    
+    /**
+     * Get health-aware notification icon.
+     */
+    private fun getHealthAwareIcon(state: ServiceState, healthReport: ResourceHealthMonitor.HealthReport?): Int {
+        return when (healthReport?.overallHealth) {
+            ResourceHealthMonitor.HealthStatus.CRITICAL,
+            ResourceHealthMonitor.HealthStatus.ERROR -> R.drawable.ic_error
+            ResourceHealthMonitor.HealthStatus.WARNING -> R.drawable.ic_warning
+            else -> state.getIcon()
+        }
+    }
+    
+    /**
+     * Get health indicator text.
+     */
+    private fun getHealthIndicator(healthReport: ResourceHealthMonitor.HealthReport?): String {
+        return when (healthReport?.overallHealth) {
+            ResourceHealthMonitor.HealthStatus.HEALTHY -> "[OK]"
+            ResourceHealthMonitor.HealthStatus.WARNING -> "[WARN]"
+            ResourceHealthMonitor.HealthStatus.CRITICAL -> "[CRIT]"
+            ResourceHealthMonitor.HealthStatus.ERROR -> "[ERR]"
+            null -> ""
+        }
+    }
+    
+    /**
+     * Get health summary for notification content.
+     */
+    private fun getHealthSummary(healthReport: ResourceHealthMonitor.HealthReport): String {
+        return when (healthReport.overallHealth) {
+            ResourceHealthMonitor.HealthStatus.HEALTHY -> "System Healthy"
+            ResourceHealthMonitor.HealthStatus.WARNING -> "Minor Issues"
+            ResourceHealthMonitor.HealthStatus.CRITICAL -> "Critical Issues"
+            ResourceHealthMonitor.HealthStatus.ERROR -> "System Errors"
+        }
+    }
+    
+    /**
+     * Apply health-aware styling to notification builder.
+     */
+    private fun applyHealthAwareStyling(
+        builder: NotificationCompat.Builder,
+        state: ServiceState,
+        healthReport: ResourceHealthMonitor.HealthReport?
+    ) {
+        if (healthReport != null && healthReport.hasWarnings()) {
+            // Override color for health issues
+            val healthColor = when (healthReport.overallHealth) {
+                ResourceHealthMonitor.HealthStatus.CRITICAL,
+                ResourceHealthMonitor.HealthStatus.ERROR -> context.getColor(R.color.error)
+                ResourceHealthMonitor.HealthStatus.WARNING -> context.getColor(R.color.warning)
+                else -> null
+            }
+            
+            healthColor?.let { color ->
+                builder.setColor(color).setColorized(true)
+            }
+            
+            // Add health action
+            builder.addAction(createHealthAction(healthReport))
+        }
+    }
+    
+    /**
+     * Create health action for notification.
+     */
+    private fun createHealthAction(healthReport: ResourceHealthMonitor.HealthReport): NotificationCompat.Action {
+        val healthIntent = Intent(context, com.mtkresearch.breezeapp.router.AIRouterService::class.java).apply {
+            action = ACTION_VIEW_HEALTH
+        }
+        val healthPendingIntent = PendingIntent.getService(
+            context, 3, healthIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_info,
+            "Health: ${healthReport.overallHealth.name}",
+            healthPendingIntent
+        ).build()
     }
     
     /**
@@ -182,5 +316,43 @@ class ServiceNotificationManager(private val context: Context) {
         NotificationPriority.LOW -> NotificationCompat.PRIORITY_LOW
         NotificationPriority.DEFAULT -> NotificationCompat.PRIORITY_DEFAULT
         NotificationPriority.HIGH -> NotificationCompat.PRIORITY_HIGH
+    }
+    
+    /**
+     * Creates a stop action for the notification.
+     */
+    private fun createStopAction(): NotificationCompat.Action {
+        val stopIntent = Intent(ACTION_STOP_SERVICE).apply {
+            setPackage(context.packageName)
+        }
+        
+        val stopPendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_STOP,
+            stopIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_close,
+            "Stop Service",
+            stopPendingIntent
+        ).build()
+    }
+
+    /**
+     * Clears the foreground service notification.
+     * Should be called when the service is being destroyed to avoid user confusion.
+     * 
+     * This method cancels the notification with the standard foreground service ID.
+     */
+    fun clearNotification() {
+        try {
+            // Cancel the notification with the standard foreground service ID
+            notificationManager.cancel(RouterStatusManager.FOREGROUND_NOTIFICATION_ID)
+            Log.d("ServiceNotificationManager", "Foreground notification cleared successfully")
+        } catch (e: Exception) {
+            Log.w("ServiceNotificationManager", "Error clearing notification", e)
+        }
     }
 }

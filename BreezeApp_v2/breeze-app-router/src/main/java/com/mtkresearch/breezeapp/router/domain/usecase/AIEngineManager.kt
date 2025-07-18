@@ -172,6 +172,47 @@ class AIEngineManager(
     }
     
     /**
+     * Unloads all models to save memory while keeping runners in registry.
+     * Used when no clients are connected for extended periods.
+     */
+    fun unloadAllModels() {
+        configLock.write {
+            activeRunners.values.forEach { runner ->
+                try {
+                    if (runner.isLoaded()) {
+                        runner.unload()
+                        logger.d(TAG, "Unloaded model: ${runner.getRunnerInfo().name}")
+                    }
+                } catch (e: Exception) {
+                    logger.e(TAG, "Error unloading model", e)
+                }
+            }
+            logger.d(TAG, "All models unloaded due to no client activity")
+        }
+    }
+    
+    /**
+     * Force cleanup all resources for abnormal termination scenarios.
+     * Used during emergency shutdown (IDE rebuild, force kill, etc.).
+     */
+    fun forceCleanupAll() {
+        try {
+            activeRunners.values.forEach { runner ->
+                try {
+                    runner.unload()
+                } catch (e: Exception) {
+                    // Ignore individual errors during force cleanup
+                    logger.e(TAG, "Force cleanup error for runner", e)
+                }
+            }
+            activeRunners.clear()
+            logger.w(TAG, "Force cleanup completed")
+        } catch (e: Exception) {
+            logger.e(TAG, "Force cleanup failed", e)
+        }
+    }
+    
+    /**
      * 選擇合適的 Runner
      * 實現 Fallback 策略
      */

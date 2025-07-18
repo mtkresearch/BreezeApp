@@ -109,6 +109,41 @@ sealed class ServiceState {
         override fun showProgress(): Boolean = false
     }
     
+    /**
+     * Service is ready with client count information.
+     */
+    data class ReadyWithClients(val clientCount: Int) : ServiceState() {
+        override fun getDisplayText(): String = when (clientCount) {
+            0 -> "AI Router Ready - No clients connected"
+            1 -> "AI Router Ready - 1 client connected"
+            else -> "AI Router Ready - $clientCount clients connected"
+        }
+        override fun getIcon(): Int = R.drawable.ic_home
+        override fun isOngoing(): Boolean = true
+        override fun showProgress(): Boolean = false
+    }
+    
+    /**
+     * Service is processing with client count information.
+     */
+    data class ProcessingWithClients(
+        val activeRequests: Int,
+        val clientCount: Int
+    ) : ServiceState() {
+        override fun getDisplayText(): String {
+            val requestText = "Processing $activeRequests AI request${if (activeRequests != 1) "s" else ""}"
+            val clientText = when (clientCount) {
+                0 -> "No clients"
+                1 -> "1 client"
+                else -> "$clientCount clients"
+            }
+            return "$requestText - $clientText connected"
+        }
+        override fun getIcon(): Int = R.drawable.ic_refresh
+        override fun isOngoing(): Boolean = true
+        override fun showProgress(): Boolean = true
+    }
+    
     // Abstract methods that all states must implement
     
     /** Returns human-readable text for display in notifications and UI */
@@ -134,7 +169,9 @@ sealed class ServiceState {
      */
     fun isActive(): Boolean = when (this) {
         is Ready -> false
+        is ReadyWithClients -> false
         is Processing -> true
+        is ProcessingWithClients -> true
         is Downloading -> true
         is Error -> false
     }
@@ -144,7 +181,9 @@ sealed class ServiceState {
      */
     fun getNotificationPriority(): NotificationPriority = when (this) {
         is Ready -> NotificationPriority.LOW
+        is ReadyWithClients -> NotificationPriority.LOW
         is Processing -> NotificationPriority.DEFAULT
+        is ProcessingWithClients -> NotificationPriority.DEFAULT
         is Downloading -> NotificationPriority.DEFAULT
         is Error -> NotificationPriority.HIGH
     }
