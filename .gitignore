@@ -47,3 +47,9 @@ breeze-app/app/jni/
 
 # Firebase configuration
 **/google-services.json
+
+# Submodules - ignore submodule specific files
+BreezeApp-engine/.gradle/
+BreezeApp-engine/.idea/
+BreezeApp-client/.gradle/
+BreezeApp-client/.idea/

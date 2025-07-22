@@ -39,6 +39,13 @@ Text-to-Speech
 ### Developer Setup
 Looking to build and contribute? Check our [Setup Guide](/docs/setup/installation.md) for detailed instructions.
 
+### Working with Submodules
+This project uses Git Submodules for component management. See [Submodules Guide](/docs/setup/submodules.md) for detailed instructions on:
+- Initial setup and cloning
+- Updating submodules
+- Contributing to components
+- Troubleshooting
+
 ## ✨ Features
 
 - 💬 Text-based chat interface
@@ -55,6 +62,9 @@ Looking to build and contribute? Check our [Setup Guide](/docs/setup/installatio
 
 ## 🔍 Project Structure
 
+- `/BreezeApp` - **Production App** (Official consumer application)
+- `/BreezeApp-client` - **Engineering App** (Demo of using the core AI engine)
+- `/BreezeApp-engine` - **Core AI Engine** (Inference framework)
 - `/app` - Android application source code
 - `/docs` - Documentation and guides
   - `/setup` - Installation and configuration guides

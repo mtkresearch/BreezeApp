@@ -67,6 +67,9 @@ BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程�
 ### 開發者設定
 想要建構和貢獻程式碼？查看我們的[安裝指南](docs/setup/installation_zh.md)獲取詳細說明。
 
+### Submodules 使用說明
+本專案使用 Git Submodules 管理核心元件，詳細操作請參考[子模組指南](/docs/setup/submodules_zh.md)。
+
 ## ✨ 功能特點
 
 - 💬 基於文字的聊天介面
@@ -83,6 +86,9 @@ BreezeAPP 是一款專為 Android 和 iOS 平台開發的純手機 AI 應用程�
 
 ## 🔍 專案結構
 
+- `/BreezeApp` - 正式版 App
+- `/BreezeApp-client` - 工程版 App（AI 引擎的使用展示）
+- `/BreezeApp-engine` - AI 引擎核心（推理框架）
 - `/app` - Android 應用程式原始碼
 - `/docs` - 文件和指南
   - `/setup` - 安裝和配置指南
