@@ -22,6 +22,15 @@ class ASREngineServiceTest {
     @get:Rule
     val serviceRule = ServiceTestRule()
 
+    /**
+     * Test [ASREngineService.startListening]
+     *
+     * Test functions:
+     *  - ASREngineService.initialize()
+     *  - ASREngineService.ready()
+     *  - ASREngineService.startListening()
+     *  - ASREngineService.stopListening()
+     */
     @Test
     fun testASREngineService() {
         val testDurationSeconds = 10L

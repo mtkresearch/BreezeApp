@@ -23,6 +23,14 @@ class VLMEngineServiceTest {
     @get:Rule
     val serviceRule = ServiceTestRule()
 
+    /**
+     * Test [VLMEngineService.analyzeImage]
+     *
+     * Test functions:
+     *  - VLMEngineService.initialize()
+     *  - VLMEngineService.ready()
+     *  - VLMEngineService.analyzeImage()
+     */
     @Test
     fun testVLMEngineService() {
         val latch = CountDownLatch(1)
