@@ -1,5 +1,6 @@
 package com.mtkresearch.breezeapp
 
+import android.util.Log
 import com.mtkresearch.breezeapp.service.LLMEngineService
 import com.mtkresearch.breezeapp.utils.LLMInferenceParams
 import org.junit.Test
@@ -33,15 +34,17 @@ class LLMEngineServiceUnitTest {
         `when`(spyService.isReady).thenReturn(true)
 
         // Prepare a mocked future
-        `when`(spyService.initialize()).thenReturn(CompletableFuture.completedFuture(true))
+        `when`(spyService.initialize())
+            .thenReturn(CompletableFuture.completedFuture(true))
 
+        val specificTestLambda: (String) -> Unit = { token -> Log.d("tag", "dummy lambda: $token") }
         // mock generateStreamingResponse
         doAnswer { invocation ->
             CompletableFuture.completedFuture("final output")
         }.`when`(spyService).generateStreamingResponse(
-            eq(prompt),
-            eq(llmParams),
-            any()
+            prompt,
+            llmParams,
+            specificTestLambda
         )
 
         // Stub stopGeneration (optional unless it has side effects)
