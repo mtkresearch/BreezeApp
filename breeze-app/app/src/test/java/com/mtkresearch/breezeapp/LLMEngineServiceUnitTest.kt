@@ -22,40 +22,44 @@ class LLMEngineServiceUnitTest {
 
     @Test
     fun testLLMEngineServiceCodeCoverage() {
-        // Prepare the prompt and parameters
         val prompt = "Tell me a joke."
         val llmParams = mock(LLMInferenceParams::class.java)
         `when`(llmParams.maxToken).thenReturn(128)
         `when`(llmParams.temperature).thenReturn(0.7f)
 
+        // init LLMEngineService by Robolectric
         val controller = Robolectric.buildService(LLMEngineService::class.java)
         val service = controller.create().get()
         val spyService = spy(service)
         `when`(spyService.isReady).thenReturn(true)
 
-        // Prepare a mocked future
+        // mock future for LLMEngineService.initialize()
         `when`(spyService.initialize())
             .thenReturn(CompletableFuture.completedFuture(true))
 
-        val specificTestLambda: (String) -> Unit = { token -> Log.d("tag", "dummy lambda: $token") }
-        // mock generateStreamingResponse
+        // Stub StreamingResponseCallback
+        val dummyCallback: (String) -> Unit =
+            { token -> Log.d("tag", "dummy callback: $token") }
+
+        // mock future for LLMEngineService.generateStreamingResponse()
         doAnswer { invocation ->
             CompletableFuture.completedFuture("final output")
         }.`when`(spyService).generateStreamingResponse(
-            prompt,
-            llmParams,
-            specificTestLambda
+            eq(prompt),
+            eq(llmParams),
+            any<(String) -> Unit>()
         )
 
-        // Stub stopGeneration (optional unless it has side effects)
+        // Stub stopGeneration
         doNothing().`when`(spyService).stopGeneration()
 
+        // LLMEngineService Test Flow
         spyService.initialize().thenAccept { initResult ->
             spyService.generateStreamingResponse(prompt, llmParams) { tokens ->
             }.thenAccept { finalResponse ->
                 spyService.stopGeneration()
 
-                verify(spyService).generateStreamingResponse(eq(prompt), eq(llmParams), any())
+                verify(spyService).generateStreamingResponse(prompt, llmParams, dummyCallback)
                 verify(spyService).stopGeneration()
             }
         }
