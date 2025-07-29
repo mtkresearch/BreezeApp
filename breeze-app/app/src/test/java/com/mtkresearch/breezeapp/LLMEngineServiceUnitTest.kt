@@ -1,8 +1,11 @@
 package com.mtkresearch.breezeapp
 
+import android.content.Intent
+import android.os.IBinder
 import android.util.Log
 import com.mtkresearch.breezeapp.service.LLMEngineService
 import com.mtkresearch.breezeapp.utils.LLMInferenceParams
+import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.ArgumentMatchers.any
@@ -11,6 +14,7 @@ import org.mockito.Mockito.doNothing
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.spy
+import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.robolectric.Robolectric
@@ -23,6 +27,7 @@ class LLMEngineServiceUnitTest {
     @Test
     fun testLLMEngineServiceCodeCoverage() {
         val prompt = "Tell me a joke."
+        val testStartId = 123
 
         // init LLMEngineService by Robolectric
         val controller = Robolectric.buildService(LLMEngineService::class.java)
@@ -33,6 +38,18 @@ class LLMEngineServiceUnitTest {
         val llmParams = mock(LLMInferenceParams::class.java)
         `when`(llmParams.maxToken).thenReturn(128)
         `when`(llmParams.temperature).thenReturn(0.7f)
+
+        // code coverage
+        val dummyIntent = Intent()
+        val binder: IBinder? = spyService.onBind(dummyIntent)
+        if (binder is LLMEngineService.LocalBinder) {
+            Assert.assertNotNull("Service retrieved from binder should not be null", binder.service)
+        }
+
+        // code coverage
+        val onStartCommandResult = controller.startCommand(0, testStartId)
+        Log.d("UnitTest", "onStartCommand returned: $onStartCommandResult")
+
 
         // mock LLMEngineService.isReady
         `when`(spyService.isReady).thenReturn(true)
