@@ -27,7 +27,6 @@ class LLMEngineServiceUnitTest {
     fun testLLMEngineServiceCodeCoverage() {
         val tag = "testLLMEngineServiceCodeCoverage"
         val prompt = "Tell me a joke."
-        val testStartId = 123
 
         // init LLMEngineService by Robolectric
         val controller = Robolectric.buildService(LLMEngineService::class.java)
@@ -40,6 +39,19 @@ class LLMEngineServiceUnitTest {
         `when`(llmParams.temperature).thenReturn(0.7f)
 
         // code coverage
+        val testIntent = Intent().apply {
+            action = "ACTION_GENERATE"
+            putExtra("prompt", prompt)
+            putExtra("modelName", "gpt-3.5")
+        }
+        spyService.onStartCommand(testIntent, 0, 1)
+
+        // code coverage
+        val currentBackend = spyService.currentBackend
+        Log.d(tag, "currentBackend:$currentBackend")
+        verify(spyService).currentBackend
+
+        // code coverage
         val dummyIntent = Intent()
         val binder: IBinder? = spyService.onBind(dummyIntent)
         if (binder is LLMEngineService.LocalBinder) {
@@ -47,9 +59,9 @@ class LLMEngineServiceUnitTest {
         }
 
         // code coverage
-        val onStartCommandResult = controller.startCommand(0, testStartId)
-        Log.d(tag, "onStartCommand returned: $onStartCommandResult")
-
+        val modelName = spyService.modelName
+        Log.d(tag, "modelName:$modelName")
+        verify(spyService).modelName
 
         // mock LLMEngineService.isReady
         `when`(spyService.isReady).thenReturn(true)
