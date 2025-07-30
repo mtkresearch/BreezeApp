@@ -14,7 +14,6 @@ import org.mockito.Mockito.doNothing
 import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.spy
-import org.mockito.Mockito.times
 import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.robolectric.Robolectric
@@ -26,6 +25,7 @@ class LLMEngineServiceUnitTest {
 
     @Test
     fun testLLMEngineServiceCodeCoverage() {
+        val tag = "testLLMEngineServiceCodeCoverage"
         val prompt = "Tell me a joke."
         val testStartId = 123
 
@@ -48,7 +48,7 @@ class LLMEngineServiceUnitTest {
 
         // code coverage
         val onStartCommandResult = controller.startCommand(0, testStartId)
-        Log.d("UnitTest", "onStartCommand returned: $onStartCommandResult")
+        Log.d(tag, "onStartCommand returned: $onStartCommandResult")
 
 
         // mock LLMEngineService.isReady
@@ -60,10 +60,10 @@ class LLMEngineServiceUnitTest {
 
         // mock StreamingResponseCallback
         val dummyCallback: (String) -> Unit =
-            { token -> Log.d("tag", "dummy callback: $token") }
+            { token -> Log.d(tag, "token: $token") }
 
         // mock future for LLMEngineService.generateStreamingResponse()
-        doReturn(CompletableFuture.completedFuture("final output"))
+        doReturn(CompletableFuture.completedFuture("final tokens"))
             .`when`(spyService).generateStreamingResponse(
                 eq(prompt),
                 eq(llmParams),
@@ -78,7 +78,7 @@ class LLMEngineServiceUnitTest {
             spyService.generateStreamingResponse(prompt, llmParams) { tokens ->
             }.thenAccept { finalResponse ->
                 spyService.stopGeneration()
-
+                verify(spyService).initialize()
                 verify(spyService).generateStreamingResponse(prompt, llmParams, dummyCallback)
                 verify(spyService).stopGeneration()
             }
