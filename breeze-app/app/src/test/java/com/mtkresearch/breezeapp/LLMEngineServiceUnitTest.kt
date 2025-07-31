@@ -33,16 +33,10 @@ class LLMEngineServiceUnitTest {
         val service = controller.create().get()
         val spyService = spy(service)
 
-        // mock LLMInferenceParams
-        val llmParams = mock(LLMInferenceParams::class.java)
-        `when`(llmParams.maxToken).thenReturn(128)
-        `when`(llmParams.temperature).thenReturn(0.7f)
-
         // code coverage
         val testIntent = Intent().apply {
             action = "ACTION_GENERATE"
             putExtra("prompt", prompt)
-            putExtra("modelName", "gpt-3.5")
         }
         spyService.onStartCommand(testIntent, 0, 1)
 
@@ -62,6 +56,11 @@ class LLMEngineServiceUnitTest {
         val modelName = spyService.modelName
         Log.d(tag, "modelName:$modelName")
         verify(spyService).modelName
+
+        // mock LLMInferenceParams
+        val llmParams = mock(LLMInferenceParams::class.java)
+        `when`(llmParams.maxToken).thenReturn(128)
+        `when`(llmParams.temperature).thenReturn(0.7f)
 
         // mock LLMEngineService.isReady
         `when`(spyService.isReady).thenReturn(true)
