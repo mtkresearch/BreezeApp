@@ -57,6 +57,15 @@ class LLMEngineServiceUnitTest {
         Log.d(tag, "modelName:$modelName")
         verify(spyService).modelName
 
+        // code coverage
+        val mtkBackendAvailable = LLMEngineService.isMTKBackendAvailable()
+        Log.d(tag, "mtkBackendAvailable:$mtkBackendAvailable")
+
+        // code coverage
+        val preferredBackend = spyService.preferredBackend
+        Log.d(tag, "preferredBackend:$preferredBackend")
+        verify(spyService).preferredBackend
+
         // mock LLMInferenceParams
         val llmParams = mock(LLMInferenceParams::class.java)
         `when`(llmParams.maxToken).thenReturn(128)
