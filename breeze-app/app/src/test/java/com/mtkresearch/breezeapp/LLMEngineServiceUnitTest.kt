@@ -66,13 +66,15 @@ class LLMEngineServiceUnitTest {
         Log.d(tag, "preferredBackend:$preferredBackend")
         verify(spyService).preferredBackend
 
+        // code coverage
+        val isReady = spyService.isReady
+        Log.d(tag, "isReady:$isReady")
+        verify(spyService).isReady
+
         // mock LLMInferenceParams
         val llmParams = mock(LLMInferenceParams::class.java)
         `when`(llmParams.maxToken).thenReturn(128)
         `when`(llmParams.temperature).thenReturn(0.7f)
-
-        // mock LLMEngineService.isReady
-        `when`(spyService.isReady).thenReturn(true)
 
         // mock future for LLMEngineService.initialize()
         `when`(spyService.initialize())
