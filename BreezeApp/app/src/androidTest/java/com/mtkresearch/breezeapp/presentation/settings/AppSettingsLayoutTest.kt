@@ -45,7 +45,7 @@ class AppSettingsLayoutTest {
     @Test
     fun fragment_loadsSuccessfully() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000) // 等待Fragment完全載入
 
@@ -72,7 +72,7 @@ class AppSettingsLayoutTest {
     @Test
     fun darkModeSwitch_existsAndInteractable() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -100,7 +100,7 @@ class AppSettingsLayoutTest {
     @Test
     fun fontSizeSlider_existsAndAdjustable() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -125,7 +125,7 @@ class AppSettingsLayoutTest {
     @Test
     fun allSettingControls_displayedCorrectly() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -169,7 +169,7 @@ class AppSettingsLayoutTest {
     @Test
     fun themeColorPreview_displays() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -189,7 +189,7 @@ class AppSettingsLayoutTest {
     @Test
     fun settingsScrollView_isScrollable() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -215,7 +215,7 @@ class AppSettingsLayoutTest {
     @Test
     fun disabledControls_displayWithCorrectState() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(1000)
 
@@ -253,7 +253,7 @@ class AppSettingsLayoutTest {
     @Test
     fun overall_uiLayoutIntegrity() {
         try {
-            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp_kotlin)
+            launchFragmentInContainer<SimpleAppSettingsFragment>(Bundle(), R.style.Theme_BreezeApp)
 
             Thread.sleep(2000) // 較長等待確保完全載入
 

@@ -36,7 +36,7 @@ class RuntimeSettingsFragmentTest {
         // 啟動Fragment
         scenario = launchFragmentInContainer<RuntimeSettingsFragment>(
             fragmentArgs = Bundle(),
-            themeResId = R.style.Theme_BreezeApp_kotlin
+            themeResId = R.style.Theme_BreezeApp
         )
         
         // 等待Fragment載入完成和UI穩定

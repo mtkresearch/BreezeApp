@@ -42,7 +42,7 @@ class HomeFragmentTest {
         // 直接在測試線程中啟動Fragment（不使用runOnMainSync）
         scenario = launchFragmentInContainer<HomeFragment>(
             fragmentArgs = Bundle(),
-            themeResId = R.style.Theme_BreezeApp_kotlin
+            themeResId = R.style.Theme_BreezeApp
         )
         
         // 等待Fragment完全載入和UI穩定
