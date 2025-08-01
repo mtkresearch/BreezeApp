@@ -8,7 +8,7 @@
     tools:context=".presentation.chat.fragment.ChatFragment">
 
     <!-- 錯誤狀態視圖 -->
-    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.ErrorView
+    <com.mtkresearch.breezeapp.presentation.common.widget.ErrorView
         android:id="@+id/errorView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <!-- 載入狀態視圖 -->
-    <com.mtkresearch.breezeapp_kotlin.presentation.common.widget.LoadingView
+    <com.mtkresearch.breezeapp.presentation.common.widget.LoadingView
         android:id="@+id/loadingView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"

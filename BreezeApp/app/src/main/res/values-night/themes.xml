@@ -20,7 +20,7 @@
     </style>
 
     <!-- BreezeApp Kotlin night theme -->
-    <style name="Theme.BreezeApp_kotlin" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.BreezeApp" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <!-- Primary brand colors -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>

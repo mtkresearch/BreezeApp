@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.mtkresearch.breezeapp_kotlin"
+    namespace = "com.mtkresearch.breezeapp"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.mtkresearch.breezeapp_kotlin"
+        applicationId = "com.mtkresearch.breezeapp"
         minSdk = 34
         targetSdk = 35
         versionCode = 1
