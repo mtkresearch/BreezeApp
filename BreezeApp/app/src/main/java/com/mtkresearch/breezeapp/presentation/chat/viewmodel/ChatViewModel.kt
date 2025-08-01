@@ -338,8 +338,7 @@ class ChatViewModel @Inject constructor(
     fun handleMessageInteraction(action: MessageAction, message: ChatMessage, extra: Any? = null) {
         when (action) {
             MessageAction.SPEAKER_CLICK -> {
-                // TODO: 整合TTS (Phase 4)
-                setSuccess("語音播放功能正在開發中")
+                playTtsForMessage(message)
             }
             MessageAction.LIKE_CLICK -> {
                 val isPositive = extra as? Boolean ?: true
@@ -569,6 +568,26 @@ class ChatViewModel @Inject constructor(
         updateMessageText(aiMessage.id, errorMessage)
         updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
         setError(errorMessage)
+    }
+
+    private fun playTtsForMessage(message: ChatMessage) {
+        launchSafely(showLoading = false) {
+            try {
+                if (!connectionUseCase.isConnected()) {
+                    throw BreezeAppError.ConnectionError.ServiceDisconnected("BreezeApp Engine 未連接")
+                }
+
+                ttsUseCase.execute(message.text).collect { response ->
+                    if (response.isLastChunk == true) {
+                        setSuccess("語音播放完畢")
+                    }
+                }
+            } catch (e: BreezeAppError) {
+                handleBreezeAppError(e, message)
+            } catch (e: Exception) {
+                handleAIResponseError(e)
+            }
+        }
     }
     
     /**

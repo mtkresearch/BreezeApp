@@ -40,18 +40,20 @@ class TtsUseCase @Inject constructor() {
      * @param speed The speed of speech (0.5 to 2.0)
      * @return Flow of TTSResponse from BreezeApp Engine
      */
-    suspend fun execute(
+    fun execute(
         text: String,
-        voice: String = "default",
-        speed: Float = 1.0f
+        voice: String = "alloy",
+        speed: Float = 1.0f,
+        format: String = "pcm"
     ): Flow<TTSResponse> {
         
-        Log.d(TAG, "Executing TTS request: '$text'")
+        Log.d(TAG, "Executing TTS request: '$text' with voice: $voice")
         
         val request = ttsRequest(
             input = text,
             voice = voice,
-            speed = speed
+            speed = speed,
+            format = format
         )
         
         return EdgeAI.tts(request)
