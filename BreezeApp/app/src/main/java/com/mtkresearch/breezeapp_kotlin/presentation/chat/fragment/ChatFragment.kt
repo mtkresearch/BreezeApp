@@ -20,6 +20,7 @@ import com.mtkresearch.breezeapp_kotlin.presentation.chat.adapter.MessageAdapter
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.viewmodel.ChatViewModel
 import com.mtkresearch.breezeapp_kotlin.core.utils.ErrorType
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -39,6 +40,7 @@ import kotlinx.coroutines.launch
  * - 使用ChatViewModel進行狀態管理
  * - 通過MessageAdapter.MessageInteractionListener處理訊息互動
  */
+@AndroidEntryPoint
 class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
 
     private var _binding: FragmentChatBinding? = null

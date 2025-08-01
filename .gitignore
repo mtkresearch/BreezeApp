@@ -53,3 +53,6 @@ BreezeApp-engine/.gradle/
 BreezeApp-engine/.idea/
 BreezeApp-client/.gradle/
 BreezeApp-client/.idea/
+.claude/settings.local.json
+CLAUDE.md
+.mcp.json

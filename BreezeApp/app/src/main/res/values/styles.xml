@@ -2,7 +2,7 @@
 <resources>
     
     <!-- ChatActivity專用主題，禁用默認ActionBar -->
-    <style name="Theme.ChatActivity" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.ChatActivity" parent="Theme.Material3.DayNight.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/primary</item>
         <item name="colorPrimaryVariant">@color/primary_dark</item>

@@ -4,6 +4,8 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import com.mtkresearch.breezeapp_kotlin.presentation.common.base.UiState
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage.MessageState
+import com.mtkresearch.breezeapp_kotlin.domain.usecase.breezeapp.*
+import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -31,11 +33,26 @@ class ChatViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var viewModel: ChatViewModel
+    
+    // Mock dependencies
+    private val mockConnectionUseCase: ConnectionUseCase = mockk(relaxed = true)
+    private val mockChatUseCase: ChatUseCase = mockk(relaxed = true)
+    private val mockStreamingChatUseCase: StreamingChatUseCase = mockk(relaxed = true)
+    private val mockTtsUseCase: TtsUseCase = mockk(relaxed = true)
+    private val mockAsrMicrophoneUseCase: AsrMicrophoneUseCase = mockk(relaxed = true)
+    private val mockRequestCancellationUseCase: RequestCancellationUseCase = mockk(relaxed = true)
 
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = ChatViewModel()
+        viewModel = ChatViewModel(
+            connectionUseCase = mockConnectionUseCase,
+            chatUseCase = mockChatUseCase,
+            streamingChatUseCase = mockStreamingChatUseCase,
+            ttsUseCase = mockTtsUseCase,
+            asrMicrophoneUseCase = mockAsrMicrophoneUseCase,
+            requestCancellationUseCase = mockRequestCancellationUseCase
+        )
     }
 
     @After

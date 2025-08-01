@@ -44,6 +44,9 @@ android {
 }
 
 dependencies {
+    // BreezeApp Engine SDK
+    implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.4")
+    
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

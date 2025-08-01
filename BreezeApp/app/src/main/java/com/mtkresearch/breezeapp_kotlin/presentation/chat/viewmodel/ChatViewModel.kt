@@ -4,9 +4,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import com.mtkresearch.breezeapp_kotlin.presentation.common.base.BaseViewModel
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatSession
+import com.mtkresearch.breezeapp_kotlin.domain.usecase.breezeapp.*
+import com.mtkresearch.breezeapp_kotlin.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
+import com.mtkresearch.breezeapp_kotlin.domain.model.breezeapp.BreezeAppError
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 /**
  * 聊天ViewModel
@@ -16,11 +22,22 @@ import com.mtkresearch.breezeapp_kotlin.presentation.chat.model.ChatSession
  * - 處理用戶輸入和AI回應
  * - 支援訊息重試和錯誤處理
  * - 提供打字指示器和載入狀態
- * - 模擬AI回應 (Phase 4將整合真實AI引擎)
+ * - 整合 BreezeApp Engine 提供真實AI功能
  * 
- * 注意：這是Phase 1.3的臨時實作，真實的AI整合將在Phase 4實作
+ * 遵循 Clean Architecture 原則:
+ * - 使用 UseCase 處理業務邏輯
+ * - 保持 ViewModel 的 UI 導向
+ * - 統一的錯誤處理
  */
-class ChatViewModel : BaseViewModel() {
+@HiltViewModel
+class ChatViewModel @Inject constructor(
+    private val connectionUseCase: ConnectionUseCase,
+    private val chatUseCase: ChatUseCase,
+    private val streamingChatUseCase: StreamingChatUseCase,
+    private val ttsUseCase: TtsUseCase,
+    private val asrMicrophoneUseCase: AsrMicrophoneUseCase,
+    private val requestCancellationUseCase: RequestCancellationUseCase
+) : BaseViewModel() {
 
     // 當前聊天會話
     private val _currentSession = MutableStateFlow(ChatSession())
@@ -49,12 +66,21 @@ class ChatViewModel : BaseViewModel() {
     // 歷史會話列表 (簡化實作)
     private val _chatSessions = MutableStateFlow<List<ChatSession>>(emptyList())
     val chatSessions: StateFlow<List<ChatSession>> = _chatSessions.asStateFlow()
+    
+    // BreezeApp Engine 連接狀態
+    private val _connectionState = MutableStateFlow<BreezeAppConnectionState>(BreezeAppConnectionState.Disconnected)
+    val connectionState: StateFlow<BreezeAppConnectionState> = _connectionState.asStateFlow()
+    
+    // 當前串流請求ID
+    private var currentStreamingRequestId: String? = null
 
     init {
         // 初始化時加載歡迎訊息
         loadWelcomeMessage()
         // 確保初始狀態正確
         updateCanSendMessageState()
+        // 初始化 BreezeApp Engine 連接
+        initializeBreezeAppEngine()
     }
 
     /**
@@ -104,9 +130,31 @@ class ChatViewModel : BaseViewModel() {
     }
 
     /**
-     * 生成AI回應 (模擬實作)
+     * 生成AI回應 (整合 BreezeApp Engine)
      */
     private suspend fun generateAIResponse(userInput: String) {
+        try {
+            // 檢查 BreezeApp Engine 連接狀態
+            if (connectionUseCase.isConnected()) {
+                // 使用真實的 BreezeApp Engine
+                generateAIResponseWithBreezeApp(userInput)
+            } else {
+                // 回退到模擬回應
+                generateMockAIResponse(userInput)
+            }
+        } catch (e: Exception) {
+            handleAIResponseError(e)
+        } finally {
+            _isAIResponding.value = false
+            // AI回應完成後，更新canSendMessage狀態
+            updateCanSendMessageState()
+        }
+    }
+    
+    /**
+     * 生成模擬AI回應 (回退方案)
+     */
+    private suspend fun generateMockAIResponse(userInput: String) {
         try {
             // 創建AI回應訊息 (初始為載入狀態)
             val aiMessage = ChatMessage(
@@ -129,14 +177,10 @@ class ChatViewModel : BaseViewModel() {
             // 更新會話
             updateCurrentSession()
             
-            setSuccess("AI回應完成")
+            setSuccess("AI回應完成 (模擬模式)")
 
         } catch (e: Exception) {
             handleAIResponseError(e)
-        } finally {
-            _isAIResponding.value = false
-            // AI回應完成後，更新canSendMessage狀態
-            updateCanSendMessageState()
         }
     }
 
@@ -436,6 +480,127 @@ class ChatViewModel : BaseViewModel() {
             "可以給我一些學習建議嗎"
         )
         return phrases.random()
+    }
+
+    /**
+     * 初始化 BreezeApp Engine 連接
+     */
+    private fun initializeBreezeAppEngine() {
+        launchSafely(showLoading = false) {
+            connectionUseCase.initialize().collect { state ->
+                _connectionState.value = state
+                when (state) {
+                    is BreezeAppConnectionState.Connected -> {
+                        setSuccess("BreezeApp Engine 連接成功")
+                    }
+                    is BreezeAppConnectionState.Failed -> {
+                        setError("BreezeApp Engine 連接失敗: ${state.message}")
+                    }
+                    else -> {
+                        // 處理其他狀態
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 使用 BreezeApp Engine 生成AI回應
+     */
+    private suspend fun generateAIResponseWithBreezeApp(userInput: String) {
+        var aiMessage: ChatMessage? = null
+        try {
+            // 檢查連接狀態
+            if (!connectionUseCase.isConnected()) {
+                throw BreezeAppError.ConnectionError.ServiceDisconnected("BreezeApp Engine 未連接")
+            }
+            
+            // 創建AI回應訊息 (初始為載入狀態)
+            aiMessage = ChatMessage(
+                text = "正在思考中...",
+                isFromUser = false,
+                state = ChatMessage.MessageState.TYPING
+            )
+            addMessage(aiMessage)
+            
+            // 使用串流聊天 UseCase
+            streamingChatUseCase.execute(
+                prompt = userInput,
+                systemPrompt = "你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。",
+                temperature = 0.7f
+            ).collect { response ->
+                // 更新AI訊息內容
+                val content = response.choices.firstOrNull()?.delta?.content ?: ""
+                if (content.isNotEmpty()) {
+                    updateMessageText(aiMessage.id, aiMessage.text + content)
+                }
+            }
+            
+            // 更新訊息狀態為正常
+            updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+            
+            // 更新會話
+            updateCurrentSession()
+            
+            setSuccess("AI回應完成")
+            
+        } catch (e: BreezeAppError) {
+            aiMessage?.let { message ->
+                handleBreezeAppError(e, message)
+            }
+        } catch (e: Exception) {
+            handleAIResponseError(e)
+        }
+    }
+    
+    /**
+     * 處理 BreezeApp Engine 錯誤
+     */
+    private suspend fun handleBreezeAppError(error: BreezeAppError, aiMessage: ChatMessage) {
+        val errorMessage = when (error) {
+            is BreezeAppError.ConnectionError.ServiceDisconnected -> "BreezeApp Engine 連接中斷，請檢查連接狀態"
+            is BreezeAppError.ChatError.InvalidInput -> "輸入格式不正確，請重新輸入"
+            is BreezeAppError.ChatError.ModelNotFound -> "AI模型未找到，請檢查設定"
+            is BreezeAppError.ChatError.GenerationFailed -> "AI回應生成失敗，請重試"
+            is BreezeAppError.ChatError.StreamingError -> "串流回應中斷，請重試"
+            else -> "發生未知錯誤，請重試"
+        }
+        
+        updateMessageText(aiMessage.id, errorMessage)
+        updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
+        setError(errorMessage)
+    }
+    
+    /**
+     * 重連 BreezeApp Engine
+     */
+    fun reconnectBreezeAppEngine() {
+        launchSafely(showLoading = false) {
+            connectionUseCase.connect().collect { state ->
+                _connectionState.value = state
+                when (state) {
+                    is BreezeAppConnectionState.Connected -> {
+                        setSuccess("BreezeApp Engine 重連成功")
+                    }
+                    is BreezeAppConnectionState.Failed -> {
+                        setError("BreezeApp Engine 重連失敗: ${state.message}")
+                    }
+                    else -> {
+                        // 處理其他狀態
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 取消當前串流請求
+     */
+    fun cancelCurrentStreamingRequest() {
+        currentStreamingRequestId?.let { requestId ->
+            requestCancellationUseCase.cancelRequest(requestId)
+            currentStreamingRequestId = null
+        }
     }
 
     /**
