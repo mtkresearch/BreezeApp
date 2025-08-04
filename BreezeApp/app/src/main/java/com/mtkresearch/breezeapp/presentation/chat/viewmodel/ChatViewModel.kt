@@ -1,5 +1,8 @@
 package com.mtkresearch.breezeapp.presentation.chat.viewmodel
 
+import android.content.Context
+import android.util.Log
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +14,10 @@ import com.mtkresearch.breezeapp.presentation.chat.model.ChatSession
 import com.mtkresearch.breezeapp.domain.usecase.breezeapp.*
 import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
+import com.mtkresearch.breezeapp.core.permission.OverlayPermissionManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -36,8 +42,13 @@ class ChatViewModel @Inject constructor(
     private val streamingChatUseCase: StreamingChatUseCase,
     private val ttsUseCase: TtsUseCase,
     private val asrMicrophoneUseCase: AsrMicrophoneUseCase,
-    private val requestCancellationUseCase: RequestCancellationUseCase
+    private val requestCancellationUseCase: RequestCancellationUseCase,
+    private val overlayPermissionManager: OverlayPermissionManager
 ) : BaseViewModel() {
+
+    private val tag: String = "ChatViewModel"
+    private var microphoneStreamingJob: Job? = null
+    private var isUserStoppingMicrophone: Boolean = false
 
     // 當前聊天會話
     private val _currentSession = MutableStateFlow(ChatSession())
@@ -235,27 +246,111 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    // Overlay permission status
+    private val _overlayPermissionGranted = MutableStateFlow(false)
+    val overlayPermissionGranted: StateFlow<Boolean> = _overlayPermissionGranted.asStateFlow()
+
     /**
-     * 開始語音識別
+     * Check overlay permission status
      */
-    fun startVoiceRecognition() {
+    fun checkOverlayPermission(context: Context) {
+        _overlayPermissionGranted.value = overlayPermissionManager.isOverlayPermissionGranted(context)
+        Log.d(tag, "Overlay permission status: ${_overlayPermissionGranted.value}")
+    }
+
+    /**
+     * Request overlay permission for microphone functionality
+     */
+    fun requestOverlayPermissionForMicrophone(context: Context) {
+        if (overlayPermissionManager.isOverlayPermissionGranted(context)) {
+            _overlayPermissionGranted.value = true
+            setSuccess("覆蓋權限已授予")
+            return
+        }
+        
+        Log.d(tag, "Requesting overlay permission for microphone functionality")
+        overlayPermissionManager.requestOverlayPermission(context)
+    }
+
+    /**
+     * 開始語音識別 - 增強版本包含權限檢查
+     */
+    fun startVoiceRecognition(context: Context? = null) {
         if (_isListening.value || _isAIResponding.value) return
 
-        launchSafely(showLoading = false) {
-            _isListening.value = true
-            updateCanSendMessageState() // 語音識別開始時更新按鈕狀態
-            setSuccess("開始語音識別...")
-            
-            // 模擬語音識別
-            delay((2000 + (0..2000).random()).toLong())
-            
-            // 模擬識別結果
-            val recognizedText = mockVoiceRecognition()
-            _inputText.value = recognizedText
-            
-            setSuccess("語音識別完成")
-            _isListening.value = false
-            updateCanSendMessageState() // 語音識別結束時更新按鈕狀態
+        // Check overlay permission before starting microphone
+        context?.let { ctx ->
+            if (!overlayPermissionManager.isOverlayPermissionGranted(ctx)) {
+                Log.w(tag, "⚠️ Overlay permission not granted - this may cause FGS_MICROPHONE to fail")
+                setError("需要覆蓋權限才能使用語音功能，請在設定中授予權限")
+                return
+            }
+        }
+
+        // Cancel any existing microphone streaming job
+        microphoneStreamingJob?.cancel()
+
+        microphoneStreamingJob = viewModelScope.launch {
+            try {
+                Log.d(tag, "🎤 Starting microphone streaming ASR...")
+                Log.d(tag, "🔄 Engine will handle microphone recording directly")
+                Log.d(tag, "✅ Overlay permission verified before starting")
+                
+                // Set recording state to true
+                _isListening.value = true
+                
+                Log.d(tag, "🔄 Sending microphone mode ASR request to engine...")
+                Log.d(tag, "   └── Engine will open microphone and process audio directly")
+                
+                asrMicrophoneUseCase.execute().collect { response ->
+                    // Update ASR response for real-time display
+                    _messages.value = _messages.value.toMutableList().apply {
+                        add(ChatMessage(
+                            text = response.text,
+                            isFromUser = false,
+                            state = ChatMessage.MessageState.NORMAL
+                        ))
+                    }
+                    
+                    if (response.isChunk) {
+                        Log.d(tag, "📡 [Microphone] ${response.text}")
+                    } else {
+                        Log.d(tag, "✅ [Microphone Final] ${response.text}")
+                        // Final result received, but keep recording state until user stops
+                        // The recording will continue until the user explicitly stops it
+                    }
+                    
+                    // Show additional details if available
+                    response.language?.let { lang ->
+                        Log.d(tag, "   └── Detected language: $lang")
+                    }
+                    
+                    response.segments?.forEach { segment ->
+                        Log.d(tag, "   └── Segment: ${segment.text} (${segment.start}s - ${segment.end}s)")
+                    }
+                    
+                    // Note: Flow will continue until cancelled by stopMicrophoneStreaming()
+                    // We don't stop recording automatically on final result
+                    // User must explicitly stop the recording
+                }
+                
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                // Check if this was user-initiated (most robust approach)
+                if (isUserStoppingMicrophone) {
+                    Log.d(tag, "✅ Microphone streaming stopped by user")
+                } else {
+                    Log.d(tag, "⚠️ Microphone streaming cancelled unexpectedly")
+                }
+                _isListening.value = false
+            } catch (e: Exception) {
+                Log.d(tag, "❌ Failed to start microphone streaming: ${e.message}")
+                _isListening.value = false
+            } finally {
+                // Ensure recording state is reset when job completes
+                _isListening.value = false
+                microphoneStreamingJob = null
+                isUserStoppingMicrophone = false // Reset flag
+            }
         }
     }
 
@@ -263,8 +358,15 @@ class ChatViewModel @Inject constructor(
      * 停止語音識別
      */
     fun stopVoiceRecognition() {
-        _isListening.value = false
-        updateCanSendMessageState() // 停止語音識別時更新按鈕狀態
+        if (_isListening.value) {
+            isUserStoppingMicrophone = true
+            microphoneStreamingJob?.cancel()
+            microphoneStreamingJob = null
+            requestCancellationUseCase.cancelLastRequest()
+            _isListening.value = false
+            updateCanSendMessageState() // 停止語音識別時更新按鈕狀態
+            setSuccess("語音識別已停止")
+        }
     }
 
     /**

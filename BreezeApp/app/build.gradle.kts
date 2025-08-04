@@ -7,12 +7,22 @@ plugins {
 
 android {
     namespace = "com.mtkresearch.breezeapp"
-    compileSdk = 35
+    compileSdk = 34
+
+    signingConfigs {
+        create("release") {
+            // 使用與 engine 相同的簽名配置
+            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 
     defaultConfig {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 34
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -20,8 +30,13 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Debug builds use the same keystore for signature-level permissions
+            signingConfig = signingConfigs.getByName("release")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -47,28 +62,24 @@ dependencies {
     // BreezeApp Engine SDK
     implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.4")
     
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
-    implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
-    implementation(libs.androidx.navigation.fragment.ktx)
-    implementation(libs.androidx.navigation.ui.ktx)
-    implementation(libs.androidx.activity)
-    implementation(libs.androidx.recyclerview)
+    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.android.material:material:1.12.0")
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // Kotlin Coroutines
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
 
     // AndroidX Lifecycle
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.0")
+    implementation("androidx.activity:activity-ktx:1.9.0")
 
     // Hilt for Dependency Injection
     implementation(libs.hilt.android)
+    implementation(libs.androidx.fragment.ktx)
     kapt(libs.hilt.compiler)
-    kapt(libs.androidx.lifecycle.compiler)
 
     // Espresso / Rules / Runtime
     implementation(libs.androidx.junit.ktx)
@@ -104,6 +115,8 @@ dependencies {
     androidTestUtil(libs.androidx.orchestrator)
     
     // Hilt Testing
+    testImplementation(libs.hilt.android.testing)
+    kaptTest(libs.hilt.compiler)
     androidTestImplementation(libs.hilt.android.testing)
     kaptAndroidTest(libs.hilt.compiler)
 }

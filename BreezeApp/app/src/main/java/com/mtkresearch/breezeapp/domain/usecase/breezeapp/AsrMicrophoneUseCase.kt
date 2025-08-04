@@ -9,6 +9,8 @@ import com.mtkresearch.breezeapp.edgeai.EdgeAIException
 import com.mtkresearch.breezeapp.edgeai.InvalidInputException
 import com.mtkresearch.breezeapp.edgeai.ServiceConnectionException
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
+import com.mtkresearch.breezeapp.edgeai.AudioProcessingException
+import com.mtkresearch.breezeapp.edgeai.ModelNotFoundException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import javax.inject.Inject
@@ -46,14 +48,44 @@ class AsrMicrophoneUseCase @Inject constructor() {
      * @param language The language code for recognition
      * @return Flow of ASRResponse from BreezeApp Engine
      */
-    suspend fun execute(
-        language: String = "en"
+    fun execute(
+        language: String = "en",
+        format: String = "json"
     ): Flow<ASRResponse> {
         
-        Log.d(TAG, "Executing ASR microphone request")
+        Log.d(TAG, "Executing microphone ASR request with language: $language")
         
-        // TODO: Implement actual microphone recording
-        // For now, throw an error indicating this feature is not yet implemented
-        throw BreezeAppError.AsrError.MicrophonePermissionDenied("Microphone ASR not yet implemented in EdgeAI SDK")
+        // For microphone mode, we send empty audio bytes
+        // The engine will handle microphone recording directly
+        val request = asrRequest(
+            audioBytes = byteArrayOf(), // Empty for microphone mode
+            language = language,
+            format = format,
+            stream = true // Enable streaming for real-time processing
+        )
+        
+        return EdgeAI.asr(request)
+            .catch { e ->
+                // Handle cancellation (both direct and EdgeAI-wrapped)
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "Microphone ASR request cancelled - propagating to ViewModel")
+                    throw e // Re-throw cancellation to be handled by ViewModel
+                }
+                
+                // Handle EdgeAI wrapped cancellation - convert back to CancellationException
+                if (e.message?.contains("was cancelled", ignoreCase = true) == true) {
+                    Log.d(TAG, "Microphone ASR request cancelled (EdgeAI wrapped) - converting to CancellationException")
+                    throw kotlinx.coroutines.CancellationException("User cancelled microphone recording")
+                }
+                
+                Log.e(TAG, "Microphone ASR request failed: ${e.message}")
+                when (e) {
+                    is AudioProcessingException -> throw BreezeAppError.AsrError.RecognitionFailed(e.message ?: "Audio processing failed")
+                    is ModelNotFoundException -> throw BreezeAppError.AsrError.RecognitionFailed(e.message ?: "ASR model not found")
+                    is ServiceConnectionException -> throw BreezeAppError.ConnectionError.ServiceDisconnected(e.message ?: "ASR service connection error")
+                    is EdgeAIException -> throw BreezeAppError.AsrError.RecognitionFailed(e.message ?: "EdgeAI error")
+                    else -> throw BreezeAppError.AsrError.RecognitionFailed(e.message ?: "Unexpected ASR error")
+                }
+            }
     }
 }
