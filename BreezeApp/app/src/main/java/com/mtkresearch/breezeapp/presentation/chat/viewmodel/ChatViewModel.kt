@@ -303,14 +303,8 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "   └── Engine will open microphone and process audio directly")
                 
                 asrMicrophoneUseCase.execute().collect { response ->
-                    // Update ASR response for real-time display
-                    _messages.value = _messages.value.toMutableList().apply {
-                        add(ChatMessage(
-                            text = response.text,
-                            isFromUser = false,
-                            state = ChatMessage.MessageState.NORMAL
-                        ))
-                    }
+                    // Update input text with ASR result for real-time display
+                    updateInputText(response.text)
                     
                     if (response.isChunk) {
                         Log.d(tag, "📡 [Microphone] ${response.text}")
