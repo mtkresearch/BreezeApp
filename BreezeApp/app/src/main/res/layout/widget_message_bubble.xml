@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="@dimen/message_bubble_padding">
+
+    <!-- Message Container -->
+    <LinearLayout
+        android:id="@+id/messageContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_message_bubble"
+        android:padding="@dimen/message_bubble_content_padding"
+        android:layout_gravity="start"
+        android:maxWidth="@dimen/message_bubble_max_width">
+
+        <!-- Message Text -->
+        <TextView
+            android:id="@+id/messageText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="@dimen/text_size_medium"
+            android:lineSpacingExtra="2dp" />
+
+
+
+    </LinearLayout>
+
+    <!-- Buttons Container -->
+    <LinearLayout
+        android:id="@+id/buttonsContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="@dimen/spacing_small"
+        android:visibility="gone">
+
+        <!-- Voice Button -->
+        <ImageButton
+            android:id="@+id/voiceButton"
+            android:layout_width="@dimen/message_button_size"
+            android:layout_height="@dimen/message_button_size"
+            android:layout_marginEnd="@dimen/spacing_small"
+            android:src="@drawable/ic_volume_up"
+            android:background="@drawable/bg_circle_button"
+            android:contentDescription="@string/play_voice"
+            android:visibility="gone" />
+
+        <!-- Like Button -->
+        <ImageButton
+            android:id="@+id/likeButton"
+            android:layout_width="@dimen/message_button_size"
+            android:layout_height="@dimen/message_button_size"
+            android:layout_marginEnd="@dimen/spacing_small"
+            android:src="@drawable/ic_thumb_up"
+            android:background="@drawable/bg_circle_button"
+            android:contentDescription="@string/like_message"
+            android:visibility="gone" />
+
+        <!-- Dislike Button -->
+        <ImageButton
+            android:id="@+id/dislikeButton"
+            android:layout_width="@dimen/message_button_size"
+            android:layout_height="@dimen/message_button_size"
+            android:layout_marginEnd="@dimen/spacing_small"
+            android:src="@drawable/ic_thumb_down"
+            android:background="@drawable/bg_circle_button"
+            android:contentDescription="@string/dislike_message"
+            android:visibility="gone" />
+
+        <!-- Retry Button -->
+        <ImageButton
+            android:id="@+id/retryButton"
+            android:layout_width="@dimen/message_button_size"
+            android:layout_height="@dimen/message_button_size"
+            android:src="@drawable/ic_refresh"
+            android:background="@drawable/bg_circle_button"
+            android:contentDescription="@string/retry_message"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout> 
