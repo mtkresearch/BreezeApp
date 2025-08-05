@@ -47,7 +47,7 @@
             android:exported="false"
             android:theme="@style/Theme.ChatActivity"
             android:parentActivityName=".presentation.MainActivity"
-            android:windowSoftInputMode="adjustNothing">
+            android:windowSoftInputMode="adjustResize">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".presentation.MainActivity" />
