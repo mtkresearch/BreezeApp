@@ -604,6 +604,7 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun generateAIResponseWithBreezeApp(userInput: String) {
         var aiMessage: ChatMessage? = null
+        var accumulatedContent = StringBuilder()
         try {
             // 檢查連接狀態
             if (!connectionUseCase.isConnected()) {
@@ -627,7 +628,9 @@ class ChatViewModel @Inject constructor(
                 // 更新AI訊息內容
                 val content = response.choices.firstOrNull()?.delta?.content ?: ""
                 if (content.isNotEmpty()) {
-                    updateMessageText(aiMessage.id, aiMessage.text + content)
+                    // 直接使用streaming response的內容，因為它可能已經是累積的完整內容
+                    // 不再使用本地StringBuilder累積，避免重複累積
+                    updateMessageText(aiMessage.id, content)
                 }
             }
             
@@ -673,13 +676,24 @@ class ChatViewModel @Inject constructor(
                     throw BreezeAppError.ConnectionError.ServiceDisconnected("BreezeApp Engine 未連接")
                 }
 
-                ttsUseCase.execute(message.text).collect { response ->
+                // 從當前狀態獲取最新的訊息內容，避免使用過期的訊息引用
+                val currentMessage = _messages.value.find { it.id == message.id }
+                val textToSpeak = currentMessage?.text ?: message.text
+                
+                if (textToSpeak.isEmpty() || textToSpeak == "正在思考中...") {
+                    setError("無法播放空白或載入中的訊息")
+                    return@launchSafely
+                }
+
+                ttsUseCase.execute(textToSpeak).collect { response ->
                     if (response.isLastChunk == true) {
                         setSuccess("語音播放完畢")
                     }
                 }
             } catch (e: BreezeAppError) {
-                handleBreezeAppError(e, message)
+                // 使用當前訊息進行錯誤處理
+                val currentMessage = _messages.value.find { it.id == message.id } ?: message
+                handleBreezeAppError(e, currentMessage)
             } catch (e: Exception) {
                 handleAIResponseError(e)
             }
