@@ -130,7 +130,7 @@
                     android:layout_height="32dp"
                     android:layout_marginEnd="@dimen/spacing_medium"
                     android:contentDescription="聊天"
-                    android:src="@drawable/ic_smart_toy_off"
+                    android:src="@drawable/ic_chat"
                     app:tint="@color/on_primary" />
 
                 <LinearLayout
@@ -259,7 +259,7 @@
                     android:layout_height="32dp"
                     android:layout_marginEnd="@dimen/spacing_medium"
                     android:contentDescription="下載"
-                    android:src="@drawable/ic_download_off"
+                    android:src="@drawable/ic_download"
                     app:tint="@color/text_primary" />
 
                 <LinearLayout

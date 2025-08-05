@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">BreezeApp-Kotlin</string>
+    <string name="app_name">BreezeApp</string>
     
     <!-- Common UI Strings -->
     <string name="loading">載入中…</string>
