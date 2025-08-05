@@ -1,0 +1,213 @@
+<resources>
+    <!-- Fab Margin -->
+    <dimen name="fab_margin">16dp</dimen>
+
+    <!-- Spacing Values -->
+    <dimen name="spacing_micro">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <dimen name="spacing_large">24dp</dimen>
+    <dimen name="spacing_xlarge">32dp</dimen>
+
+    <!-- Touch Target Sizes -->
+    <dimen name="touch_target_size">48dp</dimen>
+    <dimen name="touch_target_small">32dp</dimen>
+
+    <!-- Card and Container -->
+    <dimen name="card_elevation">4dp</dimen>
+    <dimen name="card_corner_radius">8dp</dimen>
+    <dimen name="loading_container_padding">24dp</dimen>
+
+    <!-- Error View Dimensions -->
+    <dimen name="error_icon_size">48dp</dimen>
+    <dimen name="error_title_size">18sp</dimen>
+    <dimen name="error_message_size">14sp</dimen>
+
+    <!-- Loading View Dimensions -->
+    <dimen name="loading_size_small">24dp</dimen>
+    <dimen name="loading_size_medium">48dp</dimen>
+    <dimen name="loading_size_large">72dp</dimen>
+
+    <!-- Message Bubble Dimensions -->
+    <dimen name="message_bubble_padding">12dp</dimen>
+    <dimen name="message_bubble_radius">16dp</dimen>
+    <dimen name="message_bubble_corner_radius">16dp</dimen>
+    <dimen name="message_bubble_content_padding">12dp</dimen>
+    <dimen name="message_button_size">32dp</dimen>
+    <dimen name="message_bubble_min_height">48dp</dimen>
+    <dimen name="message_bubble_max_width">280dp</dimen>
+
+    <!-- Button Dimensions -->
+    <dimen name="error_button_height">40dp</dimen>
+    <dimen name="error_button_min_width">80dp</dimen>
+
+    <!-- Loading Specific Dimensions -->
+    <dimen name="loading_circle_size">48dp</dimen>
+    <dimen name="loading_text_size">16sp</dimen>
+    <dimen name="loading_progress_size">48dp</dimen>
+    <dimen name="loading_progress_width">200dp</dimen>
+    <dimen name="loading_dot_size">8dp</dimen>
+
+
+    <!-- Message Margins -->
+    <dimen name="message_margin_small">8dp</dimen>
+    <dimen name="message_margin_medium">16dp</dimen>
+    <dimen name="message_margin_large">48dp</dimen>
+
+    <!-- Message Bubble -->
+    <dimen name="message_bubble_min_width">80dp</dimen>
+
+    <!-- Message Elevation -->
+    <dimen name="message_elevation_light">2dp</dimen>
+    <dimen name="message_elevation_dark">4dp</dimen>
+
+    <!-- Message Error Stroke -->
+    <dimen name="message_error_stroke_width">2dp</dimen>
+
+    <!-- Loading Progress Sizes -->
+    <dimen name="loading_progress_size_small">24dp</dimen>
+    <dimen name="loading_progress_size_medium">48dp</dimen>
+    <dimen name="loading_progress_size_large">72dp</dimen>
+
+    <!-- Loading Text Sizes -->
+    <dimen name="loading_text_size_small">12sp</dimen>
+    <dimen name="loading_text_size_medium">14sp</dimen>
+    <dimen name="loading_text_size_large">16sp</dimen>
+
+    <!-- Loading Container Padding -->
+    <dimen name="loading_container_padding_small">12dp</dimen>
+    <dimen name="loading_container_padding_medium">16dp</dimen>
+    <dimen name="loading_container_padding_large">24dp</dimen>
+    
+    <!-- Container Padding -->
+    <dimen name="container_padding_small">12dp</dimen>
+    <dimen name="container_padding_medium">16dp</dimen>
+    <dimen name="container_padding_large">24dp</dimen>
+
+    <!-- Loading Container -->
+    <dimen name="loading_container_radius">12dp</dimen>
+    <dimen name="loading_container_elevation">8dp</dimen>
+    <dimen name="loading_container_min_width">120dp</dimen>
+
+    <!-- Error Icon -->
+    <dimen name="error_icon_margin">16dp</dimen>
+
+    <!-- Error Container -->
+    <dimen name="error_container_padding">16dp</dimen>
+    <dimen name="error_container_radius">8dp</dimen>
+    <dimen name="error_container_elevation">2dp</dimen>
+
+    <!-- Error Stroke -->
+    <dimen name="error_stroke_width">1dp</dimen>
+
+    <!-- Button Sizes -->
+    <dimen name="button_height_small">32dp</dimen>
+    <dimen name="button_height_medium">40dp</dimen>
+    <dimen name="button_height_large">48dp</dimen>
+
+    <!-- Button Padding -->
+    <dimen name="button_padding_horizontal">16dp</dimen>
+    <dimen name="button_padding_vertical">8dp</dimen>
+
+    <!-- Button Radius -->
+    <dimen name="button_radius">8dp</dimen>
+    <dimen name="button_radius_small">4dp</dimen>
+    <dimen name="button_radius_large">12dp</dimen>
+
+    <!-- Button Elevation -->
+    <dimen name="button_elevation">2dp</dimen>
+
+    <!-- Input Container -->
+    <dimen name="input_container_padding">12dp</dimen>
+    <dimen name="input_container_margin">8dp</dimen>
+    <dimen name="input_container_radius">24dp</dimen>
+    <dimen name="input_container_elevation">1dp</dimen>
+    <dimen name="input_container_stroke_width">1dp</dimen>
+
+    <!-- Input Text -->
+    <dimen name="input_text_size">16sp</dimen>
+    <dimen name="input_hint_size">14sp</dimen>
+    <dimen name="input_max_height">120dp</dimen>
+    <dimen name="input_min_height">40dp</dimen>
+    
+    <!-- Input Section -->
+    <dimen name="input_section_height">80dp</dimen>
+
+    <!-- Text Sizes -->
+    <dimen name="text_size_micro">10sp</dimen>
+    <dimen name="text_size_small">12sp</dimen>
+    <dimen name="text_size_medium">14sp</dimen>
+    <dimen name="text_size_body">14sp</dimen>
+    <dimen name="text_size_subtitle">16sp</dimen>
+    <dimen name="text_size_large">18sp</dimen>
+    <dimen name="text_size_title">18sp</dimen>
+    <dimen name="text_size_headline">20sp</dimen>
+    <dimen name="text_size_display">24sp</dimen>
+
+    <!-- Line Heights -->
+    <dimen name="line_height_small">16sp</dimen>
+    <dimen name="line_height_body">20sp</dimen>
+    <dimen name="line_height_title">24sp</dimen>
+    <dimen name="line_height_headline">28sp</dimen>
+
+    <!-- Spacing Scales -->
+    <dimen name="spacing_tiny">4dp</dimen>
+    <dimen name="spacing_xxlarge">48dp</dimen>
+    <dimen name="spacing_xxxlarge">64dp</dimen>
+
+    <!-- Icon Sizes -->
+    <dimen name="icon_size_micro">12dp</dimen>
+    <dimen name="icon_size_small">16dp</dimen>
+    <dimen name="icon_size_medium">24dp</dimen>
+    <dimen name="icon_size_large">32dp</dimen>
+    <dimen name="icon_size_xlarge">48dp</dimen>
+
+    <!-- Container Dimensions -->
+    <dimen name="container_max_width">600dp</dimen>
+    <dimen name="content_max_width">480dp</dimen>
+
+    <!-- List Item Heights -->
+    <dimen name="list_item_height_small">48dp</dimen>
+    <dimen name="list_item_height_medium">56dp</dimen>
+    <dimen name="list_item_height_large">72dp</dimen>
+
+    <!-- AppBar -->
+    <dimen name="app_bar_height">56dp</dimen>
+    <dimen name="toolbar_height">56dp</dimen>
+    <dimen name="toolbar_elevation">4dp</dimen>
+
+    <!-- Bottom Navigation -->
+    <dimen name="bottom_nav_height">56dp</dimen>
+
+    <!-- Card Dimensions -->
+    <dimen name="card_radius">8dp</dimen>
+    <dimen name="card_margin">8dp</dimen>
+    <dimen name="card_padding">16dp</dimen>
+
+    <!-- Surface Dimensions -->
+    <dimen name="surface_radius">4dp</dimen>
+    <dimen name="surface_elevation">1dp</dimen>
+
+    <!-- Overlay Dimensions -->
+    <dimen name="overlay_elevation">16dp</dimen>
+    <dimen name="backdrop_elevation">24dp</dimen>
+
+    <!-- Dialog Dimensions -->
+    <dimen name="dialog_radius">16dp</dimen>
+    <dimen name="dialog_elevation">24dp</dimen>
+    <dimen name="dialog_padding">24dp</dimen>
+    <dimen name="dialog_min_width">280dp</dimen>
+    <dimen name="dialog_max_width">560dp</dimen>
+
+    <!-- Animation Distances -->
+    <dimen name="animation_offset_small">8dp</dimen>
+    <dimen name="animation_offset_medium">16dp</dimen>
+    <dimen name="animation_offset_large">32dp</dimen>
+
+    <!-- Minimum Touch Target -->
+    <dimen name="touch_target_min">48dp</dimen>
+
+    <!-- Focus Indicator -->
+    <dimen name="focus_indicator_width">2dp</dimen>
+    <dimen name="focus_indicator_radius">4dp</dimen>
+</resources>

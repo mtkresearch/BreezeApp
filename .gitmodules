@@ -1,0 +1,6 @@
+[submodule "BreezeApp-engine"]
+	path = BreezeApp-engine
+	url = https://github.com/mtkresearch/BreezeApp-engine.git
+[submodule "BreezeApp-client"]
+	path = BreezeApp-client
+	url = https://github.com/mtkresearch/BreezeApp-client.git
