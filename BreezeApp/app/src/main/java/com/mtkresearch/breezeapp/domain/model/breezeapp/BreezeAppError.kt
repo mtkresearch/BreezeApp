@@ -36,6 +36,8 @@ sealed class BreezeAppError(message: String) : Exception(message) {
         data class InvalidText(override val message: String) : TtsError(message)
         data class AudioGenerationFailed(override val message: String) : TtsError(message)
         data class UnsupportedLanguage(override val message: String) : TtsError(message)
+        data class AudioFocusLost(override val message: String) : TtsError(message)
+        data class AppBackgrounded(override val message: String) : TtsError(message)
     }
     
     /**
@@ -46,6 +48,10 @@ sealed class BreezeAppError(message: String) : Exception(message) {
         data class AudioFormatNotSupported(override val message: String) : AsrError(message)
         data class RecognitionFailed(override val message: String) : AsrError(message)
         data class MicrophonePermissionDenied(override val message: String) : AsrError(message)
+        data class AudioFocusLost(override val message: String) : AsrError(message)
+        data class AudioFocusConflict(override val message: String) : AsrError(message)
+        data class SystemInterruption(override val message: String) : AsrError(message)
+        data class ResourceUnavailable(override val message: String) : AsrError(message)
     }
     
     /**

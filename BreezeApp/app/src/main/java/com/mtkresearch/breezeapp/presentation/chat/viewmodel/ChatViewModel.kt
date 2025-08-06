@@ -9,7 +9,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collect
 import com.mtkresearch.breezeapp.presentation.common.base.BaseViewModel
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatSession

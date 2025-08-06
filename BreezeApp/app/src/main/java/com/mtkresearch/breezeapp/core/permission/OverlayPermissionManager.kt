@@ -33,7 +33,7 @@ class OverlayPermissionManager @Inject constructor() {
     /**
      * Check if overlay permission is granted
      */
-    fun isOverlayPermissionGranted(context: Context): Boolean {
+    fun isOverlayPermissionGranted(context: Context?): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             Settings.canDrawOverlays(context).also { granted ->
                 Log.d(TAG, "Overlay permission granted: $granted")
