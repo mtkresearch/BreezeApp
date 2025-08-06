@@ -2,6 +2,7 @@ package com.mtkresearch.breezeapp.presentation.home.fragment
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Html
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -52,8 +53,7 @@ class HomeFragment : Fragment() {
     private fun setupWelcomeContent() {
         // 動態設置歡迎文字
         binding.textViewWelcomeTitle.text = getString(R.string.welcome_title)
-        binding.textViewWelcomeMessage.text = getString(R.string.welcome_message)
-        binding.textViewWelcomeSubtitle.text = getString(R.string.welcome_subtitle)
+        binding.textViewWelcomeMessage.text = Html.fromHtml(getString(R.string.welcome_message), Html.FROM_HTML_MODE_COMPACT)
     }
 
     /**

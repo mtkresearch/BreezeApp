@@ -131,8 +131,13 @@
     
     <!-- Home page -->
     <string name="welcome_title">歡迎使用 BreezeApp</string>
-    <string name="welcome_subtitle">您的AI助手</string>
-    <string name="welcome_message">BreezeApp 是一個功能強大的AI聊天應用，支援語音識別和智慧對話。\n選擇下方功能開始您的AI體驗之旅。</string>
+    <string name="welcome_message"><![CDATA[
+    當您使用本服務時，即表示您已閱讀、理解並接受本免責聲明與相關限制：<br/><br/>
+    • BreezeApp 目前僅供學術研究用途，禁止用於任何商業行為或營利目的，亦不得用於任何非法或違規用途。<br/><br/>
+    • BreezeApp 係以「現狀」基礎提供，不保證其內容之完整性、準確性、合法性、時效性或安全性。使用者應自行判斷並驗證相關資訊，並自負使用風險。<br/><br/>
+    • BreezeApp 所提供之內容僅供參考與合理使用，若涉及第三方智慧財產權，請於使用前自行確認並取得相關授權，並自行承擔相關法律責任。<br/><br/>
+    • 在法律允許範圍內，本公司及其關聯企業對因使用 BreezeApp 所產生之任何行為、決策，或因此導致之任何直接、間接、特殊、附帶、後果性或懲罰性損害，均不承擔任何責任。<br/><br/>
+    ]]></string>
     
     <!-- Home page aliases for tests -->
     <string name="home_welcome_title">歡迎使用 BreezeApp</string>
@@ -194,6 +199,26 @@
     <string name="ai_processing_voice">處理語音中…</string>
     <string name="ai_generating_response">生成回應中…</string>
     <string name="ai_response_ready">回應已準備完成</string>
+
+    <string name="ai_welcome_message"><![CDATA[
+    <b><big>👋 很高興與你相遇！</big></b><br/>
+    我是你手機裡的AI助手，期待與你對話！所有交流都在你的手機上進行，隱私有完全保障。<br/><br/>
+    <b>🔒 隱私安全：</b><br/>
+    • 對話內容不會上傳到雲端或外部伺服器<br/>
+    • 你的個人資訊完全保留在自己的設備上<br/><br/>
+    <b>⚠️ 重要提醒：</b><br/>
+    雖然我會盡力協助，但我並非無所不知，可能會產生不準確的資訊：<br/>
+    • 請不要將我的回答當作絕對事實<br/>
+    • 重要決定前請查證其他可靠來源<br/>
+    • 我無法獲取網路上的最新資訊<br/><br/>
+    <b>✨ 我比較擅長這些任務：</b><br/>
+    • 📝 <b>文章改寫</b> - 調整文字語調或風格<br/>
+    • 🌐 <b>中英文翻譯</b> - 協助翻譯日常對話或簡單文本<br/>
+    • ✏️ <b>文字潤色</b> - 讓你的文字更通順自然<br/>
+    • 💡 <b>創意發想</b> - 協助腦力激盪或創意寫作<br/>
+    • 📃 <b>格式整理</b> - 幫忙重新組織文本<br/><br/>
+    讓我們一起探索吧！有什麼我可以幫你的嗎？
+    ]]></string>
     
     <!-- Message States -->
     <string name="message_sending">發送中…</string>

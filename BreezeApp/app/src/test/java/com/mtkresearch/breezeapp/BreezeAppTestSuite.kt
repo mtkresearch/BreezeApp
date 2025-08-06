@@ -2,7 +2,6 @@ package com.mtkresearch.breezeapp
 
 import com.mtkresearch.breezeapp.presentation.chat.adapter.MessageAdapterTest
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatMessageTest
-import com.mtkresearch.breezeapp.presentation.chat.viewmodel.ChatViewModelTest
 import com.mtkresearch.breezeapp.presentation.settings.viewmodel.RuntimeSettingsViewModelTest
 import com.mtkresearch.breezeapp.presentation.settings.viewmodel.AppSettingsViewModelTest
 import com.mtkresearch.breezeapp.domain.usecase.settings.ValidateRuntimeSettingsUseCaseTest

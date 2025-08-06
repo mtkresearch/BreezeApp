@@ -1,6 +1,8 @@
 package com.mtkresearch.breezeapp.presentation.chat.viewmodel
 
+import android.app.Application
 import android.content.Context
+import android.text.Html
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.delay
@@ -15,6 +17,7 @@ import com.mtkresearch.breezeapp.domain.usecase.breezeapp.*
 import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
 import com.mtkresearch.breezeapp.core.permission.OverlayPermissionManager
+import com.mtkresearch.breezeapp.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -37,6 +40,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class ChatViewModel @Inject constructor(
+    private val application: Application,
     private val connectionUseCase: ConnectionUseCase,
     private val chatUseCase: ChatUseCase,
     private val streamingChatUseCase: StreamingChatUseCase,
@@ -49,6 +53,13 @@ class ChatViewModel @Inject constructor(
     private val tag: String = "ChatViewModel"
     private var microphoneStreamingJob: Job? = null
     private var isUserStoppingMicrophone: Boolean = false
+
+    /**
+     * 取得應用程式字串資源
+     */
+    private fun getApplicationString(resId: Int): String {
+        return Html.fromHtml(application.getString(resId), Html.FROM_HTML_MODE_COMPACT).toString()
+    }
 
     // 當前聊天會話
     private val _currentSession = MutableStateFlow(ChatSession())
@@ -536,7 +547,7 @@ class ChatViewModel @Inject constructor(
     private fun loadWelcomeMessage() {
         // 同步加載歡迎訊息，避免測試中的異步問題
         val welcomeMessage = ChatMessage(
-            text = "您好！我是BreezeApp AI助手。我可以幫助您解答問題、進行對話或協助處理各種任務。請告訴我您需要什麼幫助？",
+            text = getApplicationString(R.string.ai_welcome_message),
             isFromUser = false,
             state = ChatMessage.MessageState.NORMAL
         )
