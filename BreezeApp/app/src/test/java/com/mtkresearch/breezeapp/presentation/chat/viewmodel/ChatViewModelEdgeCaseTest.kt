@@ -37,6 +37,10 @@ class ChatViewModelEdgeCaseTest {
     private val mockAsrMicrophoneUseCase = mockk<AsrMicrophoneUseCase>()
     private val mockRequestCancellationUseCase = mockk<RequestCancellationUseCase>()
     private val mockOverlayPermissionManager = mockk<OverlayPermissionManager>()
+    private val mockLoadRuntimeSettingsUseCase = mockk<LoadRuntimeSettingsUseCase>()
+    private val mockLoadCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.LoadCurrentSessionUseCase>()
+    private val mockSaveCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.SaveCurrentSessionUseCase>()
+    private val mockClearCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.ClearCurrentSessionUseCase>()
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private val testScope = TestScope(testDispatcher)
@@ -62,6 +66,11 @@ class ChatViewModelEdgeCaseTest {
         coEvery { mockConnectionUseCase.initialize() } returns flowOf(ConnectionState.Disconnected)
         coEvery { mockConnectionUseCase.connect() } returns flowOf(ConnectionState.Disconnected)
 
+        // Mock chat repository use cases
+        coEvery { mockLoadCurrentSessionUseCase() } returns null
+        coEvery { mockSaveCurrentSessionUseCase(any()) } just awaits
+        coEvery { mockClearCurrentSessionUseCase() } just awaits
+
         createViewModel()
     }
 
@@ -80,7 +89,11 @@ class ChatViewModelEdgeCaseTest {
             ttsUseCase = mockTtsUseCase,
             asrMicrophoneUseCase = mockAsrMicrophoneUseCase,
             requestCancellationUseCase = mockRequestCancellationUseCase,
-            overlayPermissionManager = mockOverlayPermissionManager
+            overlayPermissionManager = mockOverlayPermissionManager,
+            loadRuntimeSettingsUseCase = mockLoadRuntimeSettingsUseCase,
+            loadCurrentSessionUseCase = mockLoadCurrentSessionUseCase,
+            saveCurrentSessionUseCase = mockSaveCurrentSessionUseCase,
+            clearCurrentSessionUseCase = mockClearCurrentSessionUseCase
         )
     }
 

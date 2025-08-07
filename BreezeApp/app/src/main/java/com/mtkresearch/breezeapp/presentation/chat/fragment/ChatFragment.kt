@@ -14,6 +14,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.mtkresearch.breezeapp.databinding.FragmentChatBinding
 import com.mtkresearch.breezeapp.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp.presentation.chat.adapter.MessageAdapter
@@ -26,7 +27,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 聊天Fragment
- * 
+ *
  * 功能特色:
  * - 完整的聊天介面 (訊息列表、輸入框、語音按鈕)
  * - 整合MessageAdapter顯示訊息氣泡
@@ -34,7 +35,7 @@ import kotlinx.coroutines.launch
  * - 訊息互動功能 (語音播放、點讚、重試)
  * - 自動滾動到最新訊息
  * - 錯誤和載入狀態處理
- * 
+ *
  * 架構整合:
  * - 繼承BaseFragment，獲得統一的生命週期和錯誤處理
  * - 使用ChatViewModel進行狀態管理
@@ -97,10 +98,14 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
 
         // 觀察聊天訊息
         viewModel.messages.collectSafely { messages ->
+            val layoutManager = binding.recyclerViewMessages.layoutManager as LinearLayoutManager
+            val lastVisibleItemPosition = layoutManager.findLastCompletelyVisibleItemPosition()
+            val shouldScroll = lastVisibleItemPosition == -1 || lastVisibleItemPosition >= messageAdapter.itemCount - 2
+
             messageAdapter.submitList(messages) {
                 // 訊息更新後自動滾動到最新
-                if (messages.isNotEmpty()) {
-                    binding.recyclerViewMessages.smoothScrollToPosition(messages.size - 1)
+                if (shouldScroll) {
+                    scrollToLatestMessage()
                 }
             }
         }
@@ -153,10 +158,25 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             layoutManager = LinearLayoutManager(requireContext()).apply {
                 stackFromEnd = true // 從底部開始堆疊，新訊息出現在底部
             }
-            
+
             // 設置項目動畫，讓新訊息添加有流暢動畫
             itemAnimator?.addDuration = 300
             itemAnimator?.removeDuration = 300
+
+            addOnScrollListener(object : RecyclerView.OnScrollListener() {
+                override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                    super.onScrolled(recyclerView, dx, dy)
+                    val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+                    val lastVisibleItemPosition = layoutManager.findLastCompletelyVisibleItemPosition()
+                    val itemCount = messageAdapter.itemCount
+
+                    if (itemCount > 0 && lastVisibleItemPosition < itemCount - 1) {
+                        binding.fabScrollToBottom.show()
+                    } else {
+                        binding.fabScrollToBottom.hide()
+                    }
+                }
+            })
         }
     }
 
@@ -176,7 +196,14 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
                 // 當輸入框獲得焦點時，延遲滾動到最新訊息，等待鍵盤動畫完成
                 viewLifecycleOwner.lifecycleScope.launch {
                     delay(300) // 給鍵盤動畫一些時間
-                    scrollToLatestMessage()
+                    val layoutManager = binding.recyclerViewMessages.layoutManager as LinearLayoutManager
+                    val lastVisibleItemPosition = layoutManager.findLastCompletelyVisibleItemPosition()
+                    val itemCount = messageAdapter.itemCount
+
+                    // Only scroll to bottom if already near the bottom or if it's the first message
+                    if (itemCount == 0 || lastVisibleItemPosition >= itemCount - 3) {
+                        scrollToLatestMessage()
+                    }
                 }
             }
         }
@@ -197,6 +224,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 語音按鈕
         binding.buttonVoice.setOnClickListener {
             toggleVoiceRecognition()
+        }
+
+        binding.fabScrollToBottom.setOnClickListener {
+            scrollToLatestMessage(true)
         }
     }
 
@@ -239,11 +270,11 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         if (messageText.isNotEmpty()) {
             // 先隱藏鍵盤，提供即時反饋
             hideKeyboard()
-            
+
             // 發送訊息到ViewModel
             viewModel.sendMessage(messageText)
             // 清空輸入框在ViewModel中處理
-            
+
             // 發送訊息後滾動到最新位置
             viewLifecycleOwner.lifecycleScope.launch {
                 delay(100)
@@ -275,11 +306,11 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         _binding?.buttonVoice?.isSelected = isListening
         // 改變按鈕圖示來表示狀態
         _binding?.buttonVoice?.setImageResource(
-            if (isListening) com.mtkresearch.breezeapp.R.drawable.ic_mic_off 
+            if (isListening) com.mtkresearch.breezeapp.R.drawable.ic_mic_off
             else com.mtkresearch.breezeapp.R.drawable.ic_mic
         )
         _binding?.buttonVoice?.contentDescription = if (isListening) "停止語音輸入" else "開始語音輸入"
-        
+
         // 移除手動控制發送按鈕狀態的邏輯，完全依賴ViewModel的canSendMessage
         // ViewModel會根據isListening、isAIResponding和inputText自動更新canSendMessage狀態
     }
@@ -287,21 +318,14 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
     /**
      * 滾動到最新訊息
      */
-    private fun scrollToLatestMessage() {
+    private fun scrollToLatestMessage(smooth: Boolean = false) {
         _binding?.let { binding ->
             if (messageAdapter.itemCount > 0) {
                 val lastPosition = messageAdapter.itemCount - 1
-                val layoutManager = binding.recyclerViewMessages.layoutManager as? LinearLayoutManager
-                
-                if (layoutManager != null) {
-                    val lastVisiblePosition = layoutManager.findLastCompletelyVisibleItemPosition()
-                    if (lastPosition - lastVisiblePosition <= 5) { // 增加緩衝區
-                        binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
-                    } else {
-                        binding.recyclerViewMessages.scrollToPosition(lastPosition)
-                    }
-                } else {
+                if (smooth) {
                     binding.recyclerViewMessages.smoothScrollToPosition(lastPosition)
+                } else {
+                    binding.recyclerViewMessages.scrollToPosition(lastPosition)
                 }
             }
         }
@@ -353,7 +377,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             message,
             isPositive
         )
-        
+
         // 在頂部狀態欄顯示反饋訊息
         val feedbackText = if (isPositive) "已對此回應表示讚同" else "已對此回應表示不讚同"
         showFeedbackMessage(feedbackText)
@@ -371,7 +395,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             ChatViewModel.MessageAction.LONG_CLICK,
             message
         )
-        
+
         // 顯示訊息操作菜單 (簡化實作)
         showMessageContextMenu(message)
         return true
@@ -390,15 +414,15 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun showMessageContextMenu(message: ChatMessage) {
         val options = mutableListOf<String>()
-        
+
         // 添加複製選項
         options.add("複製文字")
-        
+
         // 如果是AI訊息，添加重新生成選項
         if (!message.isFromUser) {
             options.add("重新生成回應")
         }
-        
+
         // 添加分享選項
         options.add("分享訊息")
 
@@ -482,7 +506,12 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
                     // 延遲滾動確保佈局調整完成
                     viewLifecycleOwner.lifecycleScope.launch {
                         delay(100)
-                        scrollToLatestMessage()
+                        val layoutManager = binding.recyclerViewMessages.layoutManager as LinearLayoutManager
+                        val lastVisibleItemPosition = layoutManager.findLastCompletelyVisibleItemPosition()
+                        val itemCount = messageAdapter.itemCount
+                        if (itemCount == 0 || lastVisibleItemPosition >= itemCount - 3) {
+                            scrollToLatestMessage()
+                        }
                     }
                 }
                 insets
@@ -492,7 +521,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
 
     /**
      * 處理返回按鈕事件
-     * 
+     *
      * @return true 如果Fragment處理了返回事件，false 如果應該由Activity處理
      */
     fun onBackPressed(): Boolean {
@@ -501,26 +530,26 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             viewModel.stopVoiceRecognition()
             return true
         }
-        
+
         // 如果輸入框有內容，清空內容
         if (binding.editTextMessage.text.isNotEmpty()) {
             binding.editTextMessage.text.clear()
             return true
         }
-        
+
         // 如果有錯誤顯示，隱藏錯誤
         if (binding.errorView.visibility == View.VISIBLE) {
             binding.errorView.hide()
             return true
         }
-        
+
         // 其他情況讓Activity處理（返回主頁面）
         return false
     }
 
     /**
      * 處理點擊鍵盤外區域收起鍵盤
-     * 
+     *
      * @param event 觸摸事件
      */
     fun handleTouchOutsideKeyboard(event: MotionEvent) {
@@ -528,7 +557,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         if (!binding.editTextMessage.hasFocus()) {
             return
         }
-        
+
         // 獲取目前焦點的view
         val view = activity?.currentFocus
         if (view != null) {
@@ -558,7 +587,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         fun newInstance(): ChatFragment {
             return ChatFragment()
         }
-        
+
         /**
          * Fragment標籤
          */

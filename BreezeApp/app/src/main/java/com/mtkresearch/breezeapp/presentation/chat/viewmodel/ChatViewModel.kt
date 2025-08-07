@@ -13,6 +13,10 @@ import com.mtkresearch.breezeapp.presentation.common.base.BaseViewModel
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatSession
 import com.mtkresearch.breezeapp.domain.usecase.breezeapp.*
+import com.mtkresearch.breezeapp.domain.usecase.settings.LoadRuntimeSettingsUseCase
+import com.mtkresearch.breezeapp.domain.usecase.chat.LoadCurrentSessionUseCase
+import com.mtkresearch.breezeapp.domain.usecase.chat.SaveCurrentSessionUseCase
+import com.mtkresearch.breezeapp.domain.usecase.chat.ClearCurrentSessionUseCase
 import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
 import com.mtkresearch.breezeapp.core.permission.OverlayPermissionManager
@@ -46,7 +50,11 @@ class ChatViewModel @Inject constructor(
     private val ttsUseCase: TtsUseCase,
     private val asrMicrophoneUseCase: AsrMicrophoneUseCase,
     private val requestCancellationUseCase: RequestCancellationUseCase,
-    private val overlayPermissionManager: OverlayPermissionManager
+    private val overlayPermissionManager: OverlayPermissionManager,
+    private val loadRuntimeSettingsUseCase: LoadRuntimeSettingsUseCase,
+    private val loadCurrentSessionUseCase: LoadCurrentSessionUseCase,
+    private val saveCurrentSessionUseCase: SaveCurrentSessionUseCase,
+    private val clearCurrentSessionUseCase: ClearCurrentSessionUseCase
 ) : BaseViewModel() {
 
     private val tag: String = "ChatViewModel"
@@ -96,8 +104,8 @@ class ChatViewModel @Inject constructor(
     private var currentStreamingRequestId: String? = null
 
     init {
-        // 初始化時加載歡迎訊息
-        loadWelcomeMessage()
+        // 載入之前的會話或初始化新會話
+        loadOrInitializeSession()
         // 確保初始狀態正確
         updateCanSendMessageState()
         // 初始化 BreezeApp Engine 連接
@@ -384,6 +392,12 @@ class ChatViewModel @Inject constructor(
         _isAIResponding.value = false
         _isListening.value = false
         updateCanSendMessageState() // 確保狀態一致
+        
+        // 清空repository中的會話
+        launchSafely(showLoading = false) {
+            clearCurrentSessionUseCase()
+        }
+        
         setSuccess("聊天記錄已清空")
         // 不自動重新載入歡迎訊息，讓測試可以驗證空狀態
     }
@@ -505,11 +519,17 @@ class ChatViewModel @Inject constructor(
      * 更新當前會話
      */
     private fun updateCurrentSession() {
-        _currentSession.value = _currentSession.value.copy(
+        val updatedSession = _currentSession.value.copy(
             messages = _messages.value,
             updatedAt = System.currentTimeMillis(),
             title = generateSessionTitle()
         )
+        _currentSession.value = updatedSession
+        
+        // 保存到repository
+        launchSafely(showLoading = false) {
+            saveCurrentSessionUseCase(updatedSession)
+        }
     }
 
     /**
@@ -537,6 +557,28 @@ class ChatViewModel @Inject constructor(
             firstUserMessage.text.take(20) + if (firstUserMessage.text.length > 20) "..." else ""
         } else {
             "新對話"
+        }
+    }
+
+    /**
+     * 載入之前的會話或初始化新會話
+     */
+    private fun loadOrInitializeSession() {
+        launchSafely(showLoading = false) {
+            try {
+                val savedSession = loadCurrentSessionUseCase()
+                if (savedSession != null) {
+                    // 恢復之前的會話
+                    _currentSession.value = savedSession
+                    _messages.value = savedSession.messages
+                } else {
+                    // 創建新會話並載入歡迎訊息
+                    loadWelcomeMessage()
+                }
+            } catch (e: Exception) {
+                // 如果載入失敗，創建新會話
+                loadWelcomeMessage()
+            }
         }
     }
 
@@ -739,6 +781,30 @@ class ChatViewModel @Inject constructor(
         currentStreamingRequestId?.let { requestId ->
             requestCancellationUseCase.cancelRequest(requestId)
             currentStreamingRequestId = null
+        }
+    }
+
+    /**
+     * 當ViewModel被清除時調用
+     * 這通常發生在Activity/Fragment被永久銷毀時
+     */
+    override fun onCleared() {
+        super.onCleared()
+        // 保存當前會話狀態，以便下次啟動時恢復
+        if (_messages.value.isNotEmpty()) {
+            val currentSession = _currentSession.value.copy(
+                messages = _messages.value,
+                updatedAt = System.currentTimeMillis(),
+                title = generateSessionTitle()
+            )
+            // 使用一個獨立的scope來保存，因為viewModelScope可能已經被取消
+            viewModelScope.launch {
+                try {
+                    saveCurrentSessionUseCase(currentSession)
+                } catch (e: Exception) {
+                    // 忽略保存錯誤，避免崩潰
+                }
+            }
         }
     }
 

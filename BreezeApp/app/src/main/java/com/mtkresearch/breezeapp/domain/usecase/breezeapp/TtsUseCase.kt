@@ -42,18 +42,17 @@ class TtsUseCase @Inject constructor() {
      */
     fun execute(
         text: String,
-        voice: String = "alloy",
-        speed: Float = 1.0f,
-        format: String = "pcm"
+        voice: String="alloy",
+        runtimeSettings: RuntimeSettings = RuntimeSettings()
     ): Flow<TTSResponse> {
         
         Log.d(TAG, "Executing TTS request: '$text' with voice: $voice")
         
         val request = ttsRequest(
             input = text,
-            voice = voice,
-            speed = speed,
-            format = format
+            voice = "speaker_${runtimeSettings.ttsParams.speakerId}", // Convert speaker ID to voice name
+            speed = runtimeSettings.ttsParams.speedRate,
+            format = "pcm"
         )
         
         return EdgeAI.tts(request)

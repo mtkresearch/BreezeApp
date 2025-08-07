@@ -74,6 +74,23 @@
             app:layout_constraintTop_toBottomOf="@+id/textViewAIStatus"
             tools:listitem="@layout/item_chat_message" />
 
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabScrollToBottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="@dimen/spacing_medium"
+            android:layout_marginBottom="@dimen/spacing_medium"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Scroll to bottom"
+            android:src="@android:drawable/stat_sys_download_done"
+            android:visibility="gone"
+            app:backgroundTint="@color/primary"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="@color/on_primary"
+            tools:visibility="visible" />
+
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>

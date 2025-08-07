@@ -49,6 +49,9 @@ class LifecycleConfigurationEdgeCaseTest {
     private val mockSaveRuntimeSettingsUseCase = mockk<SaveRuntimeSettingsUseCase>()
     private val mockUpdateRuntimeParameterUseCase = mockk<UpdateRuntimeParameterUseCase>()
     private val mockValidateRuntimeSettingsUseCase = mockk<ValidateRuntimeSettingsUseCase>()
+    private val mockLoadCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.LoadCurrentSessionUseCase>()
+    private val mockSaveCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.SaveCurrentSessionUseCase>()
+    private val mockClearCurrentSessionUseCase = mockk<com.mtkresearch.breezeapp.domain.usecase.chat.ClearCurrentSessionUseCase>()
 
     private val testDispatcher = UnconfinedTestDispatcher()
     private val testScope = TestScope(testDispatcher)
@@ -65,6 +68,11 @@ class LifecycleConfigurationEdgeCaseTest {
         )
         coEvery { mockRequestCancellationUseCase.cancelLastRequest() } just awaits
         every { mockOverlayPermissionManager.isOverlayPermissionGranted(any()) } returns true
+        
+        // Mock chat repository use cases
+        coEvery { mockLoadCurrentSessionUseCase() } returns null
+        coEvery { mockSaveCurrentSessionUseCase(any()) } just awaits
+        coEvery { mockClearCurrentSessionUseCase() } just awaits
     }
 
     @After
@@ -102,7 +110,9 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel1 = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase, mockLoadCurrentSessionUseCase,
+            mockSaveCurrentSessionUseCase, mockClearCurrentSessionUseCase
         )
 
         // 開始語音識別
@@ -113,7 +123,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel2 = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         // 驗證狀態一致性
@@ -151,7 +162,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         chatViewModel.sendMessage("Test rotation message")
@@ -237,7 +249,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         val unsentMessage = "This message was not sent before rotation"
@@ -262,7 +275,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         // 添加多條消息來模擬長聊天記錄
@@ -304,7 +318,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         // When: 模擬進入分割螢幕模式
@@ -338,7 +353,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         // When: 開始語音識別，然後模擬視窗大小調整
@@ -366,7 +382,8 @@ class LifecycleConfigurationEdgeCaseTest {
             val viewModel = ChatViewModel(
                 mockApplication, mockConnectionUseCase, mockChatUseCase,
                 mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-                mockRequestCancellationUseCase, mockOverlayPermissionManager
+                mockRequestCancellationUseCase, mockOverlayPermissionManager,
+                mockLoadRuntimeSettingsUseCase
             )
             
             viewModel.updateInputText("Test message $index")
@@ -390,7 +407,8 @@ class LifecycleConfigurationEdgeCaseTest {
         val chatViewModel = ChatViewModel(
             mockApplication, mockConnectionUseCase, mockChatUseCase,
             mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-            mockRequestCancellationUseCase, mockOverlayPermissionManager
+            mockRequestCancellationUseCase, mockOverlayPermissionManager,
+            mockLoadRuntimeSettingsUseCase
         )
 
         // When: 快速執行多個操作模擬快速配置變更
@@ -442,7 +460,8 @@ class LifecycleConfigurationEdgeCaseTest {
                 val viewModel = ChatViewModel(
                     mockApplication, mockConnectionUseCase, mockChatUseCase,
                     mockStreamingChatUseCase, mockTtsUseCase, mockAsrMicrophoneUseCase,
-                    mockRequestCancellationUseCase, mockOverlayPermissionManager
+                    mockRequestCancellationUseCase, mockOverlayPermissionManager,
+                    mockLoadRuntimeSettingsUseCase
                 )
                 viewModels.add(viewModel)
             } catch (e: Exception) {
