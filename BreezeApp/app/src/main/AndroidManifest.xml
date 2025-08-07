@@ -35,7 +35,8 @@
         tools:targetApi="31">
         <activity
             android:name=".presentation.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -47,7 +48,8 @@
             android:exported="false"
             android:theme="@style/Theme.ChatActivity"
             android:parentActivityName=".presentation.MainActivity"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".presentation.MainActivity" />
@@ -56,7 +58,8 @@
         <activity
             android:name=".presentation.settings.SettingsActivity"
             android:exported="false"
-            android:parentActivityName=".presentation.MainActivity">
+            android:parentActivityName=".presentation.MainActivity"
+            android:screenOrientation="portrait">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".presentation.MainActivity" />
