@@ -64,6 +64,7 @@ android {
         }
         
         debug {
+            enableAndroidTestCoverage = true
             isMinifyEnabled = false
             if (hasGoogleServices) {
                 configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
@@ -171,6 +172,9 @@ dependencies {
 
     // Testing
     testImplementation("junit:junit:${Versions.JUNIT}")
+    testImplementation("org.robolectric:robolectric:4.15.1")
+    testImplementation("androidx.test:core:1.5.0")
+    testImplementation("org.mockito:mockito-core:5.18.0")
     androidTestImplementation("androidx.test.ext:junit:${Versions.ANDROID_JUNIT}")
     androidTestImplementation("androidx.test.espresso:espresso-core:${Versions.ESPRESSO}")
     androidTestImplementation("androidx.test:rules:1.6.1")
