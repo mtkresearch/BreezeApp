@@ -8,6 +8,7 @@ import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState
 import com.mtkresearch.breezeapp.domain.usecase.breezeapp.*
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp.edgeai.*
+import com.mtkresearch.breezeapp.domain.usecase.settings.LoadRuntimeSettingsUseCase
 import io.mockk.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*

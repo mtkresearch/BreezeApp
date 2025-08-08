@@ -40,23 +40,46 @@ class StreamingChatUseCase @Inject constructor() {
      * @param systemPrompt Optional system prompt to guide the AI
      * @param temperature Controls randomness (0.0 to 2.0)
      * @param maxTokens Maximum tokens to generate
+     * @param topK Optional top-k sampling parameter
+     * @param topP Optional nucleus sampling parameter (0.0 to 1.0)
+     * @param repetitionPenalty Optional repetition penalty parameter
+     * @param model Model identifier to use (defaults to breeze2)
      * @return Flow of ChatResponse from BreezeApp Engine
      */
     suspend fun execute(
         prompt: String,
         systemPrompt: String = "You are a helpful AI assistant.",
         temperature: Float = 0.7f,
-        maxTokens: Int? = null
+        maxTokens: Int? = null,
+        topK: Int? = null,
+        topP: Float? = null,
+        repetitionPenalty: Float? = null,
+        model: String = "breeze2"
     ): Flow<ChatResponse> {
         
         Log.d(TAG, "Executing streaming chat request: '$prompt'")
+        Log.d(TAG, "🔥 StreamingChatUseCase DEBUG - temperature: $temperature, maxTokens: $maxTokens, topK: $topK, topP: $topP, repetitionPenalty: $repetitionPenalty")
         
-        val request = chatRequest(
-            prompt = prompt,
-            systemPrompt = systemPrompt,
+        // Build messages list
+        val messages = mutableListOf<com.mtkresearch.breezeapp.edgeai.ChatMessage>()
+        if (!systemPrompt.isNullOrBlank()) {
+            messages.add(com.mtkresearch.breezeapp.edgeai.ChatMessage(role = "system", content = systemPrompt))
+        }
+        messages.add(com.mtkresearch.breezeapp.edgeai.ChatMessage(role = "user", content = prompt))
+
+        // Build metadata for non-standard params (top_k, repetition_penalty)
+        val metadata = mutableMapOf<String, String>()
+        topK?.let { metadata["top_k"] = it.toString() }
+        repetitionPenalty?.let { metadata["repetition_penalty"] = it.toString() }
+
+        val request = com.mtkresearch.breezeapp.edgeai.ChatRequest(
+            model = model,
+            messages = messages,
             temperature = temperature,
-            maxTokens = maxTokens,
-            stream = true
+            topP = topP,
+            maxCompletionTokens = maxTokens,
+            stream = true,
+            metadata = if (metadata.isEmpty()) null else metadata
         )
         
         return EdgeAI.chat(request)

@@ -406,7 +406,7 @@ class RuntimeSettingsFragment : BaseFragment() {
         val maxTokensView = createSeekBarParameter(
             "Max Tokens",
             "最大輸出長度",
-            128f, 4096f, 50f,
+            128f, 4096f, 128f,
             isEnabled = true,
             onValueChanged = { value -> 
                 viewModel.updateLLMMaxTokens(value.toInt())
@@ -538,12 +538,12 @@ class RuntimeSettingsFragment : BaseFragment() {
     private fun createTTSParameterUI() {
         val views = mutableListOf<View>()
         
-        // Speaker ID選擇
+        // Speaker ID選擇 - Disabled until voice selection feature is implemented
         val speakerView = createSpinnerParameter(
             "說話者聲音",
             "選擇說話者聲音",
-            arrayOf("聲音 1", "聲音 2", "聲音 3", "聲音 4"),
-            isEnabled = true,
+            arrayOf("預設聲音", "溫暖聲音", "清晰聲音", "專業聲音"),
+            isEnabled = false,
             onValueChanged = { index -> 
                 viewModel.updateTTSSpeakerId(index)
                 recordParameterChange("說話者聲音", index)

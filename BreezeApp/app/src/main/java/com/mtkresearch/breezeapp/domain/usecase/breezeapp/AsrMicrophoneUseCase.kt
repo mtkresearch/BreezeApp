@@ -60,8 +60,7 @@ class AsrMicrophoneUseCase @Inject constructor() {
         val request = asrRequest(
             audioBytes = byteArrayOf(), // Empty for microphone mode
             language = language,
-            format = format,
-            stream = true // Enable streaming for real-time processing
+            format = format
         )
         
         return EdgeAI.asr(request)

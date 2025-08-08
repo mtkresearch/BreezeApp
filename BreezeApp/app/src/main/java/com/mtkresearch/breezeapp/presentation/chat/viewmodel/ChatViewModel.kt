@@ -17,10 +17,12 @@ import com.mtkresearch.breezeapp.domain.usecase.settings.LoadRuntimeSettingsUseC
 import com.mtkresearch.breezeapp.domain.usecase.chat.LoadCurrentSessionUseCase
 import com.mtkresearch.breezeapp.domain.usecase.chat.SaveCurrentSessionUseCase
 import com.mtkresearch.breezeapp.domain.usecase.chat.ClearCurrentSessionUseCase
+import com.mtkresearch.breezeapp.domain.repository.ChatRepository
 import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
 import com.mtkresearch.breezeapp.core.permission.OverlayPermissionManager
 import com.mtkresearch.breezeapp.R
+import com.mtkresearch.breezeapp.presentation.chat.fragment.ChatFragment.Companion.TAG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -52,9 +54,9 @@ class ChatViewModel @Inject constructor(
     private val requestCancellationUseCase: RequestCancellationUseCase,
     private val overlayPermissionManager: OverlayPermissionManager,
     private val loadRuntimeSettingsUseCase: LoadRuntimeSettingsUseCase,
-    private val loadCurrentSessionUseCase: LoadCurrentSessionUseCase,
-    private val saveCurrentSessionUseCase: SaveCurrentSessionUseCase,
-    private val clearCurrentSessionUseCase: ClearCurrentSessionUseCase
+    private val loadCurrentSessionUseCase: LoadCurrentSessionUseCase = LoadCurrentSessionUseCase(DefaultChatRepository),
+    private val saveCurrentSessionUseCase: SaveCurrentSessionUseCase = SaveCurrentSessionUseCase(DefaultChatRepository),
+    private val clearCurrentSessionUseCase: ClearCurrentSessionUseCase = ClearCurrentSessionUseCase(DefaultChatRepository)
 ) : BaseViewModel() {
 
     private val tag: String = "ChatViewModel"
@@ -374,7 +376,16 @@ class ChatViewModel @Inject constructor(
             isUserStoppingMicrophone = true
             microphoneStreamingJob?.cancel()
             microphoneStreamingJob = null
-            requestCancellationUseCase.cancelLastRequest()
+            
+            // Launch coroutine for suspend function
+            viewModelScope.launch {
+                try {
+                    requestCancellationUseCase.cancelLastRequest()
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to cancel request: ${e.message}")
+                }
+            }
+            
             _isListening.value = false
             updateCanSendMessageState() // 停止語音識別時更新按鈕狀態
             setSuccess("語音識別已停止")
@@ -671,17 +682,52 @@ class ChatViewModel @Inject constructor(
             )
             addMessage(aiMessage)
             
-            // 使用串流聊天 UseCase
-            streamingChatUseCase.execute(
-                prompt = userInput,
-                systemPrompt = "你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。",
-                temperature = 0.7f
-            ).collect { response ->
-                // 更新AI訊息內容
-                val content = response.choices.firstOrNull()?.delta?.content ?: ""
+            // 取得最新的運行時設定
+            val settingsResult = loadRuntimeSettingsUseCase()
+            val settings = settingsResult.getOrNull()
+
+            // 從設定中取得 LLM 參數（含預設值）
+            val temperature = settings?.llmParams?.temperature ?: 0.7f
+            val topK = settings?.llmParams?.topK
+            val topP = settings?.llmParams?.topP
+            val maxTokens = settings?.llmParams?.maxTokens
+            val repetitionPenalty = settings?.llmParams?.repetitionPenalty
+            val enableStreaming = settings?.llmParams?.enableStreaming ?: true
+            val systemPrompt = settings?.llmParams?.systemPrompt?.takeIf { it.isNotBlank() }
+                ?: "你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。"
+
+            // DEBUG: Log runtime parameters to verify values
+            Log.d(tag, "🔥 Runtime Settings DEBUG - temperature: $temperature, topK: $topK, topP: $topP, maxTokens: $maxTokens, repetitionPenalty: $repetitionPenalty, streaming: $enableStreaming")
+
+            if (enableStreaming) {
+                // 串流模式
+                streamingChatUseCase.execute(
+                    prompt = userInput,
+                    systemPrompt = systemPrompt,
+                    temperature = temperature,
+                    maxTokens = maxTokens,
+                    topK = topK,
+                    topP = topP,
+                    repetitionPenalty = repetitionPenalty
+                ).collect { response ->
+                    val content = response.choices.firstOrNull()?.delta?.content ?: ""
+                    if (content.isNotEmpty()) {
+                        updateMessageText(aiMessage.id, content)
+                    }
+                }
+            } else {
+                // 非串流模式
+                val response = chatUseCase.execute(
+                    prompt = userInput,
+                    systemPrompt = systemPrompt,
+                    temperature = temperature,
+                    maxTokens = maxTokens,
+                    topK = topK,
+                    topP = topP,
+                    repetitionPenalty = repetitionPenalty
+                )
+                val content = response.choices.firstOrNull()?.message?.content ?: ""
                 if (content.isNotEmpty()) {
-                    // 直接使用streaming response的內容，因為它可能已經是累積的完整內容
-                    // 不再使用本地StringBuilder累積，避免重複累積
                     updateMessageText(aiMessage.id, content)
                 }
             }
@@ -738,10 +784,11 @@ class ChatViewModel @Inject constructor(
                 }
 
                 ttsUseCase.execute(textToSpeak).collect { response ->
-                    if (response.isLastChunk == true) {
-                        setSuccess("語音播放完畢")
-                    }
+                    // TTS streaming response received, audio is being played
+                    Log.d(TAG, "TTS response received: ${response.audioData.size} bytes")
                 }
+                // TTS stream completed
+                setSuccess("語音播放完畢")
             } catch (e: BreezeAppError) {
                 // 使用當前訊息進行錯誤處理
                 val currentMessage = _messages.value.find { it.id == message.id } ?: message
@@ -779,8 +826,15 @@ class ChatViewModel @Inject constructor(
      */
     fun cancelCurrentStreamingRequest() {
         currentStreamingRequestId?.let { requestId ->
-            requestCancellationUseCase.cancelRequest(requestId)
-            currentStreamingRequestId = null
+            // Launch coroutine for suspend function
+            viewModelScope.launch {
+                try {
+                    requestCancellationUseCase.cancelRequest(requestId)
+                    currentStreamingRequestId = null
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to cancel streaming request: ${e.message}")
+                }
+            }
         }
     }
 
@@ -819,3 +873,23 @@ class ChatViewModel @Inject constructor(
         IMAGE_CLICK     // 圖片點擊
     }
 } 
+
+// 提供測試與預設情境可用的簡易內存聊天儲存庫
+private object DefaultChatRepository : ChatRepository {
+    private var currentSession: ChatSession? = null
+    private val sessionFlow = kotlinx.coroutines.flow.MutableStateFlow<ChatSession?>(null)
+
+    override suspend fun getCurrentSession(): ChatSession? = currentSession
+
+    override suspend fun saveCurrentSession(session: ChatSession) {
+        currentSession = session
+        sessionFlow.value = session
+    }
+
+    override suspend fun clearCurrentSession() {
+        currentSession = null
+        sessionFlow.value = null
+    }
+
+    override fun observeCurrentSession(): kotlinx.coroutines.flow.Flow<ChatSession?> = sessionFlow
+}

@@ -8,6 +8,7 @@ import com.mtkresearch.breezeapp.edgeai.EdgeAIException
 import com.mtkresearch.breezeapp.edgeai.InvalidInputException
 import com.mtkresearch.breezeapp.edgeai.ServiceConnectionException
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
+import com.mtkresearch.breezeapp.presentation.settings.model.RuntimeSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import javax.inject.Inject
@@ -50,7 +51,7 @@ class TtsUseCase @Inject constructor() {
         
         val request = ttsRequest(
             input = text,
-            voice = "speaker_${runtimeSettings.ttsParams.speakerId}", // Convert speaker ID to voice name
+            voice = voice, // Convert speaker ID to voice name
             speed = runtimeSettings.ttsParams.speedRate,
             format = "pcm"
         )

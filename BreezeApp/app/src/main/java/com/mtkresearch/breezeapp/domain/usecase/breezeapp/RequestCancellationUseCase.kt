@@ -2,6 +2,8 @@ package com.mtkresearch.breezeapp.domain.usecase.breezeapp
 
 import android.util.Log
 import com.mtkresearch.breezeapp.edgeai.EdgeAI
+import com.mtkresearch.breezeapp.edgeai.EdgeAIException
+import com.mtkresearch.breezeapp.edgeai.ServiceConnectionException
 import javax.inject.Inject
 
 /**
@@ -9,13 +11,9 @@ import javax.inject.Inject
  * 
  * Responsibilities:
  * - Cancel active requests
- * - Handle cancellation-specific scenarios
- * - Provide unified cancellation handling
- * 
- * This UseCase follows Clean Architecture principles by:
- * - Being independent of external frameworks
- * - Having a single responsibility
- * - Being easily testable
+ * - Handle cancellation-specific error scenarios
+ * - Provide cancellation status
+ * - Manage cancellation state
  */
 class RequestCancellationUseCase @Inject constructor() {
     
@@ -24,49 +22,62 @@ class RequestCancellationUseCase @Inject constructor() {
     }
     
     /**
-     * Cancel an active request by its ID
+     * Cancel the last active request
      * 
-     * @param requestId The ID of the request to cancel
-     * @return true if the request was successfully cancelled, false otherwise
+     * @return true if cancellation was successful, false otherwise
      */
-    fun cancelRequest(requestId: String): Boolean {
+    suspend fun cancelLastRequest(): Boolean {
+        
+        Log.d(TAG, "Cancelling last active request")
+        
         return try {
-            Log.d(TAG, "Cancelling request: $requestId")
-            val cancelled = EdgeAI.cancelRequest(requestId)
+            val cancelled = EdgeAI.cancelLastRequest()
             
             if (cancelled) {
-                Log.d(TAG, "Successfully cancelled request: $requestId")
+                Log.d(TAG, "Request cancelled successfully")
             } else {
-                Log.w(TAG, "Failed to cancel request: $requestId")
+                Log.d(TAG, "No active request found to cancel")
             }
             
             cancelled
+        } catch (e: ServiceConnectionException) {
+            Log.e(TAG, "Connection error during cancellation: ${e.message}")
+            throw CancellationError.ConnectionError(e.message ?: "Connection error")
+        } catch (e: EdgeAIException) {
+            Log.e(TAG, "EdgeAI error during cancellation: ${e.message}")
+            throw CancellationError.UnknownError(e.message ?: "Unknown error")
         } catch (e: Exception) {
-            Log.e(TAG, "Error cancelling request: ${e.message}")
-            false
+            Log.e(TAG, "Unexpected error during cancellation: ${e.message}")
+            throw CancellationError.UnknownError(e.message ?: "Unexpected error")
         }
     }
     
     /**
-     * Cancel the last active request
+     * Cancel a specific request by ID
      * 
-     * @return true if the request was successfully cancelled, false otherwise
+     * @param requestId The ID of the request to cancel
+     * @return true if cancellation was successful, false otherwise
      */
-    fun cancelLastRequest(): Boolean {
+    suspend fun cancelRequest(requestId: String): Boolean {
+        
+        Log.d(TAG, "Cancelling request: $requestId")
+        
         return try {
-            Log.d(TAG, "Cancelling last request")
-            val cancelled = EdgeAI.cancelLastRequest()
-            
-            if (cancelled) {
-                Log.d(TAG, "Successfully cancelled last request")
-            } else {
-                Log.w(TAG, "Failed to cancel last request")
-            }
-            
-            cancelled
+            // Note: EdgeAI SDK currently only supports cancelling the last request
+            // This method is prepared for future implementation
+            Log.d(TAG, "Specific request cancellation not yet supported, cancelling last request")
+            cancelLastRequest()
         } catch (e: Exception) {
-            Log.e(TAG, "Error cancelling last request: ${e.message}")
-            false
+            Log.e(TAG, "Error cancelling request $requestId: ${e.message}")
+            throw CancellationError.UnknownError(e.message ?: "Unknown error")
         }
     }
+}
+
+/**
+ * Cancellation-specific error types
+ */
+sealed class CancellationError(message: String) : Exception(message) {
+    data class ConnectionError(override val message: String) : CancellationError(message)
+    data class UnknownError(override val message: String) : CancellationError(message)
 }
