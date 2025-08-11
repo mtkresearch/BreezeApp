@@ -341,7 +341,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         _binding?.buttonVoice?.isSelected = isListening
         // 改變按鈕圖示來表示狀態
         _binding?.buttonVoice?.setImageResource(
-            if (isListening) com.mtkresearch.breezeapp.R.drawable.ic_mic_off
+            if (isListening) com.mtkresearch.breezeapp.R.drawable.ic_stop
             else com.mtkresearch.breezeapp.R.drawable.ic_mic
         )
         _binding?.buttonVoice?.contentDescription = if (isListening) "停止語音輸入" else "開始語音輸入"

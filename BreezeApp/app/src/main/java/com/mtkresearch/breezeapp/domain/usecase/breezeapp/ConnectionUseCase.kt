@@ -43,6 +43,13 @@ class ConnectionUseCase @Inject constructor(
      * Initialize BreezeApp Engine with retry logic
      */
     suspend fun initialize(): Flow<BreezeAppConnectionState> = flow {
+        // Check if already connected, skip initialization
+        if (EdgeAI.isReady()) {
+            Log.d(TAG, "BreezeApp Engine already connected, skipping initialization")
+            emit(BreezeAppConnectionState.Connected)
+            return@flow
+        }
+        
         emit(BreezeAppConnectionState.Initializing)
         
         if (isInitializing) {
@@ -124,21 +131,23 @@ class ConnectionUseCase @Inject constructor(
     
     private suspend fun tryWakeUpService() {
         try {
-            Log.d(TAG, "Attempting to wake up BreezeApp Engine Service...")
+            Log.d(TAG, "Attempting to wake up BreezeApp Engine via Launcher Activity...")
             val intent = Intent().apply {
                 component = ComponentName(
                     "com.mtkresearch.breezeapp.engine",
-                    "com.mtkresearch.breezeapp.engine.BreezeAppEngineService"
+                    "com.mtkresearch.breezeapp.engine.ui.BreezeAppEngineLauncherActivity"
                 )
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                putExtra("auto_background", true) // Signal to go to background
             }
             
-            application.startService(intent)
-            Log.d(TAG, "Service wake-up signal sent")
+            application.startActivity(intent)
+            Log.d(TAG, "Engine launcher wake-up signal sent")
             
-            // Give the service time to start up
-            delay(1000)
+            // Give the service time to start up through launcher
+            delay(2000)
         } catch (e: Exception) {
-            Log.w(TAG, "Could not wake up service: ${e.message}")
+            Log.w(TAG, "Could not wake up engine launcher: ${e.message}")
         }
     }
     

@@ -107,7 +107,7 @@ data class AsrConfig(
     val mode: AsrMode = AsrMode.OFFLINE_FILE,
     val language: String = "en",
     val format: String = "json",
-    val maxRecordingDurationMs: Long = 15000, // 15 seconds max for offline mode 
+    val maxRecordingDurationMs: Long = 10000, // 10 seconds max for offline mode 
     val autoStopOnSilence: Boolean = true,
     val availabilityConfig: AsrAvailabilityConfig = AsrAvailabilityConfig() // Default to offline-only
 ) {

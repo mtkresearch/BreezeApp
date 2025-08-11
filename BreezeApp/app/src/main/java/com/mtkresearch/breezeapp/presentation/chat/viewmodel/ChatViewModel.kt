@@ -565,7 +565,7 @@ class ChatViewModel @Inject constructor(
             Log.d(tag, "🚀 [ROBUST] Sending ${audioData.size} bytes to BreezeApp Engine ASR...")
             
             // Call AsrFileUseCase to send audio data to BreezeApp Engine with timeout protection
-            withTimeoutOrNull(60000L) { // 30 second timeout
+            withTimeoutOrNull(120000L) { // 120 second timeout
                 asrFileUseCase.execute(audioData, _asrConfig.value.language).collect { response ->
                     // Update input text with ASR result
                     updateInputText(response.text)
@@ -591,7 +591,7 @@ class ChatViewModel @Inject constructor(
                 }
             } ?: run {
                 // Timeout occurred
-                Log.w(tag, "⏱️ [ROBUST] ASR processing timed out after 60 seconds")
+                Log.w(tag, "⏱️ [ROBUST] ASR processing timed out after 120 seconds")
                 setError("語音處理超時，請重試")
                 _isListening.value = false
                 _recordingProgress.value = 0f
