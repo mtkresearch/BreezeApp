@@ -20,6 +20,8 @@ import com.mtkresearch.breezeapp.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp.presentation.chat.adapter.MessageAdapter
 import com.mtkresearch.breezeapp.presentation.chat.model.ChatMessage
 import com.mtkresearch.breezeapp.presentation.chat.viewmodel.ChatViewModel
+import com.mtkresearch.breezeapp.domain.model.breezeapp.AsrMode
+import com.mtkresearch.breezeapp.core.audio.AudioRecordingResult
 import com.mtkresearch.breezeapp.core.utils.ErrorType
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
@@ -137,6 +139,34 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
             binding.textViewVoiceStatus.text = if (isListening) "正在聽取語音..." else ""
         }
 
+        // 觀察ASR模式配置
+        viewModel.asrConfig.collectSafely { config ->
+            val modeText = when (config.mode) {
+                AsrMode.ONLINE_STREAMING -> "線上串流"
+                AsrMode.OFFLINE_FILE -> "離線檔案"
+            }
+            binding.textViewAsrMode.text = modeText
+            
+            // Show/hide toggle button based on availability config
+            val canToggle = config.availabilityConfig.allowModeToggle && 
+                           config.availabilityConfig.getAvailableModes().size > 1
+            binding.buttonToggleAsrMode.visibility = if (canToggle) View.VISIBLE else View.GONE
+        }
+
+        // 觀察錄音進度 (僅離線模式顯示)
+        viewModel.recordingProgress.collectSafely { progress ->
+            val isOfflineMode = viewModel.asrConfig.value.mode == AsrMode.OFFLINE_FILE
+            val isListening = viewModel.isListening.value
+            
+            // 只有在離線模式且正在錄音時才顯示進度條
+            binding.layoutRecordingProgress.visibility = if (isOfflineMode && isListening) View.VISIBLE else View.GONE
+            
+            if (isOfflineMode && isListening) {
+                val progressPercent = (progress * 100).toInt()
+                binding.progressBarRecording.progress = progressPercent
+                binding.textViewRecordingProgress.text = "${progressPercent}%"
+            }
+        }
 
     }
 
@@ -224,6 +254,11 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 語音按鈕
         binding.buttonVoice.setOnClickListener {
             toggleVoiceRecognition()
+        }
+
+        // ASR模式切換按鈕 (動態顯示基於配置)
+        binding.buttonToggleAsrMode.setOnClickListener {
+            viewModel.toggleAsrMode()
         }
 
         binding.fabScrollToBottom.setOnClickListener {

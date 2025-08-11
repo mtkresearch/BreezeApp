@@ -108,21 +108,118 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <!-- 語音狀態指示器 -->
-        <TextView
-            android:id="@+id/textViewVoiceStatus"
+        <!-- ASR 模式和語音狀態區域 -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/bg_ai_message"
-            android:drawablePadding="@dimen/spacing_small"
-            android:gravity="center_vertical"
-            android:padding="@dimen/spacing_small"
-            android:text="正在聽取語音..."
-            android:textColor="@color/ai_message_text"
-            android:textSize="12sp"
-            android:visibility="gone"
-            app:drawableStartCompat="@drawable/ic_mic"
-            tools:visibility="visible" />
+            android:orientation="vertical">
+
+            <!-- ASR 模式指示器 (動態配置) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_surface_variant"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="@dimen/spacing_small">
+
+                <TextView
+                    android:id="@+id/textViewAsrModeLabel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:drawablePadding="@dimen/spacing_small"
+                    android:gravity="center_vertical"
+                    android:text="ASR模式:"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    app:drawableStartCompat="@drawable/ic_settings" />
+
+                <TextView
+                    android:id="@+id/textViewAsrMode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/spacing_small"
+                    android:background="@drawable/bg_primary_button"
+                    android:paddingStart="@dimen/spacing_small"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="@dimen/spacing_small"
+                    android:paddingBottom="2dp"
+                    android:text="離線檔案"
+                    android:textColor="@color/on_primary"
+                    android:textSize="10sp" />
+
+                <ImageButton
+                    android:id="@+id/buttonToggleAsrMode"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="切換ASR模式"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_refresh"
+                    android:visibility="gone"
+                    app:tint="@color/primary" />
+
+            </LinearLayout>
+
+            <!-- 語音狀態指示器 -->
+            <TextView
+                android:id="@+id/textViewVoiceStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ai_message"
+                android:drawablePadding="@dimen/spacing_small"
+                android:gravity="center_vertical"
+                android:padding="@dimen/spacing_small"
+                android:text="正在聽取語音..."
+                android:textColor="@color/ai_message_text"
+                android:textSize="12sp"
+                android:visibility="gone"
+                app:drawableStartCompat="@drawable/ic_mic"
+                tools:visibility="visible" />
+
+            <!-- 錄音進度條 (僅離線模式顯示) -->
+            <LinearLayout
+                android:id="@+id/layoutRecordingProgress"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_surface_variant"
+                android:orientation="horizontal"
+                android:padding="@dimen/spacing_small"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="@dimen/spacing_small"
+                    android:text="錄音中:"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <ProgressBar
+                    android:id="@+id/progressBarRecording"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="0"
+                    android:progressTint="@color/primary" />
+
+                <TextView
+                    android:id="@+id/textViewRecordingProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/spacing_small"
+                    android:text="0%"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <!-- 輸入框和按鈕區域 -->
         <LinearLayout

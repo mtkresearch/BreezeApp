@@ -20,12 +20,18 @@ import com.mtkresearch.breezeapp.domain.usecase.chat.ClearCurrentSessionUseCase
 import com.mtkresearch.breezeapp.domain.repository.ChatRepository
 import com.mtkresearch.breezeapp.domain.model.breezeapp.ConnectionState as BreezeAppConnectionState
 import com.mtkresearch.breezeapp.domain.model.breezeapp.BreezeAppError
+import com.mtkresearch.breezeapp.domain.model.breezeapp.AsrConfig
+import com.mtkresearch.breezeapp.domain.model.breezeapp.AsrMode
 import com.mtkresearch.breezeapp.core.permission.OverlayPermissionManager
+import com.mtkresearch.breezeapp.core.audio.AudioRecorder
+import com.mtkresearch.breezeapp.core.audio.AudioRecordingResult
 import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.presentation.chat.fragment.ChatFragment.Companion.TAG
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.onCompletion
 import javax.inject.Inject
 
 /**
@@ -51,6 +57,7 @@ class ChatViewModel @Inject constructor(
     private val streamingChatUseCase: StreamingChatUseCase,
     private val ttsUseCase: TtsUseCase,
     private val asrMicrophoneUseCase: AsrMicrophoneUseCase,
+    private val asrFileUseCase: AsrFileUseCase,
     private val requestCancellationUseCase: RequestCancellationUseCase,
     private val overlayPermissionManager: OverlayPermissionManager,
     private val loadRuntimeSettingsUseCase: LoadRuntimeSettingsUseCase,
@@ -62,6 +69,11 @@ class ChatViewModel @Inject constructor(
     private val tag: String = "ChatViewModel"
     private var microphoneStreamingJob: Job? = null
     private var isUserStoppingMicrophone: Boolean = false
+    private val audioRecorder = AudioRecorder()
+    
+    companion object {
+        private const val SAMPLE_RATE = 16000 // 16kHz audio sample rate
+    }
 
     /**
      * 取得應用程式字串資源
@@ -93,6 +105,14 @@ class ChatViewModel @Inject constructor(
     // 語音識別狀態
     private val _isListening = MutableStateFlow(false)
     val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
+
+    // ASR 模式配置
+    private val _asrConfig = MutableStateFlow(AsrConfig())
+    val asrConfig: StateFlow<AsrConfig> = _asrConfig.asStateFlow()
+
+    // 離線錄音進度 (0.0 - 1.0)
+    private val _recordingProgress = MutableStateFlow(0f)
+    val recordingProgress: StateFlow<Float> = _recordingProgress.asStateFlow()
 
     // 歷史會話列表 (簡化實作)
     private val _chatSessions = MutableStateFlow<List<ChatSession>>(emptyList())
@@ -279,6 +299,39 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Toggle ASR mode between available modes based on configuration
+     */
+    fun toggleAsrMode() {
+        val currentConfig = _asrConfig.value
+        
+        // Only allow toggle if configuration permits it
+        if (!currentConfig.availabilityConfig.allowModeToggle) {
+            val availableModes = currentConfig.availabilityConfig.getAvailableModes()
+            val modeText = if (availableModes.size == 1) {
+                when (availableModes.first()) {
+                    AsrMode.ONLINE_STREAMING -> "線上串流"
+                    AsrMode.OFFLINE_FILE -> "離線檔案"
+                }
+            } else "多模式"
+            setSuccess("ASR 模式已固定為: $modeText")
+            return
+        }
+        
+        val nextMode = currentConfig.getNextAvailableMode()
+        if (nextMode != null) {
+            _asrConfig.value = currentConfig.copy(mode = nextMode)
+            
+            val modeText = when (nextMode) {
+                AsrMode.ONLINE_STREAMING -> "線上串流"
+                AsrMode.OFFLINE_FILE -> "離線檔案"
+            }
+            setSuccess("ASR 模式已切換至: $modeText")
+        } else {
+            setSuccess("無可切換的 ASR 模式")
+        }
+    }
+
+    /**
      * Request overlay permission for microphone functionality
      */
     fun requestOverlayPermissionForMicrophone(context: Context) {
@@ -293,7 +346,7 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * 開始語音識別 - 增強版本包含權限檢查
+     * 開始語音識別 - 支援線上串流和離線檔案兩種模式
      */
     fun startVoiceRecognition(context: Context? = null) {
         if (_isListening.value || _isAIResponding.value) return
@@ -310,9 +363,40 @@ class ChatViewModel @Inject constructor(
         // Cancel any existing microphone streaming job
         microphoneStreamingJob?.cancel()
 
+        // Choose ASR mode based on availability configuration
+        val config = _asrConfig.value
+        
+        // Ensure current mode is available, fallback to default if not
+        val modeToUse = if (config.isCurrentModeAvailable()) {
+            config.mode
+        } else {
+            val defaultMode = config.availabilityConfig.getDefaultMode()
+            _asrConfig.value = config.copy(mode = defaultMode)
+            defaultMode
+        }
+        
+        when (modeToUse) {
+            AsrMode.ONLINE_STREAMING -> {
+                if (config.availabilityConfig.onlineStreamingEnabled) {
+                    startOnlineStreamingAsr()
+                } else {
+                    Log.w(tag, "Online streaming ASR requested but not enabled, falling back to offline")
+                    startOfflineFileAsr()
+                }
+            }
+            AsrMode.OFFLINE_FILE -> {
+                startOfflineFileAsr()
+            }
+        }
+    }
+
+    /**
+     * 開始線上串流 ASR 模式
+     */
+    private fun startOnlineStreamingAsr() {
         microphoneStreamingJob = viewModelScope.launch {
             try {
-                Log.d(tag, "🎤 Starting microphone streaming ASR...")
+                Log.d(tag, "🎤 Starting ONLINE streaming ASR...")
                 Log.d(tag, "🔄 Engine will handle microphone recording directly")
                 Log.d(tag, "✅ Overlay permission verified before starting")
                 
@@ -322,14 +406,14 @@ class ChatViewModel @Inject constructor(
                 Log.d(tag, "🔄 Sending microphone mode ASR request to engine...")
                 Log.d(tag, "   └── Engine will open microphone and process audio directly")
                 
-                asrMicrophoneUseCase.execute().collect { response ->
+                asrMicrophoneUseCase.execute(_asrConfig.value.language).collect { response ->
                     // Update input text with ASR result for real-time display
                     updateInputText(response.text)
                     
                     if (response.isChunk) {
-                        Log.d(tag, "📡 [Microphone] ${response.text}")
+                        Log.d(tag, "📡 [Online Streaming] ${response.text}")
                     } else {
-                        Log.d(tag, "✅ [Microphone Final] ${response.text}")
+                        Log.d(tag, "✅ [Online Streaming Final] ${response.text}")
                         // Final result received, but keep recording state until user stops
                         // The recording will continue until the user explicitly stops it
                     }
@@ -351,13 +435,13 @@ class ChatViewModel @Inject constructor(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 // Check if this was user-initiated (most robust approach)
                 if (isUserStoppingMicrophone) {
-                    Log.d(tag, "✅ Microphone streaming stopped by user")
+                    Log.d(tag, "✅ Online streaming ASR stopped by user")
                 } else {
-                    Log.d(tag, "⚠️ Microphone streaming cancelled unexpectedly")
+                    Log.d(tag, "⚠️ Online streaming ASR cancelled unexpectedly")
                 }
                 _isListening.value = false
             } catch (e: Exception) {
-                Log.d(tag, "❌ Failed to start microphone streaming: ${e.message}")
+                Log.d(tag, "❌ Failed to start online streaming ASR: ${e.message}")
                 _isListening.value = false
             } finally {
                 // Ensure recording state is reset when job completes
@@ -369,26 +453,222 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * 停止語音識別
+     * 開始離線檔案 ASR 模式 - ROBUST VERSION with guaranteed audio processing
+     */
+    private fun startOfflineFileAsr() {
+        microphoneStreamingJob = viewModelScope.launch {
+            var audioProcessed = false
+            var lastValidAudio: ByteArray? = null
+            
+            try {
+                Log.d(tag, "🎤 Starting OFFLINE file-based ASR (ROBUST MODE)...")
+                Log.d(tag, "🔄 Recording audio locally first, then processing through engine")
+                
+                // Set recording state to true
+                _isListening.value = true
+                _recordingProgress.value = 0f
+                
+                // Start audio recording with robust handling
+                audioRecorder.recordAudio(_asrConfig.value.maxRecordingDurationMs)
+                    .onCompletion { cause ->
+                        // ROBUST: Handle flow completion regardless of cause
+                        Log.d(tag, "🔄 [Offline] Audio recording flow completed. Cause: ${cause?.message ?: "Natural completion"}")
+                        
+                        // If audio wasn't processed yet and we have valid audio, process it now
+                        if (!audioProcessed && lastValidAudio != null && lastValidAudio!!.size > SAMPLE_RATE * 2) {
+                            Log.d(tag, "🛡️ [Offline] ROBUST FALLBACK: Processing audio from completion handler")
+                            viewModelScope.launch {
+                                processOfflineAudioFileRobust(lastValidAudio!!)
+                                audioProcessed = true
+                            }
+                        }
+                    }
+                    .collect { result ->
+                        when (result) {
+                            is AudioRecordingResult.Started -> {
+                                Log.d(tag, "🎙️ [Offline] Audio recording started")
+                            }
+                            is AudioRecordingResult.Recording -> {
+                                _recordingProgress.value = result.progress
+                                Log.d(tag, "🎙️ [Offline] Recording progress: ${(result.progress * 100).toInt()}%")
+                            }
+                            is AudioRecordingResult.Completed -> {
+                                Log.d(tag, "🎙️ [Offline] Audio recording completed: ${result.audioData.size} bytes")
+                                _recordingProgress.value = 1f
+                                lastValidAudio = result.audioData
+                                
+                                // Immediately process the recorded audio through ASR
+                                Log.d(tag, "🚀 [Offline] ROBUST: Immediately processing completed audio")
+                                processOfflineAudioFileRobust(result.audioData)
+                                audioProcessed = true
+                            }
+                            is AudioRecordingResult.Cancelled -> {
+                                Log.d(tag, "🎙️ [Offline] Audio recording cancelled by user: ${result.partialAudioData.size} bytes")
+                                lastValidAudio = result.partialAudioData
+                                
+                                // Immediately process partial audio if there's enough data
+                                if (result.partialAudioData.size > SAMPLE_RATE * 2) {
+                                    Log.d(tag, "🚀 [Offline] ROBUST: Immediately processing cancelled audio")
+                                    processOfflineAudioFileRobust(result.partialAudioData)
+                                    audioProcessed = true
+                                } else {
+                                    Log.d(tag, "ℹ️ [Offline] Not enough audio data to process (${result.partialAudioData.size} bytes)")
+                                    setSuccess("錄音已取消，音頻時間太短無法處理")
+                                    _isListening.value = false
+                                    audioProcessed = true // Mark as processed to avoid fallback
+                                }
+                            }
+                            is AudioRecordingResult.Error -> {
+                                Log.e(tag, "❌ [Offline] Recording error: ${result.message}")
+                                setError("錄音失敗: ${result.message}")
+                                _isListening.value = false
+                                audioProcessed = true // Mark as processed to avoid fallback
+                            }
+                        }
+                    }
+                
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(tag, "🛡️ [Offline] ROBUST: Handling cancellation exception")
+                
+                if (isUserStoppingMicrophone && !audioProcessed && lastValidAudio != null) {
+                    Log.d(tag, "🛡️ [Offline] ROBUST RECOVERY: Processing audio despite cancellation")
+                    if (lastValidAudio!!.size > SAMPLE_RATE * 2) {
+                        processOfflineAudioFileRobust(lastValidAudio!!)
+                        audioProcessed = true
+                    }
+                }
+                
+                audioRecorder.stopRecording()
+                _isListening.value = false
+            } catch (e: Exception) {
+                Log.e(tag, "❌ [Offline] ROBUST: Exception in ASR flow: ${e.message}")
+                audioRecorder.stopRecording()
+                _isListening.value = false
+            } finally {
+                // ROBUST: Final cleanup with guaranteed state reset
+                Log.d(tag, "🛡️ [Offline] ROBUST: Final cleanup - audio processed: $audioProcessed")
+                _isListening.value = false
+                _recordingProgress.value = 0f
+                microphoneStreamingJob = null
+                isUserStoppingMicrophone = false
+            }
+        }
+    }
+
+    /**
+     * 處理離線錄製的音頻檔案 - 立即發送到 BreezeApp Engine (ROBUST VERSION)
+     */
+    private suspend fun processOfflineAudioFileRobust(audioData: ByteArray) {
+        var asrCompleted = false
+        
+        try {
+            Log.d(tag, "🚀 [ROBUST] Sending ${audioData.size} bytes to BreezeApp Engine ASR...")
+            
+            // Call AsrFileUseCase to send audio data to BreezeApp Engine with timeout protection
+            withTimeoutOrNull(60000L) { // 30 second timeout
+                asrFileUseCase.execute(audioData, _asrConfig.value.language).collect { response ->
+                    // Update input text with ASR result
+                    updateInputText(response.text)
+                    
+                    if (response.isChunk) {
+                        Log.d(tag, "📡 [ROBUST Offline Chunk] ${response.text}")
+                    } else {
+                        Log.d(tag, "✅ [ROBUST Offline Final] ${response.text}")
+                        // ASR processing completed - reset listening state
+                        _isListening.value = false
+                        _recordingProgress.value = 0f
+                        asrCompleted = true
+                    }
+                    
+                    // Show additional details if available
+                    response.language?.let { lang ->
+                        Log.d(tag, "   └── Detected language: $lang")
+                    }
+                    
+                    response.segments?.forEach { segment ->
+                        Log.d(tag, "   └── Segment: ${segment.text} (${segment.start}s - ${segment.end}s)")
+                    }
+                }
+            } ?: run {
+                // Timeout occurred
+                Log.w(tag, "⏱️ [ROBUST] ASR processing timed out after 60 seconds")
+                setError("語音處理超時，請重試")
+                _isListening.value = false
+                _recordingProgress.value = 0f
+            }
+            
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Log.d(tag, "🛡️ [ROBUST] ASR processing cancelled")
+            _isListening.value = false
+            _recordingProgress.value = 0f
+        } catch (e: Exception) {
+            Log.e(tag, "❌ [ROBUST] Failed to process audio with BreezeApp Engine: ${e.message}")
+            setError("語音處理失敗: ${e.message}")
+            _isListening.value = false
+            _recordingProgress.value = 0f
+        } finally {
+            // ROBUST: Ensure UI state is always reset
+            if (!asrCompleted) {
+                Log.d(tag, "🛡️ [ROBUST] Ensuring UI state reset after processing")
+                _isListening.value = false
+                _recordingProgress.value = 0f
+            }
+        }
+    }
+    
+    /**
+     * 處理離線錄製的音頻檔案 - 立即發送到 BreezeApp Engine (Legacy for compatibility)
+     */
+    private suspend fun processOfflineAudioFile(audioData: ByteArray) {
+        // Delegate to robust version
+        processOfflineAudioFileRobust(audioData)
+    }
+
+    /**
+     * 停止語音識別 - ULTIMATE ROBUST VERSION: Ensures audio processing before job cancellation
      */
     fun stopVoiceRecognition() {
         if (_isListening.value) {
+            Log.d(tag, "🛑 User stopping voice recognition...")
             isUserStoppingMicrophone = true
-            microphoneStreamingJob?.cancel()
-            microphoneStreamingJob = null
             
-            // Launch coroutine for suspend function
+            // Immediate UI feedback - update state first for responsiveness
+            _isListening.value = false
+            _recordingProgress.value = 0f
+            updateCanSendMessageState()
+            
+            // ROBUST: Stop audio recorder first to trigger controlled termination
+            // This sets the manual stop flag which allows the flow to complete naturally
+            if (_asrConfig.value.mode == AsrMode.OFFLINE_FILE) {
+                Log.d(tag, "🛑 [ULTIMATE ROBUST] Triggering controlled audio recorder stop...")
+                audioRecorder.stopRecording()
+                // The AudioRecorder will now emit the final result through its normal flow
+                // and the collect loop will process it before the coroutine finishes
+            } else {
+                // For online streaming, cancel immediately
+                Log.d(tag, "🛑 Cancelling online streaming job immediately")
+                microphoneStreamingJob?.cancel()
+                microphoneStreamingJob = null
+            }
+            
+            // Cancel any ongoing engine requests (non-blocking)
             viewModelScope.launch {
                 try {
                     requestCancellationUseCase.cancelLastRequest()
+                    Log.d(tag, "✅ Engine request cancelled successfully")
                 } catch (e: Exception) {
-                    Log.w(TAG, "Failed to cancel request: ${e.message}")
+                    Log.w(tag, "⚠️ Failed to cancel engine request: ${e.message}")
                 }
             }
             
-            _isListening.value = false
-            updateCanSendMessageState() // 停止語音識別時更新按鈕狀態
-            setSuccess("語音識別已停止")
+            val currentMode = _asrConfig.value.mode
+            val modeText = when (currentMode) {
+                AsrMode.ONLINE_STREAMING -> "線上串流"
+                AsrMode.OFFLINE_FILE -> "離線檔案"
+            }
+            setSuccess("${modeText}語音識別已立即停止")
+            
+            Log.d(tag, "✅ Voice recognition stopped with ultimate robust audio processing")
         }
     }
 
