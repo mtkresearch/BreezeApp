@@ -990,9 +990,20 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 ).collect { response ->
-                    val content = response.choices.firstOrNull()?.delta?.content ?: ""
-                    if (content.isNotEmpty()) {
-                        updateMessageText(aiMessage.id, content)
+                    val choice = response.choices.firstOrNull()
+
+                    // Handle streaming delta for partial responses
+                    val deltaContent = choice?.delta?.content
+                    if (!deltaContent.isNullOrEmpty()) {
+                        accumulatedContent.append(deltaContent)
+                        updateMessageText(aiMessage.id, accumulatedContent.toString())
+                    }
+
+                    // Handle final message for robustness, which might come as `message.content`
+                    val finalContent = choice?.message?.content
+                    if (!finalContent.isNullOrEmpty()) {
+                        // This is the full, final content. Replace whatever we have.
+                        updateMessageText(aiMessage.id, finalContent)
                     }
                 }
             } else {
