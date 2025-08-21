@@ -43,10 +43,10 @@ class StreamingChatUseCase @Inject constructor() {
      * @param topK Optional top-k sampling parameter
      * @param topP Optional nucleus sampling parameter (0.0 to 1.0)
      * @param repetitionPenalty Optional repetition penalty parameter
-     * @param model Model identifier to use (defaults to breeze2)
+     * @param model Model identifier to use (defaults to empty string, letting engine decide)
      * @return Flow of ChatResponse from BreezeApp Engine
      */
-    suspend fun execute(
+    fun execute(
         prompt: String,
         systemPrompt: String = "You are a helpful AI assistant.",
         temperature: Float = 0.7f,
@@ -54,7 +54,7 @@ class StreamingChatUseCase @Inject constructor() {
         topK: Int? = null,
         topP: Float? = null,
         repetitionPenalty: Float? = null,
-        model: String = "breeze2"
+        model: String = "" // Empty string means let engine decide
     ): Flow<ChatResponse> {
         
         Log.d(TAG, "Executing streaming chat request: '$prompt'")

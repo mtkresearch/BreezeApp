@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center">
+
+    <!-- AI Engine Icon -->
+    <ImageView
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:src="@drawable/ic_settings"
+        android:layout_marginBottom="24dp"
+        android:tint="?attr/colorPrimary" />
+
+    <!-- Title -->
+    <TextView
+        style="?attr/textAppearanceHeadlineSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="AI Runtime Settings"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginBottom="16dp"
+        android:gravity="center" />
+
+    <!-- Information Text -->
+    <TextView
+        android:id="@+id/text_info"
+        style="?attr/textAppearanceBodyLarge"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="AI runtime settings are managed by the Engine app. Click below to configure runners, models, and inference parameters."
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <!-- Configure Engine Button -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_configure_engine"
+        style="@style/Widget.Material3.Button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Configure AI Engine"
+        android:drawableStart="@drawable/ic_settings"
+        android:drawablePadding="8dp"
+        app:icon="@drawable/ic_settings"
+        app:iconGravity="start" />
+
+    <!-- Spacer to push content towards center -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

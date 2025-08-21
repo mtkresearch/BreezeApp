@@ -116,7 +116,7 @@ class ConnectionUseCase @Inject constructor(
     /**
      * Manual connection attempt
      */
-    suspend fun connect(): Flow<BreezeAppConnectionState> = flow {
+    fun connect(): Flow<BreezeAppConnectionState> = flow {
         if (EdgeAI.isReady()) {
             emit(BreezeAppConnectionState.Connected)
             return@flow

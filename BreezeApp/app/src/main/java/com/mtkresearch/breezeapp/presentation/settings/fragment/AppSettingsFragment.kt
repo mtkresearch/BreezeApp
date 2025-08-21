@@ -108,6 +108,51 @@ class AppSettingsFragment : BaseFragment() {
                 viewModel.onFontSizeChanged(fontSize.scale)
             }
         }
+
+        // Configure AI Engine click listener
+        binding.layoutConfigureEngine.setOnClickListener {
+            launchEngineSettings()
+        }
+    }
+
+    /**
+     * Launch the Engine Settings Activity
+     * This follows the pure engine-centric architecture where Client only triggers
+     * Engine settings via intent, without duplicating any settings logic.
+     */
+    private fun launchEngineSettings() {
+        try {
+            val intent = android.content.Intent().apply {
+                component = android.content.ComponentName(
+                    "com.mtkresearch.breezeapp.engine",
+                    "com.mtkresearch.breezeapp.engine.ui.EngineSettingsActivity"
+                )
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            
+            startActivity(intent)
+        } catch (e: android.content.ActivityNotFoundException) {
+            // Engine app not installed or activity not found
+            showEngineNotAvailableDialog()
+        } catch (e: Exception) {
+            // Other errors
+            android.widget.Toast.makeText(
+                requireContext(),
+                "Error launching Engine settings: ${e.message}",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /**
+     * Show dialog when Engine is not available
+     */
+    private fun showEngineNotAvailableDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(requireContext())
+            .setTitle("AI Engine Not Available")
+            .setMessage("The AI Engine app is not installed or not accessible. Please ensure the BreezeApp Engine is installed and try again.")
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     override fun onDestroyView() {

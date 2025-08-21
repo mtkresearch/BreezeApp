@@ -41,7 +41,7 @@ class AsrFileUseCase @Inject constructor() {
      * @param language The language code for recognition
      * @return Flow of ASRResponse from BreezeApp Engine
      */
-    suspend fun execute(
+    fun execute(
         audioBytes: ByteArray,
         language: String = "en"
     ): Flow<ASRResponse> {

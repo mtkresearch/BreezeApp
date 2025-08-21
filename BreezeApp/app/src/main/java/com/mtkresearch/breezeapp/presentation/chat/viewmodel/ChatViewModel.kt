@@ -968,10 +968,10 @@ class ChatViewModel @Inject constructor(
 
             // 從設定中取得 LLM 參數（含預設值）
             val temperature = settings?.llmParams?.temperature ?: 0.7f
-            val topK = settings?.llmParams?.topK
-            val topP = settings?.llmParams?.topP
-            val maxTokens = settings?.llmParams?.maxTokens
-            val repetitionPenalty = settings?.llmParams?.repetitionPenalty
+            val topK = settings?.llmParams?.topK ?: 40
+            val topP = settings?.llmParams?.topP ?: 0.9f
+            val maxTokens = settings?.llmParams?.maxTokens ?: 2048
+            val repetitionPenalty = settings?.llmParams?.repetitionPenalty ?: 1.1f
             val enableStreaming = settings?.llmParams?.enableStreaming ?: true
             val systemPrompt = settings?.llmParams?.systemPrompt?.takeIf { it.isNotBlank() }
                 ?: "你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。"
