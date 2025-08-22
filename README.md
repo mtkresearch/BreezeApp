@@ -154,3 +154,14 @@ The license for this project is pending determination - see the [LICENSE](/LICEN
 [MediaTek Research](https://i.mediatek.com/mediatekresearch), a member of the [AI Alliance](https://thealliance.ai/).
 
 Contact us: [info@mtkresearch.com](info@mtkresearch.com)
+
+---
+TWM Open Source Contributions Summary:
+- [fix: gradle failed due to ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain](https://github.com/mtkresearch/BreezeApp/pull/89)
+- [fix: ClassCastException in MainActivity after closing the SettingsActivity](https://github.com/mtkresearch/BreezeApp/pull/99)
+- [Implement Instrumented Tests for LLMEngineService](https://github.com/mtkresearch/BreezeApp/pull/104)
+- [Implement Instrumented Tests for TTSEngineService, ASREngineService and VLMEngineService](https://github.com/mtkresearch/BreezeApp/pull/106)
+- [Code coverage report by unit test (Robolectric + Mockito) and instrumented test (JaCoCo) 
+](https://github.com/mtkresearch/BreezeApp/pull/107)
+
+
