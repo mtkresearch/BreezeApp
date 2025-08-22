@@ -55,23 +55,6 @@ This project aims to create a community-driven platform for running AI capabilit
   <img src="./assets/tts_en.png" width="300" alt="Text-to-Speech Demo"/>
 </p>
 
-## 🔄 Version Migration
-
-### From v1 to v2
-
-If you're upgrading from BreezeApp v1:
-
-1. **Backup your data** (if any custom configurations exist)
-2. **Uninstall the old version**
-3. **Download and install** the new v2 APK
-4. **Re-download models** through the new in-app downloader
-
-### For Developers
-
-- **Legacy Code**: v1 Java code is archived in `/legacy` directory
-- **New Development**: Use the Kotlin-based v2 architecture
-- **Migration Help**: See [Migration Guide](/docs/setup/migration.md)
-
 ## 📧 Our Purpose of Open-Sourcing
 
 We are [MediaTek Research](https://i.mediatek.com/mediatekresearch), a member of the [AI Alliance](https://thealliance.ai/).
