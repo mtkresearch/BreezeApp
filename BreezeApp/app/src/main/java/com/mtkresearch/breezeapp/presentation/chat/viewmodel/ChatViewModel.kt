@@ -990,13 +990,34 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 ).collect { response ->
+                    // Debug: Log response structure for analysis
+                    Log.d(tag, "🔍 Streaming response received - ID: ${response.id}")
+                    Log.d(tag, "   └── Object: ${response.`object`}, Model: ${response.model}")
+                    Log.d(tag, "   └── Choices count: ${response.choices.size}")
+                    
                     response.choices.forEach { choice ->
-                        // A non-null finishReason indicates the end of the stream for this choice.
-                        // We only process the delta if the stream is still ongoing (finishReason is null).
+                        Log.d(tag, "   └── Choice ${choice.index}: finishReason=${choice.finishReason}")
+                        
+                        // Process streaming content normally
                         if (choice.finishReason == null) {
                             choice.delta?.content?.let { content ->
+                                Log.d(tag, "   └── Delta content: $content")
                                 accumulatedContent.append(content)
                                 updateMessageText(aiMessage.id, accumulatedContent.toString())
+                            } ?: run {
+                                Log.d(tag, "   └── No delta content available")
+                            }
+                        } else {
+                            Log.d(tag, "   └── Stream finished with reason: ${choice.finishReason}")
+                            Log.d(tag, "   └── Final accumulated content: '${accumulatedContent.toString()}'")
+                            
+                            // Robust Guardian detection - handle empty responses
+                            if (accumulatedContent.toString().trim().isEmpty() && choice.finishReason == "stop") {
+                                Log.w(tag, "🛡️ Empty response with stop reason - Guardian blocking detected")
+                                val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
+                                updateMessageText(aiMessage.id, guardianMessage)
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
+                                return@collect
                             }
                         }
                     }
@@ -1012,14 +1033,24 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 )
+                
+                // Process response and handle empty responses (Guardian blocking)
                 val content = response.choices.firstOrNull()?.message?.content ?: ""
                 if (content.isNotEmpty()) {
                     updateMessageText(aiMessage.id, content)
+                } else {
+                    // Handle empty response in non-streaming mode  
+                    Log.w(tag, "🛡️ Empty non-streaming response - Guardian blocking detected")
+                    val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
+                    updateMessageText(aiMessage.id, guardianMessage)
+                    updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
                 }
             }
             
-            // 更新訊息狀態為正常
-            updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+            // 更新訊息狀態為正常 (只有在非錯誤情況下)
+            if (_messages.value.find { it.id == aiMessage.id }?.state != ChatMessage.MessageState.ERROR) {
+                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+            }
             
             // 更新會話
             updateCurrentSession()
@@ -1027,10 +1058,15 @@ class ChatViewModel @Inject constructor(
             setSuccess("AI回應完成")
             
         } catch (e: BreezeAppError) {
+            Log.d(tag, "🛡️ BreezeAppError caught: ${e.javaClass.simpleName} - ${e.message}")
             aiMessage?.let { message ->
+                Log.d(tag, "🔄 Updating AI message (${message.id}) with error message")
                 handleBreezeAppError(e, message)
+            } ?: run {
+                Log.e(tag, "❌ aiMessage is null, cannot update with error message")
             }
         } catch (e: Exception) {
+            Log.d(tag, "❌ Unexpected exception caught: ${e.javaClass.simpleName} - ${e.message}")
             handleAIResponseError(e)
         }
     }
@@ -1044,10 +1080,14 @@ class ChatViewModel @Inject constructor(
             is BreezeAppError.ChatError.InvalidInput -> "輸入格式不正確，請重新輸入"
             is BreezeAppError.ChatError.ModelNotFound -> "AI模型未找到，請檢查設定"
             is BreezeAppError.ChatError.GenerationFailed -> "AI回應生成失敗，請重試"
-            is BreezeAppError.ChatError.StreamingError -> "串流回應中斷，請重試"
+            is BreezeAppError.ChatError.StreamingError -> {
+                // Preserve the actual error message (may contain Guardian violation messages)
+                error.message?.takeIf { it.isNotBlank() } ?: "串流回應中斷，請重試"
+            }
             else -> "發生未知錯誤，請重試"
         }
         
+        Log.d(tag, "🛡️ Replacing '正在思考中...' with error message: $errorMessage")
         updateMessageText(aiMessage.id, errorMessage)
         updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
         setError(errorMessage)
