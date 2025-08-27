@@ -807,6 +807,20 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
+     * Appends a chunk of text to an existing message.
+     * This is the robust way to handle streaming updates.
+     */
+    private fun appendMessageText(messageId: String, chunk: String) {
+        val currentMessages = _messages.value.toMutableList()
+        val index = currentMessages.indexOfFirst { it.id == messageId }
+        if (index != -1) {
+            val oldMessage = currentMessages[index]
+            currentMessages[index] = oldMessage.copy(text = oldMessage.text + chunk)
+            _messages.value = currentMessages
+        }
+    }
+
+    /**
      * 更新當前會話
      */
     private fun updateCurrentSession() {
@@ -947,7 +961,6 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun generateAIResponseWithBreezeApp(userInput: String) {
         var aiMessage: ChatMessage? = null
-        var accumulatedContent = StringBuilder()
         try {
             // 檢查連接狀態
             if (!connectionUseCase.isConnected()) {
@@ -956,7 +969,7 @@ class ChatViewModel @Inject constructor(
             
             // 創建AI回應訊息 (初始為載入狀態)
             aiMessage = ChatMessage(
-                text = "正在思考中...",
+                text = "", // Start with empty text
                 isFromUser = false,
                 state = ChatMessage.MessageState.TYPING
             )
@@ -980,7 +993,8 @@ class ChatViewModel @Inject constructor(
             Log.d(tag, "🔥 Runtime Settings DEBUG - temperature: $temperature, topK: $topK, topP: $topP, maxTokens: $maxTokens, repetitionPenalty: $repetitionPenalty, streaming: $enableStreaming")
 
             if (enableStreaming) {
-                // 串流模式
+                // The new streaming use case is expected to handle guardian checks internally
+                // and provide the final, safe content to the ViewModel.
                 streamingChatUseCase.execute(
                     prompt = userInput,
                     systemPrompt = systemPrompt,
@@ -990,35 +1004,28 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 ).collect { response ->
-                    // Debug: Log response structure for analysis
-                    Log.d(tag, "🔍 Streaming response received - ID: ${response.id}")
-                    Log.d(tag, "   └── Object: ${response.`object`}, Model: ${response.model}")
-                    Log.d(tag, "   └── Choices count: ${response.choices.size}")
+                    // The response from the use case contains the next chunk of text.
+                    val choice = response.choices.firstOrNull()
                     
-                    response.choices.forEach { choice ->
-                        Log.d(tag, "   └── Choice ${choice.index}: finishReason=${choice.finishReason}")
-                        
-                        // Process streaming content normally
-                        if (choice.finishReason == null) {
-                            choice.delta?.content?.let { content ->
-                                Log.d(tag, "   └── Delta content: $content")
-                                accumulatedContent.append(content)
-                                updateMessageText(aiMessage.id, accumulatedContent.toString())
-                            } ?: run {
-                                Log.d(tag, "   └── No delta content available")
+                    // Only process delta content if stream is still ongoing (no finishReason)
+                    if (choice?.finishReason == null) {
+                        choice?.delta?.content?.let { chunk ->
+                            // Only append non-empty chunks to prevent UI flickering
+                            if (chunk.isNotBlank()) {
+                                appendMessageText(aiMessage.id, chunk)
                             }
+                        }
+                    }
+
+                    if (choice?.finishReason != null) {
+                        Log.d(tag, "Stream finished with reason: ${response.choices.firstOrNull()?.finishReason}")
+                        val finalMessage = _messages.value.find { it.id == aiMessage.id }
+                        if (finalMessage?.text?.isEmpty() == true) {
+                            val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
+                            updateMessageText(aiMessage.id, guardianMessage)
+                            updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
                         } else {
-                            Log.d(tag, "   └── Stream finished with reason: ${choice.finishReason}")
-                            Log.d(tag, "   └── Final accumulated content: '${accumulatedContent.toString()}'")
-                            
-                            // Robust Guardian detection - handle empty responses
-                            if (accumulatedContent.toString().trim().isEmpty() && choice.finishReason == "stop") {
-                                Log.w(tag, "🛡️ Empty response with stop reason - Guardian blocking detected")
-                                val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
-                                updateMessageText(aiMessage.id, guardianMessage)
-                                updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
-                                return@collect
-                            }
+                            updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
                         }
                     }
                 }
@@ -1092,6 +1099,8 @@ class ChatViewModel @Inject constructor(
         updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
         setError(errorMessage)
     }
+    
+    
 
     private fun playTtsForMessage(message: ChatMessage) {
         launchSafely(showLoading = false) {
@@ -1170,6 +1179,7 @@ class ChatViewModel @Inject constructor(
      */
     override fun onCleared() {
         super.onCleared()
+        
         // 保存當前會話狀態，以便下次啟動時恢復
         if (_messages.value.isNotEmpty()) {
             val currentSession = _currentSession.value.copy(
