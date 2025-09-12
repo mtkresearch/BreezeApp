@@ -1020,12 +1020,31 @@ class ChatViewModel @Inject constructor(
                     if (choice?.finishReason != null) {
                         Log.d(tag, "Stream finished with reason: ${response.choices.firstOrNull()?.finishReason}")
                         val finalMessage = _messages.value.find { it.id == aiMessage.id }
-                        if (finalMessage?.text?.isEmpty() == true) {
-                            val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
-                            updateMessageText(aiMessage.id, guardianMessage)
-                            updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
-                        } else {
-                            updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+                        Log.d(tag, "🔍 Final message check: finalMessage=${finalMessage != null}, text='${finalMessage?.text ?: "null"}'")
+                        
+                        // Handle non-streaming fallback: check multiple possible content locations
+                        val fallbackContent = choice?.message?.content?.takeIf { it.isNotBlank() }
+                            ?: choice?.delta?.content?.takeIf { it.isNotBlank() }
+                         
+                        when {
+                            // Case 1: Normal streaming - message has accumulated content
+                            finalMessage != null && finalMessage.text.isNotEmpty() -> {
+                                Log.d(tag, "✅ Case 1: Using accumulated streaming content")
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+                            }
+                            // Case 2: Non-streaming fallback - use complete content from response  
+                            fallbackContent != null -> {
+                                Log.d(tag, "✅ Case 2: Using non-streaming fallback content: '$fallbackContent'")
+                                updateMessageText(aiMessage.id, fallbackContent)
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+                            }
+                            // Case 3: Truly empty response
+                            else -> {
+                                Log.d(tag, "❌ Case 3: No content found anywhere")
+                                val errorMessage = "AI回應為空，請重試或檢查模型設定"
+                                updateMessageText(aiMessage.id, errorMessage)
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
+                            }
                         }
                     }
                 }
@@ -1042,14 +1061,29 @@ class ChatViewModel @Inject constructor(
                 )
                 
                 // Process response and handle empty responses (Guardian blocking)
-                val content = response.choices.firstOrNull()?.message?.content ?: ""
+                Log.d(tag, "🔍 Non-streaming response analysis:")
+                Log.d(tag, "   Response: $response")
+                Log.d(tag, "   Choices count: ${response.choices.size}")
+                response.choices.forEachIndexed { index, choice ->
+                    Log.d(tag, "   Choice[$index]: $choice")
+                    Log.d(tag, "   Choice[$index].message: ${choice.message}")
+                    Log.d(tag, "   Choice[$index].message?.content: '${choice.message?.content}'")
+                }
+                // Robust content extraction - try multiple possible response formats
+                val content = response.choices.firstOrNull()?.let { choice ->
+                    choice.message?.content                      // Standard format
+                        ?: choice.delta?.content                 // Streaming format fallback
+                        ?: ""
+                } ?: ""
+                
+                Log.d(tag, "   Final extracted content: '$content'")
                 if (content.isNotEmpty()) {
                     updateMessageText(aiMessage.id, content)
                 } else {
-                    // Handle empty response in non-streaming mode  
-                    Log.w(tag, "🛡️ Empty non-streaming response - Guardian blocking detected")
-                    val guardianMessage = "內容安全檢查未通過，請修改後重新發送"
-                    updateMessageText(aiMessage.id, guardianMessage)
+                    // Handle truly empty response - check if it's Guardian blocking
+                    Log.w(tag, "🛡️ Empty non-streaming response - checking for Guardian or other issues")
+                    val errorMessage = "回應生成時發生錯誤，請重試"
+                    updateMessageText(aiMessage.id, errorMessage)
                     updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
                 }
             }
