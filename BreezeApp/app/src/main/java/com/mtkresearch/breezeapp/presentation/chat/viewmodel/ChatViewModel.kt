@@ -1018,9 +1018,7 @@ class ChatViewModel @Inject constructor(
                     }
 
                     if (choice?.finishReason != null) {
-                        Log.d(tag, "Stream finished with reason: ${response.choices.firstOrNull()?.finishReason}")
                         val finalMessage = _messages.value.find { it.id == aiMessage.id }
-                        Log.d(tag, "🔍 Final message check: finalMessage=${finalMessage != null}, text='${finalMessage?.text ?: "null"}'")
                         
                         // Handle non-streaming fallback: check multiple possible content locations
                         val fallbackContent = choice?.message?.content?.takeIf { it.isNotBlank() }
@@ -1029,18 +1027,15 @@ class ChatViewModel @Inject constructor(
                         when {
                             // Case 1: Normal streaming - message has accumulated content
                             finalMessage != null && finalMessage.text.isNotEmpty() -> {
-                                Log.d(tag, "✅ Case 1: Using accumulated streaming content")
                                 updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
                             }
                             // Case 2: Non-streaming fallback - use complete content from response  
                             fallbackContent != null -> {
-                                Log.d(tag, "✅ Case 2: Using non-streaming fallback content: '$fallbackContent'")
                                 updateMessageText(aiMessage.id, fallbackContent)
                                 updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
                             }
                             // Case 3: Truly empty response
                             else -> {
-                                Log.d(tag, "❌ Case 3: No content found anywhere")
                                 val errorMessage = "AI回應為空，請重試或檢查模型設定"
                                 updateMessageText(aiMessage.id, errorMessage)
                                 updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
@@ -1060,15 +1055,6 @@ class ChatViewModel @Inject constructor(
                     repetitionPenalty = repetitionPenalty
                 )
                 
-                // Process response and handle empty responses (Guardian blocking)
-                Log.d(tag, "🔍 Non-streaming response analysis:")
-                Log.d(tag, "   Response: $response")
-                Log.d(tag, "   Choices count: ${response.choices.size}")
-                response.choices.forEachIndexed { index, choice ->
-                    Log.d(tag, "   Choice[$index]: $choice")
-                    Log.d(tag, "   Choice[$index].message: ${choice.message}")
-                    Log.d(tag, "   Choice[$index].message?.content: '${choice.message?.content}'")
-                }
                 // Robust content extraction - try multiple possible response formats
                 val content = response.choices.firstOrNull()?.let { choice ->
                     choice.message?.content                      // Standard format
@@ -1076,7 +1062,6 @@ class ChatViewModel @Inject constructor(
                         ?: ""
                 } ?: ""
                 
-                Log.d(tag, "   Final extracted content: '$content'")
                 if (content.isNotEmpty()) {
                     updateMessageText(aiMessage.id, content)
                 } else {
@@ -1099,15 +1084,12 @@ class ChatViewModel @Inject constructor(
             setSuccess("AI回應完成")
             
         } catch (e: BreezeAppError) {
-            Log.d(tag, "🛡️ BreezeAppError caught: ${e.javaClass.simpleName} - ${e.message}")
             aiMessage?.let { message ->
-                Log.d(tag, "🔄 Updating AI message (${message.id}) with error message")
                 handleBreezeAppError(e, message)
             } ?: run {
                 Log.e(tag, "❌ aiMessage is null, cannot update with error message")
             }
         } catch (e: Exception) {
-            Log.d(tag, "❌ Unexpected exception caught: ${e.javaClass.simpleName} - ${e.message}")
             handleAIResponseError(e)
         }
     }
@@ -1128,7 +1110,6 @@ class ChatViewModel @Inject constructor(
             else -> "發生未知錯誤，請重試"
         }
         
-        Log.d(tag, "🛡️ Replacing '正在思考中...' with error message: $errorMessage")
         updateMessageText(aiMessage.id, errorMessage)
         updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
         setError(errorMessage)
