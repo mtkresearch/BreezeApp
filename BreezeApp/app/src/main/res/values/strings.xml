@@ -406,4 +406,183 @@
     <!-- Progress -->
     <string name="progress_percent">%d%%</string>
     <string name="progress_of" formatted="false">%d / %d</string>
+
+    <!-- ================================ -->
+    <!-- ChatViewModel Specific Strings -->
+    <!-- ================================ -->
+    
+    <!-- Input validation -->
+    <string name="error_message_cannot_be_empty">訊息不能為空</string>
+    
+    <!-- AI Thinking states -->
+    <string name="ai_thinking_message">正在思考中…</string>
+    
+    <!-- AI Response messages -->
+    <string name="ai_response_completed">AI回應完成</string>
+    <string name="ai_response_completed_simulation">AI回應完成 (模擬模式)</string>
+    <string name="ai_response_failed">AI回應失敗: %s</string>
+    <string name="ai_response_retry_completed">AI回應重試完成</string>
+    <string name="ai_response_error_retry">抱歉，我遇到了一些問題。請點擊重試。</string>
+    <string name="ai_response_empty_retry_check_settings">AI回應為空，請重試或檢查模型設定</string>
+    <string name="ai_response_generation_error_retry">回應生成時發生錯誤，請重試</string>
+    
+    <!-- ASR Mode messages -->
+    <string name="asr_mode_online_streaming">線上串流</string>
+    <string name="asr_mode_offline_file">離線檔案</string>
+    <string name="asr_mode_multiple">多模式</string>
+    <string name="asr_mode_fixed_to">ASR 模式已固定為: %s</string>
+    <string name="asr_mode_switched_to">ASR 模式已切換至: %s</string>
+    <string name="asr_mode_no_switchable">無可切換的 ASR 模式</string>
+    
+    <!-- Permission messages -->
+    <string name="overlay_permission_granted">覆蓋權限已授予</string>
+    <string name="overlay_permission_required_for_voice">需要覆蓋權限才能使用語音功能，請在設定中授予權限</string>
+    
+    <!-- Recording messages -->
+    <string name="recording_cancelled_too_short">錄音已取消，音頻時間太短無法處理</string>
+    <string name="recording_failed">錄音失敗: %s</string>
+    <string name="voice_processing_timeout_retry">語音處理超時，請重試</string>
+    <string name="voice_processing_failed">語音處理失敗: %s</string>
+    <string name="voice_recognition_stopped_immediately">%s語音識別已立即停止</string>
+    
+    <!-- Chat management -->
+    <string name="chat_history_cleared">聊天記錄已清空</string>
+    <string name="new_conversation_created">已創建新對話</string>
+    <string name="conversation_loaded">已載入對話: %s</string>
+    <string name="new_conversation">新對話</string>
+    
+    <!-- Message interactions -->
+    <string name="thank_you_positive_feedback">感謝您的正面回饋</string>
+    <string name="will_improve_ai_quality">我們會改進AI回應品質</string>
+    <string name="long_press_feature_in_development">長按功能正在開發中</string>
+    <string name="image_preview_feature_in_development">圖片預覽功能正在開發中</string>
+    
+    <!-- Mock responses -->
+    <string name="mock_response_1">這是一個很有趣的問題！讓我來為您分析一下...</string>
+    <string name="mock_response_2">根據您的描述，我建議您可以考慮以下幾個方面：</string>
+    <string name="mock_response_3">我理解您的需求，這裡有一些可能對您有幫助的建議：</string>
+    <string name="mock_response_4">這個話題很值得探討，從我的角度來看...</string>
+    <string name="mock_response_5">感謝您的提問！我認為您可以從這個角度來思考：</string>
+    <string name="mock_response_6">基於您提供的資訊，我的建議是...</string>
+    <string name="mock_response_7">這確實是一個重要的問題，讓我為您詳細說明一下：</string>
+    <string name="mock_response_8">我很樂意為您解答這個問題！首先...</string>
+    <string name="mock_response_suffix">（這是Phase 1.3的模擬回應，真實的AI整合將在Phase 4實作）</string>
+    
+    <!-- Mock voice recognition -->
+    <string name="mock_voice_1">你好，請幫我解答一個問題</string>
+    <string name="mock_voice_2">今天天氣如何</string>
+    <string name="mock_voice_3">請介紹一下這個應用程式的功能</string>
+    <string name="mock_voice_4">我想了解AI技術的發展</string>
+    <string name="mock_voice_5">可以給我一些學習建議嗎</string>
+    
+    <!-- Engine connection -->
+    <string name="breezeapp_engine_connected">BreezeApp Engine 連接成功</string>
+    <string name="breezeapp_engine_connection_failed">BreezeApp Engine 連接失敗: %s</string>
+    <string name="breezeapp_engine_not_connected">BreezeApp Engine 未連接</string>
+    <string name="breezeapp_engine_reconnected">BreezeApp Engine 重連成功</string>
+    <string name="breezeapp_engine_reconnection_failed">BreezeApp Engine 重連失敗: %s</string>
+    
+    <!-- Error messages -->
+    <string name="breezeapp_engine_connection_interrupted">BreezeApp Engine 連接中斷，請檢查連接狀態</string>
+    <string name="input_format_incorrect">輸入格式不正確，請重新輸入</string>
+    <string name="ai_model_not_found">AI模型未找到，請檢查設定</string>
+    <string name="ai_response_generation_failed">AI回應生成失敗，請重試</string>
+    <string name="streaming_response_interrupted">串流回應中斷，請重試</string>
+    <string name="unknown_error_retry">發生未知錯誤，請重試</string>
+    
+    <!-- TTS messages -->
+    <string name="cannot_play_empty_or_loading_message">無法播放空白或載入中的訊息</string>
+    <string name="voice_playback_completed">語音播放完畢</string>
+    
+    <!-- System prompt -->
+    <string name="default_system_prompt">你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。</string>
+    
+    <!-- ================================ -->
+    <!-- UI Layout Strings -->
+    <!-- ================================ -->
+    
+    <!-- Runtime Settings -->
+    <string name="ai_inference_parameter_settings">AI推論參數設定</string>
+    <string name="change_log">變更記錄</string>
+    <string name="no_changes_made">尚未進行任何變更</string>
+    <string name="apply_changes">應用變更</string>
+    
+    <!-- Home Screen -->
+    <string name="select_feature">選擇功能</string>
+    <string name="ai_chat">AI 聊天</string>
+    <string name="intelligent_conversation_with_ai">與AI進行智能對話</string>
+    <string name="personalized_settings_and_preferences">個人化設定和偏好</string>
+    <string name="download_management">下載管理</string>
+    <string name="manage_ai_model_and_resource_downloads">管理AI模型和資源下載</string>
+    <string name="enter">進入</string>
+    
+    <!-- Chat Screen -->
+    <string name="ai_is_responding">AI正在回應中...</string>
+    <string name="asr_mode">ASR模式:</string>
+    <string name="switch_asr_mode">切換ASR模式</string>
+    <string name="listening_to_voice">正在聽取語音...</string>
+    <string name="recording">錄音中:</string>
+    <string name="voice_input">語音輸入</string>
+    <string name="type_message">輸入訊息...</string>
+    <string name="send_message">發送訊息</string>
+    
+    <!-- Placeholder Screen -->
+    <string name="feature_title">功能標題</string>
+    <string name="feature_not_implemented">此功能尚未實作</string>
+    <string name="under_development_with_icon">🚧 開發中...</string>
+    
+    <!-- Content Descriptions -->
+    <string name="chat_description">聊天</string>
+    <string name="download_description">下載</string>
+    
+    <!-- ================================ -->
+    <!-- Fragment Specific Strings -->
+    <!-- ================================ -->
+    
+    <!-- Home Fragment -->
+    <string name="feature_coming_soon_message">%s 將在未來版本中推出，敬請期待！</string>
+    <string name="download_management_feature">下載管理功能</string>
+    
+    <!-- Base Fragment -->
+    <string name="permission_required_message">需要權限才能正常使用此功能</string>
+    
+    <!-- ================================ -->
+    <!-- Guardian Violation Messages (S1-S13) -->
+    <!-- ================================ -->
+    
+    <!-- Violation Categories (Official S1-S13 Taxonomy) -->
+    <string name="guardian_violation_s1_category">暴力犯罪</string>
+    <string name="guardian_violation_s2_category">非暴力犯罪</string>
+    <string name="guardian_violation_s3_category">性相關犯罪</string>
+    <string name="guardian_violation_s4_category">兒童性剝削</string>
+    <string name="guardian_violation_s5_category">誹謗</string>
+    <string name="guardian_violation_s6_category">專業建議</string>
+    <string name="guardian_violation_s7_category">隱私</string>
+    <string name="guardian_violation_s8_category">智慧財產權</string>
+    <string name="guardian_violation_s9_category">無差別武器</string>
+    <string name="guardian_violation_s10_category">仇恨</string>
+    <string name="guardian_violation_s11_category">自殺及自傷</string>
+    <string name="guardian_violation_s12_category">性內容</string>
+    <string name="guardian_violation_s13_category">選舉</string>
+    
+    <!-- Violation Messages (Official S1-S13 Taxonomy) -->
+    <string name="guardian_violation_s1_message">您的訊息可能包含暴力犯罪相關內容，包括對人類或動物的非法暴力行為</string>
+    <string name="guardian_violation_s2_message">您的訊息可能包含非暴力犯罪相關內容，包括個人、金融、財產、毒品、武器或網路犯罪</string>
+    <string name="guardian_violation_s3_message">您的訊息可能包含性相關犯罪內容，包括性販賣、性侵犯或性騷擾</string>
+    <string name="guardian_violation_s4_message">您的訊息可能包含兒童性剝削相關內容</string>
+    <string name="guardian_violation_s5_message">您的訊息可能包含誹謗內容，即可驗證為虛假且可能損害他人名譽的資訊</string>
+    <string name="guardian_violation_s6_message">您的訊息可能包含專業建議，包括金融、醫療或法律建議，或表示危險活動或物體安全</string>
+    <string name="guardian_violation_s7_message">您的訊息可能包含敏感的非公開個人資訊，可能危及他人的安全</string>
+    <string name="guardian_violation_s8_message">您的訊息可能侵犯第三方的智慧財產權</string>
+    <string name="guardian_violation_s9_message">您的訊息可能包含無差別武器相關內容，包括化學、生物、放射性、核武器或高爆炸性武器</string>
+    <string name="guardian_violation_s10_message">您的訊息可能包含仇恨言論，即基於敏感個人特徵貶低或去人性化他人的內容</string>
+    <string name="guardian_violation_s11_message">您的訊息可能包含自殺及自傷相關內容，包括自殺、自傷或飲食失調</string>
+    <string name="guardian_violation_s12_message">您的訊息可能包含色情內容</string>
+    <string name="guardian_violation_s13_message">您的訊息可能包含關於選舉系統和程序的事實錯誤資訊</string>
+    
+    <!-- Connection and Error Messages -->
+    <string name="guardian_connection_error">連線錯誤</string>
+    <string name="guardian_analysis_error_type">分析錯誤</string>
+    <string name="guardian_service_unavailable">Guardian服務暫時無法使用，系統已自動通過此訊息</string>
+    <string name="guardian_analysis_error">Guardian分析發生錯誤，系統已自動通過此訊息</string>
 </resources>

@@ -47,7 +47,7 @@
             android:background="@color/ai_message_bg"
             android:gravity="center"
             android:padding="@dimen/spacing_small"
-            android:text="AI正在回應中..."
+            android:text="@string/ai_is_responding"
             android:textColor="@color/ai_message_text"
             android:textSize="14sp"
             android:visibility="gone"
@@ -130,7 +130,7 @@
                     android:layout_weight="1"
                     android:drawablePadding="@dimen/spacing_small"
                     android:gravity="center_vertical"
-                    android:text="ASR模式:"
+                    android:text="@string/asr_mode"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     app:drawableStartCompat="@drawable/ic_settings" />
@@ -145,7 +145,7 @@
                     android:paddingTop="2dp"
                     android:paddingEnd="@dimen/spacing_small"
                     android:paddingBottom="2dp"
-                    android:text="離線檔案"
+                    android:text="@string/asr_mode_offline_file"
                     android:textColor="@color/on_primary"
                     android:textSize="10sp" />
 
@@ -154,7 +154,7 @@
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="切換ASR模式"
+                    android:contentDescription="@string/switch_asr_mode"
                     android:scaleType="centerInside"
                     android:src="@drawable/ic_refresh"
                     android:visibility="gone"
@@ -171,7 +171,7 @@
                 android:drawablePadding="@dimen/spacing_small"
                 android:gravity="center_vertical"
                 android:padding="@dimen/spacing_small"
-                android:text="正在聽取語音..."
+                android:text="@string/listening_to_voice"
                 android:textColor="@color/ai_message_text"
                 android:textSize="12sp"
                 android:visibility="gone"
@@ -193,7 +193,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="@dimen/spacing_small"
-                    android:text="錄音中:"
+                    android:text="@string/recording"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
 
@@ -237,7 +237,7 @@
                 android:layout_marginEnd="@dimen/spacing_small"
                 android:background="@drawable/bg_circle_button"
                 android:src="@drawable/ic_mic"
-                android:contentDescription="語音輸入"
+                android:contentDescription="@string/voice_input"
                 android:scaleType="centerInside"
                 android:padding="12dp"
                 app:tint="@color/on_primary" />
@@ -249,7 +249,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:background="@drawable/bg_input_container"
-                android:hint="輸入訊息..."
+                android:hint="@string/type_message"
                 android:imeOptions="actionSend"
                 android:inputType="textMultiLine|textCapSentences"
                 android:maxLines="4"
@@ -267,7 +267,7 @@
                 android:layout_marginStart="@dimen/spacing_small"
                 android:background="@drawable/bg_circle_button"
                 android:src="@drawable/ic_send"
-                android:contentDescription="發送訊息"
+                android:contentDescription="@string/send_message"
                 android:scaleType="centerInside"
                 android:padding="12dp"
                 app:tint="@color/on_primary" />

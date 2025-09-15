@@ -15,6 +15,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.databinding.FragmentChatBinding
 import com.mtkresearch.breezeapp.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp.presentation.chat.adapter.MessageAdapter
@@ -129,21 +130,21 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 觀察AI回應狀態
         viewModel.isAIResponding.collectSafely { isResponding ->
             binding.textViewAIStatus.visibility = if (isResponding) View.VISIBLE else View.GONE
-            binding.textViewAIStatus.text = if (isResponding) "AI正在思考和回應中..." else ""
+            binding.textViewAIStatus.text = if (isResponding) getString(R.string.ai_thinking_and_responding) else ""
         }
 
         // 觀察語音識別狀態
         viewModel.isListening.collectSafely { isListening ->
             updateVoiceButton(isListening)
             binding.textViewVoiceStatus.visibility = if (isListening) View.VISIBLE else View.GONE
-            binding.textViewVoiceStatus.text = if (isListening) "正在聽取語音..." else ""
+            binding.textViewVoiceStatus.text = if (isListening) getString(R.string.listening_to_voice) else ""
         }
 
         // 觀察ASR模式配置
         viewModel.asrConfig.collectSafely { config ->
             val modeText = when (config.mode) {
-                AsrMode.ONLINE_STREAMING -> "線上串流"
-                AsrMode.OFFLINE_FILE -> "離線檔案"
+                AsrMode.ONLINE_STREAMING -> getString(R.string.asr_mode_online_streaming)
+                AsrMode.OFFLINE_FILE -> getString(R.string.asr_mode_offline_file)
             }
             binding.textViewAsrMode.text = modeText
             
@@ -239,7 +240,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         }
 
         // 設置輸入框提示文字
-        binding.editTextMessage.hint = "輸入訊息..."
+        binding.editTextMessage.hint = getString(R.string.type_message)
     }
 
     /**

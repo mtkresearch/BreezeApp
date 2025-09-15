@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.mtkresearch.breezeapp.R
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.google.android.material.snackbar.Snackbar
@@ -90,7 +91,7 @@ abstract class BaseFragment : Fragment() {
         view?.let { view ->
             val snackbar = Snackbar.make(view, message, Snackbar.LENGTH_LONG)
             action?.let { actionCallback ->
-                snackbar.setAction("重試") { actionCallback() }
+                snackbar.setAction(getString(R.string.retry)) { actionCallback() }
             }
             snackbar.show()
         }
@@ -153,7 +154,7 @@ abstract class BaseFragment : Fragment() {
      * 權限被拒絕時的處理
      */
     protected open fun onPermissionsDenied(permissions: List<String>) {
-        showError("需要權限才能正常使用此功能")
+        showError(getString(R.string.permission_required_message))
     }
 
     /**

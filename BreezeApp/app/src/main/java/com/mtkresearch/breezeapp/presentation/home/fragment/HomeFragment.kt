@@ -72,7 +72,7 @@ class HomeFragment : Fragment() {
 
         // 下載按鈕
         binding.buttonDownload.setOnClickListener {
-            showComingSoon("下載管理功能")
+            showComingSoon(getString(R.string.download_management_feature))
         }
     }
 
@@ -94,9 +94,9 @@ class HomeFragment : Fragment() {
      */
     private fun showComingSoon(featureName: String) {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("即將推出")
-            .setMessage("$featureName 將在未來版本中推出，敬請期待！")
-            .setPositiveButton("確定", null)
+            .setTitle(getString(R.string.coming_soon))
+            .setMessage(getString(R.string.feature_coming_soon_message, featureName))
+            .setPositiveButton(getString(R.string.ok), null)
             .show()
     }
 

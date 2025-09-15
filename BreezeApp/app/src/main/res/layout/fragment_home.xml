@@ -80,7 +80,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_medium"
             android:gravity="start"
-            android:text="選擇功能"
+            android:text="@string/select_feature"
             android:textColor="@color/text_primary"
             android:textSize="@dimen/text_size_large"
             android:textStyle="bold" />
@@ -109,7 +109,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:layout_marginEnd="@dimen/spacing_medium"
-                    android:contentDescription="聊天"
+                    android:contentDescription="@string/chat_description"
                     android:src="@drawable/ic_chat"
                     app:tint="@color/on_primary" />
 
@@ -122,7 +122,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="AI 聊天"
+                        android:text="@string/ai_chat"
                         android:textColor="@color/on_primary"
                         android:textSize="@dimen/text_size_subtitle"
                         android:textStyle="bold" />
@@ -131,7 +131,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="與AI進行智能對話"
+                        android:text="@string/intelligent_conversation_with_ai"
                         android:textColor="@color/on_primary"
                         android:textSize="@dimen/text_size_small" />
 
@@ -140,7 +140,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="進入"
+                    android:contentDescription="@string/enter"
                     android:src="@drawable/ic_arrow_forward"
                     app:tint="@color/on_primary" />
 
@@ -174,7 +174,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:layout_marginEnd="@dimen/spacing_medium"
-                    android:contentDescription="設定"
+                    android:contentDescription="@string/settings_description"
                     android:src="@drawable/ic_settings"
                     app:tint="@color/text_primary" />
 
@@ -187,7 +187,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="設定"
+                        android:text="@string/settings"
                         android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size_subtitle"
                         android:textStyle="bold" />
@@ -196,7 +196,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="個人化設定和偏好"
+                        android:text="@string/personalized_settings_and_preferences"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/text_size_small" />
 
@@ -205,7 +205,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="進入"
+                    android:contentDescription="@string/enter"
                     android:src="@drawable/ic_arrow_forward"
                     app:tint="@color/text_secondary" />
 
@@ -238,7 +238,7 @@
                     android:layout_width="32dp"
                     android:layout_height="32dp"
                     android:layout_marginEnd="@dimen/spacing_medium"
-                    android:contentDescription="下載"
+                    android:contentDescription="@string/download_description"
                     android:src="@drawable/ic_download"
                     app:tint="@color/text_primary" />
 
@@ -251,7 +251,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="下載管理"
+                        android:text="@string/download_management"
                         android:textColor="@color/text_primary"
                         android:textSize="@dimen/text_size_subtitle"
                         android:textStyle="bold" />
@@ -260,7 +260,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="管理AI模型和資源下載"
+                        android:text="@string/manage_ai_model_and_resource_downloads"
                         android:textColor="@color/text_secondary"
                         android:textSize="@dimen/text_size_small" />
 
@@ -269,7 +269,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:contentDescription="進入"
+                    android:contentDescription="@string/enter"
                     android:src="@drawable/ic_arrow_forward"
                     app:tint="@color/text_secondary" />
 
