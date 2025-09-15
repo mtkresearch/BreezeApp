@@ -82,7 +82,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
                     binding.errorView.showError(
                         type = ErrorType.AI_PROCESSING,
                         message = state.message,
-                        showRetry = true
+                        showRetry = false
                     )
                 }
                 com.mtkresearch.breezeapp.presentation.common.base.UiState.SUCCESS -> {

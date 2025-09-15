@@ -18,30 +18,13 @@
         android:padding="@dimen/container_padding_large"
         android:gravity="center">
 
-        <!-- Close Button (Top Right) -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end">
-
-            <ImageButton
-                android:id="@+id/closeButton"
-                android:layout_width="@dimen/touch_target_size"
-                android:layout_height="@dimen/touch_target_size"
-                android:background="@android:color/transparent"
-                android:src="@drawable/ic_close"
-                android:contentDescription="@string/close"
-                android:padding="@dimen/spacing_small" />
-
-        </LinearLayout>
-
         <!-- Error Icon -->
         <ImageView
             android:id="@+id/errorIcon"
             android:layout_width="@dimen/error_icon_size"
             android:layout_height="@dimen/error_icon_size"
             android:layout_marginBottom="@dimen/spacing_medium"
+            android:src="@drawable/ic_error"
             android:contentDescription="@string/error_icon_description" />
 
         <!-- Error Title -->
@@ -103,8 +86,17 @@
                 android:id="@+id/supportButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="@dimen/spacing_small"
                 android:text="@string/contact_support"
                 android:visibility="gone" />
+
+            <!-- Close Button -->
+            <Button
+                android:id="@+id/closeButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/close"
+                android:padding="@dimen/spacing_small" />
 
         </LinearLayout>
 
