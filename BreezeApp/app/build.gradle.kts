@@ -42,8 +42,8 @@ android {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 35
         targetSdk = 35
-        versionCode = 33
-        versionName = "2.1.0"
+        versionCode = 34
+        versionName = "2.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -88,7 +88,9 @@ android {
 
 dependencies {
     // BreezeApp Engine SDK
-    implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.7")
+    // Use local EdgeAI SDK with updated permission
+    implementation(project(":EdgeAI"))
+    // implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.7")
     
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.6.1")
