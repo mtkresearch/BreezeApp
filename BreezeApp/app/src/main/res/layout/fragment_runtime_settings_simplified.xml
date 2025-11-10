@@ -32,7 +32,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="AI runtime settings are managed by the Engine app. Click below to configure runners, models, and inference parameters."
-        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textColor="?android:textColorSecondary"
         android:gravity="center"
         android:layout_marginBottom="32dp" />
 
