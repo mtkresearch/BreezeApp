@@ -60,3 +60,5 @@ BreezeApp-client/.gradle/
 BreezeApp-client/.idea/
 
 internal_dev/
+*.aab
+*.apk

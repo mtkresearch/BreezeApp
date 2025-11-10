@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "BreezeApp"
 include(":app")
+include(":EdgeAI")
+project(":EdgeAI").projectDir = file("../BreezeApp-engine/android/EdgeAI")

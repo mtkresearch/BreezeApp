@@ -87,10 +87,9 @@ android {
 }
 
 dependencies {
-    // BreezeApp Engine SDK
-    // Use local EdgeAI SDK with updated permission
+    // BreezeApp Engine SDK (using local until v0.1.8 is published)
     implementation(project(":EdgeAI"))
-    // implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.7")
+    // implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.8")
     
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.6.1")

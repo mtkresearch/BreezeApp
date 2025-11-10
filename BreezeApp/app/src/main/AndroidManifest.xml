@@ -12,7 +12,7 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
     <!-- AI Engine Service Permission -->
-    <uses-permission android:name="com.mtkresearch.breezeapp.permission.BIND_AI_ROUTER_SERVICE" />
+    <uses-permission android:name="com.mtkresearch.breezeapp.permission.BIND_ENGINE_SERVICE" />
     
     <!-- Overlay Permission for Engine Foreground Service -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
