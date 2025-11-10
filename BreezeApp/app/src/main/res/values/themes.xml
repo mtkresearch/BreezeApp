@@ -26,17 +26,17 @@
         <item name="colorPrimaryVariant">@color/primary_dark</item>
         <item name="colorOnPrimary">@color/on_primary</item>
         <item name="colorOnSurface">@color/text_primary</item>
-        
+
         <!-- Secondary colors -->
         <item name="colorSecondary">@color/secondary</item>
         <item name="colorSecondaryVariant">@color/secondary_dark</item>
         <item name="colorOnSecondary">@color/on_secondary</item>
-        
+
         <!-- Background colors -->
         <item name="android:colorBackground">@color/background</item>
         <item name="colorSurface">@color/surface</item>
         <item name="android:windowBackground">@color/background</item>
-        
+
         <!-- Text colors -->
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
@@ -60,6 +60,11 @@
         <item name="textAppearanceButton">@style/TextAppearance.App.Button</item>
         <item name="textAppearanceCaption">@style/TextAppearance.App.Caption</item>
         <item name="textAppearanceOverline">@style/TextAppearance.App.Overline</item>
+
+        <!-- Material 3 text appearances -->
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.App.Headline5</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.App.Body1</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.App.Body2</item>
         
         <!-- Material Components customization -->
         <item name="materialButtonStyle">@style/Widget.App.Button</item>
