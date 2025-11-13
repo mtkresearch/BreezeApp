@@ -40,10 +40,10 @@ android {
 
     defaultConfig {
         applicationId = "com.mtkresearch.breezeapp"
-        minSdk = 35
+        minSdk = 34
         targetSdk = 35
-        versionCode = 35
-        versionName = "2.1.2"
+        versionCode = 36
+        versionName = "2.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
