@@ -114,14 +114,21 @@ class ChatViewModel @Inject constructor(
     private val _recordingProgress = MutableStateFlow(0f)
     val recordingProgress: StateFlow<Float> = _recordingProgress.asStateFlow()
 
+    // TTS 播放狀態 - 當前正在播放TTS的訊息ID (null表示沒有播放)
+    private val _currentlyPlayingMessageId = MutableStateFlow<String?>(null)
+    val currentlyPlayingMessageId: StateFlow<String?> = _currentlyPlayingMessageId.asStateFlow()
+
+    // TTS 播放任務
+    private var currentTtsJob: Job? = null
+
     // 歷史會話列表 (簡化實作)
     private val _chatSessions = MutableStateFlow<List<ChatSession>>(emptyList())
     val chatSessions: StateFlow<List<ChatSession>> = _chatSessions.asStateFlow()
-    
+
     // BreezeApp Engine 連接狀態
     private val _connectionState = MutableStateFlow<BreezeAppConnectionState>(BreezeAppConnectionState.Disconnected)
     val connectionState: StateFlow<BreezeAppConnectionState> = _connectionState.asStateFlow()
-    
+
     // 當前串流請求ID
     private var currentStreamingRequestId: String? = null
 
@@ -1118,7 +1125,21 @@ class ChatViewModel @Inject constructor(
     
 
     private fun playTtsForMessage(message: ChatMessage) {
-        launchSafely(showLoading = false) {
+        // Simple approach: Only allow ONE TTS at a time
+        // If TTS is already playing, show friendly message to user
+        if (_currentlyPlayingMessageId.value != null) {
+            Log.d(TAG, "TTS already playing for message ${_currentlyPlayingMessageId.value}, ignoring request")
+            setSuccess(getApplicationString(R.string.tts_already_playing_please_wait))
+            return
+        }
+
+        // Cancel any existing TTS job (safety check)
+        currentTtsJob?.cancel()
+
+        // Mark this message as currently playing
+        _currentlyPlayingMessageId.value = message.id
+
+        currentTtsJob = viewModelScope.launch {
             try {
                 if (!connectionUseCase.isConnected()) {
                     throw BreezeAppError.ConnectionError.ServiceDisconnected(getApplicationString(R.string.breezeapp_engine_not_connected))
@@ -1127,10 +1148,10 @@ class ChatViewModel @Inject constructor(
                 // 從當前狀態獲取最新的訊息內容，避免使用過期的訊息引用
                 val currentMessage = _messages.value.find { it.id == message.id }
                 val textToSpeak = currentMessage?.text ?: message.text
-                
+
                 if (textToSpeak.isEmpty() || textToSpeak == getApplicationString(R.string.ai_thinking_message)) {
                     setError(getApplicationString(R.string.cannot_play_empty_or_loading_message))
-                    return@launchSafely
+                    return@launch
                 }
 
                 ttsUseCase.execute(textToSpeak).collect { response ->
@@ -1139,14 +1160,33 @@ class ChatViewModel @Inject constructor(
                 }
                 // TTS stream completed
                 setSuccess(getApplicationString(R.string.voice_playback_completed))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "TTS playback cancelled")
+                throw e
             } catch (e: BreezeAppError) {
                 // 使用當前訊息進行錯誤處理
                 val currentMessage = _messages.value.find { it.id == message.id } ?: message
                 handleBreezeAppError(e, currentMessage)
             } catch (e: Exception) {
                 handleAIResponseError(e)
+            } finally {
+                // Always clear the playing state when done
+                if (_currentlyPlayingMessageId.value == message.id) {
+                    _currentlyPlayingMessageId.value = null
+                }
+                currentTtsJob = null
             }
         }
+    }
+
+    /**
+     * Stop current TTS playback
+     */
+    fun stopCurrentTts() {
+        currentTtsJob?.cancel()
+        currentTtsJob = null
+        _currentlyPlayingMessageId.value = null
+        Log.d(TAG, "🛑 TTS playback stopped")
     }
     
     /**

@@ -158,10 +158,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         viewModel.recordingProgress.collectSafely { progress ->
             val isOfflineMode = viewModel.asrConfig.value.mode == AsrMode.OFFLINE_FILE
             val isListening = viewModel.isListening.value
-            
+
             // 只有在離線模式且正在錄音時才顯示進度條
             binding.layoutRecordingProgress.visibility = if (isOfflineMode && isListening) View.VISIBLE else View.GONE
-            
+
             if (isOfflineMode && isListening) {
                 val progressPercent = (progress * 100).toInt()
                 binding.progressBarRecording.progress = progressPercent
@@ -171,8 +171,16 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
 
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Stop TTS immediately when user leaves the activity
+        viewModel.stopCurrentTts()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
+        // Stop TTS when view is destroyed
+        viewModel.stopCurrentTts()
         _binding = null
     }
 
