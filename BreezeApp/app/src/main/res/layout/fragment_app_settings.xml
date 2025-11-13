@@ -185,7 +185,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="Runners, models, and inference settings"
-                    android:textColor="?android:textColorSecondary" />
+                    android:textColor="?android:attr/textColorSecondary" />
             </LinearLayout>
 
             <ImageView
@@ -195,7 +195,7 @@
                 android:layout_centerVertical="true"
                 android:src="@drawable/ic_arrow_forward"
                 android:contentDescription="Configure Engine"
-                android:tint="?android:textColorSecondary" />
+                android:tint="?android:attr/textColorSecondary" />
         </RelativeLayout>
 
 
