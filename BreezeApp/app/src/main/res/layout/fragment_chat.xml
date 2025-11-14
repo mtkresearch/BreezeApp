@@ -82,7 +82,7 @@
             android:layout_marginBottom="@dimen/spacing_medium"
             android:clickable="true"
             android:focusable="true"
-            android:contentDescription="Scroll to bottom"
+            android:contentDescription="@string/scroll_to_bottom"
             android:src="@android:drawable/stat_sys_download_done"
             android:visibility="gone"
             app:backgroundTint="@color/primary"

@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.databinding.FragmentAppSettingsBinding
 import com.mtkresearch.breezeapp.domain.model.settings.FontSize
 import com.mtkresearch.breezeapp.domain.model.settings.ThemeMode
@@ -138,7 +139,7 @@ class AppSettingsFragment : BaseFragment() {
             // Other errors
             android.widget.Toast.makeText(
                 requireContext(),
-                "Error launching Engine settings: ${e.message}",
+                getString(R.string.error_launching_engine_settings, e.message),
                 android.widget.Toast.LENGTH_LONG
             ).show()
         }
@@ -149,9 +150,9 @@ class AppSettingsFragment : BaseFragment() {
      */
     private fun showEngineNotAvailableDialog() {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("AI Engine Not Available")
-            .setMessage("The AI Engine app is not installed or not accessible. Please ensure the BreezeApp Engine is installed and try again.")
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .setTitle(R.string.ai_engine_not_available_title)
+            .setMessage(R.string.ai_engine_not_available_message_short)
+            .setPositiveButton(R.string.ok) { dialog, _ -> dialog.dismiss() }
             .show()
     }
 

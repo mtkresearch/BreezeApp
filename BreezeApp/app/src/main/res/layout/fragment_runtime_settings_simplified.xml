@@ -20,7 +20,7 @@
         style="?attr/textAppearanceHeadlineSmall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="AI Runtime Settings"
+        android:text="@string/ai_runtime_settings"
         android:textColor="?attr/colorOnSurface"
         android:layout_marginBottom="16dp"
         android:gravity="center" />
@@ -31,7 +31,7 @@
         style="?attr/textAppearanceBodyLarge"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="AI runtime settings are managed by the Engine app. Click below to configure runners, models, and inference parameters."
+        android:text="@string/ai_runtime_settings_info"
         android:textColor="?android:textColorSecondary"
         android:gravity="center"
         android:layout_marginBottom="32dp" />
@@ -42,7 +42,7 @@
         style="@style/Widget.Material3.Button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Configure AI Engine"
+        android:text="@string/configure_ai_engine_button"
         android:drawableStart="@drawable/ic_settings"
         android:drawablePadding="8dp"
         app:icon="@drawable/ic_settings"

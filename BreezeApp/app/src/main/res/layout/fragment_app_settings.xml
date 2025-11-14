@@ -19,7 +19,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="8dp"
-            android:text="Appearance"
+            android:text="@string/appearance"
             android:textColor="?attr/colorPrimary"
             android:textStyle="bold" />
 
@@ -30,7 +30,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:minHeight="48dp"
-            android:text="Dark Mode" />
+            android:text="@string/dark_mode" />
 
         <!-- Theme Color -->
         <RelativeLayout
@@ -51,7 +51,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
-                android:text="Theme Color" />
+                android:text="@string/theme_color" />
 
             <View
                 android:id="@+id/view_theme_color_preview"
@@ -68,7 +68,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Font Size" />
+            android:text="@string/font_size" />
 
         <com.google.android.material.slider.Slider
             android:id="@+id/slider_font_size"
@@ -87,7 +87,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp"
-            android:text="General"
+            android:text="@string/general"
             android:textColor="?attr/colorPrimary"
             android:textStyle="bold" />
 
@@ -109,7 +109,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
-                android:text="Language" />
+                android:text="@string/language" />
 
             <TextView
                 android:id="@+id/text_current_language"
@@ -131,7 +131,7 @@
             android:minHeight="48dp"
             android:enabled="false"
             android:alpha="0.5"
-            android:text="Enable Notifications" />
+            android:text="@string/enable_notifications" />
 
         <!-- Animations -->
         <com.google.android.material.materialswitch.MaterialSwitch
@@ -143,7 +143,7 @@
             android:minHeight="48dp"
             android:enabled="false"
             android:alpha="0.5"
-            android:text="Enable Animations" />
+            android:text="@string/enable_animations" />
 
         <!-- AI Engine Section -->
         <TextView
@@ -152,7 +152,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp"
-            android:text="AI Engine"
+            android:text="@string/ai_engine"
             android:textColor="?attr/colorPrimary"
             android:textStyle="bold" />
 
@@ -177,14 +177,14 @@
                     style="?attr/textAppearanceBodyLarge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Configure AI Engine" />
+                    android:text="@string/configure_ai_engine" />
 
                 <TextView
                     style="?attr/textAppearanceBodyMedium"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
-                    android:text="Runners, models, and inference settings"
+                    android:text="@string/configure_ai_engine_description"
                     android:textColor="?android:attr/textColorSecondary" />
             </LinearLayout>
 
@@ -194,7 +194,7 @@
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
                 android:src="@drawable/ic_arrow_forward"
-                android:contentDescription="Configure Engine"
+                android:contentDescription="@string/configure_engine_content_desc"
                 android:tint="?android:attr/textColorSecondary" />
         </RelativeLayout>
 
@@ -206,7 +206,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="8dp"
-            android:text="Data &amp; Backup"
+            android:text="@string/data_and_backup"
             android:textColor="?attr/colorPrimary"
             android:textStyle="bold" />
 
@@ -228,7 +228,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
-                android:text="Storage Location" />
+                android:text="@string/storage_location" />
 
             <TextView
                 android:id="@+id/text_current_storage_location"
@@ -250,7 +250,7 @@
             android:minHeight="48dp"
             android:enabled="false"
             android:alpha="0.5"
-            android:text="Auto Backup" />
+            android:text="@string/auto_backup" />
 
     </LinearLayout>
 </ScrollView> 

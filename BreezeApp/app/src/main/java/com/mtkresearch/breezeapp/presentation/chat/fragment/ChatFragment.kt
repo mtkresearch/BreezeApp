@@ -380,12 +380,12 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun showClearChatConfirmation() {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("清空聊天記錄")
-            .setMessage("確定要清空所有聊天記錄嗎？此操作無法復原。")
-            .setPositiveButton("確定") { _, _ ->
+            .setTitle(getString(R.string.dialog_clear_chat_title))
+            .setMessage(getString(R.string.dialog_clear_chat_message))
+            .setPositiveButton(getString(R.string.dialog_confirm)) { _, _ ->
                 viewModel.clearChat()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.dialog_cancel), null)
             .show()
     }
 
@@ -460,18 +460,18 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         val options = mutableListOf<String>()
 
         // 添加複製選項
-        options.add("複製文字")
+        options.add(getString(R.string.action_copy_message))
 
         // 如果是AI訊息，添加重新生成選項
         if (!message.isFromUser) {
-            options.add("重新生成回應")
+            options.add(getString(R.string.action_regenerate_response))
         }
 
         // 添加分享選項
-        options.add("分享訊息")
+        options.add(getString(R.string.action_share_message))
 
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("訊息操作")
+            .setTitle(getString(R.string.action_message_operations))
             .setItems(options.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> copyMessageToClipboard(message)
@@ -491,9 +491,9 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun copyMessageToClipboard(message: ChatMessage) {
         val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val clip = android.content.ClipData.newPlainText("訊息", message.text)
+        val clip = android.content.ClipData.newPlainText(getString(R.string.clipboard_label_message), message.text)
         clipboard.setPrimaryClip(clip)
-        showSuccess("訊息已複製到剪貼簿")
+        showSuccess(getString(R.string.feedback_message_copied))
     }
 
     /**
