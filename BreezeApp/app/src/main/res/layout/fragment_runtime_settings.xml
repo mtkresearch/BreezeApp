@@ -17,7 +17,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="AI推論參數設定"
+            android:text="@string/ai_inference_parameter_settings"
             android:textSize="18sp"
             android:textStyle="bold"
             android:gravity="center"
@@ -106,7 +106,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="變更記錄"
+                android:text="@string/change_log"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_secondary"
@@ -116,7 +116,7 @@
                 android:id="@+id/text_validation"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="尚未進行任何變更"
+                android:text="@string/no_changes_made"
                 android:textSize="14sp"
                 android:textColor="@color/text_secondary" />
 
@@ -139,7 +139,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="取消"
+                android:text="@string/cancel"
                 android:textSize="16sp"
                 android:layout_marginEnd="8dp"
                 style="@style/Widget.Material3.Button.TextButton"
@@ -151,7 +151,7 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="應用變更"
+                android:text="@string/apply_changes"
                 android:textSize="16sp"
                 android:layout_marginStart="8dp"
                 style="@style/Widget.Material3.Button"

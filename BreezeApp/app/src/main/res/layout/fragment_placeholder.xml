@@ -21,7 +21,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
-        android:text="功能標題"
+        android:text="@string/feature_title"
         android:textAppearance="@style/TextAppearance.Material3.HeadlineMedium"
         android:textColor="@color/text_primary" />
 
@@ -31,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="此功能尚未實作"
+        android:text="@string/feature_not_implemented"
         android:textAppearance="@style/TextAppearance.Material3.BodyLarge"
         android:textColor="@color/text_secondary" />
 
@@ -40,7 +40,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:text="🚧 開發中..."
+        android:text="@string/under_development_with_icon"
         android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
         android:textColor="@color/text_secondary" />
 

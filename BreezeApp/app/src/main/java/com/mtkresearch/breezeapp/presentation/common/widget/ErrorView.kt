@@ -46,6 +46,7 @@ class ErrorView @JvmOverloads constructor(
 
     // UI組件
     private lateinit var errorContainer: View
+    private lateinit var closeButton: Button
     private lateinit var errorIcon: ImageView
     private lateinit var errorTitle: TextView
     private lateinit var errorMessage: TextView
@@ -62,6 +63,7 @@ class ErrorView @JvmOverloads constructor(
     private var onRetryListener: (() -> Unit)? = null
     private var onDetailsListener: (() -> Unit)? = null
     private var onSupportListener: (() -> Unit)? = null
+    private var onCloseListener: (() -> Unit)? = null
 
     init {
         initializeView()
@@ -78,6 +80,7 @@ class ErrorView @JvmOverloads constructor(
         
         // 綁定UI組件
         errorContainer = findViewById(R.id.errorContainer)
+        closeButton = findViewById(R.id.closeButton)
         errorIcon = findViewById(R.id.errorIcon)
         errorTitle = findViewById(R.id.errorTitle)
         errorMessage = findViewById(R.id.errorMessage)
@@ -136,6 +139,11 @@ class ErrorView @JvmOverloads constructor(
      * 設置點擊監聽器
      */
     private fun setupClickListeners() {
+        closeButton.setOnClickListener {
+            hide()
+            onCloseListener?.invoke()
+        }
+        
         retryButton.setOnClickListener { 
             onRetryListener?.invoke()
         }
@@ -259,6 +267,11 @@ class ErrorView @JvmOverloads constructor(
      * 應用按鈕主題
      */
     private fun applyButtonTheme() {
+        // 關閉按鈕 - 使用主色調
+        val closeColors = ColorUtils.getButtonColors(context, enabled = true)
+        closeButton.setTextColor(closeColors.textColor)
+        closeButton.setBackgroundColor(closeColors.backgroundColor)
+        
         // 重試按鈕 - 使用主色調
         val retryColors = ColorUtils.getButtonColors(context, enabled = true)
         retryButton.setTextColor(retryColors.textColor)
@@ -347,11 +360,7 @@ class ErrorView @JvmOverloads constructor(
      * 設置關閉點擊監聽器
      */
     fun setOnCloseClickListener(listener: (() -> Unit)?) {
-        // 關閉即隱藏錯誤視圖
-        setOnClickListener { 
-            hide()
-            listener?.invoke()
-        }
+        onCloseListener = listener
     }
 
     /**

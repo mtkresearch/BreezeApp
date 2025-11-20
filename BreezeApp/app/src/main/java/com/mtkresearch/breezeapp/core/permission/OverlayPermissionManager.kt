@@ -100,21 +100,12 @@ class OverlayPermissionManager @Inject constructor() {
         }
         
         AlertDialog.Builder(context)
-            .setTitle("語音錄音權限")
-            .setMessage("""
-                為了提供語音識別功能，需要允許 BreezeApp 在其他應用程式上層顯示。
-                
-                這個權限用於：
-                • 啟動語音錄音引擎
-                • 顯示錄音狀態指示器
-                • 確保語音功能正常運作
-                
-                請在下一個畫面中允許「顯示在其他應用程式上層」權限。
-            """.trimIndent())
-            .setPositiveButton("前往設定") { _, _ ->
+            .setTitle(context.getString(com.mtkresearch.breezeapp.R.string.overlay_permission_title))
+            .setMessage(context.getString(com.mtkresearch.breezeapp.R.string.overlay_permission_message))
+            .setPositiveButton(context.getString(com.mtkresearch.breezeapp.R.string.overlay_permission_go_to_settings)) { _, _ ->
                 launchPermissionSettings(context)
             }
-            .setNegativeButton("取消") { _, _ ->
+            .setNegativeButton(context.getString(com.mtkresearch.breezeapp.R.string.cancel)) { _, _ ->
                 incrementDenialCount(context)
                 onPermissionResult?.invoke(false)
             }
@@ -199,15 +190,7 @@ class OverlayPermissionManager @Inject constructor() {
     /**
      * Get user-friendly explanation for overlay permission
      */
-    fun getOverlayPermissionExplanation(): String {
-        return """
-            BreezeApp 需要「顯示在其他應用程式上層」權限來：
-            
-            1. 啟動語音識別引擎
-            2. 在錄音時顯示狀態指示器
-            3. 確保語音功能在背景正常運作
-            
-            這個權限不會用於廣告或其他干擾性內容。
-        """.trimIndent()
+    fun getOverlayPermissionExplanation(context: Context): String {
+        return context.getString(com.mtkresearch.breezeapp.R.string.overlay_permission_explanation)
     }
 }

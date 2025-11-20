@@ -4,7 +4,17 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- File/document icon -->
     <path
         android:fillColor="@android:color/black"
-        android:pathData="M6,2c-1.1,0 -1.99,0.9 -1.99,2L4,20c0,1.1 0.89,2 2,2h8l6,-6V8l-6,-6H6zM13,9V3.5L18.5,9H13z"/>
+        android:pathData="M14,2H6C4.9,2 4,2.9 4,4v16c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V8L14,2z"/>
+    <!-- File corner fold -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.3"
+        android:pathData="M14,2v6h6L14,2z"/>
+    <!-- Error X mark (red) -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M14,11l-1.5,1.5L11,11l-1.5,1.5L8,11l1.5,-1.5L8,8l1.5,1.5L11,8l1.5,1.5L14,8l-1.5,1.5L14,11z M11,14l-1.5,1.5L11,17l1.5,-1.5L14,17l-1.5,-1.5L14,14l-1.5,1.5L11,14z"/>
 </vector> 

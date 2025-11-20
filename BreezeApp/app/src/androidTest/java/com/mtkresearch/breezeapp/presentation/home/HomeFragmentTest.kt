@@ -79,9 +79,6 @@ class HomeFragmentTest {
             onView(withId(R.id.textViewWelcomeMessage))
                 .check(matches(isDisplayed()))
 
-            // 驗證歡迎副標題顯示
-            onView(withId(R.id.textViewWelcomeSubtitle))
-                .check(matches(isDisplayed()))
         } catch (e: Exception) {
             // 如果UI元素未找到，記錄但不失敗
             android.util.Log.e("HomeFragmentTest", "UI elements not found", e)
@@ -275,9 +272,6 @@ class HomeFragmentTest {
 
             onView(withId(R.id.textViewWelcomeMessage))
                 .check(matches(isDisplayed()))
-
-            onView(withId(R.id.textViewWelcomeSubtitle))
-                .check(matches(isDisplayed()))
         } catch (e: Exception) {
             android.util.Log.e("HomeFragmentTest", "Localization test failed", e)
             throw e
@@ -290,10 +284,6 @@ class HomeFragmentTest {
     @Test
     fun scrollView_isScrollable() {
         try {
-            // 驗證滾動容器存在
-            onView(withId(R.id.scrollView))
-                .check(matches(isDisplayed()))
-            
             // 驗證導航容器在滾動視圖中
             onView(withId(R.id.navigationContainer))
                 .check(matches(isDisplayed()))

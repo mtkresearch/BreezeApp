@@ -15,6 +15,7 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.mtkresearch.breezeapp.R
 import com.mtkresearch.breezeapp.databinding.FragmentChatBinding
 import com.mtkresearch.breezeapp.presentation.common.base.BaseFragment
 import com.mtkresearch.breezeapp.presentation.chat.adapter.MessageAdapter
@@ -81,7 +82,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
                     binding.errorView.showError(
                         type = ErrorType.AI_PROCESSING,
                         message = state.message,
-                        showRetry = true
+                        showRetry = false
                     )
                 }
                 com.mtkresearch.breezeapp.presentation.common.base.UiState.SUCCESS -> {
@@ -129,21 +130,21 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         // 觀察AI回應狀態
         viewModel.isAIResponding.collectSafely { isResponding ->
             binding.textViewAIStatus.visibility = if (isResponding) View.VISIBLE else View.GONE
-            binding.textViewAIStatus.text = if (isResponding) "AI正在思考和回應中..." else ""
+            binding.textViewAIStatus.text = if (isResponding) getString(R.string.ai_thinking_and_responding) else ""
         }
 
         // 觀察語音識別狀態
         viewModel.isListening.collectSafely { isListening ->
             updateVoiceButton(isListening)
             binding.textViewVoiceStatus.visibility = if (isListening) View.VISIBLE else View.GONE
-            binding.textViewVoiceStatus.text = if (isListening) "正在聽取語音..." else ""
+            binding.textViewVoiceStatus.text = if (isListening) getString(R.string.listening_to_voice) else ""
         }
 
         // 觀察ASR模式配置
         viewModel.asrConfig.collectSafely { config ->
             val modeText = when (config.mode) {
-                AsrMode.ONLINE_STREAMING -> "線上串流"
-                AsrMode.OFFLINE_FILE -> "離線檔案"
+                AsrMode.ONLINE_STREAMING -> getString(R.string.asr_mode_online_streaming)
+                AsrMode.OFFLINE_FILE -> getString(R.string.asr_mode_offline_file)
             }
             binding.textViewAsrMode.text = modeText
             
@@ -157,10 +158,10 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         viewModel.recordingProgress.collectSafely { progress ->
             val isOfflineMode = viewModel.asrConfig.value.mode == AsrMode.OFFLINE_FILE
             val isListening = viewModel.isListening.value
-            
+
             // 只有在離線模式且正在錄音時才顯示進度條
             binding.layoutRecordingProgress.visibility = if (isOfflineMode && isListening) View.VISIBLE else View.GONE
-            
+
             if (isOfflineMode && isListening) {
                 val progressPercent = (progress * 100).toInt()
                 binding.progressBarRecording.progress = progressPercent
@@ -170,8 +171,16 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
 
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Stop TTS immediately when user leaves the activity
+        viewModel.stopCurrentTts()
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
+        // Stop TTS when view is destroyed
+        viewModel.stopCurrentTts()
         _binding = null
     }
 
@@ -239,7 +248,7 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         }
 
         // 設置輸入框提示文字
-        binding.editTextMessage.hint = "輸入訊息..."
+        binding.editTextMessage.hint = getString(R.string.type_message)
     }
 
     /**
@@ -371,12 +380,12 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun showClearChatConfirmation() {
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("清空聊天記錄")
-            .setMessage("確定要清空所有聊天記錄嗎？此操作無法復原。")
-            .setPositiveButton("確定") { _, _ ->
+            .setTitle(getString(R.string.dialog_clear_chat_title))
+            .setMessage(getString(R.string.dialog_clear_chat_message))
+            .setPositiveButton(getString(R.string.dialog_confirm)) { _, _ ->
                 viewModel.clearChat()
             }
-            .setNegativeButton("取消", null)
+            .setNegativeButton(getString(R.string.dialog_cancel), null)
             .show()
     }
 
@@ -451,18 +460,18 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
         val options = mutableListOf<String>()
 
         // 添加複製選項
-        options.add("複製文字")
+        options.add(getString(R.string.action_copy_message))
 
         // 如果是AI訊息，添加重新生成選項
         if (!message.isFromUser) {
-            options.add("重新生成回應")
+            options.add(getString(R.string.action_regenerate_response))
         }
 
         // 添加分享選項
-        options.add("分享訊息")
+        options.add(getString(R.string.action_share_message))
 
         androidx.appcompat.app.AlertDialog.Builder(requireContext())
-            .setTitle("訊息操作")
+            .setTitle(getString(R.string.action_message_operations))
             .setItems(options.toTypedArray()) { _, which ->
                 when (which) {
                     0 -> copyMessageToClipboard(message)
@@ -482,9 +491,9 @@ class ChatFragment : BaseFragment(), MessageAdapter.MessageInteractionListener {
      */
     private fun copyMessageToClipboard(message: ChatMessage) {
         val clipboard = requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-        val clip = android.content.ClipData.newPlainText("訊息", message.text)
+        val clip = android.content.ClipData.newPlainText(getString(R.string.clipboard_label_message), message.text)
         clipboard.setPrimaryClip(clip)
-        showSuccess("訊息已複製到剪貼簿")
+        showSuccess(getString(R.string.feedback_message_copied))
     }
 
     /**

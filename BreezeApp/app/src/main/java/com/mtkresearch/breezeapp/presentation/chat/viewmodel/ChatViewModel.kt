@@ -114,14 +114,21 @@ class ChatViewModel @Inject constructor(
     private val _recordingProgress = MutableStateFlow(0f)
     val recordingProgress: StateFlow<Float> = _recordingProgress.asStateFlow()
 
+    // TTS 播放狀態 - 當前正在播放TTS的訊息ID (null表示沒有播放)
+    private val _currentlyPlayingMessageId = MutableStateFlow<String?>(null)
+    val currentlyPlayingMessageId: StateFlow<String?> = _currentlyPlayingMessageId.asStateFlow()
+
+    // TTS 播放任務
+    private var currentTtsJob: Job? = null
+
     // 歷史會話列表 (簡化實作)
     private val _chatSessions = MutableStateFlow<List<ChatSession>>(emptyList())
     val chatSessions: StateFlow<List<ChatSession>> = _chatSessions.asStateFlow()
-    
+
     // BreezeApp Engine 連接狀態
     private val _connectionState = MutableStateFlow<BreezeAppConnectionState>(BreezeAppConnectionState.Disconnected)
     val connectionState: StateFlow<BreezeAppConnectionState> = _connectionState.asStateFlow()
-    
+
     // 當前串流請求ID
     private var currentStreamingRequestId: String? = null
 
@@ -157,7 +164,7 @@ class ChatViewModel @Inject constructor(
         // 檢查是否在語音識別中或AI回應中，如果是則直接返回不執行
         if (messageText.isEmpty() || _isAIResponding.value || _isListening.value) return
 
-        if (!validateInput(messageText.isNotBlank(), "訊息不能為空")) return
+        if (!validateInput(messageText.isNotBlank(), getApplicationString(R.string.error_message_cannot_be_empty))) return
 
         launchSafely(showLoading = false) {
             // 創建用戶訊息 - 直接設為正常狀態
@@ -209,7 +216,7 @@ class ChatViewModel @Inject constructor(
         try {
             // 創建AI回應訊息 (初始為載入狀態)
             val aiMessage = ChatMessage(
-                text = "正在思考中...",
+                text = getApplicationString(R.string.ai_thinking_message),
                 isFromUser = false,
                 state = ChatMessage.MessageState.TYPING
             )
@@ -228,7 +235,7 @@ class ChatViewModel @Inject constructor(
             // 更新會話
             updateCurrentSession()
             
-            setSuccess("AI回應完成 (模擬模式)")
+            setSuccess(getApplicationString(R.string.ai_response_completed_simulation))
 
         } catch (e: Exception) {
             handleAIResponseError(e)
@@ -242,11 +249,11 @@ class ChatViewModel @Inject constructor(
         // 找到最後一條AI訊息並標記為錯誤
         val lastAIMessage = _messages.value.lastOrNull { !it.isFromUser }
         lastAIMessage?.let { message ->
-            updateMessageText(message.id, "抱歉，我遇到了一些問題。請點擊重試。")
+            updateMessageText(message.id, getApplicationString(R.string.ai_response_error_retry))
             updateMessageState(message.id, ChatMessage.MessageState.ERROR)
         }
         
-        setError("AI回應失敗: ${error.message}")
+        setError(getApplicationString(R.string.ai_response_failed).format(error.message))
     }
 
     /**
@@ -263,7 +270,7 @@ class ChatViewModel @Inject constructor(
                 val lastAIMessage = _messages.value.lastOrNull { !it.isFromUser }
                 if (lastAIMessage != null) {
                     // 重置AI訊息為載入狀態
-                    updateMessageText(lastAIMessage.id, "正在思考中...")
+                    updateMessageText(lastAIMessage.id, getApplicationString(R.string.ai_thinking_message))
                     updateMessageState(lastAIMessage.id, ChatMessage.MessageState.TYPING)
                     
                     // 模擬AI思考時間
@@ -274,7 +281,7 @@ class ChatViewModel @Inject constructor(
                     updateMessageText(lastAIMessage.id, response)
                     updateMessageState(lastAIMessage.id, ChatMessage.MessageState.NORMAL)
                     
-                    setSuccess("AI回應重試完成")
+                    setSuccess(getApplicationString(R.string.ai_response_retry_completed))
                 } else {
                     // 如果沒有AI訊息，創建新的
                     generateAIResponse(lastUserMessage.text)
@@ -309,11 +316,11 @@ class ChatViewModel @Inject constructor(
             val availableModes = currentConfig.availabilityConfig.getAvailableModes()
             val modeText = if (availableModes.size == 1) {
                 when (availableModes.first()) {
-                    AsrMode.ONLINE_STREAMING -> "線上串流"
-                    AsrMode.OFFLINE_FILE -> "離線檔案"
+                    AsrMode.ONLINE_STREAMING -> getApplicationString(R.string.asr_mode_online_streaming)
+                    AsrMode.OFFLINE_FILE -> getApplicationString(R.string.asr_mode_offline_file)
                 }
-            } else "多模式"
-            setSuccess("ASR 模式已固定為: $modeText")
+            } else getApplicationString(R.string.asr_mode_multiple)
+            setSuccess(getApplicationString(R.string.asr_mode_fixed_to).format(modeText))
             return
         }
         
@@ -322,12 +329,12 @@ class ChatViewModel @Inject constructor(
             _asrConfig.value = currentConfig.copy(mode = nextMode)
             
             val modeText = when (nextMode) {
-                AsrMode.ONLINE_STREAMING -> "線上串流"
-                AsrMode.OFFLINE_FILE -> "離線檔案"
+                AsrMode.ONLINE_STREAMING -> getApplicationString(R.string.asr_mode_online_streaming)
+                AsrMode.OFFLINE_FILE -> getApplicationString(R.string.asr_mode_offline_file)
             }
-            setSuccess("ASR 模式已切換至: $modeText")
+            setSuccess(getApplicationString(R.string.asr_mode_switched_to).format(modeText))
         } else {
-            setSuccess("無可切換的 ASR 模式")
+            setSuccess(getApplicationString(R.string.asr_mode_no_switchable))
         }
     }
 
@@ -337,7 +344,7 @@ class ChatViewModel @Inject constructor(
     fun requestOverlayPermissionForMicrophone(context: Context) {
         if (overlayPermissionManager.isOverlayPermissionGranted(context)) {
             _overlayPermissionGranted.value = true
-            setSuccess("覆蓋權限已授予")
+            setSuccess(getApplicationString(R.string.overlay_permission_granted))
             return
         }
         
@@ -355,7 +362,7 @@ class ChatViewModel @Inject constructor(
         context?.let { ctx ->
             if (!overlayPermissionManager.isOverlayPermissionGranted(ctx)) {
                 Log.w(tag, "⚠️ Overlay permission not granted - this may cause FGS_MICROPHONE to fail")
-                setError("需要覆蓋權限才能使用語音功能，請在設定中授予權限")
+                setError(getApplicationString(R.string.overlay_permission_required_for_voice))
                 return
             }
         }
@@ -513,14 +520,14 @@ class ChatViewModel @Inject constructor(
                                     audioProcessed = true
                                 } else {
                                     Log.d(tag, "ℹ️ [Offline] Not enough audio data to process (${result.partialAudioData.size} bytes)")
-                                    setSuccess("錄音已取消，音頻時間太短無法處理")
+                                    setSuccess(getApplicationString(R.string.recording_cancelled_too_short))
                                     _isListening.value = false
                                     audioProcessed = true // Mark as processed to avoid fallback
                                 }
                             }
                             is AudioRecordingResult.Error -> {
                                 Log.e(tag, "❌ [Offline] Recording error: ${result.message}")
-                                setError("錄音失敗: ${result.message}")
+                                setError(getApplicationString(R.string.recording_failed).format(result.message))
                                 _isListening.value = false
                                 audioProcessed = true // Mark as processed to avoid fallback
                             }
@@ -592,7 +599,7 @@ class ChatViewModel @Inject constructor(
             } ?: run {
                 // Timeout occurred
                 Log.w(tag, "⏱️ [ROBUST] ASR processing timed out after 120 seconds")
-                setError("語音處理超時，請重試")
+                setError(getApplicationString(R.string.voice_processing_timeout_retry))
                 _isListening.value = false
                 _recordingProgress.value = 0f
             }
@@ -603,7 +610,7 @@ class ChatViewModel @Inject constructor(
             _recordingProgress.value = 0f
         } catch (e: Exception) {
             Log.e(tag, "❌ [ROBUST] Failed to process audio with BreezeApp Engine: ${e.message}")
-            setError("語音處理失敗: ${e.message}")
+            setError(getApplicationString(R.string.voice_processing_failed).format(e.message))
             _isListening.value = false
             _recordingProgress.value = 0f
         } finally {
@@ -663,10 +670,10 @@ class ChatViewModel @Inject constructor(
             
             val currentMode = _asrConfig.value.mode
             val modeText = when (currentMode) {
-                AsrMode.ONLINE_STREAMING -> "線上串流"
-                AsrMode.OFFLINE_FILE -> "離線檔案"
+                AsrMode.ONLINE_STREAMING -> getApplicationString(R.string.asr_mode_online_streaming)
+                AsrMode.OFFLINE_FILE -> getApplicationString(R.string.asr_mode_offline_file)
             }
-            setSuccess("${modeText}語音識別已立即停止")
+            setSuccess(getApplicationString(R.string.voice_recognition_stopped_immediately).format(modeText))
             
             Log.d(tag, "✅ Voice recognition stopped with ultimate robust audio processing")
         }
@@ -689,7 +696,7 @@ class ChatViewModel @Inject constructor(
             clearCurrentSessionUseCase()
         }
         
-        setSuccess("聊天記錄已清空")
+        setSuccess(getApplicationString(R.string.chat_history_cleared))
         // 不自動重新載入歡迎訊息，讓測試可以驗證空狀態
     }
 
@@ -717,7 +724,7 @@ class ChatViewModel @Inject constructor(
         // 加載歡迎訊息
         loadWelcomeMessage()
         
-        setSuccess("已創建新對話")
+        setSuccess(getApplicationString(R.string.new_conversation_created))
     }
 
     /**
@@ -730,7 +737,7 @@ class ChatViewModel @Inject constructor(
         _canSendMessage.value = false
         _isAIResponding.value = false
         updateCanSendMessageState() // 確保狀態一致
-        setSuccess("已載入對話: ${session.title}")
+        setSuccess(getApplicationString(R.string.conversation_loaded).format(session.title))
     }
 
     /**
@@ -754,9 +761,9 @@ class ChatViewModel @Inject constructor(
             MessageAction.LIKE_CLICK -> {
                 val isPositive = extra as? Boolean ?: true
                 if (isPositive) {
-                    setSuccess("感謝您的正面回饋")
+                    setSuccess(getApplicationString(R.string.thank_you_positive_feedback))
                 } else {
-                    setSuccess("我們會改進AI回應品質")
+                    setSuccess(getApplicationString(R.string.will_improve_ai_quality))
                 }
             }
             MessageAction.RETRY_CLICK -> {
@@ -764,11 +771,11 @@ class ChatViewModel @Inject constructor(
             }
             MessageAction.LONG_CLICK -> {
                 // TODO: 顯示訊息選項菜單 (複製、刪除等)
-                setSuccess("長按功能正在開發中")
+                setSuccess(getApplicationString(R.string.long_press_feature_in_development))
             }
             MessageAction.IMAGE_CLICK -> {
                 // TODO: 顯示圖片全螢幕預覽
-                setSuccess("圖片預覽功能正在開發中")
+                setSuccess(getApplicationString(R.string.image_preview_feature_in_development))
             }
         }
     }
@@ -802,6 +809,20 @@ class ChatViewModel @Inject constructor(
         val index = currentMessages.indexOfFirst { it.id == messageId }
         if (index != -1) {
             currentMessages[index] = currentMessages[index].copy(text = newText)
+            _messages.value = currentMessages
+        }
+    }
+
+    /**
+     * Appends a chunk of text to an existing message.
+     * This is the robust way to handle streaming updates.
+     */
+    private fun appendMessageText(messageId: String, chunk: String) {
+        val currentMessages = _messages.value.toMutableList()
+        val index = currentMessages.indexOfFirst { it.id == messageId }
+        if (index != -1) {
+            val oldMessage = currentMessages[index]
+            currentMessages[index] = oldMessage.copy(text = oldMessage.text + chunk)
             _messages.value = currentMessages
         }
     }
@@ -847,7 +868,7 @@ class ChatViewModel @Inject constructor(
         return if (firstUserMessage != null) {
             firstUserMessage.text.take(20) + if (firstUserMessage.text.length > 20) "..." else ""
         } else {
-            "新對話"
+            getApplicationString(R.string.new_conversation)
         }
     }
 
@@ -892,18 +913,18 @@ class ChatViewModel @Inject constructor(
      */
     private fun generateMockResponse(userInput: String): String {
         val responses = listOf(
-            "這是一個很有趣的問題！讓我來為您分析一下...",
-            "根據您的描述，我建議您可以考慮以下幾個方面：",
-            "我理解您的需求，這裡有一些可能對您有幫助的建議：",
-            "這個話題很值得探討，從我的角度來看...",
-            "感謝您的提問！我認為您可以從這個角度來思考：",
-            "基於您提供的資訊，我的建議是...",
-            "這確實是一個重要的問題，讓我為您詳細說明一下：",
-            "我很樂意為您解答這個問題！首先..."
+            getApplicationString(R.string.mock_response_1),
+            getApplicationString(R.string.mock_response_2),
+            getApplicationString(R.string.mock_response_3),
+            getApplicationString(R.string.mock_response_4),
+            getApplicationString(R.string.mock_response_5),
+            getApplicationString(R.string.mock_response_6),
+            getApplicationString(R.string.mock_response_7),
+            getApplicationString(R.string.mock_response_8)
         )
         
         return responses.random() + "\n\n" + 
-               "（這是Phase 1.3的模擬回應，真實的AI整合將在Phase 4實作）"
+               getApplicationString(R.string.mock_response_suffix)
     }
 
     /**
@@ -911,11 +932,11 @@ class ChatViewModel @Inject constructor(
      */
     private fun mockVoiceRecognition(): String {
         val phrases = listOf(
-            "你好，請幫我解答一個問題",
-            "今天天氣如何",
-            "請介紹一下這個應用程式的功能",
-            "我想了解AI技術的發展",
-            "可以給我一些學習建議嗎"
+            getApplicationString(R.string.mock_voice_1),
+            getApplicationString(R.string.mock_voice_2),
+            getApplicationString(R.string.mock_voice_3),
+            getApplicationString(R.string.mock_voice_4),
+            getApplicationString(R.string.mock_voice_5)
         )
         return phrases.random()
     }
@@ -929,10 +950,10 @@ class ChatViewModel @Inject constructor(
                 _connectionState.value = state
                 when (state) {
                     is BreezeAppConnectionState.Connected -> {
-                        setSuccess("BreezeApp Engine 連接成功")
+                        setSuccess(getApplicationString(R.string.breezeapp_engine_connected))
                     }
                     is BreezeAppConnectionState.Failed -> {
-                        setError("BreezeApp Engine 連接失敗: ${state.message}")
+                        setError(getApplicationString(R.string.breezeapp_engine_connection_failed).format(state.message))
                     }
                     else -> {
                         // 處理其他狀態
@@ -947,16 +968,15 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun generateAIResponseWithBreezeApp(userInput: String) {
         var aiMessage: ChatMessage? = null
-        var accumulatedContent = StringBuilder()
         try {
             // 檢查連接狀態
             if (!connectionUseCase.isConnected()) {
-                throw BreezeAppError.ConnectionError.ServiceDisconnected("BreezeApp Engine 未連接")
+                throw BreezeAppError.ConnectionError.ServiceDisconnected(getApplicationString(R.string.breezeapp_engine_not_connected))
             }
             
             // 創建AI回應訊息 (初始為載入狀態)
             aiMessage = ChatMessage(
-                text = "正在思考中...",
+                text = "", // Start with empty text
                 isFromUser = false,
                 state = ChatMessage.MessageState.TYPING
             )
@@ -974,13 +994,14 @@ class ChatViewModel @Inject constructor(
             val repetitionPenalty = settings?.llmParams?.repetitionPenalty ?: 1.1f
             val enableStreaming = settings?.llmParams?.enableStreaming ?: true
             val systemPrompt = settings?.llmParams?.systemPrompt?.takeIf { it.isNotBlank() }
-                ?: "你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。"
+                ?: getApplicationString(R.string.default_system_prompt)
 
             // DEBUG: Log runtime parameters to verify values
             Log.d(tag, "🔥 Runtime Settings DEBUG - temperature: $temperature, topK: $topK, topP: $topP, maxTokens: $maxTokens, repetitionPenalty: $repetitionPenalty, streaming: $enableStreaming")
 
             if (enableStreaming) {
-                // 串流模式
+                // The new streaming use case is expected to handle guardian checks internally
+                // and provide the final, safe content to the ViewModel.
                 streamingChatUseCase.execute(
                     prompt = userInput,
                     systemPrompt = systemPrompt,
@@ -990,13 +1011,41 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 ).collect { response ->
-                    response.choices.forEach { choice ->
-                        // A non-null finishReason indicates the end of the stream for this choice.
-                        // We only process the delta if the stream is still ongoing (finishReason is null).
-                        if (choice.finishReason == null) {
-                            choice.delta?.content?.let { content ->
-                                accumulatedContent.append(content)
-                                updateMessageText(aiMessage.id, accumulatedContent.toString())
+                    // The response from the use case contains the next chunk of text.
+                    val choice = response.choices.firstOrNull()
+                    
+                    // Only process delta content if stream is still ongoing (no finishReason)
+                    if (choice?.finishReason == null) {
+                        choice?.delta?.content?.let { chunk ->
+                            // Only append non-empty chunks to prevent UI flickering
+                            if (chunk.isNotBlank()) {
+                                appendMessageText(aiMessage.id, chunk)
+                            }
+                        }
+                    }
+
+                    if (choice?.finishReason != null) {
+                        val finalMessage = _messages.value.find { it.id == aiMessage.id }
+                        
+                        // Handle non-streaming fallback: check multiple possible content locations
+                        val fallbackContent = choice?.message?.content?.takeIf { it.isNotBlank() }
+                            ?: choice?.delta?.content?.takeIf { it.isNotBlank() }
+                         
+                        when {
+                            // Case 1: Normal streaming - message has accumulated content
+                            finalMessage != null && finalMessage.text.isNotEmpty() -> {
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+                            }
+                            // Case 2: Non-streaming fallback - use complete content from response  
+                            fallbackContent != null -> {
+                                updateMessageText(aiMessage.id, fallbackContent)
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+                            }
+                            // Case 3: Truly empty response
+                            else -> {
+                                val errorMessage = getApplicationString(R.string.ai_response_empty_retry_check_settings)
+                                updateMessageText(aiMessage.id, errorMessage)
+                                updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
                             }
                         }
                     }
@@ -1012,23 +1061,40 @@ class ChatViewModel @Inject constructor(
                     topP = topP,
                     repetitionPenalty = repetitionPenalty
                 )
-                val content = response.choices.firstOrNull()?.message?.content ?: ""
+                
+                // Robust content extraction - try multiple possible response formats
+                val content = response.choices.firstOrNull()?.let { choice ->
+                    choice.message?.content                      // Standard format
+                        ?: choice.delta?.content                 // Streaming format fallback
+                        ?: ""
+                } ?: ""
+                
                 if (content.isNotEmpty()) {
                     updateMessageText(aiMessage.id, content)
+                } else {
+                    // Handle truly empty response - check if it's Guardian blocking
+                    Log.w(tag, "🛡️ Empty non-streaming response - checking for Guardian or other issues")
+                    val errorMessage = getApplicationString(R.string.ai_response_generation_error_retry)
+                    updateMessageText(aiMessage.id, errorMessage)
+                    updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
                 }
             }
             
-            // 更新訊息狀態為正常
-            updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+            // 更新訊息狀態為正常 (只有在非錯誤情況下)
+            if (_messages.value.find { it.id == aiMessage.id }?.state != ChatMessage.MessageState.ERROR) {
+                updateMessageState(aiMessage.id, ChatMessage.MessageState.NORMAL)
+            }
             
             // 更新會話
             updateCurrentSession()
             
-            setSuccess("AI回應完成")
+            setSuccess(getApplicationString(R.string.ai_response_completed))
             
         } catch (e: BreezeAppError) {
             aiMessage?.let { message ->
                 handleBreezeAppError(e, message)
+            } ?: run {
+                Log.e(tag, "❌ aiMessage is null, cannot update with error message")
             }
         } catch (e: Exception) {
             handleAIResponseError(e)
@@ -1040,33 +1106,52 @@ class ChatViewModel @Inject constructor(
      */
     private suspend fun handleBreezeAppError(error: BreezeAppError, aiMessage: ChatMessage) {
         val errorMessage = when (error) {
-            is BreezeAppError.ConnectionError.ServiceDisconnected -> "BreezeApp Engine 連接中斷，請檢查連接狀態"
-            is BreezeAppError.ChatError.InvalidInput -> "輸入格式不正確，請重新輸入"
-            is BreezeAppError.ChatError.ModelNotFound -> "AI模型未找到，請檢查設定"
-            is BreezeAppError.ChatError.GenerationFailed -> "AI回應生成失敗，請重試"
-            is BreezeAppError.ChatError.StreamingError -> "串流回應中斷，請重試"
-            else -> "發生未知錯誤，請重試"
+            is BreezeAppError.ConnectionError.ServiceDisconnected -> getApplicationString(R.string.breezeapp_engine_connection_interrupted)
+            is BreezeAppError.ChatError.InvalidInput -> getApplicationString(R.string.input_format_incorrect)
+            is BreezeAppError.ChatError.ModelNotFound -> getApplicationString(R.string.ai_model_not_found)
+            is BreezeAppError.ChatError.GenerationFailed -> getApplicationString(R.string.ai_response_generation_failed)
+            is BreezeAppError.ChatError.StreamingError -> {
+                // Preserve the actual error message (may contain Guardian violation messages)
+                error.message?.takeIf { it.isNotBlank() } ?: getApplicationString(R.string.streaming_response_interrupted)
+            }
+            else -> getApplicationString(R.string.unknown_error_retry)
         }
         
         updateMessageText(aiMessage.id, errorMessage)
         updateMessageState(aiMessage.id, ChatMessage.MessageState.ERROR)
         setError(errorMessage)
     }
+    
+    
 
     private fun playTtsForMessage(message: ChatMessage) {
-        launchSafely(showLoading = false) {
+        // Simple approach: Only allow ONE TTS at a time
+        // If TTS is already playing, show friendly message to user
+        if (_currentlyPlayingMessageId.value != null) {
+            Log.d(TAG, "TTS already playing for message ${_currentlyPlayingMessageId.value}, ignoring request")
+            setSuccess(getApplicationString(R.string.tts_already_playing_please_wait))
+            return
+        }
+
+        // Cancel any existing TTS job (safety check)
+        currentTtsJob?.cancel()
+
+        // Mark this message as currently playing
+        _currentlyPlayingMessageId.value = message.id
+
+        currentTtsJob = viewModelScope.launch {
             try {
                 if (!connectionUseCase.isConnected()) {
-                    throw BreezeAppError.ConnectionError.ServiceDisconnected("BreezeApp Engine 未連接")
+                    throw BreezeAppError.ConnectionError.ServiceDisconnected(getApplicationString(R.string.breezeapp_engine_not_connected))
                 }
 
                 // 從當前狀態獲取最新的訊息內容，避免使用過期的訊息引用
                 val currentMessage = _messages.value.find { it.id == message.id }
                 val textToSpeak = currentMessage?.text ?: message.text
-                
-                if (textToSpeak.isEmpty() || textToSpeak == "正在思考中...") {
-                    setError("無法播放空白或載入中的訊息")
-                    return@launchSafely
+
+                if (textToSpeak.isEmpty() || textToSpeak == getApplicationString(R.string.ai_thinking_message)) {
+                    setError(getApplicationString(R.string.cannot_play_empty_or_loading_message))
+                    return@launch
                 }
 
                 ttsUseCase.execute(textToSpeak).collect { response ->
@@ -1074,15 +1159,34 @@ class ChatViewModel @Inject constructor(
                     Log.d(TAG, "TTS response received: ${response.audioData.size} bytes")
                 }
                 // TTS stream completed
-                setSuccess("語音播放完畢")
+                setSuccess(getApplicationString(R.string.voice_playback_completed))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                Log.d(TAG, "TTS playback cancelled")
+                throw e
             } catch (e: BreezeAppError) {
                 // 使用當前訊息進行錯誤處理
                 val currentMessage = _messages.value.find { it.id == message.id } ?: message
                 handleBreezeAppError(e, currentMessage)
             } catch (e: Exception) {
                 handleAIResponseError(e)
+            } finally {
+                // Always clear the playing state when done
+                if (_currentlyPlayingMessageId.value == message.id) {
+                    _currentlyPlayingMessageId.value = null
+                }
+                currentTtsJob = null
             }
         }
+    }
+
+    /**
+     * Stop current TTS playback
+     */
+    fun stopCurrentTts() {
+        currentTtsJob?.cancel()
+        currentTtsJob = null
+        _currentlyPlayingMessageId.value = null
+        Log.d(TAG, "🛑 TTS playback stopped")
     }
     
     /**
@@ -1094,10 +1198,10 @@ class ChatViewModel @Inject constructor(
                 _connectionState.value = state
                 when (state) {
                     is BreezeAppConnectionState.Connected -> {
-                        setSuccess("BreezeApp Engine 重連成功")
+                        setSuccess(getApplicationString(R.string.breezeapp_engine_reconnected))
                     }
                     is BreezeAppConnectionState.Failed -> {
-                        setError("BreezeApp Engine 重連失敗: ${state.message}")
+                        setError(getApplicationString(R.string.breezeapp_engine_reconnection_failed).format(state.message))
                     }
                     else -> {
                         // 處理其他狀態
@@ -1130,6 +1234,7 @@ class ChatViewModel @Inject constructor(
      */
     override fun onCleared() {
         super.onCleared()
+        
         // 保存當前會話狀態，以便下次啟動時恢復
         if (_messages.value.isNotEmpty()) {
             val currentSession = _currentSession.value.copy(

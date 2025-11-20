@@ -47,8 +47,7 @@ class RuntimeSettingsFragment : BaseFragment() {
             
             // Set up info text
             val infoText = view.findViewById<android.widget.TextView>(R.id.text_info)
-            infoText?.text = "AI runtime settings are managed centrally by the Engine. " +
-                    "Configure LLM, ASR, TTS, and VLM parameters in the unified settings interface."
+            infoText?.text = getString(R.string.ai_runtime_settings_info_extended)
         }
     }
 
@@ -77,7 +76,7 @@ class RuntimeSettingsFragment : BaseFragment() {
             // Show helpful message
             Toast.makeText(
                 requireContext(),
-                "Opening Engine Settings - configure all AI parameters there",
+                getString(R.string.opening_engine_settings),
                 Toast.LENGTH_SHORT
             ).show()
             
@@ -88,7 +87,7 @@ class RuntimeSettingsFragment : BaseFragment() {
             // Other errors
             Toast.makeText(
                 requireContext(),
-                "Error launching Engine settings: ${e.message}",
+                getString(R.string.error_launching_engine_settings, e.message),
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -99,16 +98,10 @@ class RuntimeSettingsFragment : BaseFragment() {
      */
     private fun showEngineNotAvailableDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("AI Engine Not Available")
-            .setMessage(
-                "The BreezeApp Engine is not accessible. This could be because:\n\n" +
-                "• Engine app is not installed\n" +
-                "• Engine service is not running\n" +
-                "• Permission issues\n\n" +
-                "Please ensure the Engine is properly installed and running."
-            )
-            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
-            .setNegativeButton("Retry") { _, _ -> launchEngineSettings() }
+            .setTitle(getString(R.string.ai_engine_not_available_title))
+            .setMessage(getString(R.string.ai_engine_not_available_message))
+            .setPositiveButton(getString(R.string.ok)) { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton(getString(R.string.retry)) { _, _ -> launchEngineSettings() }
             .show()
     }
 

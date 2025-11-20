@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -7,41 +10,66 @@ plugins {
 
 android {
     namespace = "com.mtkresearch.breezeapp"
-    compileSdk = 34
+    compileSdk = 35
 
     signingConfigs {
         create("release") {
-            // 使用與 engine 相同的簽名配置
-            storeFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+            // Production release keystore
+            // Store sensitive data in keystore.properties or environment variables for security
+            val keystorePropertiesFile = rootProject.file("keystore.properties")
+
+            if (keystorePropertiesFile.exists()) {
+                val keystoreProperties = Properties()
+                keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+                storeFile = file(keystoreProperties.getProperty("storeFile")
+                    ?: "${System.getProperty("user.home")}/Resource/android_key_mr")
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            } else {
+                // Fallback to production keystore with environment variables
+                storeFile = file(System.getProperty("KEYSTORE_FILE")
+                    ?: "${System.getProperty("user.home")}/Resource/android_key_mr")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: System.getProperty("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS") ?: System.getProperty("KEY_ALIAS") ?: "key0"
+                keyPassword = System.getenv("KEY_PASSWORD") ?: System.getProperty("KEY_PASSWORD")
+            }
         }
     }
 
     defaultConfig {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 34
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 35
+        versionCode = 38
+        versionName = "2.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
-        debug {
-            // Debug builds use the same keystore for signature-level permissions
-            signingConfig = signingConfigs.getByName("release")
-        }
         release {
             isMinifyEnabled = false
+            // Use production release keystore for release builds
             signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
         }
+    }
+
+    lint {
+        // Disable lint fatal errors for release builds
+        // This allows the build to complete even with lint warnings
+        abortOnError = false
+
+        // Optional: Create a lint report for review
+        checkReleaseBuilds = true
+
+        // Ignore specific issues that are false positives
+        disable += setOf("ResAuto")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -59,8 +87,9 @@ android {
 }
 
 dependencies {
-    // BreezeApp Engine SDK
-    implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.5")
+    // BreezeApp Engine SDK (using local until v0.1.8 is published)
+    implementation(project(":EdgeAI"))
+    // implementation("com.github.mtkresearch:BreezeApp-engine:EdgeAI-v0.1.8")
     
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.6.1")

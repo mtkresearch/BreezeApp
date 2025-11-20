@@ -89,7 +89,13 @@ class StreamingChatUseCase @Inject constructor() {
                     is InvalidInputException -> throw BreezeAppError.ChatError.InvalidInput(e.message ?: "Invalid input")
                     is ModelNotFoundException -> throw BreezeAppError.ChatError.ModelNotFound(e.message ?: "Model not found")
                     is ServiceConnectionException -> throw BreezeAppError.ConnectionError.ServiceDisconnected(e.message ?: "Connection error")
-                    is EdgeAIException -> throw BreezeAppError.ChatError.StreamingError(e.message ?: "Streaming error")
+                    is EdgeAIException -> {
+                        // Pass through the EdgeAI exception message directly
+                        // Guardian messages are already contained in e.message
+                        val errorMessage = e.message ?: "Unknown error"
+                        Log.w(TAG, "EdgeAI streaming error: $errorMessage")
+                        throw BreezeAppError.ChatError.StreamingError(errorMessage)
+                    }
                     else -> throw BreezeAppError.UnknownError(e.message ?: "Unexpected error")
                 }
             }

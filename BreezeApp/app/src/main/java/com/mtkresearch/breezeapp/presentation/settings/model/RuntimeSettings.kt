@@ -56,7 +56,7 @@ data class VLMParameters(
  * ASR (語音識別) 參數
  */
 data class ASRParameters(
-    val languageModel: String = "zh-TW",      // 語言模型
+    val languageModel: String = "auto",       // 語言模型 (auto-detect or specific language code)
     val beamSize: Int = 5,                    // Beam搜索大小 (1-10)
     val vadThreshold: Float = 0.5f,           // 語音活動檢測閾值 (0.1-0.9)
     val enableNoiseSuppression: Boolean = true, // 噪音抑制
