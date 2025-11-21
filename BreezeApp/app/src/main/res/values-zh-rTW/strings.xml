@@ -494,6 +494,14 @@
     <string name="cannot_play_empty_or_loading_message">無法播放空白或載入中的訊息</string>
     <string name="voice_playback_completed">語音播放完畢</string>
     <string name="tts_already_playing_please_wait">語音正在播放中，請等待當前播放完成</string>
+    <string name="tts_generation_failed">語音合成失敗: %s</string>
+    <string name="tts_invalid_text">無效的文字無法進行語音合成</string>
+    <string name="tts_unsupported_language">不支援的語音合成語言</string>
+    <string name="tts_audio_focus_lost">播放時音訊焦點被搶佔</string>
+    <string name="tts_app_backgrounded">播放停止 - 應用程式進入背景</string>
+
+    <!-- ASR messages -->
+    <string name="asr_resource_unavailable">語音辨識無法使用: %s</string>
 
     <!-- System prompt -->
     <string name="default_system_prompt">你是一個友善、專業的AI助手。請用繁體中文回答，並保持簡潔明瞭。</string>

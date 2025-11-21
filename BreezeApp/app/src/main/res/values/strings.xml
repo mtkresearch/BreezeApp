@@ -494,6 +494,14 @@
     <string name="cannot_play_empty_or_loading_message">Cannot play empty or loading message</string>
     <string name="voice_playback_completed">Voice playback completed</string>
     <string name="tts_already_playing_please_wait">Voice is already playing, please wait for the current playback to finish</string>
+    <string name="tts_generation_failed">TTS generation failed: %s</string>
+    <string name="tts_invalid_text">Invalid text for speech synthesis</string>
+    <string name="tts_unsupported_language">Unsupported language for speech synthesis</string>
+    <string name="tts_audio_focus_lost">Audio focus lost during playback</string>
+    <string name="tts_app_backgrounded">Playback stopped - app moved to background</string>
+
+    <!-- ASR messages -->
+    <string name="asr_resource_unavailable">Speech recognition unavailable: %s</string>
 
     <!-- System prompt -->
     <string name="default_system_prompt">You are a friendly, professional AI assistant. Please respond in Traditional Chinese and keep it concise and clear.</string>

@@ -597,8 +597,14 @@ class ChatViewModel @Inject constructor(
                     }
                 }
             } ?: run {
-                // Timeout occurred
+                // Timeout occurred - cancel the engine request to stop breathing border
                 Log.w(tag, "⏱️ [ROBUST] ASR processing timed out after 120 seconds")
+                try {
+                    val cancelled = requestCancellationUseCase.cancelLastRequest()
+                    Log.d(tag, "⏱️ [ROBUST] Engine request cancellation result: $cancelled")
+                } catch (e: Exception) {
+                    Log.w(tag, "⏱️ [ROBUST] Failed to cancel engine request: ${e.message}")
+                }
                 setError(getApplicationString(R.string.voice_processing_timeout_retry))
                 _isListening.value = false
                 _recordingProgress.value = 0f
@@ -1114,7 +1120,20 @@ class ChatViewModel @Inject constructor(
                 // Preserve the actual error message (may contain Guardian violation messages)
                 error.message?.takeIf { it.isNotBlank() } ?: getApplicationString(R.string.streaming_response_interrupted)
             }
-            else -> getApplicationString(R.string.unknown_error_retry)
+            // TTS-specific errors - preserve actual error message for better diagnostics
+            is BreezeAppError.TtsError.AudioGenerationFailed -> {
+                getApplicationString(R.string.tts_generation_failed).format(error.message)
+            }
+            is BreezeAppError.TtsError.InvalidText -> getApplicationString(R.string.tts_invalid_text)
+            is BreezeAppError.TtsError.UnsupportedLanguage -> getApplicationString(R.string.tts_unsupported_language)
+            is BreezeAppError.TtsError.AudioFocusLost -> getApplicationString(R.string.tts_audio_focus_lost)
+            is BreezeAppError.TtsError.AppBackgrounded -> getApplicationString(R.string.tts_app_backgrounded)
+            // ASR-specific errors
+            is BreezeAppError.AsrError.ResourceUnavailable -> {
+                getApplicationString(R.string.asr_resource_unavailable).format(error.message)
+            }
+            // For any other errors, show the actual error message if available
+            else -> error.message?.takeIf { it.isNotBlank() } ?: getApplicationString(R.string.unknown_error_retry)
         }
         
         updateMessageText(aiMessage.id, errorMessage)
