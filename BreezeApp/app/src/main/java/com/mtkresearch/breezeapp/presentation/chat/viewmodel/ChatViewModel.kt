@@ -612,10 +612,22 @@ class ChatViewModel @Inject constructor(
             
         } catch (e: kotlinx.coroutines.CancellationException) {
             Log.d(tag, "🛡️ [ROBUST] ASR processing cancelled")
+            // Cancel engine request to ensure breathing border stops
+            try {
+                requestCancellationUseCase.cancelLastRequest()
+            } catch (cancelError: Exception) {
+                Log.w(tag, "🛡️ [ROBUST] Failed to cancel engine request: ${cancelError.message}")
+            }
             _isListening.value = false
             _recordingProgress.value = 0f
         } catch (e: Exception) {
             Log.e(tag, "❌ [ROBUST] Failed to process audio with BreezeApp Engine: ${e.message}")
+            // Cancel engine request to ensure breathing border stops
+            try {
+                requestCancellationUseCase.cancelLastRequest()
+            } catch (cancelError: Exception) {
+                Log.w(tag, "❌ [ROBUST] Failed to cancel engine request: ${cancelError.message}")
+            }
             setError(getApplicationString(R.string.voice_processing_failed).format(e.message))
             _isListening.value = false
             _recordingProgress.value = 0f
