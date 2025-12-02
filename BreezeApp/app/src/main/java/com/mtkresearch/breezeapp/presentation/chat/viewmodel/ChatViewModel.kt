@@ -381,18 +381,31 @@ class ChatViewModel @Inject constructor(
             _asrConfig.value = config.copy(mode = defaultMode)
             defaultMode
         }
-        
-        when (modeToUse) {
-            AsrMode.ONLINE_STREAMING -> {
-                if (config.availabilityConfig.onlineStreamingEnabled) {
-                    startOnlineStreamingAsr()
-                } else {
-                    Log.w(tag, "Online streaming ASR requested but not enabled, falling back to offline")
+
+        // Update language from RuntimeSettings
+        viewModelScope.launch {
+            val settingsResult = loadRuntimeSettingsUseCase()
+            val settings = settingsResult.getOrNull()
+            val language = settings?.asrParams?.languageModel ?: "auto"
+            
+            val currentConfig = _asrConfig.value
+            if (currentConfig.language != language) {
+                _asrConfig.value = currentConfig.copy(language = language)
+                Log.d(tag, "Updated ASR language to: $language")
+            }
+            
+            when (modeToUse) {
+                AsrMode.ONLINE_STREAMING -> {
+                    if (config.availabilityConfig.onlineStreamingEnabled) {
+                        startOnlineStreamingAsr()
+                    } else {
+                        Log.w(tag, "Online streaming ASR requested but not enabled, falling back to offline")
+                        startOfflineFileAsr()
+                    }
+                }
+                AsrMode.OFFLINE_FILE -> {
                     startOfflineFileAsr()
                 }
-            }
-            AsrMode.OFFLINE_FILE -> {
-                startOfflineFileAsr()
             }
         }
     }
