@@ -640,4 +640,10 @@
     <string name="guardian_analysis_error_type">分析錯誤</string>
     <string name="guardian_service_unavailable">Guardian服務暫時無法使用，系統已自動通過此訊息</string>
     <string name="guardian_analysis_error">Guardian分析發生錯誤，系統已自動通過此訊息</string>
+
+    <!-- ================================ -->
+    <!-- Functionality Test -->
+    <!-- ================================ -->
+    <string name="functionality_test_title">AI 功能測試</string>
+    <string name="functionality_test_subtitle">測試 LLM、TTS 和 ASR 功能</string>
 </resources>

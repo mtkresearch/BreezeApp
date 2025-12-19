@@ -114,6 +114,11 @@ class AppSettingsFragment : BaseFragment() {
         binding.layoutConfigureEngine.setOnClickListener {
             launchEngineSettings()
         }
+
+        // Functionality Test click listener
+        binding.layoutFunctionalityTest.setOnClickListener {
+            startActivity(android.content.Intent(requireContext(), com.mtkresearch.breezeapp.presentation.settings.test.FunctionalityTestActivity::class.java))
+        }
     }
 
     /**

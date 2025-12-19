@@ -640,4 +640,10 @@
     <string name="guardian_analysis_error_type">Analysis Error</string>
     <string name="guardian_service_unavailable">Guardian service temporarily unavailable, system automatically approved this message</string>
     <string name="guardian_analysis_error">Guardian analysis encountered an error, system automatically approved this message</string>
+
+    <!-- ================================ -->
+    <!-- Functionality Test -->
+    <!-- ================================ -->
+    <string name="functionality_test_title">AI Functionality Test</string>
+    <string name="functionality_test_subtitle">Test LLM, TTS, and ASR capabilities</string>
 </resources>

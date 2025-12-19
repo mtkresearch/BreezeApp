@@ -65,6 +65,16 @@
                 android:value=".presentation.MainActivity" />
         </activity>
 
+        <activity
+            android:name=".presentation.settings.test.FunctionalityTestActivity"
+            android:exported="false"
+            android:parentActivityName=".presentation.settings.SettingsActivity"
+            android:screenOrientation="portrait">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".presentation.settings.SettingsActivity" />
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
