@@ -42,8 +42,8 @@ android {
         applicationId = "com.mtkresearch.breezeapp"
         minSdk = 34
         targetSdk = 35
-        versionCode = 41
-        versionName = "2.3.2"
+        versionCode = 42
+        versionName = "2.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
