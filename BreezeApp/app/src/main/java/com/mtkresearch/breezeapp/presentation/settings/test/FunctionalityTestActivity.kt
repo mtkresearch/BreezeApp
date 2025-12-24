@@ -62,16 +62,19 @@ class FunctionalityTestActivity : BaseActivity() {
 
         // LLM
         binding.sendLLMRequestButton.setOnClickListener {
+            if (!canPerformAIAction()) return@setOnClickListener
             val prompt = binding.llmInputText.text.toString().ifEmpty { "Hello" }
             viewModel.sendLLMRequest(prompt, false)
         }
         binding.sendStreamingRequestButton.setOnClickListener {
+            if (!canPerformAIAction()) return@setOnClickListener
             val prompt = binding.llmInputText.text.toString().ifEmpty { "Hello" }
             viewModel.sendLLMRequest(prompt, true)
         }
 
         // TTS
         binding.sendTtsButton.setOnClickListener {
+            if (!canPerformAIAction()) return@setOnClickListener
             val text = binding.ttsInputText.text.toString().ifEmpty { "Hello" }
             viewModel.sendTTSRequest(text)
         }
@@ -254,6 +257,44 @@ class FunctionalityTestActivity : BaseActivity() {
             requestPermissionsLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
         } else {
             viewModel.startMicrophoneStreaming()
+        }
+    }
+
+    // Implement global action blocking
+    override fun onDownloadStateChanged(isDownloading: Boolean, modelId: String?) {
+        super.onDownloadStateChanged(isDownloading, modelId)
+        
+        runOnUiThread {
+            // Disable/Enable buttons based on download state
+            binding.sendLLMRequestButton.isEnabled = !isDownloading
+            binding.sendStreamingRequestButton.isEnabled = !isDownloading
+            binding.sendTtsButton.isEnabled = !isDownloading
+            binding.recordAudioButton.isEnabled = !isDownloading
+            
+            if (!isDownloading) {
+                val statusMsg = "✅ Download complete. Model ready: ${modelId ?: "Unknown"}"
+                binding.logTextView.append("\n$statusMsg")
+                val scrollAmount = binding.logTextView.layout?.getLineTop(binding.logTextView.lineCount) ?: 0
+                if (scrollAmount > binding.logTextView.height) {
+                    binding.logTextView.scrollTo(0, scrollAmount - binding.logTextView.height)
+                }
+            }
+        }
+    }
+
+    override fun onDownloadProgressUpdate(modelId: String, fileName: String, currentFileIndex: Int, totalFiles: Int) {
+        super.onDownloadProgressUpdate(modelId, fileName, currentFileIndex, totalFiles)
+        runOnUiThread {
+            val progressStr = if (currentFileIndex >= 0 && totalFiles > 0) {
+                 "(${currentFileIndex + 1}/$totalFiles)"
+            } else ""
+            
+            val statusMsg = "⚠️ Downloading model$progressStr: $fileName..."
+            binding.logTextView.append("\n$statusMsg")
+            val scrollAmount = binding.logTextView.layout?.getLineTop(binding.logTextView.lineCount) ?: 0
+            if (scrollAmount > binding.logTextView.height) {
+                binding.logTextView.scrollTo(0, scrollAmount - binding.logTextView.height)
+            }
         }
     }
 }

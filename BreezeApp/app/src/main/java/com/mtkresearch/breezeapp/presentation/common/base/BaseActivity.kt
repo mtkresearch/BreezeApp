@@ -4,15 +4,113 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.mtkresearch.breezeapp.domain.model.settings.FontSize
 import com.mtkresearch.breezeapp.domain.model.settings.ThemeMode
 import com.mtkresearch.breezeapp.domain.repository.AppSettingsRepository
+import com.mtkresearch.breezeapp.edgeai.DownloadConstants
+import com.mtkresearch.breezeapp.presentation.common.download.AppDownloadProgressBottomSheet
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
 abstract class BaseActivity : AppCompatActivity() {
+
+    private val downloadReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+            when (intent?.action) {
+                DownloadConstants.ACTION_SHOW_DOWNLOAD_UI -> {
+                    // Show UI only when explicitly requested (batch start)
+                    showDownloadProgressUI()
+                }
+                DownloadConstants.ACTION_DOWNLOAD_STARTED -> {
+                    // File-level progress update - don't show UI again, just update progress
+                    val modelId = intent.getStringExtra(DownloadConstants.EXTRA_MODEL_ID) ?: ""
+                    val fileName = intent.getStringExtra(DownloadConstants.EXTRA_FILE_NAME) ?: ""
+                    val index = intent.getIntExtra("current_file_index", -1)
+                    val total = intent.getIntExtra("total_files", -1)
+                    onDownloadProgressUpdate(modelId, fileName, index, total)
+                }
+                "com.mtkresearch.breezeapp.GLOBAL_DOWNLOAD_STATE" -> {
+                    val isDownloading = intent.getBooleanExtra("is_downloading", false)
+                    val modelId = intent.getStringExtra(DownloadConstants.EXTRA_MODEL_ID)
+                    onDownloadStateChanged(isDownloading, modelId)
+                }
+            }
+        }
+    }
+    
+    private var downloadSheet: AppDownloadProgressBottomSheet? = null
+    protected var isGlobalDownloadActive = false
+
+    private fun showDownloadProgressUI() {
+        try {
+            val fm = supportFragmentManager
+            // Avoid showing multiple instances
+            if (fm.findFragmentByTag(AppDownloadProgressBottomSheet.TAG) == null) {
+                downloadSheet = AppDownloadProgressBottomSheet.show(fm)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    
+    // Override in subclasses to handle download state
+    open fun onDownloadStateChanged(isDownloading: Boolean, modelId: String?) {
+        isGlobalDownloadActive = isDownloading
+    }
+
+    // Override in subclasses to handle detailed progress
+    open fun onDownloadProgressUpdate(modelId: String, fileName: String, currentFileIndex: Int, totalFiles: Int) {
+        // Default no-op
+    }
+    
+    // Helper to check before AI actions
+    protected fun canPerformAIAction(): Boolean {
+        if (isGlobalDownloadActive) {
+            android.widget.Toast.makeText(
+                this,
+                "Please wait for model download to complete",
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            return false
+        }
+        return true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        try {
+            val filter = android.content.IntentFilter().apply {
+                addAction(DownloadConstants.ACTION_SHOW_DOWNLOAD_UI)
+                addAction(DownloadConstants.ACTION_DOWNLOAD_STARTED)
+                addAction(DownloadConstants.ACTION_DOWNLOAD_PROGRESS)
+                addAction(DownloadConstants.ACTION_DOWNLOAD_COMPLETED)
+                addAction(DownloadConstants.ACTION_DOWNLOAD_FAILED)
+                addAction("com.mtkresearch.breezeapp.GLOBAL_DOWNLOAD_STATE")
+            }
+            // Register global receiver (exported for cross-process if needed, or NOT_EXPORTED if internal)
+            // Since Engine might be in a separate process but same app signature, assume EXPORTED or handle version.
+            // For simplicity and inter-process communication:
+             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(downloadReceiver, filter)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try {
+            unregisterReceiver(downloadReceiver)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 
     @EntryPoint
     @InstallIn(SingletonComponent::class)
