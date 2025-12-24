@@ -81,7 +81,9 @@ data class UiState(
     val isRecording: Boolean = false,
     val isLlmLoading: Boolean = false,
     val isTtsLoading: Boolean = false,
-    val isAsrLoading: Boolean = false
+    val isAsrLoading: Boolean = false,
+    val isDownloading: Boolean = false,
+    val downloadMessage: String? = null
 )
 
 @HiltViewModel
@@ -91,6 +93,7 @@ class FunctionalityTestViewModel @Inject constructor(
     private val chatUseCase: ChatUseCase,
     private val streamingChatUseCase: StreamingChatUseCase,
     private val ttsUseCase: TtsUseCase,
+    private val asrMicrophoneUseCase: AsrMicrophoneUseCase
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -333,16 +336,25 @@ class FunctionalityTestViewModel @Inject constructor(
                 val startTime = System.currentTimeMillis()
                 var firstChunkTime: Long? = null
 
+                var remoteTtfa: Long? = null
+                
                 ttsUseCase.execute(text).collect { response ->
                     if (firstChunkTime == null) {
                         firstChunkTime = System.currentTimeMillis() - startTime
                     }
-
+                    
+                    // Capture TTFA from metrics if available in this chunk
+                    response.metrics?.get("timeToFirstAudio")?.toLongOrNull()?.let { 
+                        remoteTtfa = it
+                    }
+                    
                     if (response.isLastChunk == true) {
                         val totalLatency = System.currentTimeMillis() - startTime
+                        val finalTtfa = remoteTtfa ?: firstChunkTime
+                        
                         val metrics = TtsMetrics(
                             totalLatencyMs = totalLatency,
-                            timeToFirstAudioMs = firstChunkTime,
+                            timeToFirstAudioMs = finalTtfa,
                             success = true
                         )
 
@@ -352,7 +364,7 @@ class FunctionalityTestViewModel @Inject constructor(
                         ) }
 
                         logMessage("✅ TTS done - ${totalLatency}ms" +
-                            (firstChunkTime?.let { ", TTFA: ${it}ms" } ?: ""))
+                            (finalTtfa?.let { ", TTFA: ${it}ms" } ?: ""))
                     }
                 }
             } catch (e: Exception) {
@@ -414,19 +426,78 @@ class FunctionalityTestViewModel @Inject constructor(
             logMessage("❌ Not connected")
             return
         }
+        if (_uiState.value.isRecording) return
 
-        logMessage("🎤 Microphone streaming started...")
-        _uiState.update { it.copy(isRecording = true, asrResponse = "", asrMetrics = null) }
+        microphoneStreamingJob = viewModelScope.launch {
+            _uiState.update { it.copy(isRecording = true, asrResponse = "", asrMetrics = null, isAsrLoading = true) }
+            logMessage("🎤 Microphone streaming started...")
 
-        // TODO: Implement microphone streaming when ASR UseCase is available
-        logMessage("⚠️ Microphone ASR not yet implemented")
+            val startTime = System.currentTimeMillis()
+            var firstTokenTime: Long? = null
+            var accumulatedTranscription = StringBuilder()
+
+            try {
+                asrMicrophoneUseCase.execute().collect { response ->
+                    if (firstTokenTime == null && response.text.isNotEmpty()) {
+                        firstTokenTime = System.currentTimeMillis() - startTime
+                    }
+
+                    accumulatedTranscription.append(response.text)
+
+                    val currentLatency = System.currentTimeMillis() - startTime
+                    val metrics = AsrMetrics(
+                        totalLatencyMs = currentLatency,
+                        transcriptionLength = accumulatedTranscription.length,
+                        language = response.language,
+                        success = true
+                    )
+
+                    _uiState.update { state ->
+                        state.copy(
+                            asrResponse = accumulatedTranscription.toString(),
+                            asrMetrics = metrics,
+                            isAsrLoading = response.isChunk // ASR is loading if it's a chunk
+                        )
+                    }
+
+                    if (!response.isChunk) {
+                        logMessage("✅ ASR final result: ${response.text}")
+                        logMessage("✅ ASR done - ${currentLatency}ms")
+                        _uiState.update { it.copy(isRecording = false, isAsrLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    val errorMessage = "ASR microphone failed: ${e.message}"
+                    logMessage("❌ $errorMessage")
+                    _uiState.update { it.copy(
+                        asrResponse = "Error: ${e.message}",
+                        asrMetrics = AsrMetrics(success = false, errorMessage = e.message),
+                        isRecording = false,
+                        isAsrLoading = false
+                    ) }
+                } else {
+                    logMessage("⏹️ Microphone streaming cancelled.")
+                    _uiState.update { it.copy(isRecording = false, isAsrLoading = false) }
+                }
+            }
+        }
     }
 
     fun stopMicrophoneStreaming() {
         logMessage("⏹️ Microphone stopped")
+        
+        // For offline ASR mode, stop recording to trigger audio processing
+        asrMicrophoneUseCase.stopRecording()
+        
+        // Update UI state to show we're no longer recording, but keep isAsrLoading=true
+        // The job will complete naturally when ASR results arrive
         _uiState.update { it.copy(isRecording = false) }
-        microphoneStreamingJob?.cancel()
-        microphoneStreamingJob = null
+        
+        // NOTE: We intentionally DO NOT cancel microphoneStreamingJob here
+        // Reason: The job is still collecting ASR results from the engine
+        // Cancelling it would prevent us from receiving the transcription result
+        // The job will complete naturally when the ASR flow completes
     }
 
     fun cancelRequest() {
@@ -472,6 +543,19 @@ class FunctionalityTestViewModel @Inject constructor(
         _uiState.update { it.copy(selectedAudioFileUri = uri) }
         if (uri != null) {
             logMessage("📁 Audio file selected")
+        }
+    }
+
+    /**
+     * Update download state - called by Activity when download broadcasts are received
+     */
+    fun setDownloadingState(isDownloading: Boolean, message: String? = null) {
+        _uiState.update { it.copy(
+            isDownloading = isDownloading,
+            downloadMessage = message
+        ) }
+        if (isDownloading && message != null) {
+            logMessage("📥 $message")
         }
     }
 }
