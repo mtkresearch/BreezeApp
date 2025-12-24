@@ -108,6 +108,7 @@ dependencies {
     // Hilt for Dependency Injection
     implementation(libs.hilt.android)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.credentials)
     kapt(libs.hilt.compiler)
 
     // Espresso / Rules / Runtime
